@@ -439,7 +439,7 @@ export function parseStaffImportRow(row: StaffImportRow, lists: SchoolLists): Pa
       if (!problems.some((found) => found.column === column)) {
         problems.push({
           column,
-          code: issue.code === 'custom' ? 'hours_overlap' : 'hours_invalid',
+          code: issue.code === 'custom' ? 'hours_overlap' : 'hours_over_limit',
         });
       }
     }

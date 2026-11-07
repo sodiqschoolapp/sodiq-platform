@@ -545,8 +545,8 @@ describe('the staff import', () => {
         t.south,
       );
       expect(rowAt(answer, 3).problems).toEqual([]);
-      const before = await hoursOf((await staffBySurnameOrNull('Soatov')) ?? UNKNOWN);
-      expect(before).toEqual({ entries: [], ranges: [] });
+      // The preview wrote the record and its hours and rolled both back.
+      expect(await staffBySurnameOrNull('Soatov')).toBeNull();
       await saved(answer.importId, {}, t.south);
       const stored = await staffBySurname('Soatov');
       const { entries, ranges } = await hoursOf(stored.id);

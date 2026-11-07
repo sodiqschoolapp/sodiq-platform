@@ -2339,11 +2339,11 @@ export const uz: Texts<'one' | 'other'> = {
       role: 'Rol',
       noRole: 'Rolsiz',
       warningHere:
-        'Shu ism va tugʻilgan sanali xodim kartasi bor: {{names}}. Bu boshqa odam boʻlsa, belgilang.',
+        'Shu ismli, tugʻilgan sanasi bir xil yoki yozilmagan xodim kartasi bor: {{names}}. Bu boshqa odam boʻlsa, belgilang.',
       warningElsewhere:
-        'Boshqa filialda shu ism va tugʻilgan sanali xodim bor. Bu boshqa odam boʻlsa, belgilang.',
+        'Boshqa filialda shu ismli, tugʻilgan sanasi bir xil yoki yozilmagan xodim bor. Bu boshqa odam boʻlsa, belgilang.',
       warningRows:
-        '{{rows}}-qatorlarda ham shu ism va tugʻilgan sana. Bular boshqa-boshqa odamlar boʻlsa, belgilang.',
+        '{{rows}}-qatorlarda ham shu ism, tugʻilgan sanasi bir xil yoki yozilmagan. Bular boshqa-boshqa odamlar boʻlsa, belgilang.',
       samePerson: 'Telefon {{name}} qarindoshining asosiy telefoni: bitta odam deb belgilandi.',
       samePersonElsewhere: 'Telefon qarindoshning asosiy telefoni: bitta odam deb belgilandi.',
       holderHere: 'U {{name}}ga tegishli.',
@@ -2377,6 +2377,8 @@ export const uz: Texts<'one' | 'other'> = {
         hours_outside_day: 'vaqt 00:00 dan 24:00 gacha boʻlsin.',
         hours_end_before_start: 'oraliqning oxiri boshidan keyin boʻlsin.',
         hours_overlap: 'shu kunning ikki oraliq vaqti bir-biriga toʻgʻri keladi.',
+        hours_over_limit:
+          'bu qator soatlarida {{max}} tadan ortiq oraliq bor; ayrimlarini birlashtiring.',
       },
     },
     import: {
@@ -3347,8 +3349,9 @@ export const uz: Texts<'one' | 'other'> = {
       newStatus: 'Yangi holat',
       changeStatus: 'Holatni oʻzgartirish',
       duplicateTitle: 'Ehtimol, bu oʻsha odam',
-      duplicateHere: 'Ismi va tugʻilgan sanasi bir xil xodim allaqachon bor.',
-      duplicateElsewhere: 'Ismi va tugʻilgan sanasi bir xil xodim boshqa filialda ishlaydi.',
+      duplicateHere: 'Ismi bir xil, tugʻilgan sanasi bir xil yoki yozilmagan xodim allaqachon bor.',
+      duplicateElsewhere:
+        'Ismi bir xil, tugʻilgan sanasi bir xil yoki yozilmagan xodim boshqa filialda ishlaydi.',
       saveAnyway: 'Baribir saqlash',
       phoneTaken: 'Bu telefon {{name}} xodim yozuviga tegishli.',
       phoneTakenElsewhere: 'Bu telefon boshqa filialdagi xodim yozuviga tegishli.',

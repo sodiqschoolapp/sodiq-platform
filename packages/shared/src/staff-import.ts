@@ -375,6 +375,8 @@ export const STAFF_IMPORT_PROBLEMS = [
   'hours_end_before_start',
   /** Two ranges of one day that share a minute. */
   'hours_overlap',
+  /** More ranges in the hours of the row than one availability entry holds (`AVAILABILITY_RANGES_MAX`). */
+  'hours_over_limit',
 ] as const;
 
 export const staffImportProblemSchema = z.object({

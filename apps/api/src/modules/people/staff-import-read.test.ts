@@ -197,6 +197,16 @@ describe('reading the staff template', () => {
     expect(two.hours).toBeNull();
   });
 
+  it('names more ranges than one entry holds as too many', async () => {
+    const minute = (n: number) => `08:${String(n).padStart(2, '0')}`;
+    const many = Array.from({ length: 36 }, (_, n) => `${minute(n)}-${minute(n + 1)}`).join(', ');
+    const row = await parsed({ hoursMonday: many });
+    expect(codes(row)).toEqual(['null:hours_over_limit']);
+    expect(row.record).toBeNull();
+    const enough = Array.from({ length: 35 }, (_, n) => `${minute(n)}-${minute(n + 1)}`).join(', ');
+    expect(codes(await parsed({ hoursMonday: enough }))).toEqual([]);
+  });
+
   it('reads one hours cell with the checks of the hand route', () => {
     expect(hoursOf(2, '07:30-15:00')).toEqual([{ weekday: 2, start: '07:30', end: '15:00' }]);
     expect(hoursOf(2, '08:00-08:00')).toBe('hours_end_before_start');

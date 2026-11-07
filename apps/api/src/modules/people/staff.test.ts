@@ -973,6 +973,16 @@ describe('staff records', () => {
       expect(await ids('1985-05-05')).toEqual([without.id, withDate.id].sort());
       const there = staffCheckResultSchema.parse((await ask(t.south, '1970-01-01')).body);
       expect(there.elsewhere).toBe(true);
+      // No date typed, against another branch's record that has one (and no record without).
+      await create({ firstName: 'Timur', lastName: 'Sanaqulov', birthDate: '1980-01-01' });
+      const dated = await t.post('/api/people/staff/check', t.south, {
+        firstName: 'Timur',
+        lastName: 'Sanaqulov',
+        birthDate: null,
+        phone: null,
+        staffRecordId: null,
+      });
+      expect(staffCheckResultSchema.parse(dated.body).elsewhere).toBe(true);
       // No phone typed: no phone is compared.
       expect([there.phoneTaken, there.relative, there.relativeElsewhere]).toEqual([
         null,
