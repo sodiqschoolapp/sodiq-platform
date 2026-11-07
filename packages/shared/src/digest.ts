@@ -101,7 +101,7 @@ export const digestLogRowSchema = z.object({
   /** The parent: the relative's full name and the login. */
   parentName: z.string(),
   login: z.string(),
-  /** The children named, first name and class as sent; empty unless delivered. */
+  /** The children of the message when delivered; otherwise those the digest was for. */
   children: z.array(z.object({ firstName: z.string(), className: z.string().nullable() })),
   status: digestStatusSchema,
   attempts: z.int().min(0),

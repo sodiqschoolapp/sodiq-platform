@@ -273,6 +273,23 @@ export class DigestService {
         this.log.warn(`Digest ${digestId}: failed after ${String(digest.attempts)} attempts.`);
         return null;
       }
+      // The children the digest is for, kept for the send log whatever becomes of it (`10`,
+      // Sending: "for which children ... delivered or not"; spec review of the code, must-fix 2).
+      const children = await digestChildren(transaction, digest.account_id);
+      if (children.length > 0) {
+        await transaction
+          .insertInto('digest_parts')
+          .values(
+            children.map((child) => ({
+              digest_id: digestId,
+              student_id: child.studentId,
+              first_name: child.firstName,
+              class_name: child.className,
+            })),
+          )
+          .onConflict((conflict) => conflict.columns(['digest_id', 'student_id']).doNothing())
+          .execute();
+      }
       const link = await transaction
         .selectFrom('telegram_links')
         .select(['id', 'linked_at', 'bot_blocked_at'])
@@ -407,7 +424,11 @@ export class DigestService {
             student_id: one.child.studentId,
             first_name: one.child.firstName,
             class_name: one.child.className,
+            in_message: true,
           })),
+        )
+        .onConflict((conflict) =>
+          conflict.columns(['digest_id', 'student_id']).doUpdateSet({ in_message: true }),
         )
         .execute();
       const entries = parts.flatMap((one) =>
@@ -614,7 +635,9 @@ export class DigestService {
     }
     const figure = dailyAttendance(cells);
     return {
-      held: cells.length,
+      // Exempt lessons are left out: a period of exempt lessons only is nothing new (spec review
+      // of the code, should-fix 1).
+      held: figure.marked + figure.unmarked,
       counts: {
         marked: figure.marked,
         attended: figure.attended,

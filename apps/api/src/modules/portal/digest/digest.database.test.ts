@@ -1,4 +1,6 @@
-import { studentNameKey } from '@sodiq/shared';
+import { BRANCH_HEADER, studentNameKey } from '@sodiq/shared';
+import { randomUUID } from 'node:crypto';
+import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { sql } from 'kysely';
 import { MOMENT_SETTING, Transactions } from '../../../database/transactions.js';
@@ -42,6 +44,7 @@ describe('the parents digest', () => {
   let dilnoza: string;
   let fatherB: { accountId: string; chat: string; relativeId: string };
   const sent: Sent[] = [];
+  let goodStart: string;
   let answer = { ok: true, status: 200 };
   let nextChat = 7_100_000;
 
@@ -174,21 +177,46 @@ describe('the parents digest', () => {
     );
   };
 
-  const exempt = async (studentId: string, date: string) => {
+  /** A comment's text changed, as the journal writes it (8.2). */
+  const editComment = async (id: string, body: string, moment: string) => {
     const writer = await load.classes.account();
-    await at(`${date}T07:00:00+05:00`, () =>
+    await at(moment, () =>
       t.app.get(Transactions).run([s.branch], async (transaction) => {
         await t.app.get(Audit).record(transaction, {
           branchId: s.branch,
+          actorId: writer,
+          action: 'journal.comment',
+        });
+        await transaction
+          .updateTable('journal_comments')
+          .set({ body, changed_by: writer, changed_how: 'entry' })
+          .where('id', '=', id)
+          .execute();
+      }),
+    );
+  };
+
+  const exempt = async (
+    studentId: string,
+    date: string,
+    other?: { branch: string; year: string; moment: string },
+  ) => {
+    const branch = other?.branch;
+    const year = other?.year;
+    const writer = await load.classes.account();
+    await at(other?.moment ?? `${date}T07:00:00+05:00`, () =>
+      t.app.get(Transactions).run([branch ?? s.branch], async (transaction) => {
+        await t.app.get(Audit).record(transaction, {
+          branchId: branch ?? s.branch,
           actorId: writer,
           action: 'exemption.create',
         });
         await transaction
           .insertInto('exemptions')
           .values({
-            branch_id: s.branch,
+            branch_id: branch ?? s.branch,
             student_id: studentId,
-            year_id: s.year,
+            year_id: year ?? s.year,
             batch_id: '019a0000-0000-7000-8000-0000000000b2',
             kind: 'temporary',
             all_subjects: true,
@@ -347,7 +375,7 @@ describe('the parents digest', () => {
       { lessonId: l19, studentId: kamron, value: 2 },
       { lessonId: l19, studentId: kamron, workId: works.cw19, value: 4 },
     ]);
-    await comment({
+    goodStart = await comment({
       moment: '2026-10-12T18:30:00+05:00',
       studentId: kamron,
       target: 'work',
@@ -473,10 +501,10 @@ describe('the parents digest', () => {
     const before = messagesTo(motherA.chat).length;
     await run('2026-10-26T19:00:00+05:00');
     const text = messagesTo(motherA.chat).slice(before).join('\n');
-    // Lessons were held, all exempt: a part with the summary only.
-    expect(text).toContain('Kamron');
-    expect(text).toContain('Attendance: no lessons in this period.');
-    expect(text).not.toMatch(/: absent/u);
+    // Lessons were held, all exempt, nothing saved: nothing new (spec review of the code,
+    // should-fix 1).
+    expect(text).toBe('');
+    expect((await digestOf(motherA.accountId, '2026-10-26'))?.status).toBe('nothing');
   });
 
   // A work that holds a number cannot be removed (8.1, `work_holds_data`; the delete guard of
@@ -485,14 +513,38 @@ describe('the parents digest', () => {
     await saveOn('2026-10-27T10:00:00+05:00', [
       { lessonId: lessons.l12, studentId: kamron, workId: works.removable, value: null },
     ]);
+    // Spec review of the code, must-fix 1: a comment beside no score is not sent.
+    await comment({
+      moment: '2026-10-27T10:30:00+05:00',
+      studentId: kamron,
+      target: 'work',
+      lessonId: lessons.l12,
+      workId: works.removable,
+      body: 'NO-score-comment',
+      visibility: 'parents',
+    });
+    // Must-fix 6: an edited comment is listed again, "corrected".
+    await editComment(goodStart, 'Good start, edited', '2026-10-27T11:00:00+05:00');
     const before = messagesTo(motherA.chat).length;
     await run('2026-10-27T19:00:00+05:00');
     const text = messagesTo(motherA.chat).slice(before).join('\n');
     expect(text.match(/12 Oct: removed/gu)?.length).toBe(1);
     expect(text).not.toContain('9/10');
-    const after = messagesTo(motherA.chat).length;
+    expect(text).not.toContain('NO-score-comment');
+    expect(text).toContain('«Good start, edited» (corrected)');
+  });
+
+  // Review correction 1: a save whose moment lies before the end of the previous digest, committed
+  // after that digest read the journal, reaches the next digest once.
+  it('sends a save that committed after the previous digest read the journal, once', async () => {
+    await saveOn('2026-10-27T18:58:00+05:00', [
+      { lessonId: lessons.a12, studentId: kamron, value: 2 },
+    ]);
+    const before = messagesTo(motherA.chat).length;
     await run('2026-10-28T19:00:00+05:00');
-    expect(messagesTo(motherA.chat).length).toBe(after);
+    const text = messagesTo(motherA.chat).slice(before).join('\n');
+    expect(text).toContain('12 Oct: late (corrected)');
+    expect(text).not.toContain('Good start');
   });
 
   it('takes a child out whose link lost portal access or "receives notices" after the digest fell due', async () => {
@@ -614,13 +666,15 @@ describe('the parents digest', () => {
     await run('2026-11-11T19:00:00+05:00');
     expect(await digestOf(weekly.accountId, '2026-11-11')).toBeUndefined();
     expect(await digestOf(twice.accountId, '2026-11-11')).toBeDefined();
-    // Two ticks at once make one digest of the date.
-    await at('2026-11-11T19:05:00+05:00', () => Promise.all([digest.tick(), digest.tick()]));
+    // Two ticks at once, before any digest of the date, make one (spec review of the code,
+    // must-fix 7).
+    expect(await digestOf(twice.accountId, '2026-11-14')).toBeUndefined();
+    await at('2026-11-14T19:05:00+05:00', () => Promise.all([digest.tick(), digest.tick()]));
     const count = await t.database.migrator
       .selectFrom('digests')
       .select((eb) => eb.fn.countAll().as('n'))
       .where('account_id', '=', twice.accountId)
-      .where('digest_date', '=', '2026-11-11')
+      .where('digest_date', '=', '2026-11-14')
       .executeTakeFirstOrThrow();
     expect(Number(count.n)).toBe(1);
   });
@@ -638,6 +692,17 @@ describe('the parents digest', () => {
     let bobur: string;
     let sardor: string;
     let southLesson: string;
+    let southScene: PublishedScene;
+    const mondayLessonOn = async (classId: string, subjectId: string, date: string) =>
+      (
+        await t.database.migrator
+          .selectFrom('lessons')
+          .select('id')
+          .where('class_id', '=', classId)
+          .where('subject_id', '=', subjectId)
+          .where('lesson_date', '=', date)
+          .executeTakeFirstOrThrow()
+      ).id;
     let kamronLesson: string;
 
     const mondayLesson = async (classId: string, subjectId: string) =>
@@ -653,6 +718,7 @@ describe('the parents digest', () => {
 
     beforeAll(async () => {
       const south = await publishedScene(t, load, { branch: t.south, graded: true });
+      southScene = south;
       southLesson = await mondayLesson(south.otherClass, south.subject);
       kamronLesson = await mondayLesson(s.otherClass, s.subject);
       // Laylo: the mother's second child, in the other branch.
@@ -766,14 +832,16 @@ describe('the parents digest', () => {
       const text = messagesTo(motherA.chat).slice(before).join('\n');
       expect(text).toContain('Laylo');
       expect(text).not.toContain('Kamron');
+      // A sent mark changed to another mark (must-fix 6): listed again, "corrected".
+      expect(text).toContain('9 Nov: late (corrected)');
       const row = await digestOf(motherA.accountId, '2026-11-13');
       expect(row?.status).toBe('delivered');
       const parts = await t.database.migrator
         .selectFrom('digest_parts')
-        .select('student_id')
+        .select(['student_id', 'in_message'])
         .where('digest_id', '=', row?.id ?? '')
         .execute();
-      expect(parts.map((one) => one.student_id)).toEqual([laylo]);
+      expect(parts.filter((one) => one.in_message).map((one) => one.student_id)).toEqual([laylo]);
       const entries = await t.database.migrator
         .selectFrom('digest_entries')
         .select('student_id')
@@ -781,5 +849,185 @@ describe('the parents digest', () => {
         .execute();
       expect(entries.every((one) => one.student_id === laylo)).toBe(true);
     });
+
+    // Spec review of the code, must-fix 6: an exemption granted after the digest fell due and
+    // before it is sent: the absence it covers is not sent.
+    it('sends no absence that an exemption covers by the time of sending', async () => {
+      const lesson = await mondayLessonOn(southScene.otherClass, southScene.subject, '2026-11-16');
+      await saveOn(
+        '2026-11-16T15:00:00+05:00',
+        [{ lessonId: lesson, studentId: laylo, value: 0 }],
+        t.south,
+      );
+      await at('2026-11-16T19:00:00+05:00', () => digest.tick());
+      expect((await digestOf(motherA.accountId, '2026-11-16'))?.status).toBe('due');
+      await exempt(laylo, '2026-11-16', {
+        branch: t.south,
+        year: southScene.year,
+        moment: '2026-11-16T19:00:30+05:00',
+      });
+      const before = messagesTo(motherA.chat).length;
+      await run('2026-11-16T19:01:00+05:00');
+      const text = messagesTo(motherA.chat).slice(before).join('\n');
+      expect(text).not.toContain('16 Nov: absent');
+    });
+
+    // Must-fix 6: a retry held by the quiet hours; the 8th attempt failed, its period left open.
+    it('holds a retry through the quiet hours, and leaves the period of a failed digest open', async () => {
+      await saveOn('2026-11-17T10:00:00+05:00', [
+        { lessonId: lessons.a12, studentId: kamron, value: 3 },
+      ]);
+      answer = { ok: false, status: 502 };
+      await at('2026-11-17T19:00:00+05:00', () => digest.tick());
+      const due = await digestOf(motherA.accountId, '2026-11-17');
+      try {
+        await expect(
+          at('2026-11-17T20:59:30+05:00', () => digest.send(due?.id ?? '')),
+        ).rejects.toThrow();
+      } finally {
+        answer = { ok: true, status: 200 };
+      }
+      expect((await digestOf(motherA.accountId, '2026-11-17'))?.attempts).toBe(1);
+      answer = { ok: true, status: 200 };
+      // The next try (21:00:30) falls in the quiet hours: nothing until 08:00.
+      await run('2026-11-17T21:30:00+05:00');
+      expect((await digestOf(motherA.accountId, '2026-11-17'))?.status).toBe('due');
+      await run('2026-11-18T08:00:00+05:00');
+      const delivered = await digestOf(motherA.accountId, '2026-11-17');
+      expect(delivered?.status).toBe('delivered');
+      expect(delivered?.attempts).toBe(2);
+
+      await at('2026-11-18T19:00:00+05:00', () => digest.tick());
+      const last = await digestOf(motherA.accountId, '2026-11-18');
+      // A first try fails as the others would; then the count stands at the last attempt.
+      await saveOn('2026-11-18T10:00:00+05:00', [
+        { lessonId: lessons.a12, studentId: kamron, value: 0 },
+      ]);
+      answer = { ok: false, status: 502 };
+      try {
+        await expect(
+          at('2026-11-18T19:00:30+05:00', () => digest.send(last?.id ?? '')),
+        ).rejects.toThrow();
+      } finally {
+        answer = { ok: true, status: 200 };
+      }
+      await t.database.migrator
+        .updateTable('digests')
+        .set({ attempts: 8, next_try_at: new Date('2026-11-18T19:00:00+05:00') })
+        .where('id', '=', last?.id ?? '')
+        .execute();
+      await at('2026-11-18T19:30:00+05:00', () => digest.send(last?.id ?? ''));
+      const failed = await digestOf(motherA.accountId, '2026-11-18');
+      expect(failed?.status).toBe('failed');
+      expect(failed?.period_until).toBeNull();
+      // Its children are in the send log all the same (must-fix 2).
+      const named = await t.database.migrator
+        .selectFrom('digest_parts')
+        .select('student_id')
+        .where('digest_id', '=', failed?.id ?? '')
+        .execute();
+      expect(named.map((one) => one.student_id).sort()).toEqual([kamron, laylo].sort());
+      await run('2026-11-19T19:00:00+05:00');
+      const next = await digestOf(motherA.accountId, '2026-11-19');
+      expect(next?.period_from?.toISOString()).toBe(delivered?.period_until?.toISOString());
+    });
+
+    // Review correction 2: a score whose row is gone (its lesson's forced delete) is listed once
+    // "removed", and the delete is not held up by the digest.
+    it('lists once as "removed" what a forced delete of its lesson took away', async () => {
+      const deleted = await request(t.kit.server)
+        .post(`/api/timetable/lessons/${lessons.l12}/forced-delete`)
+        .set('Cookie', t.admin)
+        .set(BRANCH_HEADER, s.branch)
+        .set('Idempotency-Key', randomUUID())
+        .send({ reason: 'Entered for the wrong class' });
+      expect(deleted.status, JSON.stringify(deleted.body)).toBe(200);
+      const before = messagesTo(motherA.chat).length;
+      await run('2026-11-20T19:00:00+05:00');
+      const text = messagesTo(motherA.chat).slice(before).join('\n');
+      // The score 12/30 and its comment, each once.
+      expect(text.match(/12 Oct: removed/gu)?.length).toBe(2);
+      expect(text).not.toContain('12/30');
+      const after = messagesTo(motherA.chat).length;
+      await run('2026-11-21T19:00:00+05:00');
+      expect(messagesTo(motherA.chat).slice(after).join('\n')).not.toContain('12 Oct');
+    });
+  });
+
+  it('never makes a digest for a staff account: a staff account has no Telegram link', async () => {
+    const staffAccount = await load.classes.account();
+    await expect(
+      t.database.migrator
+        .insertInto('telegram_links')
+        .values({
+          account_id: staffAccount,
+          telegram_user_id: '7199999',
+          linked_at: new Date('2026-10-01T10:00:00+05:00'),
+        })
+        .execute(),
+    ).rejects.toThrow(/telegram_link_not_parent/u);
+    const rows = await t.database.migrator
+      .selectFrom('digests')
+      .select('id')
+      .where('account_id', '=', staffAccount)
+      .execute();
+    expect(rows).toEqual([]);
+  });
+
+  // Review must-fix 6 of the plan, decision 17: a mark entered late for a lesson of the branch a
+  // child left reaches the parent once.
+  it('sends a late mark for a lesson of the branch the child moved from', async () => {
+    const southClass = (
+      await t.database.migrator
+        .selectFrom('classes')
+        .select('id')
+        .where('branch_id', '=', t.south)
+        .orderBy('id')
+        .executeTakeFirstOrThrow()
+    ).id;
+    const moved = await parents.student(s.branch);
+    await named(moved.studentId, 'Nodir');
+    await parents.members.member({
+      branch: s.branch,
+      classId: s.otherClass,
+      studentId: moved.studentId,
+      from: '2026-09-01',
+    });
+    // The move through the routes of 3.3c: released from the first branch, accepted in the other.
+    const read = await t.get(`/api/people/students/${moved.studentId}`, s.branch);
+    const released = await t.post(`/api/people/students/${moved.studentId}/branch-move`, s.branch, {
+      toBranchId: t.south,
+      from: '2026-10-28',
+      version: (read.body as { version: number }).version,
+    });
+    expect(released.status, JSON.stringify(released.body)).toBe(200);
+    const move = await t.database.migrator
+      .selectFrom('student_branch_moves')
+      .select('id')
+      .where('student_id', '=', moved.studentId)
+      .executeTakeFirstOrThrow();
+    // Accepted on its date, the sessions kept fresh at that moment (the idle limit).
+    const acceptAt = '2026-10-28T09:00:00+05:00';
+    await t.database.migrator
+      .updateTable('sessions')
+      .set({ created_at: new Date(acceptAt), last_used_at: new Date(acceptAt) })
+      .where('ended_at', 'is', null)
+      .execute();
+    const accepted = await at(acceptAt, () =>
+      t.post(`/api/people/branch-moves/${move.id}/accept`, t.south, {
+        classId: southClass,
+        groups: [],
+      }),
+    );
+    expect(accepted.status, JSON.stringify(accepted.body)).toBe(200);
+    const father = await linked(moved.relativeId, '2026-10-01T10:00:00+05:00');
+    await frequency(father.accountId, 'daily');
+    await saveOn('2026-11-02T10:00:00+05:00', [
+      { lessonId: lessons.l26, studentId: moved.studentId, value: 0 },
+    ]);
+    await run('2026-11-02T19:00:00+05:00');
+    const text = messagesTo(father.chat).join('\n');
+    expect(text).toContain('Nodir');
+    expect(text).toContain('26 okt: kelmagan');
   });
 });

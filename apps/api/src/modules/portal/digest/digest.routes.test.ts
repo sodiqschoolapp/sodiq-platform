@@ -196,7 +196,7 @@ describe('the routes of the parents digest', () => {
   });
 
   // Plan decision 15 (permission review of the code, should-fix 4): the reader of the digests.
-  it('lists the account\'s digests in the personal data report of the relative, and no other', async () => {
+  it("lists the account's digests in the personal data report of the relative, and no other", async () => {
     const other = await parents.student(t.north);
     const otherSession = await parents.session(other.relativeId);
     const link = await t.database.migrator

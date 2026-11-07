@@ -116,7 +116,10 @@ grant select, insert on digests to sodiq_app;
 grant update (status, attempts, next_try_at, period_from, period_until, sent_at) on digests
   to sodiq_app;
 
--- The children a delivered digest named, as named: first name and class only (`10`, Privacy).
+-- The children a digest was for, as named: first name and class only (`10`, Privacy). Written at
+-- each attempt from the children in scope, so a digest not delivered names them too (`10`,
+-- Sending: "for which children ... delivered or not"); `in_message` marks those the delivered
+-- message named.
 -- The student id without a key, as a log row: a student merge or branch move (3.3c, 3.3d) has
 -- nothing of the send log to carry.
 create table digest_parts (
@@ -125,10 +128,12 @@ create table digest_parts (
   student_id uuid not null,
   first_name text not null,
   class_name text,
+  in_message boolean not null default false,
   constraint digest_parts_key unique (digest_id, student_id)
 );
 
 grant select, insert on digest_parts to sodiq_app;
+grant update (in_message) on digest_parts to sodiq_app;
 
 -- What a delivered digest carried, one row per entry, with the value as it was sent. No key to
 -- the journal's rows: a work removed takes its cells with it, and a digest must never block a

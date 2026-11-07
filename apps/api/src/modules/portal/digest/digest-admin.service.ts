@@ -114,7 +114,7 @@ export class DigestAdmin {
           ? []
           : await transaction
               .selectFrom('digest_parts')
-              .select(['digest_id', 'first_name', 'class_name'])
+              .select(['digest_id', 'first_name', 'class_name', 'in_message'])
               .where('digest_id', 'in', ids)
               .orderBy('first_name')
               .orderBy('id')
@@ -126,7 +126,11 @@ export class DigestAdmin {
           parentName: row.full_name ?? '',
           login: row.login,
           children: parts
-            .filter((part) => part.digest_id === row.id)
+            // A delivered digest names the children of its message; any other, those it was for.
+            .filter(
+              (part) =>
+                part.digest_id === row.id && (row.status !== 'delivered' || part.in_message),
+            )
             .map((part) => ({ firstName: part.first_name, className: part.class_name })),
           status: digestStatusSchema.parse(row.status),
           attempts: row.attempts,

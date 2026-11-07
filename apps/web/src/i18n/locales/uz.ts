@@ -2124,6 +2124,10 @@ export const uz: Texts<'one' | 'other'> = {
     log: {
       title: 'Xabarnomalar yuborilishi jurnali',
       caption: 'Ota-onalarga yuborilgan xabarnomalar',
+      allStatuses: 'Hammasi',
+      range: '{{total}} tadan {{first}}–{{last}}',
+      earlier: 'Yangiroq',
+      later: 'Eskiroq',
       chooseDate: 'Sana',
       date: 'Sana',
       parent: 'Ota-ona',

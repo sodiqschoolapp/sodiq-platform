@@ -1,12 +1,19 @@
-import { DIGEST_STATUSES, type DigestLogRow } from '@sodiq/shared';
+import {
+  DIGEST_STATUSES,
+  digestStatusSchema,
+  type DigestLogRow,
+  type DigestStatus,
+} from '@sodiq/shared';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate, useSearch } from '@tanstack/react-router';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { DateField } from '@/components/field';
+import { cn } from 'cn';
+import { DateField, SelectField } from '@/components/field';
 import { ListPage } from '@/components/list/list-page';
-import type { Column, Filter, ListSearch } from '@/components/list/list-state';
+import type { Column, ListSearch } from '@/components/list/list-state';
 import { PageHeader } from '@/components/page-header';
+import { Button } from '@/components/ui/button';
 import { PANEL } from '@/components/ui/control';
 import { momentText, schoolDateText } from '@/lib/dates';
 import { digestLogQuery } from './digest-api';
@@ -29,7 +36,13 @@ export function DigestLogPage(): React.JSX.Element {
   const navigate = useNavigate();
   const search = useSearch({ from: '/app/people/digest-log' });
   const [date, setDate] = useState('');
-  const log = useQuery(digestLogQuery(date === '' ? null : date));
+  const [status, setStatus] = useState<DigestStatus | null>(null);
+  const [page, setPage] = useState(1);
+  const log = useQuery(digestLogQuery({ date: date === '' ? null : date, status, page }));
+  const total = log.data?.total ?? 0;
+  const pageSize = log.data?.pageSize ?? 1;
+  const first = total === 0 ? 0 : (page - 1) * pageSize + 1;
+  const last = Math.min(page * pageSize, total);
 
   const columns = useMemo(
     (): Column<DigestLogRow>[] => [
@@ -84,21 +97,6 @@ export function DigestLogPage(): React.JSX.Element {
     [t, language],
   );
 
-  const filters = useMemo(
-    (): Filter<DigestLogRow>[] => [
-      {
-        key: 'status',
-        label: t('digest.log.status'),
-        options: DIGEST_STATUSES.map((status) => ({
-          value: status,
-          label: t(`digest.log.statuses.${status}`),
-        })),
-        matches: (row, value) => row.status === value,
-      },
-    ],
-    [t],
-  );
-
   const open = (next: ListSearch, how: 'push' | 'replace'): void => {
     void navigate({ to: '/people/digest-log', search: next, replace: how === 'replace' });
   };
@@ -113,16 +111,59 @@ export function DigestLogPage(): React.JSX.Element {
           { label: t('people.relatives.title'), to: '/people/parents' },
         ]}
       />
-      <div className={PANEL}>
-        <div className="max-w-xs">
+      <div className={cn(PANEL, 'flex flex-wrap items-end gap-4')}>
+        <div className="w-48">
           <DateField
             label={t('digest.log.chooseDate')}
             name="digest-date"
             value={date}
             onChange={(event) => {
               setDate(event.target.value);
+              setPage(1);
             }}
           />
+        </div>
+        <div className="w-56">
+          <SelectField
+            label={t('digest.log.status')}
+            name="digest-status"
+            value={status ?? ''}
+            options={[
+              { value: '', label: t('digest.log.allStatuses') },
+              ...DIGEST_STATUSES.map((one) => ({
+                value: one,
+                label: t(`digest.log.statuses.${one}`),
+              })),
+            ]}
+            onChange={(event) => {
+              const chosen = digestStatusSchema.safeParse(event.target.value);
+              setStatus(chosen.success ? chosen.data : null);
+              setPage(1);
+            }}
+          />
+        </div>
+        <p className="text-sm" data-testid="digest-log-range">
+          {t('digest.log.range', { first, last, total })}
+        </p>
+        <div className="flex gap-2">
+          <Button
+            variant="secondary"
+            disabled={page <= 1}
+            onClick={() => {
+              setPage((current) => current - 1);
+            }}
+          >
+            {t('digest.log.earlier')}
+          </Button>
+          <Button
+            variant="secondary"
+            disabled={last >= total}
+            onClick={() => {
+              setPage((current) => current + 1);
+            }}
+          >
+            {t('digest.log.later')}
+          </Button>
         </div>
       </div>
       <ListPage
@@ -136,7 +177,6 @@ export function DigestLogPage(): React.JSX.Element {
         rowId={(row) => row.id}
         rowName={(row) => row.parentName}
         columns={columns}
-        filters={filters}
         search={search}
         onSearchChange={open}
         empty={{ title: t('digest.log.emptyTitle'), text: t('digest.log.empty') }}

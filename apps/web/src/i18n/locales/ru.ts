@@ -2201,6 +2201,10 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
     log: {
       title: 'Журнал отправки сводок',
       caption: 'Сводки, отправленные родителям',
+      allStatuses: 'Все',
+      range: '{{first}}–{{last}} из {{total}}',
+      earlier: 'Новее',
+      later: 'Старее',
       chooseDate: 'Дата',
       date: 'Дата',
       parent: 'Родитель',

@@ -218,7 +218,11 @@ export async function journalEntriesOf(
     where w.id = any(${comments.rows.flatMap((row) => (row.work_id === null ? [] : [row.work_id]))}::uuid[])
   `.execute(transaction);
   for (const row of workCells.rows) {
-    shownCell.set(row.work_id, !row.not_held && row.total !== null && !row.not_graded);
+    // Beside a score only, as the portal's Grades page (spec review of the code, must-fix 1).
+    shownCell.set(
+      row.work_id,
+      !row.not_held && row.total !== null && !row.not_graded && row.score !== null,
+    );
   }
 
   for (const row of cells.rows) {

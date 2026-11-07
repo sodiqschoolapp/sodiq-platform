@@ -2092,6 +2092,10 @@ export const en = {
     log: {
       title: 'Digest send log',
       caption: 'Digests sent to parents',
+      allStatuses: 'All',
+      range: '{{first}}–{{last}} of {{total}}',
+      earlier: 'Newer',
+      later: 'Older',
       chooseDate: 'Date',
       date: 'Date',
       parent: 'Parent',

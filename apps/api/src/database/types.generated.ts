@@ -390,6 +390,7 @@ export interface DigestParts {
   digest_id: string;
   first_name: string;
   id: Generated<string>;
+  in_message: Generated<boolean>;
   student_id: string;
 }
 

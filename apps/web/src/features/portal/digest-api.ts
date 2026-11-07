@@ -3,6 +3,7 @@ import {
   digestLogSchema,
   digestSettingsSchema,
   type DigestFrequency,
+  type DigestStatus,
   type DigestSettingsChange,
 } from '@sodiq/shared';
 import { queryOptions } from '@tanstack/react-query';
@@ -30,14 +31,25 @@ export async function saveDigestSettings(change: DigestSettingsChange) {
   );
 }
 
-export const digestLogQuery = (date: string | null) =>
+/** One page of the send log, filtered on the server by a date and a status (review must-fix 3). */
+export const digestLogQuery = (filter: {
+  date: string | null;
+  status: DigestStatus | null;
+  page: number;
+}) =>
   queryOptions({
-    queryKey: [...DIGEST_KEY, 'log', date],
+    queryKey: [...DIGEST_KEY, 'log', filter.date, filter.status, filter.page],
     queryFn: async () =>
       digestLogSchema.parse(
         await answerOf(
           api.GET('/api/digest-log', {
-            params: { query: date === null ? {} : { from: date, to: date } },
+            params: {
+              query: {
+                ...(filter.date === null ? {} : { from: filter.date, to: filter.date }),
+                ...(filter.status === null ? {} : { status: filter.status }),
+                page: filter.page,
+              },
+            },
           }),
         ),
       ),

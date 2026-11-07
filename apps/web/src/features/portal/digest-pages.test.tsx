@@ -61,6 +61,31 @@ describe('the digest send log', () => {
     expect(blocked?.textContent).toContain(en.digest.log.statuses.blocked);
   });
 
+  // Spec review of the code, must-fix 3: the status and the page go to the server, so a busy day
+  // is read whole.
+  it('asks the server for a status and for the next page', async () => {
+    const calls = fakeApi({
+      'GET /api/auth/session': () => json(staff('super_admin')),
+      'GET /api/digest-log': () => json({ ...LOG, total: 1200 }),
+    });
+    renderApp('/people/digest-log');
+    await waitFor(() => {
+      expect(rows()).toHaveLength(2);
+    });
+    expect(screen.getByTestId('digest-log-range').textContent).toBe('1–500 of 1200');
+    fireEvent.change(screen.getByRole('combobox', { name: en.digest.log.status }), {
+      target: { value: 'failed' },
+    });
+    await waitFor(() => {
+      expect(calls.at(-1)?.query).toBe('?status=failed&page=1');
+    });
+    fireEvent.click(screen.getByRole('button', { name: en.digest.log.later }));
+    await waitFor(() => {
+      expect(calls.at(-1)?.query).toBe('?status=failed&page=2');
+    });
+    expect(screen.getByTestId('digest-log-range').textContent).toBe('501–1000 of 1200');
+  });
+
   it('says in one line that no digest was sent', async () => {
     fakeApi({
       'GET /api/auth/session': () => json(staff('super_admin')),
