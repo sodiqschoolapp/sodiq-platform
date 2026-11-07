@@ -2,6 +2,19 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 7 November 2026: task 10.7 The kind of a work, the journal's default columns, the lesson happening now
+
+- **Web** (feature `journal`): `WorkKindTag` (`work-kind-tag.tsx`), the letter of a work's kind (S/U, К/Д, C/H) on the 15% tint of `subject-blue` or `subject-orange`, the full word on hover and "<kind word>: <title>" as the name (`journal.grid.workLabel`), in the grid's work headers, lesson mode, the lesson card and the works dialog. A browser with no stored choice hides every hideable column but the photo (`JOURNAL_DEFAULT_HIDDEN`, `readHiddenColumns(listId, fallback)`).
+- **Teacher home**: `GET /api/timetable/home` answers `now` (the injected clock, the demo clock where on); the row of the lesson happening now gets `bg-today`, semibold and `aria-current="time"`, and its "Open the journal" button `motion-safe:animate-now-pulse` (`index.css`). A 30-second re-render moves it; no API call on a timer.
+- No migration, no permission change, `packages/calc` unchanged.
+
+Left out: tags in the plan editor (the kinds are listed under separate headings there); a browser test (the Done when names web tests).
+
+The next sessions must know:
+
+- A web test that reads the UID or a figure column of the journal stores a choice first (`showEveryJournalColumn()` of `src/testing/journal-columns.ts`): a fresh browser hides them.
+- Nothing else moves on its own: `tooling/motion.test.ts` holds `now-pulse` to the teacher home and to `motion-safe:`.
+
 ## 7 November 2026: task 11.6 Rating in the portal
 
 - **API** (module `portal`): `GET /api/portal/children/:studentId/rating?quarter` (`@PortalChild()`, the child scope first, 404): the child's place, figure and subjects as the staff list "a class, all subjects" and the class average as the class's figure of the list of classes, in the child's present branch, for a started quarter of the current year; "provisional" and "not official" as `listStateOf`. No other student's id, name, figure or place and no count of the students ranked (review correction 1).
