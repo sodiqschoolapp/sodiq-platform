@@ -453,7 +453,11 @@ describe('staff records in the database', () => {
     // constraints of 0024 and are tested now, with rows written by the migrator.
     it.each([
       ['a person without a staff ID', { staff_id: null }, 'staff_person_check'],
-      ['a person without an admission date', { admission_date: null }, 'staff_person_check'],
+      // Date of birth, phone and admission date are optional since 0166 (owner, 7
+      // November 2026: the requirement changed); the rest of the check stays.
+      ['a person without a first name', { first_name: null }, 'staff_person_check'],
+      ['a person without a surname', { last_name: null }, 'staff_person_check'],
+      ['a person without a sex', { sex: null }, 'staff_person_check'],
       ['a person with a vacancy name', { vacancy_name: 'English vacancy 2' }, 'staff_person_check'],
       [
         'a vacancy with a staff ID',
@@ -531,6 +535,12 @@ describe('staff records in the database', () => {
           admission_date: null,
           vacancy_name: 'English vacancy 2',
         }),
+      ).rejects.toBeInstanceOf(RolledBack);
+    });
+
+    it('accept a person without a date of birth, a phone and an admission date (0166)', async () => {
+      await expect(
+        insertAsMigrator({ birth_date: null, phone: null, admission_date: null }),
       ).rejects.toBeInstanceOf(RolledBack);
     });
 

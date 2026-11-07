@@ -1,4 +1,6 @@
 import {
+  availabilityRangeSchema,
+  availabilitySetSchema,
   CONTRACT_TYPES,
   EDUCATION_LEVELS,
   FIRST_GRADE,
@@ -7,6 +9,7 @@ import {
   ROLES,
   SEXES,
   STAFF_IMPORT_COLUMNS,
+  STAFF_IMPORT_HOURS_COLUMNS,
   STAFF_IMPORT_LANGUAGE_CHOICES,
   STAFF_IMPORT_MAX_ROWS,
   STAFF_IMPORT_ROLES,
@@ -17,6 +20,7 @@ import {
   staffImportNameKey,
   staffRecordSchema,
   staffTeachingSchema,
+  type AvailabilityRange,
   type Role,
   type StaffImportColumn,
   type StaffImportProblem,
@@ -25,6 +29,7 @@ import {
   type StaffImportWords,
   type StaffRecord,
   type StaffTeaching,
+  type Weekday,
 } from '@sodiq/shared';
 import ExcelJS from 'exceljs';
 import { ApiException } from '../../http/api-exception.js';
@@ -178,6 +183,54 @@ export function gradesOf(text: string): number[] | undefined {
   return grades.size === 0 ? undefined : [...grades].sort((a, b) => a - b);
 }
 
+/** `8:00`, `08.00` or `08:00`: the hour and the minute as typed. */
+const TIME = /^(\d{1,2})[:.](\d{2})$/;
+
+/**
+ * The ranges of one hours cell (`04`, Availability; the owner's spec change of
+ * 7 November 2026): `08:00-16:05`, or several separated by commas or
+ * semicolons. Each range is then checked by `availabilityRangeSchema`, the
+ * schema of the hand route, so a range refused by hand is refused here; the
+ * overlap of two ranges is checked with the whole row (`availabilitySetSchema`).
+ */
+export function hoursOf(
+  weekday: Weekday,
+  text: string,
+): AvailabilityRange[] | 'hours_invalid' | 'hours_outside_day' | 'hours_end_before_start' {
+  const ranges: AvailabilityRange[] = [];
+  for (const part of text.split(/[,;]/)) {
+    const piece = part.trim();
+    if (piece === '') {
+      continue;
+    }
+    const ends = piece.split(/\s*[-–—]\s*/);
+    const [startText, endText] = ends;
+    if (ends.length !== 2 || startText === undefined || endText === undefined) {
+      return 'hours_invalid';
+    }
+    const start = TIME.exec(startText);
+    const end = TIME.exec(endText);
+    if (start === null || end === null) {
+      return 'hours_invalid';
+    }
+    const time = (found: RegExpExecArray) =>
+      `${(found[1] ?? '').padStart(2, '0')}:${found[2] ?? ''}`;
+    const parsed = availabilityRangeSchema.safeParse({
+      weekday,
+      start: time(start),
+      end: time(end),
+    });
+    if (!parsed.success) {
+      // The times are read first: a time that is not of the day is told as such,
+      // a range of two times of the day refused only by its order as that.
+      const outside = parsed.error.issues.some((issue) => issue.code === 'invalid_format');
+      return outside ? 'hours_outside_day' : 'hours_end_before_start';
+    }
+    ranges.push(parsed.data);
+  }
+  return ranges.length === 0 ? 'hours_invalid' : ranges;
+}
+
 /** A row read and checked on its own: the create and the teaching the hand screens would send, or its problems. */
 export interface ParsedStaffRow {
   rowNumber: number;
@@ -187,6 +240,12 @@ export interface ParsedStaffRow {
   teaching: StaffTeaching | null;
   /** Teacher, Tutor or none. */
   role: StaffImportRole | null;
+  /**
+   * The hours of the row, Monday to Saturday, as the hand availability route
+   * takes them (`null` with the record, and when every hours cell is empty:
+   * the row adds no availability).
+   */
+  hours: AvailabilityRange[] | null;
   /** The subject columns of the subjects, in the order of `teaching.subjects`. */
   subjectColumns: Map<string, StaffImportColumn>;
   problems: StaffImportProblem[];
@@ -257,15 +316,16 @@ export function parseStaffImportRow(row: StaffImportRow, lists: SchoolLists): Pa
     return value;
   };
 
-  for (const column of ['lastName', 'firstName', 'phone'] as const) {
+  // Date of birth, phone and admission date may be left empty (owner, 7 November 2026).
+  for (const column of ['lastName', 'firstName'] as const) {
     if (cell(column) === undefined) {
       problem(column, 'required');
     }
   }
   const sex = listed('sex', SEX_VALUES, true);
-  const birthDate = date('birthDate', true);
+  const birthDate = date('birthDate', false);
   const educationLevel = listed('educationLevel', EDUCATION_VALUES, false);
-  const admissionDate = date('admissionDate', true);
+  const admissionDate = date('admissionDate', false);
   const contractType = listed('contractType', CONTRACT_VALUES, false);
   const contractDate = date('contractDate', false);
 
@@ -351,17 +411,51 @@ export function parseStaffImportRow(row: StaffImportRow, lists: SchoolLists): Pa
   }
   const languageChoice = listed('languages', LANGUAGE_VALUES, false);
 
+  // The hours of each weekday: an empty cell is no hours that day.
+  const hours: AvailabilityRange[] = [];
+  const hoursColumns: StaffImportColumn[] = [];
+  for (const { column, weekday } of STAFF_IMPORT_HOURS_COLUMNS) {
+    const text = cell(column);
+    if (text === undefined) {
+      continue;
+    }
+    const ranges = hoursOf(weekday, text);
+    if (typeof ranges === 'string') {
+      problem(column, ranges);
+      continue;
+    }
+    for (const range of ranges) {
+      hours.push(range);
+      hoursColumns.push(column);
+    }
+  }
+  // The hand route's own check of the whole entry: no two ranges of a day overlap,
+  // and no more ranges than an entry holds. The date is the route's; any date checks the ranges.
+  const entry = availabilitySetSchema.safeParse({ from: '2000-01-01', ranges: hours });
+  if (!entry.success) {
+    for (const issue of entry.error.issues) {
+      const [, index] = issue.path;
+      const column = typeof index === 'number' ? (hoursColumns[index] ?? null) : null;
+      if (!problems.some((found) => found.column === column)) {
+        problems.push({
+          column,
+          code: issue.code === 'custom' ? 'hours_overlap' : 'hours_invalid',
+        });
+      }
+    }
+  }
+
   const candidate = {
     firstName: cell('firstName') ?? '',
     lastName: cell('lastName') ?? '',
     fatherName: cell('fatherName') ?? '',
     sex: sex ?? 'male',
-    birthDate: birthDate ?? '2000-01-01',
+    birthDate,
     educationLevel,
-    phone: cell('phone') ?? '',
+    phone: cell('phone') ?? null,
     email: cell('email') ?? '',
     jshshir: cell('jshshir') ?? '',
-    admissionDate: admissionDate ?? '2000-01-01',
+    admissionDate,
     contractType,
     contractDate,
     weeklyLessons: null,
@@ -393,6 +487,7 @@ export function parseStaffImportRow(row: StaffImportRow, lists: SchoolLists): Pa
     rowNumber: row.rowNumber,
     record: ok ? parsed.data : null,
     teaching: ok ? teaching.data : null,
+    hours: ok && hours.length > 0 ? hours : null,
     role,
     subjectColumns,
     problems,
@@ -448,18 +543,23 @@ export function staffFileChecks(rows: readonly ParsedStaffRow[]): {
     }
   }
   const sameNameAndBirth = new Map<number, number[]>();
-  const byName = new Map<string, number[]>();
+  // The same name and date of birth, or the same name when either row has no date
+  // of birth (`edge/people-roles-accounts`, re-hire row; owner, 7 November 2026).
+  const byName = new Map<string, { row: number; birthDate: string | null }[]>();
   for (const row of rows) {
     if (row.record === null) {
       continue;
     }
     // As the hand check compares them: the names without case (`Staff.check`).
-    const key = `${row.record.lastName.toLowerCase()}|${row.record.firstName.toLowerCase()}|${row.record.birthDate}`;
-    const earlier = byName.get(key) ?? [];
+    const key = `${row.record.lastName.toLowerCase()}|${row.record.firstName.toLowerCase()}`;
+    const birthDate = row.record.birthDate;
+    const earlier = (byName.get(key) ?? [])
+      .filter((one) => one.birthDate === null || birthDate === null || one.birthDate === birthDate)
+      .map((one) => one.row);
     if (earlier.length > 0) {
-      sameNameAndBirth.set(row.rowNumber, [...earlier]);
+      sameNameAndBirth.set(row.rowNumber, earlier);
     }
-    push(byName, key, row.rowNumber);
+    push(byName, key, { row: row.rowNumber, birthDate });
   }
   return { problems, sameNameAndBirth };
 }

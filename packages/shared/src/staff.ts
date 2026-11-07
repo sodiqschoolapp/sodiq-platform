@@ -124,6 +124,18 @@ export const staffPhoneSchema = z
   .transform(storedPhone)
   .pipe(z.string().regex(PHONE_FORMAT));
 
+/**
+ * A staff phone that may be left out (owner, 7 November 2026; `04`, Teacher
+ * and staff record): empty or `null` is none, anything else is read as
+ * `staffPhoneSchema` reads it.
+ */
+export const optionalStaffPhoneSchema = z
+  .string()
+  .trim()
+  .transform((text) => (text === '' ? null : storedPhone(text)))
+  .pipe(z.string().regex(PHONE_FORMAT).nullable())
+  .nullable();
+
 const optionalEmailSchema = z
   .string()
   .trim()
@@ -181,12 +193,19 @@ export const staffRecordSchema = z.object({
   lastName: staffNameSchema,
   fatherName: optionalNameSchema,
   sex: sexSchema,
-  birthDate: schoolDateSchema,
+  /** Optional (owner, 7 November 2026; `04`, Personal). */
+  birthDate: schoolDateSchema.nullable(),
   educationLevel: educationLevelSchema.nullable(),
-  phone: staffPhoneSchema,
+  /** Optional (owner, 7 November 2026); unique when filled. */
+  phone: optionalStaffPhoneSchema,
   email: optionalEmailSchema,
   jshshir: jshshirSchema,
-  admissionDate: schoolDateSchema,
+  /**
+   * Optional (owner, 7 November 2026; `04`, Academic). Without it the staff ID
+   * takes the year, and the first status row the date, of the day the record
+   * is created in the branch's time zone.
+   */
+  admissionDate: schoolDateSchema.nullable(),
   contractType: contractTypeSchema.nullable(),
   contractDate: schoolDateSchema.nullable(),
   weeklyLessons: z.int().min(1).max(WEEKLY_LESSONS_MAX).nullable(),
@@ -265,8 +284,10 @@ export type StaffStatusChange = z.infer<typeof staffStatusChangeSchema>;
 export const staffCheckSchema = z.object({
   firstName: staffNameSchema,
   lastName: staffNameSchema,
-  birthDate: schoolDateSchema,
-  phone: staffPhoneSchema,
+  /** No date of birth: the warning matches the name alone (`edge/people-roles-accounts`). */
+  birthDate: schoolDateSchema.nullable(),
+  /** No phone: no phone is compared. */
+  phone: optionalStaffPhoneSchema,
   /** The record being edited, which is not its own duplicate. */
   staffRecordId: z.uuid().nullable(),
 });
@@ -351,7 +372,8 @@ export const staffListItemSchema = z.object({
   ),
   subjects: z.array(z.object({ subjectId: z.uuid(), grades: z.array(z.int()) })),
   languages: z.array(instructionLanguageSchema),
-  phone: z.string(),
+  /** `null` when none is set (owner, 7 November 2026). */
+  phone: z.string().nullable(),
   /** The status in force today in the main branch's time zone; `null` before the first row (admission later). */
   status: staffStatusSchema.nullable(),
   /** A change planned after today, if any. */
@@ -431,13 +453,17 @@ export type ClassesTaught = z.infer<typeof classesTaughtSchema>;
 export const staffDetailSchema = staffListItemSchema.extend({
   classesTaught: classesTaughtSchema,
   sex: sexSchema,
-  /** `null` while hidden from the Principal (decision 9); `identityHidden` says so. */
+  /**
+   * `null` while hidden from the Principal (decision 9), which `identityHidden`
+   * says, or when none is set (owner, 7 November 2026).
+   */
   birthDate: schoolDateSchema.nullable(),
   jshshir: z.string().nullable(),
   identityHidden: z.boolean(),
   educationLevel: educationLevelSchema.nullable(),
   email: z.string().nullable(),
-  admissionDate: schoolDateSchema,
+  /** `null` when none is set (owner, 7 November 2026). */
+  admissionDate: schoolDateSchema.nullable(),
   contractType: contractTypeSchema.nullable(),
   contractDate: schoolDateSchema.nullable(),
   weeklyLessons: z.int().nullable(),
@@ -469,7 +495,7 @@ export type StaffStatusAnswer = z.infer<typeof staffStatusAnswerSchema>;
 
 /** The identity fields shown on a logged "show" (decision 9). */
 export const staffIdentitySchema = z.object({
-  birthDate: schoolDateSchema,
+  birthDate: schoolDateSchema.nullable(),
   jshshir: z.string().nullable(),
 });
 

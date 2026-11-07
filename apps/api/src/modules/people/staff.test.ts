@@ -198,6 +198,29 @@ describe('staff records', () => {
       });
     });
 
+    // Owner, 7 November 2026: date of birth, phone and admission date are optional.
+    it('takes a record without date of birth, phone and admission date, and answers them as not set', async () => {
+      const created = await create({ birthDate: null, phone: null, admissionDate: null });
+      expect([created.birthDate, created.phone, created.admissionDate]).toEqual([null, null, null]);
+      // Without an admission date: the year and the day the record is created, in
+      // the branch's time zone (10 October 2026 in Tashkent).
+      expect(created.today).toBe('2026-10-10');
+      expect(created.staffId).toMatch(/^S-26[0-9]{4}$/);
+      expect(created.statuses).toEqual([
+        { id: expect.any(String) as unknown, status: 'active', from: '2026-10-10', until: null },
+      ]);
+      expect(created.status).toBe('active');
+      const list = staffListSchema.parse((await t.get('/api/people/staff', t.north)).body);
+      expect(list.staff.find((one) => one.id === created.id)?.phone).toBeNull();
+      const [entry] = await t.entries('staff.create', created.id);
+      expect(entry?.new_value).toMatchObject({ birthDate: null, phone: null, admissionDate: null });
+    });
+
+    it('takes an empty phone as none', async () => {
+      const created = await create({ phone: '' });
+      expect(created.phone).toBeNull();
+    });
+
     it('stores a typed name in its one form', async () => {
       const created = await create({ firstName: "O'tkir", lastName: 'G’ofurov' });
       expect([created.firstName, created.lastName]).toEqual(['Oʻtkir', 'Gʻofurov']);
@@ -370,6 +393,22 @@ describe('staff records', () => {
       expect(status.status).toBe(200);
       const [statusEntry] = await t.entries('staff.status', created.id);
       expect(statusEntry).toMatchObject({ assignment_id: admin.id });
+    });
+
+    it('clears date of birth, phone and admission date, keeping the staff ID and the statuses', async () => {
+      const created = await create({ admissionDate: '2019-09-02' });
+      const response = await put(
+        `/api/people/staff/${created.id}`,
+        t.north,
+        editBody(created, { birthDate: null, phone: null, admissionDate: null }),
+      );
+      expect(response.status, JSON.stringify(response.body)).toBe(200);
+      const edited = staffDetailSchema.parse(response.body);
+      expect([edited.birthDate, edited.phone, edited.admissionDate]).toEqual([null, null, null]);
+      expect(edited.staffId).toBe(created.staffId);
+      expect(edited.statuses).toEqual(created.statuses);
+      const [entry] = await t.entries('staff.edit', created.id);
+      expect(entry?.new_value).toMatchObject({ birthDate: null, phone: null, admissionDate: null });
     });
 
     it('keeps the staff ID through a correction of the admission date (decision 7)', async () => {
@@ -904,6 +943,64 @@ describe('staff records', () => {
         phoneTaken: null,
         relative: null,
         relativeElsewhere: false,
+      });
+    });
+
+    // Owner, 7 November 2026: with no date of birth on either side, the name alone.
+    it('matches the name alone when either side has no date of birth, in the branch and elsewhere', async () => {
+      const without = await create({ firstName: 'Sherzod', lastName: 'Nazarov', birthDate: null });
+      const withDate = await create({
+        firstName: 'Sherzod',
+        lastName: 'Nazarov',
+        birthDate: '1985-05-05',
+      });
+      const ask = (branch: string, birthDate: string | null) =>
+        t.post('/api/people/staff/check', branch, {
+          firstName: 'Sherzod',
+          lastName: 'Nazarov',
+          birthDate,
+          phone: null,
+          staffRecordId: null,
+        });
+      const ids = async (birthDate: string | null) =>
+        staffCheckResultSchema
+          .parse((await ask(t.north, birthDate)).body)
+          .sameNameAndBirth.map((match) => match.id)
+          .sort();
+      // No date typed: both. Another date: only the record without one. The same date: both.
+      expect(await ids(null)).toEqual([without.id, withDate.id].sort());
+      expect(await ids('1970-01-01')).toEqual([without.id]);
+      expect(await ids('1985-05-05')).toEqual([without.id, withDate.id].sort());
+      const there = staffCheckResultSchema.parse((await ask(t.south, '1970-01-01')).body);
+      expect(there.elsewhere).toBe(true);
+      // No phone typed: no phone is compared.
+      expect([there.phoneTaken, there.relative, there.relativeElsewhere]).toEqual([
+        null,
+        null,
+        false,
+      ]);
+      // A name nobody has: no match anywhere.
+      const nobody = await t.post('/api/people/staff/check', t.south, {
+        firstName: 'Sherzod',
+        lastName: 'Nobodyov',
+        birthDate: null,
+        phone: null,
+        staffRecordId: null,
+      });
+      expect(staffCheckResultSchema.parse(nobody.body).elsewhere).toBe(false);
+    });
+
+    it('shows a birth date that is not set as null to the Principal after a show', async () => {
+      const created = await create({ birthDate: null, jshshir: '51234567890999' });
+      const shown = await t.post(
+        `/api/people/staff/${created.id}/identity`,
+        t.north,
+        {},
+        t.principal,
+      );
+      expect(staffIdentitySchema.parse(shown.body)).toEqual({
+        birthDate: null,
+        jshshir: '51234567890999',
       });
     });
   });

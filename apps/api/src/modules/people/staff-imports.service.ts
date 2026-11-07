@@ -14,6 +14,7 @@ import {
   type StaffImportRole,
   type StaffImportRow,
   type StaffRecord,
+  type AvailabilityRange,
   type StaffTeaching,
 } from '@sodiq/shared';
 import { sql } from 'kysely';
@@ -29,6 +30,7 @@ import {
   type PreparedFirstPassword,
 } from '../auth/accounts.service.js';
 import { notFound } from '../setup/setup-refusals.js';
+import { refusingAvailability, StaffAvailability } from './availability.service.js';
 import { findPerson, leftForGood } from './staff-account-records.js';
 import { StaffAccounts } from './staff-accounts.service.js';
 import {
@@ -142,6 +144,7 @@ export class StaffImports {
     private readonly audit: Audit,
     private readonly staff: Staff,
     private readonly accounts: StaffAccounts,
+    private readonly availability: StaffAvailability,
   ) {}
 
   /** The system's template, with the school's lists by name; it holds no personal data and is not logged. */
@@ -477,19 +480,24 @@ export class StaffImports {
               saved.map((one) => one.id),
             );
       const relative =
-        row.record === null
+        row.record === null || row.record.phone === null
           ? undefined
           : await this.staff.relativeOfPhone(transaction, access, row.record.phone);
       let login: string | null = null;
       if (problems.length === 0 && row.record !== null && row.teaching !== null) {
         const password = passwords === 'preview' ? PREVIEW_PASSWORD : passwords.get(row.rowNumber);
+        // The first day of work: the admission date, or the import's day without one
+        // (owner, 7 November 2026).
+        const firstDay = row.record.admissionDate ?? today;
         const result = await this.saveRow(transaction, access, superAdmin, {
           record: row.record,
           teaching: row.teaching,
           role: row.role,
           // The role from the first day of work, and never before today (the hand give refuses a
           // past date; plan decision 6).
-          from: row.record.admissionDate > today ? row.record.admissionDate : today,
+          from: firstDay > today ? firstDay : today,
+          // The hours from the first day of work, in the branch of the import (owner's choice).
+          hours: row.hours === null ? null : { from: firstDay, ranges: row.hours },
           password,
           requestId,
           importId: record.id,
@@ -553,7 +561,12 @@ export class StaffImports {
       .where('kind', '=', 'person')
       .where(sql<boolean>`lower(first_name) = lower(${record.firstName})`)
       .where(sql<boolean>`lower(last_name) = lower(${record.lastName})`)
-      .where('birth_date', '=', record.birthDate)
+      // No date of birth on either side: the name alone (owner, 7 November 2026).
+      .where((where) =>
+        record.birthDate === null
+          ? where.lit(true)
+          : where.or([where('birth_date', '=', record.birthDate), where('birth_date', 'is', null)]),
+      )
       .orderBy('staff_id');
     if (written.length > 0) {
       query = query.where('id', 'not in', written);
@@ -641,6 +654,7 @@ export class StaffImports {
       teaching: StaffTeaching;
       role: StaffImportRole | null;
       from: string;
+      hours: { from: string; ranges: AvailabilityRange[] } | null;
       password: PreparedFirstPassword | undefined;
       requestId: string;
       importId: string;
@@ -660,6 +674,13 @@ export class StaffImports {
             row.importId,
           );
           await this.staff.teachingIn(transaction, access, id, row.teaching, row.requestId);
+          // The hours through the hand route's own write (`StaffAvailability.setIn`).
+          const hours = row.hours;
+          if (hours !== null) {
+            await refusingAvailability(() =>
+              this.availability.setIn(transaction, access, id, hours, row.requestId, row.importId),
+            );
+          }
           let slip: FirstPasswordSlip | null = null;
           let login: string | null = null;
           if (row.role !== null) {

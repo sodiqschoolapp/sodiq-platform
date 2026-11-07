@@ -2,6 +2,16 @@
 
 The spec in `docs/spec/` was taken from the full spec document on 3 October 2026 (revision 88). Every later change to a spec file is listed here, newest first, with the date, what changed, why, and the files touched. Changes are made only with the `/spec-change` skill and the owner's approval.
 
+## 7 November 2026: date of birth, phone and admission date of a staff member are optional; the staff import carries availability
+
+- What changed:
+  1. **Date of birth, phone and admission date are optional** on a staff record, by hand and in the staff import. A record saved without an admission date takes for its staff ID the year of the day it is first saved, in the branch's time zone, and its first status starts on that day.
+  2. **The duplicate warning** on a matching name and date of birth also warns on a matching name alone when either record has no date of birth (as for students, the same day).
+  3. **The staff import carries availability**: one column per weekday, Monday to Saturday, each the hours of that day (`08:00-16:05`, or several ranges separated by commas); an empty cell is no hours that day and a row with every day empty adds none. The hours apply in the branch the import runs in, from the admission date, or from the day of the import for a row without one. A wrong hours cell is a problem of its row in the preview, checked as availability entered by hand. "Availability is entered by hand" becomes "Availability can also be entered by hand".
+- Why: the owner, 7 November 2026, in chat: the school does not always have these when a teacher is entered, and the hours of every teacher should come in with the import; the owner chose "from the admission date" for the hours and the name-alone warning.
+- Code: built at once in its own pull request (branch `fix/staff-import-availability`), not a build-plan task; its migration (0166) is numbered after 11.7's 0164 and 0165 and merges after 11.7. Database: `staff_person_check` (0024) no longer requires `birth_date`, `phone` and `admission_date` (**Look first**: a constraint weakened because the requirement changed; every other condition stays); `staff_duplicate_elsewhere` matches the name alone when either side has no date of birth. No row is changed.
+- Files: `docs/spec/04-people.md` (Teacher and staff record: Personal, Academic; the staff import), `docs/spec/edge-cases/people-roles-accounts.md` (the re-hire row, the staff ID row), `docs/spec/edge-cases/developer-rules.md` (Identifiers).
+
 ## 7 November 2026: date of birth, scholarship and relatives of a student are optional
 
 - What changed:

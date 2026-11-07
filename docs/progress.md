@@ -2,6 +2,16 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 7 November 2026: staff date of birth, phone and admission date optional; hours in the staff import
+
+Not a task of the build plan: the owner's spec change of the day (`docs/spec-changes.md`), built at once.
+
+- **Database** (0166, numbered after 11.7's 0164 and 0165; merge after #306): `staff_person_check` keeps the staff ID, name, sex and no vacancy name, and no longer requires date of birth, phone and admission date (**Look first**); `staff_duplicate_elsewhere` matches the name alone when a date of birth is missing. No row changes.
+- **API**: create and edit take `null` for the three fields; without an admission date the staff ID takes the year, and the first status row the date, of the day of the create in the branch's time zone (decided without the owner). The duplicate check matches the name alone when either side has no date of birth, and compares no phone when none is typed. The import reads empty dates of birth, phones and admission dates and six hours columns, Monday to Saturday (`hoursOf` with `availabilityRangeSchema` and `availabilitySetSchema` of the hand route), with the problems `hours_invalid`, `hours_outside_day`, `hours_end_before_start` and `hours_overlap`; the hours are saved through `StaffAvailability.setIn` (the hand write, now shared) in the import's branch from the admission date or the import's day, the audit entry naming the import.
+- **Web**: the staff form sends `null` for an empty date of birth or admission date and for a phone left at its country code; the profile shows "Not set" for each; the import preview names the bad hours cells in three languages.
+
+Left out: Sunday hours are not in the template (the school week is Monday to Saturday; Sunday is typed by hand). The duplicate warning texts still say "this name and date of birth", as the student ones do.
+
 ## 7 November 2026: CI faster, the same tests
 
 Not a task of the build plan: the owner asked to speed up CI "without lowering or compromising the quality".

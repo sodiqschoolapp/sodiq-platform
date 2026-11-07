@@ -2341,6 +2341,10 @@ export const en = {
         duplicate_in_file: 'the same value is on rows {{rows}}.',
         import_no_login:
           'no login can be made from this name; create this person by hand and type the login.',
+        hours_invalid: 'write the hours as “08:00-16:05”, several separated by commas.',
+        hours_outside_day: 'a time is from 00:00 to 24:00.',
+        hours_end_before_start: 'the end of a range comes after its start.',
+        hours_overlap: 'two ranges of this day overlap.',
       },
     },
     import: {

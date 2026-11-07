@@ -84,6 +84,12 @@ const FORM_SCHEMA: FormSchema<StaffRecord> = {
 };
 
 const orNull = (typed: string): string | null => (typed === '' ? null : typed);
+
+/** A phone left empty or at the country code the field opens with is none. */
+const phoneOrNull = (typed: string): string | null => {
+  const phone = typed.trim();
+  return phone === '' || phone === DEFAULT_PHONE_PREFIX ? null : typed;
+};
 const numberOrNull = (typed: string) => (typed.trim() === '' ? null : wholeNumber(typed));
 
 interface StaffFormProps {
@@ -184,12 +190,14 @@ export function StaffForm({
       lastName: typed.lastName,
       fatherName: typed.fatherName,
       sex: typed.sex,
-      birthDate: typed.birthDate,
+      // Date of birth, phone and admission date are optional (owner, 7 November 2026):
+      // an empty field, or a phone left at its country code, sends none.
+      birthDate: orNull(typed.birthDate),
       educationLevel: orNull(typed.educationLevel),
-      phone: typed.phone,
+      phone: phoneOrNull(typed.phone),
       email: typed.email,
       jshshir: typed.jshshir,
-      admissionDate: typed.admissionDate,
+      admissionDate: orNull(typed.admissionDate),
       contractType: orNull(typed.contractType),
       contractDate: orNull(typed.contractDate),
       weeklyLessons: numberOrNull(typed.weeklyLessons),

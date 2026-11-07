@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { filledStaffTemplate, staffRow } from '../../testing/staff-import-kit.js';
 import {
   gradesOf,
+  hoursOf,
   parseStaffImportRow,
   readStaffImportWorkbook,
   staffFileChecks,
@@ -137,7 +138,70 @@ describe('reading the staff template', () => {
     ]);
     expect(codes(await parsed({ phone: 'call me' }))).toEqual(['phone:phone_invalid']);
     expect(codes(await parsed({ languages: '' }))).toEqual(['languages:required']);
-    expect(codes(await parsed({ phone: '' }))).toEqual(['phone:required']);
+  });
+
+  // Owner, 7 November 2026: these three may be left empty (the requirement changed;
+  // before, an empty phone was `phone:required`).
+  it('takes a row without a date of birth, a phone and an admission date', async () => {
+    const row = await parsed({ birthDate: '', phone: '', admissionDate: '' });
+    expect(row.problems).toEqual([]);
+    expect(row.record).toMatchObject({ birthDate: null, phone: null, admissionDate: null });
+  });
+
+  it('reads the hours of each weekday into the ranges the hand route takes', async () => {
+    const row = await parsed({
+      hoursMonday: '08:00-16:05',
+      hoursWednesday: '8:00 - 12:00, 13:30-16:05',
+      hoursSaturday: '09.00–13.00',
+    });
+    expect(row.problems).toEqual([]);
+    expect(row.hours).toEqual([
+      { weekday: 1, start: '08:00', end: '16:05' },
+      { weekday: 3, start: '08:00', end: '12:00' },
+      { weekday: 3, start: '13:30', end: '16:05' },
+      { weekday: 6, start: '09:00', end: '13:00' },
+    ]);
+    // Until 24:00, as by hand.
+    expect((await parsed({ hoursFriday: '14:00-24:00' })).hours).toEqual([
+      { weekday: 5, start: '14:00', end: '24:00' },
+    ]);
+  });
+
+  it('adds no hours when every hours cell is empty', async () => {
+    const row = await parsed();
+    expect(row.problems).toEqual([]);
+    expect(row.hours).toBeNull();
+  });
+
+  it('names each wrong hours cell as a problem of its column', async () => {
+    expect(codes(await parsed({ hoursMonday: 'all day' }))).toEqual(['hoursMonday:hours_invalid']);
+    expect(codes(await parsed({ hoursTuesday: '08:00' }))).toEqual(['hoursTuesday:hours_invalid']);
+    expect(codes(await parsed({ hoursWednesday: '08:00-25:00' }))).toEqual([
+      'hoursWednesday:hours_outside_day',
+    ]);
+    expect(codes(await parsed({ hoursThursday: '24:00-24:30' }))).toEqual([
+      'hoursThursday:hours_outside_day',
+    ]);
+    expect(codes(await parsed({ hoursFriday: '16:00-08:00' }))).toEqual([
+      'hoursFriday:hours_end_before_start',
+    ]);
+    expect(codes(await parsed({ hoursSaturday: '08:00-12:00, 11:00-14:00' }))).toEqual([
+      'hoursSaturday:hours_overlap',
+    ]);
+    // Touching ranges do not overlap, as by hand.
+    expect(codes(await parsed({ hoursSaturday: '08:00-12:00, 12:00-14:00' }))).toEqual([]);
+    // Two wrong cells: both named, and the row is not saved.
+    const two = await parsed({ hoursMonday: 'x', hoursFriday: '16:00-08:00' });
+    expect(codes(two)).toEqual(['hoursMonday:hours_invalid', 'hoursFriday:hours_end_before_start']);
+    expect(two.record).toBeNull();
+    expect(two.hours).toBeNull();
+  });
+
+  it('reads one hours cell with the checks of the hand route', () => {
+    expect(hoursOf(2, '07:30-15:00')).toEqual([{ weekday: 2, start: '07:30', end: '15:00' }]);
+    expect(hoursOf(2, '08:00-08:00')).toBe('hours_end_before_start');
+    expect(hoursOf(2, '08:60-09:00')).toBe('hours_outside_day');
+    expect(hoursOf(2, ',')).toBe('hours_invalid');
   });
 
   it('finds the same phone or JSHSHIR on two rows and the same name and date of birth', async () => {
@@ -165,6 +229,19 @@ describe('reading the staff template', () => {
       { column: 'jshshir', code: 'duplicate_in_file', rows: [5] },
     ]);
     expect(checks.sameNameAndBirth.get(5)).toEqual([3]);
+  });
+
+  it('warns on the same name alone when either row has no date of birth', async () => {
+    const rows = await readRows([
+      staffRow({ firstName: 'Dilshod', lastName: 'Sanoqulov', birthDate: '01.01.1990' }),
+      staffRow({ firstName: 'Dilshod', lastName: 'Sanoqulov', birthDate: '' }),
+      staffRow({ firstName: 'Dilshod', lastName: 'Sanoqulov', birthDate: '02.02.1991' }),
+    ]);
+    const checks = staffFileChecks(rows.map((row) => parseStaffImportRow(row, LISTS)));
+    expect(checks.sameNameAndBirth.get(3)).toBeUndefined();
+    expect(checks.sameNameAndBirth.get(4)).toEqual([3]);
+    // Row 5 has a date: row 4 has none and matches by name; row 3 has another date.
+    expect(checks.sameNameAndBirth.get(5)).toEqual([4]);
   });
 
   it('accepts only the system template', async () => {

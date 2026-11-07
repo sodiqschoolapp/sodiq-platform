@@ -766,6 +766,64 @@ describe('the staff page', () => {
     await savedRecordPanel(en.people.staff.newTitle);
   });
 
+  // Owner, 7 November 2026: date of birth, phone and admission date are optional.
+  it('sends no date of birth, phone or admission date when they are left empty', async () => {
+    const calls = openList('super_admin', {
+      'POST /api/people/staff/check': () =>
+        json({
+          sameNameAndBirth: [],
+          elsewhere: false,
+          phoneTaken: null,
+          relative: null,
+          relativeElsewhere: false,
+        }),
+      'POST /api/people/staff': () => json(detailOf({ ...AKMAL, id: uid(34) }), 201),
+      [`GET /api/people/staff/${uid(34)}`]: () => json(detailOf({ ...AKMAL, id: uid(34) })),
+    });
+    renderApp(PATH);
+    await screen.findByRole('heading', { name: en.people.staff.title });
+    fireEvent.click(await screen.findByRole('button', { name: en.people.staff.add }));
+    const form = within(
+      await screen.findByRole('complementary', { name: en.people.staff.newTitle }),
+    ).getByRole('form', { name: en.people.staff.newTitle });
+    const type = (label: string, value: string) => {
+      fireEvent.change(within(form).getByLabelText(label), { target: { value } });
+    };
+    type(en.people.staff.firstName, 'Jahongir');
+    type(en.people.staff.lastName, 'Sobirov');
+    type(en.people.staff.sex, 'male');
+    type(en.people.staff.department, uid(11));
+    // The phone stays at the country code the field opens with.
+    expect(within(form).getByLabelText<HTMLInputElement>(en.people.staff.phone).value.trim()).toBe(
+      '+998',
+    );
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+    await waitFor(() => {
+      expect(calls.some((call) => call.route === 'POST /api/people/staff')).toBe(true);
+    });
+    expect(calls.find((call) => call.route === 'POST /api/people/staff/check')?.body).toMatchObject(
+      { birthDate: null, phone: null },
+    );
+    expect(calls.find((call) => call.route === 'POST /api/people/staff')?.body).toMatchObject({
+      firstName: 'Jahongir',
+      birthDate: null,
+      phone: null,
+      admissionDate: null,
+    });
+  });
+
+  it('shows "Not set" for a date of birth, phone and admission date that are not set', async () => {
+    openList('super_admin', {}, 'en', { birthDate: null, admissionDate: null, phone: null });
+    renderApp(PATH);
+    fireEvent.click(await screen.findByText('Karimov Akmal', { selector: 'button' }));
+    const panel = await screen.findByRole('complementary', { name: 'Akmal Karimov' });
+    const valueOf = async (label: string) =>
+      (await within(panel).findByText(label, { selector: 'dt' })).nextElementSibling?.textContent;
+    expect(await valueOf(en.people.staff.birthDate)).toBe(en.people.staff.notSet);
+    expect(await valueOf(en.people.staff.phone)).toBe(en.people.staff.notSet);
+    expect(await valueOf(en.people.staff.admissionDate)).toBe(en.people.staff.notSet);
+  });
+
   // Task 3.6b-1: a staff phone is unique; a parent's phone marks the two
   // records as the same person.
   const startNew = async (check: Record<string, unknown>) => {

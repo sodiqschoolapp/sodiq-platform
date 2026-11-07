@@ -2373,6 +2373,10 @@ export const uz: Texts<'one' | 'other'> = {
         duplicate_in_file: 'shu qiymat {{rows}}-qatorlarda ham bor.',
         import_no_login:
           'bu ismdan login tuzib boʻlmaydi; xodimni qoʻlda yarating va loginni yozing.',
+        hours_invalid: 'soatlarni “08:00-16:05” kabi yozing, bir nechtasini vergul bilan.',
+        hours_outside_day: 'vaqt 00:00 dan 24:00 gacha boʻlsin.',
+        hours_end_before_start: 'oraliqning oxiri boshidan keyin boʻlsin.',
+        hours_overlap: 'shu kunning ikki oraliq vaqti bir-biriga toʻgʻri keladi.',
       },
     },
     import: {
