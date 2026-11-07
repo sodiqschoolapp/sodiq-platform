@@ -83,6 +83,22 @@ describe('staff records', () => {
     expect(staffRecordSchema.safeParse({ ...RECORD, dailyLessons: 0 }).success).toBe(false);
   });
 
+  // Owner, 7 November 2026: date of birth, phone and admission date are optional.
+  it('takes a record without date of birth, phone and admission date', () => {
+    const parsed = staffRecordSchema.parse({
+      ...RECORD,
+      birthDate: null,
+      phone: null,
+      admissionDate: null,
+    });
+    expect([parsed.birthDate, parsed.phone, parsed.admissionDate]).toEqual([null, null, null]);
+    expect(staffRecordSchema.parse({ ...RECORD, phone: '  ' }).phone).toBeNull();
+    // A phone that is typed is still checked.
+    expect(staffRecordSchema.safeParse({ ...RECORD, phone: '+998 ' }).success).toBe(false);
+    expect(staffRecordSchema.safeParse({ ...RECORD, phone: 'call me' }).success).toBe(false);
+    expect(staffRecordSchema.safeParse({ ...RECORD, birthDate: '1990-02-30' }).success).toBe(false);
+  });
+
   it('wants exactly one main division, each division once', () => {
     const division = (id: string, main: boolean) => ({
       divisionId: id,
