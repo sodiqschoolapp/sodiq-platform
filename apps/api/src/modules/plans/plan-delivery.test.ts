@@ -515,7 +515,39 @@ describe('plans in the journal', () => {
           approved: true,
         })
         .execute();
-      expect((await stateAt('2026-10-28T10:00:00+05:00')).edit).toBe('open');
+      const reopened = await stateAt('2026-10-28T10:00:00+05:00');
+      expect(reopened.edit).toBe('open');
+      // The card's save goes through the plan's route on the item it answered (its base), and the
+      // item of the held lesson is marked "edited after the lesson" (code review, spec 2).
+      const base = reopened.item;
+      if (base === null) throw new Error('The card answers the item to its owner.');
+      const saved = await as(
+        owner,
+        s.branch,
+        teacherIn(s),
+        async (calls) => {
+          const body = {
+            topic: base.topic,
+            objectives: base.objectives,
+            links: base.links,
+            classworks: base.classworks,
+            homeworks: base.homeworks,
+          };
+          return calls.put(`/api/plans/items/${base.id}`, {
+            base: body,
+            values: { ...body, topic: 'Fractions, revised' },
+          });
+        },
+        '2026-10-28T10:00:00+05:00',
+      );
+      expect(saved.status, JSON.stringify(saved.body)).toBe(200);
+      const marked = await t.database.migrator
+        .selectFrom('lesson_plan_places')
+        .innerJoin('lesson_plan_items', 'lesson_plan_items.id', 'lesson_plan_places.item_id')
+        .select(['lesson_plan_items.topic', 'lesson_plan_places.edited_after_lesson'])
+        .where('lesson_plan_places.item_id', '=', base.id)
+        .executeTakeFirstOrThrow();
+      expect(marked).toEqual({ topic: 'Fractions, revised', edited_after_lesson: true });
       // Another lesson stays closed.
       expect((await stateAt('2026-10-28T10:00:00+05:00', s.first)).edit).toBe('request');
       // A Head Teacher of the subject reads the card whole but is no way into the plan.
@@ -530,6 +562,31 @@ describe('plans in the journal', () => {
           expect(card.plan).toMatchObject({ edit: 'none', item: null });
         },
       );
+      // A teacher who reads the plan through the subject and grade of the profile (permission
+      // review 4), and the class's Tutor, read the card but are no way into the plan.
+      const colleague = await account();
+      await load.teacher(s.branch, {
+        subjects: [{ subject: s.subject, grades: [7] }],
+        accountId: colleague.account.id,
+      });
+      await as(colleague, s.branch, teacherIn(s), async (calls) => {
+        const card = await cardOf(calls, s.second);
+        expect(card.whole).toBe(true);
+        expect(card.plan).toMatchObject({ edit: 'none', item: null });
+      });
+      const tutor = await account();
+      await as(tutor, s.branch, [{ role: 'tutor', branchId: s.branch }], () => Promise.resolve());
+      const assignment = await t.database.migrator
+        .selectFrom('assignments')
+        .select('id')
+        .where('account_id', '=', tutor.account.id)
+        .where('role', '=', 'tutor')
+        .executeTakeFirstOrThrow();
+      await load.classes.person(s.branch, ['uz'], { accountId: tutor.account.id });
+      await load.classes.tutorRow(s.branch, s.classId, assignment.id);
+      await as(tutor, s.branch, [], async (calls) => {
+        expect((await cardOf(calls, s.second)).plan).toMatchObject({ edit: 'none', item: null });
+      });
     });
 
     it('refuses a teacher who reads neither the journal nor the plan, and 404s another branch or an unknown lesson', async () => {

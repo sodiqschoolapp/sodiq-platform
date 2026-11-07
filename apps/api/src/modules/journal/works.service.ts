@@ -572,6 +572,23 @@ export class WorksService {
       .where('id', '=', planWorkId)
       .executeTakeFirst();
     if (fresh === undefined) throw notFound();
+    // The lesson the work is given at and the lessons that show it, read again after the locks
+    // (plan review 1 and 2: every decision on the read after them).
+    const branch = await transaction
+      .selectFrom('branches')
+      .select('time_zone')
+      .where('id', '=', scene.branchId)
+      .executeTakeFirstOrThrow();
+    const columns = await journalColumns(
+      transaction,
+      scene.journal,
+      branch.time_zone,
+      await transactionMoment(transaction),
+    );
+    const again = this.planWorkAt(columns, scene.lesson.id, planWorkId);
+    if (!again.shown || again.source !== source) {
+      throw new ApiException('work_not_in_lesson', 409);
+    }
     return { scene, work: fresh, planId: item.plan_id, source };
   }
 
@@ -668,6 +685,23 @@ export class WorksService {
           throw new ApiException('work_holds_data', 409);
         }
       }
+      // The code review of the task: a "not given" mark and the files the owner gave the work
+      // through the plan are data too; the journal never removes them (the owner removes the
+      // files in the plan first).
+      const marked = await transaction
+        .selectFrom('journal_homework_not_given')
+        .select('id')
+        .where('plan_work_id', '=', work.id)
+        .executeTakeFirst();
+      const files = await transaction
+        .selectFrom('lesson_plan_files')
+        .select('id')
+        .where('work_id', '=', work.id)
+        .where('removed_at', 'is', null)
+        .executeTakeFirst();
+      if (marked !== undefined || files !== undefined) {
+        throw new ApiException('work_holds_data', 409);
+      }
       for (const row of rows) {
         try {
           await transaction
@@ -680,7 +714,7 @@ export class WorksService {
           mapWorkRefusal(error);
         }
       }
-      const removedFiles = await removePlanWork(transaction, work.id);
+      await removePlanWork(transaction, work.id);
       const kind = work.kind === 'homework' ? 'homework' : 'classwork';
       const actor = this.actorOf(scene);
       await this.audit.record(transaction, {
@@ -688,6 +722,8 @@ export class WorksService {
         action: 'journal.work_delete',
         record: { type: 'lesson', id: scene.lesson.id },
         oldValue: { planWorkId: work.id, kind, title: work.title },
+        // Its empty journal rows, in every journal of a shared plan (permission review 3).
+        details: { ...(actor.details ?? {}), journalWorks: rows.map((row) => row.id) },
       });
       await this.audit.record(transaction, {
         branchId: actor.branchId,
@@ -701,7 +737,6 @@ export class WorksService {
           itemId: work.item_id,
           inJournal: true,
           removedWorks: [{ id: work.id, kind, title: work.title }],
-          ...(removedFiles.length === 0 ? {} : { removedFiles }),
         },
         ...(requestId === undefined ? {} : { requestId }),
       });

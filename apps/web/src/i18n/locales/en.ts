@@ -5970,6 +5970,8 @@ export const en = {
   },
   plans: {
     files: {
+      closeText: 'They are not in the plan. Close the card without them?',
+      closeAction: 'Close without them',
       materials: 'Materials (staff only)',
       materialsNote:
         'The teacher’s own files, such as slides or an answer key. Students and parents never see them.',

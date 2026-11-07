@@ -169529,6 +169529,7 @@ export interface operations {
                             planItem: boolean;
                             number: number | null;
                             topic: string | null;
+                            addedInJournal: string[];
                             notDelivered: boolean;
                             notHeldWorks: {
                                 /** Format: uuid */
@@ -183563,6 +183564,7 @@ export interface operations {
                                 planItem: boolean;
                                 number: number | null;
                                 topic: string | null;
+                                addedInJournal: string[];
                                 notDelivered: boolean;
                                 notHeldWorks: {
                                     /** Format: uuid */

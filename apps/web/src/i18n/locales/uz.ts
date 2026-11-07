@@ -6025,6 +6025,8 @@ export const uz: Texts<'one' | 'other'> = {
   },
   plans: {
     files: {
+      closeText: 'Ular rejada yoʻq. Kartani ularsiz yopasizmi?',
+      closeAction: 'Ularsiz yopish',
       materials: 'Materiallar (faqat xodimlar uchun)',
       materialsNote:
         'Oʻqituvchining oʻz fayllari, masalan slaydlar yoki javoblar kaliti. Oʻquvchilar va ota-onalar ularni koʻrmaydi.',

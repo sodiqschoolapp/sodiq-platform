@@ -368,6 +368,38 @@ describe('Lesson plans', () => {
     expect(screen.queryByText(en.plans.files.notUploaded)).toBeNull();
   });
 
+  // Code review of task 10.8 (spec 4): a picked file is a change; Cancel asks before it goes.
+  it('asks before Cancel takes away a file picked for the row', async () => {
+    open({ path: `/plans/${JOURNAL}` });
+    await waitFor(() => {
+      expect(rows()).toHaveLength(3);
+    });
+    fireEvent.click(screen.getByRole('button', { name: /19 October · lesson 1/ }));
+    fireEvent.click(await screen.findByRole('button', { name: en.plans.panel.fill }));
+    const form = await screen.findByRole('form', { name: 'Row 2' });
+    fireEvent.change(within(form).getByLabelText(en.plans.files.attachMaterial), {
+      target: { files: [new File(['%PDF'], 'notes.pdf', { type: 'application/pdf' })] },
+    });
+    fireEvent.click(within(form).getByRole('button', { name: en.form.cancel }));
+    expect(await screen.findByText(en.unsent.leaveTitle)).toBeDefined();
+  });
+
+  // Task 10.8 (`09`, In the journal: "marked ... as added in the journal; the plan's editor shows
+  // it like any work").
+  it('marks a work added in the journal in the row and in its form', async () => {
+    const plan = planOf(true, { ...ITEM, addedInJournal: [uid(41)] });
+    open({ path: `/plans/${JOURNAL}`, plan });
+    await waitFor(() => {
+      expect(rows()).toHaveLength(3);
+    });
+    fireEvent.click(screen.getByRole('button', { name: /12 October · lesson 1/ }));
+    const work = await screen.findByText('Exercise 1', { selector: 'li > span' });
+    expect(work.textContent).toContain(en.plans.plan.addedInJournal);
+    fireEvent.click(screen.getByRole('button', { name: en.form.edit }));
+    const form = await screen.findByRole('form', { name: 'Row 1' });
+    expect(within(form).getByText(en.plans.plan.addedInJournal)).toBeDefined();
+  });
+
   it('refuses a file larger than 20 MB or of a type the plan does not take, keeping nothing', async () => {
     const calls = open({ path: `/plans/${JOURNAL}` });
     await waitFor(() => {

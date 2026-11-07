@@ -185,8 +185,8 @@ describe('classwork and homework', () => {
    * owned by the scene's teacher. `first`, `second`, `third` are 12, 19, 26 October
    * (held at MOMENT), `fourth` 9 November, the first lesson of quarter 2.
    */
-  async function scene(accounts: { teacher?: string; spare?: string } = {}) {
-    const s = await publishedScene(t, load, { graded: true, accounts });
+  async function scene(accounts: { teacher?: string; spare?: string } = {}, shared = false) {
+    const s = await publishedScene(t, load, { graded: true, accounts, shared });
     const lessons = (
       await t.database.migrator
         .selectFrom('lessons')
@@ -996,7 +996,7 @@ describe('classwork and homework', () => {
         .where('id', '=', given.id)
         .executeTakeFirst();
       expect(row).toEqual({ lesson_id: s.third, source_lesson_id: s.third });
-      await as(owner, s.branch, [], async (calls) => {
+      await as(owner, s.branch, teacherIn(s), async (calls) => {
         const grid = await gridOf(calls, s);
         expect(lessonIn(grid, s.third).given.map((one) => one.checkAt)).not.toContain(s.fourth);
         expect(lessonIn(grid, s.third).given).toHaveLength(1);
@@ -1751,6 +1751,60 @@ describe('classwork and homework', () => {
       });
     });
 
+    // Plan review 3 and decision 16 (`09`, When something else changes: "The items of lessons
+    // already held never move"): in a shared plan the new item goes to the other class after its
+    // started rows (`placeNew`), so no item of a held lesson there moves and no separation is
+    // needed.
+    it('places the item an add makes in the other class of a shared plan after its started rows, moving no held item', async () => {
+      const owner = await account();
+      const s = await scene({ teacher: owner.account.id }, true);
+      const other = await journalOf(s.otherClass);
+      const plan = (await planOf(s)).plan_id;
+      await t.database.migrator
+        .updateTable('lesson_plan_journals')
+        .set({ plan_id: plan })
+        .where('journal_id', '=', other)
+        .where('quarter_id', '=', s.q1)
+        .execute();
+      const held = await itemAt(s, s.first, { classworks: ['Test'] });
+      const otherRows = async () =>
+        (
+          await t.database.migrator
+            .selectFrom('lessons')
+            .select(['id', 'starts_at'])
+            .where('class_id', '=', s.otherClass)
+            .where('lesson_date', '>=', '2026-09-01')
+            .where('lesson_date', '<=', '2026-10-31')
+            .where('cancel_cause', 'is', null)
+            .orderBy('starts_at')
+            .execute()
+        ).map((row) => row.starts_at);
+      const rows = await otherRows();
+      const started = rows.filter((at) => at.getTime() <= new Date(MOMENT).getTime()).length;
+      await t.database.migrator
+        .insertInto('lesson_plan_places')
+        .values({
+          branch_id: s.branch,
+          plan_id: plan,
+          journal_id: other,
+          item_id: held.itemId,
+          position: 1,
+        })
+        .execute();
+      const work = await as(owner, s.branch, teacherIn(s), async (calls) =>
+        added(calls, s.second, 'homework', 'Exercises'),
+      );
+      const places = await t.database.migrator
+        .selectFrom('lesson_plan_places')
+        .select(['item_id', 'position'])
+        .where('journal_id', '=', other)
+        .execute();
+      expect(places.find((one) => one.item_id === held.itemId)?.position).toBe(1);
+      expect(places.find((one) => one.item_id === work.itemId)?.position).toBe(started + 1);
+      // No separation: both classes keep the one plan.
+      expect(await t.entries('plan.separated')).toEqual([]);
+    });
+
     // Review correction 2 (`09`, Master plans: "Teachers may start from the master, from a copy,
     // or from an empty plan"): an item the add made sits on a held row and blocks no copy.
     it('lets the owner still start from a copy after an add made the plan, keeping the added item at its held row', async () => {
@@ -1863,7 +1917,9 @@ describe('classwork and homework', () => {
       });
     });
 
-    it('removes a work added in the journal with the file the owner gave it, and keeps the empty item for the next add', async () => {
+    // Code review of the task (spec 7, permission 1): a file the owner gave the work through the
+    // plan and a "not given" mark are data; the journal's remove refuses them.
+    it('refuses to remove a work added in the journal that holds a file or a "not given" mark, removes it once empty, and keeps the empty item for the next add', async () => {
       const owner = await account();
       const s = await scene({ teacher: owner.account.id });
       await openPlanWindows(t.database.migrator, s.branch, s.year);
@@ -1879,14 +1935,28 @@ describe('classwork and homework', () => {
           ),
         );
         expect(file.workId).toBe(work.planWorkId);
-        ok(await calls.del(`/api/journal/lessons/${s.third}/plan-works/${work.planWorkId}`), 204);
-        const stored = await t.database.migrator
-          .selectFrom('lesson_plan_files')
-          .select(['work_id', 'removed_at'])
-          .where('id', '=', file.id)
+        const path = `/api/journal/lessons/${s.third}/plan-works/${work.planWorkId}`;
+        expect(codeOf(await calls.del(path))).toBe('work_holds_data');
+        ok(await calls.del(`/api/plans/files/${file.id}`), 204);
+        const mark = await t.database.migrator
+          .insertInto('journal_homework_not_given')
+          .values({
+            branch_id: s.branch,
+            journal_id: s.journal,
+            lesson_id: s.third,
+            plan_work_id: work.planWorkId,
+            changed_by: owner.account.id,
+            changed_how: 'entry',
+            set_at: new Date(MOMENT),
+          })
+          .returning('id')
           .executeTakeFirstOrThrow();
-        expect(stored.work_id).toBeNull();
-        expect(stored.removed_at).not.toBeNull();
+        expect(codeOf(await calls.del(path))).toBe('work_holds_data');
+        await t.database.migrator
+          .deleteFrom('journal_homework_not_given')
+          .where('id', '=', mark.id)
+          .execute();
+        ok(await calls.del(path), 204);
         const grid = await gridOf(calls, s);
         expect(lessonIn(grid, s.third)).toMatchObject({ planItem: false, given: [] });
         // The empty item stays at the row: the next add and the card use it.
@@ -1904,10 +1974,7 @@ describe('classwork and homework', () => {
         .where('action', '=', 'plan.item_edit')
         .where('record_id', '=', (await planOf(s)).plan_id)
         .executeTakeFirstOrThrow();
-      expect(removal.details).toMatchObject({
-        inJournal: true,
-        removedFiles: [expect.any(String)],
-      });
+      expect(removal.details).toMatchObject({ inJournal: true });
     });
 
     it('makes an add wait for the owner’s save of the topic and then refuses it (and the other order)', async () => {

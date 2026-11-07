@@ -1187,7 +1187,8 @@ describe('lesson plans and their items', () => {
         PDF,
       );
     await as(s.owner, branch, [], async (api) => {
-      const before = await planRowsOf(branch);
+      // The rows of both branches (`.claude/rules/api.md`; permission review 5).
+      const before = [await planRowsOf(branch), await planRowsOf(elsewhere.scene.branch)];
       const audit = await planEntries();
       for (const workId of [
         other.homeworks[0]?.id ?? '',
@@ -1197,7 +1198,7 @@ describe('lesson plans and their items', () => {
         const refused = await upload(api, 'x.pdf', workId);
         expect([refused.status, codeOf(refused)]).toEqual([404, 'plan_work_not_found']);
       }
-      expect(await planRowsOf(branch)).toEqual(before);
+      expect([await planRowsOf(branch), await planRowsOf(elsewhere.scene.branch)]).toEqual(before);
       expect(await planEntries()).toBe(audit);
       for (let index = 0; index < 10; index += 1) {
         ok(await upload(api, `h${String(index)}.pdf`, homework));

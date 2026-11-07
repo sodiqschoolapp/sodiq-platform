@@ -190,10 +190,36 @@ export class PlanOutcomesService {
           .where('id', '=', targetId)
           .execute();
         const added: string[] = [];
+        // Task 10.8 (code review, spec 6): a merged work keeps its mark "added in the journal"
+        // and its own files (copies naming the file whose bytes they show), as every copy of works.
+        const sourceIds = [...sourceWorks.classworks, ...sourceWorks.homeworks].map(
+          (one) => one.id,
+        );
+        const marks = new Map(
+          (sourceIds.length === 0
+            ? []
+            : await transaction
+                .selectFrom('lesson_plan_works')
+                .select(['id', 'added_in_journal_at', 'added_in_journal_by'])
+                .where('id', 'in', sourceIds)
+                .execute()
+          ).map((one) => [one.id, one]),
+        );
+        const sourceFiles =
+          sourceIds.length === 0
+            ? []
+            : await transaction
+                .selectFrom('lesson_plan_files')
+                .select(['id', 'work_id', 'name', 'type', 'bytes', 'copied_from'])
+                .where('work_id', 'in', sourceIds)
+                .where('removed_at', 'is', null)
+                .orderBy('id')
+                .execute();
         for (const { kind, list } of KINDS) {
           let position = targetWorks[list].length;
           for (const work of sourceWorks[list]) {
             position += 1;
+            const mark = marks.get(work.id);
             const made = await transaction
               .insertInto('lesson_plan_works')
               .values({
@@ -203,10 +229,29 @@ export class PlanOutcomesService {
                 position,
                 title: work.title,
                 description: work.description,
+                added_in_journal_at: mark?.added_in_journal_at ?? null,
+                added_in_journal_by: mark?.added_in_journal_by ?? null,
               })
               .returning('id')
               .executeTakeFirstOrThrow();
             added.push(made.id);
+            const files = sourceFiles.filter((file) => file.work_id === work.id);
+            if (files.length > 0) {
+              await transaction
+                .insertInto('lesson_plan_files')
+                .values(
+                  files.map((file) => ({
+                    branch_id: scene.branchId,
+                    item_id: targetId,
+                    work_id: made.id,
+                    name: file.name,
+                    type: file.type,
+                    bytes: file.bytes,
+                    copied_from: file.copied_from ?? file.id,
+                  })),
+                )
+                .execute();
+            }
           }
         }
         await writeOutcome(transaction, actor, {

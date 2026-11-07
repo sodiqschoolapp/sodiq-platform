@@ -341,6 +341,9 @@ export function PlanItemEditor({
     const work = (kind === 'classwork' ? item.classworks : item.homeworks)[Number(slotText)];
     return work === undefined ? [] : item.files.filter((file) => file.workId === work.id);
   };
+  /** The id of the stored work of a slot, if the item holds one there. */
+  const storedWork = (kind: WorkKind, slot: number): string | undefined =>
+    (kind === 'classwork' ? item?.classworks : item?.homeworks)?.[slot]?.id;
   const heldOf = (place: FilePlace) => held.filter((one) => one.place === place);
   const pick = (place: FilePlace, file: File) => {
     const problem = fileProblem(t, file, storedOf(place).length + heldOf(place).length);
@@ -354,7 +357,13 @@ export function PlanItemEditor({
   };
 
   return (
-    <RecordForm form={form} label={label} onCancel={onCancel}>
+    // A picked file is a change too (code review, spec 4): Cancel and leaving ask first, and the
+    // form is listed among the unsent changes, so no held file is dropped silently.
+    <RecordForm
+      form={{ ...form, dirty: form.dirty || held.length > 0 }}
+      label={label}
+      onCancel={onCancel}
+    >
       {sameTopic !== undefined && (
         <div>
           <Button
@@ -412,6 +421,12 @@ export function PlanItemEditor({
                       {...form.bind(noteField(kind, slot))}
                     />
                   </div>
+                  {storedWork(kind, slot) !== undefined &&
+                    item?.addedInJournal.includes(storedWork(kind, slot) ?? '') === true && (
+                      <p className="text-sm text-muted-foreground">
+                        {t('plans.plan.addedInJournal')}
+                      </p>
+                    )}
                   <PlaceFiles stored={storedOf(place)} held={heldOf(place)} onDrop={drop} />
                   {title.trim() !== '' && (
                     <FilePicker

@@ -2,6 +2,7 @@ import type { LessonCard, PlanItemFile } from '@sodiq/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useConfirm } from '@/components/confirm-dialog';
 import { FailureAlert } from '@/components/failure-alert';
 import { TextAreaField } from '@/components/field';
 import { ErrorState, LoadingOutline } from '@/components/states';
@@ -104,6 +105,23 @@ export function LessonCardDialog({
       setReason('');
     },
   });
+  const confirm = useConfirm();
+  // Code review (spec 4): files not uploaded are never dropped without a word; closing asks.
+  const close = () => {
+    if (failed.length === 0) {
+      onClose();
+      return;
+    }
+    void confirm({
+      title: t('plans.files.notUploaded'),
+      text: t('plans.files.closeText'),
+      names: failed.map((one) => one.file.name),
+      action: t('plans.files.closeAction'),
+      destructive: true,
+    }).then((sure) => {
+      if (sure) onClose();
+    });
+  };
   const busy = delivery.isPending || homework.isPending;
   const found = card.data;
   const filesOf = (workId: string | null): PlanItemFile[] =>
@@ -140,7 +158,7 @@ export function LessonCardDialog({
     <Dialog
       open
       onOpenChange={(open) => {
-        if (!open) onClose();
+        if (!open) close();
       }}
     >
       <DialogContent aria-label={title}>
@@ -436,7 +454,7 @@ export function LessonCardDialog({
               {t('journal.works.button')}
             </Button>
           )}
-          <Button variant="ghost" onClick={onClose}>
+          <Button variant="ghost" onClick={close}>
             {t('journal.entry.close')}
           </Button>
         </DialogFooter>
