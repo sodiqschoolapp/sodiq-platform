@@ -2,6 +2,13 @@
 
 The spec in `docs/spec/` was taken from the full spec document on 3 October 2026 (revision 88). Every later change to a spec file is listed here, newest first, with the date, what changed, why, and the files touched. Changes are made only with the `/spec-change` skill and the owner's approval.
 
+## 7 November 2026: no instant messages to families
+
+- What changed: parents get no single message for school data from the platform: no instant message for an absence, a timetable change or quarter results (the Release 2 plan had them "later, through the bot"), and still no SMS. Attendance, grades and comments reach parents only in the digest and the portal. Announcements to a chosen audience may still reach parents through the bot (owner's choice).
+- Why: the owner, 7 November 2026, in chat: "parents should not receive absences or any attendance related data except in digest … no need for instant messages at all", when task 11.8 asked to approve the parent's switches for the three kinds.
+- Code: task 11.8 of `docs/build-plan.md` is dropped (nothing was built; its plan pull request #310 is closed). No built code changes.
+- Files: `docs/spec/10-portal-notifications-release-2.md` (Notifications), `docs/build-plan.md` (11.8).
+
 ## 7 November 2026: date of birth, phone and admission date of a staff member are optional; the staff import carries availability
 
 - What changed:
