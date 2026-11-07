@@ -401,6 +401,21 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 7 November 2026: the kind of a work, the default columns, the lesson happening now (task 10.7)
+
+Plan approved on pull request #303 with corrections 1 to 3. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first** (tests changed: requirement changed). The web tests that read the UID or a figure column of the journal (`journal-page.test.tsx`, `rating-entry.test.tsx`) store the choice "every column shown" first (`showEveryJournalColumn`) and keep every assertion; the 27 October chooser test runs on that stored choice; the browser test `transfers.spec.ts`, which reads a carried-in result, stores it with `addInitScript` before it opens the journal; the expected names of a work in `lesson-mode.test.tsx` and the header text in `journal-page.test.tsx` now carry the kind | The spec change of 7 November 2026 (build plan 10.7 (1) and (2)): a fresh browser hides the figures, and a work is named with its kind (plan review correction 2) |
+| The time of "now" is the server's: the home answer carries `now` (`transactionMoment` of its first transaction), the browser keeps the offset and re-renders every 30 seconds, never asking the server on a timer | Build plan 10.7 (3) "by the time the server reports for the branch"; `.claude/rules/web.md` (decision 2) |
+| Not marked: a cancelled lesson, a lesson a substitute took (`replacedHere`), an exam, a busy block | None is a lesson this teacher gives now; "no other row is marked" (decision 3) |
+| The highlight is `bg-today`, semibold text and `aria-current="time"`; no stripe, no badge, no text | `design-system.md`, What we never do 3 and Accessibility (decision 4) |
+| The tag: a rectangle with corner 6, the letter in the normal text colour on the 15% tint of `subject-blue` (classwork) or `subject-orange` (homework), no border, `aria-hidden` with the full word in `title`; the name of the place is "<kind word>: <title>" through `journal.grid.workLabel` | "Two colours from the design tokens that read in light and dark"; the letter is the non-colour cue (decisions 5 and 6, correction 3) |
+| The tag also in the works dialog of a lesson; not in the plan editor | Both kinds are listed together there, under separate headings in the editor (decision 7) |
+| A stored choice is kept, an empty one included; `JOURNAL_DEFAULT_HIDDEN` is `HIDEABLE_COLUMNS` without the photo | Build plan 10.7 (2) (decision 8) |
+| Reduced motion is tested by the class (`motion-safe:` only) and by `tooling/motion.test.ts`; no browser test | jsdom evaluates no media query; the Done when asks for web tests (decision 9) |
+
 ## 7 November 2026: the rating in the portal (task 11.6)
 
 Plan approved on pull request #302 with corrections 1 to 3. Flagged on issue #42.

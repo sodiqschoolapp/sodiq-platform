@@ -191,6 +191,15 @@ function pairsOf(theme: ':root' | '.dark'): Pair[] {
         min: TEXT,
       },
     ]),
+    // The kind tag of a work (task 10.7, `work-kind-tag.tsx`): the letter in the normal text
+    // on the 15% tint of blue (classwork) and orange (homework), in the journal grid's header
+    // (`muted`); on a card or the background it is one of the subject pairs above.
+    ...(['blue', 'orange'] as const).map((colour): Pair => ({
+      name: `work kind tag ${colour}: foreground on its 15% tint over muted (journal header)`,
+      fg: token('foreground'),
+      bg: over(token(`subject-${colour}`), fill('muted'), SUBJECT_TINT),
+      min: TEXT,
+    })),
   ];
 }
 

@@ -7267,6 +7267,12 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       attendance: 'Посещаемость',
       classworkShort: 'CW {{number}}',
       homeworkShort: 'HW {{number}}',
+      // Task 10.7 (`07`, Layout): the tag of a work's kind, its full word on hover.
+      kind: {
+        classwork: { letter: 'К', word: 'Классная работа' },
+        homework: { letter: 'Д', word: 'Домашнее задание' },
+      },
+      workLabel: '{{kind}}: {{title}}',
       soni: 'Soni',
       givenFrom: 'от {{date}}',
       givenOn: 'Задано {{date}}, проверяется на этом уроке',

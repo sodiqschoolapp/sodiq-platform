@@ -1,6 +1,6 @@
 import type { HomeBusy, HomeExam, HomeLesson, Role, TeachingHome } from '@sodiq/shared';
 import { fireEvent, screen, waitFor } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { en } from '@/i18n/locales/en';
 import { fakeApi, json, NORTH, refusal, renderApp, sessionOf, SOUTH } from '@/testing/render-app';
 
@@ -69,6 +69,8 @@ const busy: HomeBusy = {
 
 const homeOf = (fields: Partial<TeachingHome> = {}): TeachingHome => ({
   today: TODAY,
+  // 07:00 in Tashkent, before every lesson of the tests (task 10.7).
+  now: '2026-10-19T02:00:00.000Z',
   week: { from: TODAY, to: '2026-10-25' },
   branches: [NORTH],
   days: [{ date: TODAY, dayOff: null, version: null, fromPattern: false, branch: NORTH }],
@@ -424,5 +426,139 @@ describe('the teaching home page', () => {
     });
     expect(item?.textContent).toContain('2 students without attendance');
     expect(item?.querySelector('a')?.getAttribute('href')).toContain(uid(900));
+  });
+
+  describe('the lesson happening now (12, Home page; task 10.7)', () => {
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    // 08:00, 09:00 and two at 10:00 in Tashkent (UTC+5); the exam at 11:00.
+    const DAY = [
+      lesson(1, { journalId: uid(900) }),
+      lesson(2, {
+        start: 540,
+        end: 585,
+        startsAt: '2026-10-19T04:00:00.000Z',
+        endsAt: '2026-10-19T04:45:00.000Z',
+        journalId: uid(901),
+        lessonNumber: 2,
+      }),
+      lesson(3, {
+        start: 600,
+        end: 645,
+        startsAt: '2026-10-19T05:00:00.000Z',
+        endsAt: '2026-10-19T05:45:00.000Z',
+        journalId: uid(902),
+        cancelCause: 'reason',
+        cancelReason: 'Trip',
+        lessonNumber: 3,
+      }),
+      lesson(4, {
+        unit: { kind: 'class', id: uid(102), name: '8 Yale' },
+        start: 600,
+        end: 645,
+        startsAt: '2026-10-19T05:00:00.000Z',
+        endsAt: '2026-10-19T05:45:00.000Z',
+        journalId: uid(903),
+        replacedHere: true,
+        lessonNumber: 3,
+      }),
+    ];
+    const EXAM: HomeExam = {
+      ...exam,
+      startsAt: '2026-10-19T05:00:00.000Z',
+      endsAt: '2026-10-19T05:45:00.000Z',
+    };
+    const marked = () =>
+      [...document.querySelectorAll('[data-home-today] tr[data-now]')].map((row) =>
+        row.getAttribute('data-lesson'),
+      );
+    const pulsing = () =>
+      [...document.querySelectorAll('[data-home-today] tr')]
+        .filter((row) => row.querySelector('button[class*="animate-"]') !== null)
+        .map((row) => row.getAttribute('data-lesson'));
+
+    it("highlights only the row of the lesson happening now by the server's time, and only its button pulses, motion-safe only", async () => {
+      // The browser's own clock is weeks away from 19 October: the server's moment decides.
+      openHome(() =>
+        json(homeOf({ now: '2026-10-19T04:10:00.000Z', lessons: DAY, exams: [EXAM] })),
+      );
+      await waitFor(() => {
+        expect(marked()).toEqual([uid(302)]);
+      });
+      const row = document.querySelector(`[data-lesson="${uid(302)}"]`);
+      expect(row?.getAttribute('aria-current')).toBe('time');
+      expect(row?.className).toContain('bg-today');
+      expect(row?.className).toContain('font-semibold');
+      // No badge or extra text: the same cells and words as the row before it.
+      const before = document.querySelector(`[data-lesson="${uid(301)}"]`);
+      expect(row?.querySelectorAll('td').length).toBe(before?.querySelectorAll('td').length);
+      expect(row?.querySelector('td:nth-child(6)')?.textContent).toBe(
+        before?.querySelector('td:nth-child(6)')?.textContent,
+      );
+      expect(pulsing()).toEqual([uid(302)]);
+      const button = row?.querySelector('button');
+      // Under prefers-reduced-motion nothing runs: the animation is the motion-safe variant only.
+      const classes = (button?.className ?? '').split(/\s+/);
+      expect(classes).toContain('motion-safe:animate-now-pulse');
+      expect(classes.filter((one) => one.startsWith('animate-'))).toEqual([]);
+      expect(
+        [...document.querySelectorAll('[class]')].flatMap((one) =>
+          [...one.classList].filter((name) => name.startsWith('animate-')),
+        ),
+      ).toEqual([]);
+    });
+
+    it("follows the server's time, not a browser clock an hour off", async () => {
+      // The browser thinks it is 08:10 in Tashkent (the first lesson); the server says 09:10.
+      vi.useFakeTimers({ toFake: ['Date'], shouldAdvanceTime: true });
+      vi.setSystemTime(new Date('2026-10-19T03:10:00.000Z'));
+      openHome(() =>
+        json(homeOf({ now: '2026-10-19T04:10:00.000Z', lessons: DAY, exams: [EXAM] })),
+      );
+      await waitFor(() => {
+        expect(marked()).toEqual([uid(302)]);
+      });
+      expect(pulsing()).toEqual([uid(302)]);
+    });
+
+    it('marks no row between lessons', async () => {
+      openHome(() =>
+        json(homeOf({ now: '2026-10-19T03:50:00.000Z', lessons: DAY, exams: [EXAM] })),
+      );
+      await screen.findAllByRole('button', { name: en.journal.open });
+      expect(marked()).toEqual([]);
+      expect(pulsing()).toEqual([]);
+    });
+
+    it('marks neither a cancelled lesson, nor one a substitute took, nor an exam at that time', async () => {
+      openHome(() =>
+        json(homeOf({ now: '2026-10-19T05:10:00.000Z', lessons: DAY, exams: [EXAM] })),
+      );
+      await screen.findAllByRole('button', { name: en.journal.open });
+      expect(document.querySelector(`[data-exam="${EXAM.id}"]`)).not.toBeNull();
+      expect(marked()).toEqual([]);
+      expect(pulsing()).toEqual([]);
+      expect(document.querySelector('[aria-current="time"]')).toBeNull();
+    });
+
+    it('moves the mark to the next lesson when its start passes, without asking the server again', async () => {
+      vi.useFakeTimers({
+        toFake: ['Date', 'setInterval', 'clearInterval'],
+        shouldAdvanceTime: true,
+      });
+      const calls = openHome(() =>
+        json(homeOf({ now: '2026-10-19T03:59:45.000Z', lessons: DAY, exams: [EXAM] })),
+      );
+      await screen.findAllByRole('button', { name: en.journal.open });
+      expect(marked()).toEqual([]);
+      const asked = calls.filter((call) => call.route === 'GET /api/timetable/home').length;
+      vi.advanceTimersByTime(30_000);
+      await waitFor(() => {
+        expect(marked()).toEqual([uid(302)]);
+      });
+      expect(calls.filter((call) => call.route === 'GET /api/timetable/home')).toHaveLength(asked);
+    });
   });
 });

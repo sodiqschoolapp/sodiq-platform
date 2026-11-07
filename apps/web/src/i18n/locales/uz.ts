@@ -6944,6 +6944,12 @@ export const uz: Texts<'one' | 'other'> = {
       attendance: 'Davomat',
       classworkShort: 'CW {{number}}',
       homeworkShort: 'HW {{number}}',
+      // Task 10.7 (`07`, Layout): the tag of a work's kind, its full word on hover.
+      kind: {
+        classwork: { letter: 'S', word: 'Sinf ishi' },
+        homework: { letter: 'U', word: 'Uy vazifasi' },
+      },
+      workLabel: '{{kind}}: {{title}}',
       soni: 'Soni',
       givenFrom: '{{date}} dan',
       givenOn: '{{date}} kuni berilgan, shu darsda tekshiriladi',

@@ -340,7 +340,7 @@ export class TimetableViews {
    */
   async home(access: Access): Promise<TeachingHome> {
     const requestBranch = branchOf(access);
-    const { branches, today } = await this.transactions.run(
+    const { branches, today, now } = await this.transactions.run(
       access.branchIds,
       async (transaction) => ({
         branches: await transaction
@@ -350,6 +350,9 @@ export class TimetableViews {
           .orderBy('id')
           .execute(),
         today: await todayOf(transaction, requestBranch),
+        // Task 10.7: the moment of the clock (the demo clock where it is on) beside `today`,
+        // from which the page marks the lesson happening now.
+        now: (await transactionMoment(transaction)).toISOString(),
       }),
     );
     const week = viewDates(today, 'week');
@@ -440,6 +443,7 @@ export class TimetableViews {
       a.startsAt.localeCompare(b.startsAt) || a.branch.name.localeCompare(b.branch.name);
     return teachingHomeSchema.parse({
       today,
+      now,
       week: { from: week[0], to: week[week.length - 1] },
       branches: full
         .filter((branch) => days.some((day) => day.branch.id === branch.id))

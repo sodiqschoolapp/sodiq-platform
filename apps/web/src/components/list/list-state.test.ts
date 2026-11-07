@@ -187,4 +187,20 @@ describe('the hidden columns of a list', () => {
     window.localStorage.setItem('sodiq.list.people.hidden', '{"city":true}');
     expect(readHiddenColumns('people')).toEqual([]);
   });
+
+  // Task 10.7: the journal hides its figures in a browser with no choice of its own.
+  it('are the default of the list when the browser holds no choice, and the stored choice otherwise', () => {
+    expect(readHiddenColumns('journal', ['uid', 'grade'])).toEqual(['uid', 'grade']);
+
+    storeHiddenColumns('journal', []);
+    expect(readHiddenColumns('journal', ['uid', 'grade'])).toEqual([]);
+
+    storeHiddenColumns('journal', ['grade']);
+    expect(readHiddenColumns('journal', ['uid', 'grade'])).toEqual(['grade']);
+
+    window.localStorage.setItem('sodiq.list.journal.hidden', '{not json');
+    expect(readHiddenColumns('journal', ['uid'])).toEqual(['uid']);
+    window.localStorage.setItem('sodiq.list.journal.hidden', '{"uid":true}');
+    expect(readHiddenColumns('journal', ['uid'])).toEqual(['uid']);
+  });
 });

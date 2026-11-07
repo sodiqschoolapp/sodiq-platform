@@ -69,7 +69,12 @@ test('the Academic Vice Principal records a late class move, voids the old journ
   await expect(panel.getByText(/From 7 Kent,/)).toBeVisible();
 
   // 7 Leeds, read whole by the Academic Vice Principal: the result is carried in from 7 Kent,
-  // and the held lesson is an optional cell.
+  // and the held lesson is an optional cell. Task 10.7: the figures are hidden in a browser with
+  // no choice, so this browser has chosen to show every column of the journal first.
+  // A script as text: the browser tests are typed without the DOM.
+  await page.addInitScript({
+    content: "window.localStorage.setItem('sodiq.list.journal.hidden', '[]');",
+  });
   await page.goto('/journal');
   await page.locator('tbody tr').filter({ hasText: '7 Leeds' }).getByRole('button').first().click();
   await expect(heading(page, en.journal.sheet)).toBeVisible();

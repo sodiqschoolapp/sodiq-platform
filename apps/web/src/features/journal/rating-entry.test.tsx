@@ -7,11 +7,12 @@ import type {
   RatingExam,
 } from '@sodiq/shared';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, beforeEach } from 'vitest';
 import { en } from '@/i18n/locales/en';
 import { ru } from '@/i18n/locales/ru';
 import { fakeApi, json, NORTH, renderApp, sessionOf } from '@/testing/render-app';
 import { typedScore } from './journal-grid';
+import { showEveryJournalColumn } from '@/testing/journal-columns';
 import { OPEN_LOCK } from '@/testing/edit-lock';
 
 const uid = (n: number): string => `0199e000-0000-7000-8000-${String(n).padStart(12, '0')}`;
@@ -194,6 +195,9 @@ const sent = (calls: ReturnType<typeof fakeApi>, route: string) =>
 // docs/spec/edge-cases/calculation.md, "The rating exam"; docs/spec/07-journal.md, Entering
 // data, Comments and Keyboard; task 8.2.
 describe('the rating exam and comments in the grid', () => {
+  // Task 10.7: these tests read the UID and the figures, hidden by default since then.
+  beforeEach(showEveryJournalColumn);
+
   it('takes a whole score from 0 to 100 in a cell and refuses the rest (edge/calculation: "Whole numbers from 0 to 100")', () => {
     expect(typedScore('0', 100)).toBe(0);
     expect(typedScore('100', 100)).toBe(100);

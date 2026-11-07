@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { FIELD } from '@/components/ui/control';
 import { SaveSign } from './cell-saves';
 import { typedScore } from './journal-grid';
+import { WorkKindTag, useWorkLabel } from './work-kind-tag';
 import type { WorksEntry } from './works-entry';
 
 /**
@@ -34,6 +35,7 @@ export function LessonModeScore({
   onRefusedNumber: (total: number) => void;
 }) {
   const { t } = useTranslation();
+  const workLabel = useWorkLabel();
   const stored = student.cells[index]?.works[workIndex]?.score ?? null;
   const shown = stored === null ? '' : String(stored);
   // What the person types, until it is sent; the server's value again after each answer.
@@ -53,12 +55,14 @@ export function LessonModeScore({
 
   return (
     <label className="flex items-center gap-1 text-sm" data-lesson-mode-work={work.id ?? ''}>
+      {/* Task 10.7: the kind's tag; the field's name says the kind in full. */}
+      <WorkKindTag kind={work.kind} />
       <span className="text-muted-foreground">{name}</span>
       <input
         className={`${FIELD} w-16 text-center`}
         inputMode="numeric"
         aria-label={t('journal.lessonMode.score', {
-          work: name,
+          work: workLabel(work.kind, name),
           name: `${student.lastName} ${student.firstName}`,
         })}
         value={text}

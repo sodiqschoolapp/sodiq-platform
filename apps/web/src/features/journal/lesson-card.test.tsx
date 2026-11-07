@@ -244,6 +244,17 @@ describe('the lesson card', () => {
     const checked = dialog.querySelector('[data-checked-today]') as HTMLElement;
     expect(checked.textContent).toContain('Write');
     expect(within(dialog).getByText('Ten sums')).toBeDefined();
+    // Task 10.7: each work of the card carries its kind's tag, the full word on hover.
+    const tags = [...dialog.querySelectorAll('[data-work-kind]')].map((one) => [
+      one.getAttribute('data-work-kind'),
+      one.textContent,
+      one.getAttribute('title'),
+    ]);
+    expect(tags).toContainEqual(['classwork', 'C', 'Classwork']);
+    expect(tags.filter(([kind]) => kind === 'homework')).toEqual([
+      ['homework', 'H', 'Homework'],
+      ['homework', 'H', 'Homework'],
+    ]);
     fireEvent.click(within(given).getByRole('checkbox', { name: en.journal.card.notGiven }));
     await waitFor(() => {
       expect(sent(calls, `PUT /api/journal/lessons/${PLANNED}/homework-given`)).toEqual([
@@ -296,5 +307,9 @@ describe('the lesson card', () => {
     expect(top?.textContent).toContain('Fractions and their common denominators in practice');
     expect(top?.textContent).toContain('Test');
     expect(top?.textContent).toContain('Read');
+    // Task 10.7: the works of both kinds listed together carry their tags.
+    expect(
+      [...(top?.querySelectorAll('[data-work-kind]') ?? [])].map((one) => one.textContent),
+    ).toEqual(expect.arrayContaining(['C', 'H']));
   });
 });
