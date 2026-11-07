@@ -947,8 +947,10 @@ export const ERROR_CODES = [
   'plan_row_held',
   /** The file is larger than 20 MB (edge/lesson-plans, "Limits"; task 7.1a). */
   'plan_file_too_large',
-  /** The item holds 10 files already (edge/lesson-plans, "Limits"; task 7.1a). */
+  /** The item's materials, or the work, hold 10 files already (edge/lesson-plans, "Limits"; tasks 7.1a and 10.8). */
   'plan_files_full',
+  /** The work a file is added to is not a work of the item, or no longer exists (task 10.8). */
+  'plan_work_not_found',
   /** The item would hold more than 10 classworks or 10 homeworks: another save added some meanwhile (build plan 7.1a; task 7.1a). */
   'plan_works_full',
   /** The file is not of a type on the list, or its content is not of the type it says (task 7.1a, decision 3). */

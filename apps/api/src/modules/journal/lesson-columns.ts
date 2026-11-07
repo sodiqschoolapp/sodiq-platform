@@ -50,6 +50,8 @@ export interface PlannedWork {
   readonly id: string;
   readonly kind: WorkKind;
   readonly title: string;
+  /** Task 10.8: added in the journal at a lesson with no plan item (`added_in_journal_at`). */
+  readonly addedInJournal?: boolean;
 }
 
 /** A stored `journal_works` row. */
@@ -108,7 +110,11 @@ export interface GivenHomework {
 }
 
 export interface LessonColumns {
-  /** The lesson's row has an item of the journal's plan ("No plan" otherwise). */
+  /**
+   * The lesson's row has an item of the journal's plan with a topic ("No plan" otherwise). Task
+   * 10.8: an item the journal's add created has no topic until the owner writes it, and counts as
+   * missing until then (`09`, In the journal; plan decision 4).
+   */
   readonly planItem: boolean;
   readonly columns: readonly Column[];
   /** Works of the lesson marked "not held". */
@@ -131,6 +137,8 @@ export interface ColumnsInput {
   readonly journalClosed: boolean;
   /** Task 8.8: the planned homeworks marked "not given", as `<source lesson>/<plan work>`. */
   readonly notGiven?: ReadonlySet<string>;
+  /** Task 10.8: the lessons whose plan item has no topic yet (made by a work added in the journal). */
+  readonly topicless?: ReadonlySet<string>;
 }
 
 const eligible = (lesson: ColumnLesson): boolean =>
@@ -335,7 +343,8 @@ export function lessonColumns(input: ColumnsInput): Map<string, LessonColumns> {
       });
     }
     result.set(lesson.id, {
-      planItem: (input.planned.get(lesson.id) ?? null) !== null,
+      planItem:
+        (input.planned.get(lesson.id) ?? null) !== null && input.topicless?.has(lesson.id) !== true,
       columns: numbered(all.filter((column) => !column.notHeld)),
       notHeld: numbered(all.filter((column) => column.notHeld)),
       given,

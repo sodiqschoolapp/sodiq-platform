@@ -3,6 +3,7 @@ import {
   BRANCH_HEADER,
   commentHistorySchema,
   journalCommentSchema,
+  workAddedSchema,
   workSavedSchema,
   journalGridSchema,
   ratingExamSchema,
@@ -549,34 +550,39 @@ describe('the rating exam and comments', () => {
           ok(await present(calls, lesson, s.boboyev));
         }
         // A classwork of the first lesson, 5 of 10; a homework given there, checked at the second, 3 of 10.
-        const classwork = workSavedSchema.parse(
-          ok(
-            await calls.post(`/api/journal/lessons/${first}/works`, {
-              kind: 'classwork',
-              title: 'Dictation',
-            }),
-          ),
-        );
-        const homework = workSavedSchema.parse(
-          ok(
-            await calls.post(`/api/journal/lessons/${first}/works`, {
-              kind: 'homework',
-              title: 'Exercises',
-            }),
-          ),
-        );
-        for (const [lesson, work] of [
-          [first, classwork],
-          [second, homework],
-        ] as const) {
-          ok(
-            await calls.put(`/api/journal/lessons/${lesson}/works/total`, {
-              column: { workId: work.id },
-              total: 10,
-              version: work.version,
-            }),
+        // Task 10.8: both are written into the first lesson's plan item; their columns are planned.
+        const added = [];
+        for (const kind of ['classwork', 'homework'] as const) {
+          added.push(
+            workAddedSchema.parse(
+              ok(
+                await calls.post(`/api/journal/lessons/${first}/works`, {
+                  kind,
+                  title: kind === 'classwork' ? 'Dictation' : 'Exercises',
+                }),
+              ),
+            ),
           );
         }
+        const totals = [];
+        for (const [lesson, work] of [
+          [first, added[0]],
+          [second, added[1]],
+        ] as const) {
+          totals.push(
+            workSavedSchema.parse(
+              ok(
+                await calls.put(`/api/journal/lessons/${lesson}/works/total`, {
+                  column: { planWorkId: work?.planWorkId ?? '', sourceLessonId: first },
+                  total: 10,
+                  version: null,
+                }),
+              ),
+            ),
+          );
+        }
+        const [classwork, homework] = totals;
+        if (classwork === undefined || homework === undefined) throw new Error('Two works.');
         ok(
           await calls.post(`/api/journal/lessons/${first}/scores`, {
             saves: [
@@ -956,7 +962,8 @@ describe('the rating exam and comments', () => {
           ),
         );
         expect(note.visibility).toBe('parents');
-        const work = workSavedSchema.parse(
+        // Task 10.8: written into the lesson's plan item; its column is planned.
+        const work = workAddedSchema.parse(
           ok(
             await calls.post(`/api/journal/lessons/${lesson}/works`, {
               kind: 'classwork',
@@ -967,9 +974,9 @@ describe('the rating exam and comments', () => {
         const total = workSavedSchema.parse(
           ok(
             await calls.put(`/api/journal/lessons/${lesson}/works/total`, {
-              column: { workId: work.id },
+              column: { planWorkId: work.planWorkId, sourceLessonId: lesson },
               total: 10,
-              version: work.version,
+              version: null,
             }),
           ),
         );

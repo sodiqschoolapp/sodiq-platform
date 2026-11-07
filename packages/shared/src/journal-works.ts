@@ -103,6 +103,34 @@ export const workRenameSchema = z.strictObject({
 
 export type WorkRename = z.infer<typeof workRenameSchema>;
 
+/** Task 10.8: a work added in the journal, written into the lesson's plan item. */
+export const journalPlanWorkParamsSchema = z.object({ lessonId: z.uuid(), planWorkId: z.uuid() });
+
+export type JournalPlanWorkParams = z.infer<typeof journalPlanWorkParamsSchema>;
+
+/**
+ * Task 10.8: the rename of a work added in the journal, while its item has no topic. A plan work
+ * has no version: the title the page read is sent, and a title changed since is refused
+ * `work_stale` (`edge/lesson-plans`: "A save made on an older state of the same field is
+ * refused").
+ */
+export const planWorkRenameSchema = z.strictObject({
+  title: workTitleSchema,
+  baseTitle: z.string(),
+});
+
+export type PlanWorkRename = z.infer<typeof planWorkRenameSchema>;
+
+/** Task 10.8: a work added in the journal, as the plan holds it. */
+export const workAddedSchema = z.object({
+  planWorkId: z.uuid(),
+  itemId: z.uuid(),
+  kind: cellWorkKindSchema,
+  title: z.string(),
+});
+
+export type WorkAdded = z.infer<typeof workAddedSchema>;
+
 /** A work as stored after a change. */
 export const workSavedSchema = z.object({
   id: z.uuid(),

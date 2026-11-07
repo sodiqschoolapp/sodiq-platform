@@ -180,10 +180,23 @@ describe('the parent portal', () => {
     return { itemId: item.id, homeworks };
   }
 
-  async function fileOf(s: Branch, itemId: string, name: string): Promise<string> {
+  /** Task 10.8: a file of a work of the item, or of its materials (`workId` null). */
+  async function fileOf(
+    s: Branch,
+    itemId: string,
+    name: string,
+    workId: string | null,
+  ): Promise<string> {
     const row = await t.database.migrator
       .insertInto('lesson_plan_files')
-      .values({ branch_id: s.branch, item_id: itemId, name, type: 'application/pdf', bytes: 9 })
+      .values({
+        branch_id: s.branch,
+        item_id: itemId,
+        work_id: workId,
+        name,
+        type: 'application/pdf',
+        bytes: 9,
+      })
       .returning('id')
       .executeTakeFirstOrThrow();
     await store.put(planFileKey(itemId, row.id), Buffer.from('%PDF-1.4\n'), 'application/pdf');
@@ -313,18 +326,23 @@ describe('the parent portal', () => {
       topic: 'Fractions',
       homeworks: ['Exercise 5', 'Exercise 6'],
     });
-    file = await fileOf(a, item.itemId, 'fractions.pdf');
+    file = await fileOf(a, item.itemId, 'fractions.pdf', item.homeworks[0] ?? null);
     const futureItem = await itemAt(a, a.journal, a.classId, future.id, {
       topic: 'Decimals',
       homeworks: ['Exercise 9'],
       quarter: 2,
     });
-    futureFile = await fileOf(a, futureItem.itemId, 'decimals.pdf');
+    futureFile = await fileOf(
+      a,
+      futureItem.itemId,
+      'decimals.pdf',
+      futureItem.homeworks[0] ?? null,
+    );
     const otherItem = await itemAt(a, a.otherJournal, a.otherClass, otherHeld.id, {
       topic: 'Poems',
       homeworks: ['Learn a poem'],
     });
-    otherClassFile = await fileOf(a, otherItem.itemId, 'poems.pdf');
+    otherClassFile = await fileOf(a, otherItem.itemId, 'poems.pdf', otherItem.homeworks[0] ?? null);
   }, 600_000);
 
   afterAll(async () => {
@@ -851,7 +869,7 @@ describe('the parent portal', () => {
           )
           .execute();
       }
-      const removed = await fileOf(a, item.itemId, 'old.pdf');
+      const removed = await fileOf(a, item.itemId, 'old.pdf', item.homeworks[0] ?? null);
       await t.database.migrator
         .updateTable('lesson_plan_files')
         .set({ removed_at: new Date('2026-10-26T12:00:00+05:00') })
@@ -860,6 +878,83 @@ describe('the parent portal', () => {
       const gone = await get(parent, `/api/portal/children/${child}/files/${removed}`);
       expect([gone.status, codeOf(gone)]).toEqual([404, 'not_found']);
       expect(JSON.stringify((await homeworkOf(child)).homework)).not.toContain('old.pdf');
+    });
+
+    // Task 10.8 (`10`, Homework: "never the plan item's materials"; plan decision 13 and Look
+    // first 3): only a homework's own files reach the family.
+    it('lists and sends each homework’s own files only, never the materials or a classwork’s file', async () => {
+      const [first, second] = item.homeworks;
+      if (first === undefined || second === undefined) throw new Error('The item has two.');
+      const classwork = await t.database.migrator
+        .insertInto('lesson_plan_works')
+        .values({
+          branch_id: a.branch,
+          item_id: item.itemId,
+          kind: 'classwork',
+          position: 1,
+          title: 'Test',
+          description: '',
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      const material = await fileOf(a, item.itemId, 'answer-key.pdf', null);
+      const classworkFile = await fileOf(a, item.itemId, 'test-sheet.pdf', classwork.id);
+      const secondFile = await fileOf(a, item.itemId, 'exercise-6.pdf', second);
+      try {
+        const week = await homeworkOf(child);
+        expect(week.homework.map((one) => [one.title, one.files.map((f) => f.name)])).toEqual([
+          ['Exercise 5', ['fractions.pdf']],
+          ['Exercise 6', ['exercise-6.pdf']],
+        ]);
+        const text = JSON.stringify(week);
+        expect(text).not.toContain('answer-key.pdf');
+        expect(text).not.toContain('test-sheet.pdf');
+        for (const hidden of [material, classworkFile]) {
+          const refused = await get(parent, `/api/portal/children/${child}/files/${hidden}`);
+          expect([refused.status, codeOf(refused)]).toEqual([404, 'not_found']);
+        }
+        expect(
+          (await get(parent, `/api/portal/children/${child}/files/${secondFile}`)).status,
+        ).toBe(200);
+        // A homework marked "not given" takes its own files with it, and leaves the other's.
+        const held = a.lessons.find((one) => one.date === '2026-10-26');
+        if (held === undefined) throw new Error('The scene has 26 October.');
+        const mark = await t.database.migrator
+          .insertInto('journal_homework_not_given')
+          .values({
+            branch_id: a.branch,
+            journal_id: a.journal,
+            lesson_id: held.id,
+            plan_work_id: second,
+            changed_by: await load.classes.account(),
+            changed_how: 'entry',
+            set_at: new Date('2026-10-26T12:00:00+05:00'),
+          })
+          .returning('id')
+          .executeTakeFirstOrThrow();
+        try {
+          const refused = await get(parent, `/api/portal/children/${child}/files/${secondFile}`);
+          expect([refused.status, codeOf(refused)]).toEqual([404, 'not_found']);
+          expect((await get(parent, `/api/portal/children/${child}/files/${file}`)).status).toBe(
+            200,
+          );
+        } finally {
+          await t.database.migrator
+            .deleteFrom('journal_homework_not_given')
+            .where('id', '=', mark.id)
+            .execute();
+        }
+      } finally {
+        await t.database.migrator
+          .updateTable('lesson_plan_files')
+          .set({ removed_at: new Date('2026-10-26T12:00:00+05:00') })
+          .where('id', 'in', [material, classworkFile, secondFile])
+          .execute();
+        await t.database.migrator
+          .deleteFrom('lesson_plan_works')
+          .where('id', '=', classwork.id)
+          .execute();
+      }
     });
 
     it('sends a file of a homework the page lists for the child', async () => {

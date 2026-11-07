@@ -14,7 +14,7 @@ import {
   type PlanRequestDecision,
   type PlanWindowExtend,
   type PlanWindowSave,
-  planFileSchema,
+  planItemFileSchema,
   planItemSchema,
   planListSchema,
   planSchema,
@@ -134,16 +134,21 @@ export const copyPlan = (journalId: string, body: PlanCopy) =>
   ).then((answer) => planSchema.parse(answer));
 
 /** Sends a file as it is; its type is one of `PLAN_FILE_TYPES`. */
-export const addPlanFile = (itemId: string, file: File) =>
+/** Task 10.8: a file of the item's materials (`workId` null) or of one of its works. */
+export const addPlanFile = (itemId: string, file: File, workId: string | null = null) =>
   answerOf(
     api.PUT('/api/plans/items/{itemId}/files', {
-      params: { header: branchHeader(), path: { itemId }, query: { name: file.name } },
+      params: {
+        header: branchHeader(),
+        path: { itemId },
+        query: { name: file.name, ...(workId === null ? {} : { workId }) },
+      },
       // The document types the body as a binary string; the browser sends the File as it is.
       body: file as unknown as string,
       bodySerializer: (body: unknown) => body as Blob,
       headers: { 'Content-Type': file.type },
     }),
-  ).then((answer) => planFileSchema.parse(answer));
+  ).then((answer) => planItemFileSchema.parse(answer));
 
 export const removePlanFile = (fileId: string) =>
   answerOf(

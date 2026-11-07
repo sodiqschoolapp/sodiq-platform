@@ -3,6 +3,8 @@ import type { IdLine, RouteIds } from '../route-id-check.js';
 // The ids of the plans routes and the tests that refuse another branch's (task 10.3b).
 const P = 'src/modules/plans/plans.test.ts';
 const PLAN = `${P} > answers 404 for another branch’s or an unknown journal, quarter, item, file and year`;
+// Task 10.8: the work a file is added to.
+const WORK_FILES = `${P} > keeps 10 files on each work and 10 materials, refuses a work of another item, branch or none, and removes a work’s files with it`;
 const M = 'src/modules/plans/plan-masters.test.ts';
 const MASTERS = `${M} > answers 404 for a master, an item, a body id or a quarter of another branch or unknown, and changes nothing`;
 const O = 'src/modules/plans/plan-outcomes.test.ts';
@@ -230,7 +232,10 @@ export const PLANS_IDS: RouteIds = {
     none('body:values.homeworks[].id', 'plan work', ITEM_WORK),
   ],
   'POST /api/plans/items/:itemId/clear': [branch('path:itemId', 'plan item', PATH, [PLAN])],
-  'PUT /api/plans/items/:itemId/files': [branch('path:itemId', 'plan item', PATH, [PLAN])],
+  'PUT /api/plans/items/:itemId/files': [
+    branch('path:itemId', 'plan item', PATH, [PLAN]),
+    branch('query:workId', 'plan work', QUERY, [WORK_FILES]),
+  ],
   'GET /api/plans/files/:fileId': [branch('path:fileId', 'plan file', PATH, [PLAN])],
   'DELETE /api/plans/files/:fileId': [branch('path:fileId', 'plan file', PATH, [PLAN])],
 };

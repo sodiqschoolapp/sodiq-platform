@@ -21,6 +21,7 @@ import { dayTemplatesKit, START, type DayTemplatesKit } from '../../testing/day-
 import { LoadKit } from '../../testing/load-kit.js';
 import { MembersKit } from '../../testing/members-kit.js';
 import { publishedScene } from '../../testing/published-scene.js';
+import { handWork } from '../../testing/hand-works.js';
 import { ActingKit } from '../../testing/acting-kit.js';
 import { CellsKit } from '../../testing/cells-kit.js';
 
@@ -1228,14 +1229,24 @@ describe('the edit period through the routes', () => {
         { role: 'teacher', branchId: x.branch },
       );
       const correction = { reason: 'The register says so' };
-      const work = await as(x.vice, x.branch, (calls) =>
-        calls.post(`/api/journal/lessons/${x.second}/works`, {
-          kind: 'classwork',
-          title: 'Dictation',
-          correction,
-        }),
+      // Task 10.8: a work added by hand before 7 November 2026 (the add now writes a plan work).
+      const added = await handWork(t.database.migrator, {
+        branchId: x.branch,
+        lessonId: x.second,
+        kind: 'classwork',
+        // Added while the lesson was open; the corrections below come after its lock.
+        at: LAST_MINUTE,
+      });
+      // The Academic Vice Principal adds a work by correction too (written into the plan).
+      ok(
+        await as(x.vice, x.branch, (calls) =>
+          calls.post(`/api/journal/lessons/${x.second}/works`, {
+            kind: 'classwork',
+            title: 'Dictation',
+            correction,
+          }),
+        ),
       );
-      const added = ok(work).body as { id: string; version: number };
       await as(chief, x.branch, async (calls) => {
         ok(
           await calls.put(`/api/journal/lessons/${x.second}/works/total`, {
@@ -1376,20 +1387,14 @@ describe('the edit period through the routes', () => {
 
     it('judges a homework removed through its check lesson at the lesson it is stored at', async () => {
       const x = await scene();
-      const given = await as(
-        x.owner,
-        x.branch,
-        async (calls) =>
-          ok(
-            await calls.post(`/api/journal/lessons/${x.second}/works`, {
-              kind: 'homework',
-              title: 'Exercises',
-            }),
-          ).body as {
-            id: string;
-          },
-        LAST_MINUTE,
-      );
+      // Task 10.8: a homework added by hand before 7 November 2026.
+      const given = await handWork(t.database.migrator, {
+        branchId: x.branch,
+        lessonId: x.second,
+        kind: 'homework',
+        title: 'Exercises',
+        at: LAST_MINUTE,
+      });
       await as(x.owner, x.branch, async (calls) => {
         // The check lesson of 26 October is open; the homework is stored at the 19th, locked.
         const removed = await calls.del(`/api/journal/lessons/${x.third}/works/${given.id}`);
@@ -1412,12 +1417,13 @@ describe('the edit period through the routes', () => {
         x.owner,
         x.branch,
         async (calls) => {
-          const added = ok(
-            await calls.post(`/api/journal/lessons/${x.second}/works`, {
-              kind: 'classwork',
-              title: 'Dictation',
-            }),
-          ).body as { id: string; version: number };
+          // Task 10.8: works added by hand before 7 November 2026.
+          const added = await handWork(t.database.migrator, {
+            branchId: x.branch,
+            lessonId: x.second,
+            kind: 'classwork',
+            at: LAST_MINUTE,
+          });
           const renamed = ok(
             await calls.put(`/api/journal/lessons/${x.second}/works/${added.id}/title`, {
               title: 'Spelling test',
@@ -1425,12 +1431,13 @@ describe('the edit period through the routes', () => {
             }),
           ).body as { title: string; version: number };
           expect(renamed).toMatchObject({ title: 'Spelling test', version: 2 });
-          const given = ok(
-            await calls.post(`/api/journal/lessons/${x.second}/works`, {
-              kind: 'homework',
-              title: 'Exercises',
-            }),
-          ).body as { id: string; version: number };
+          const given = await handWork(t.database.migrator, {
+            branchId: x.branch,
+            lessonId: x.second,
+            kind: 'homework',
+            title: 'Exercises',
+            at: LAST_MINUTE,
+          });
           return [renamed, given] as const;
         },
         LAST_MINUTE,
@@ -1502,15 +1509,13 @@ describe('the edit period through the routes', () => {
         x.owner,
         x.branch,
         async (calls) => {
-          const work = ok(
-            await calls.post(`/api/journal/lessons/${x.second}/works`, {
-              kind: 'classwork',
-              title: 'Dictation',
-            }),
-          ).body as {
-            id: string;
-            version: number;
-          };
+          // Task 10.8: a work added by hand before 7 November 2026.
+          const work = await handWork(t.database.migrator, {
+            branchId: x.branch,
+            lessonId: x.second,
+            kind: 'classwork',
+            at: LAST_MINUTE,
+          });
           const total = ok(
             await calls.put(`/api/journal/lessons/${x.second}/works/total`, {
               column: { workId: work.id },

@@ -1771,6 +1771,32 @@ describe('plan items follow the timetable', () => {
             bytes: 100,
           })
           .execute();
+        // Task 10.8: a homework added in the journal (its mark) with a file of its own.
+        const added = await t.database.migrator
+          .insertInto('lesson_plan_works')
+          .values({
+            branch_id: x.s.branch,
+            item_id: first?.id ?? '',
+            kind: 'homework',
+            position: 1,
+            title: 'Exercises',
+            description: '',
+            added_in_journal_at: new Date('2026-11-02T12:00:00+05:00'),
+            added_in_journal_by: await load.classes.account(),
+          })
+          .returning('id')
+          .executeTakeFirstOrThrow();
+        await t.database.migrator
+          .insertInto('lesson_plan_files')
+          .values({
+            branch_id: x.s.branch,
+            item_id: first?.id ?? '',
+            work_id: added.id,
+            name: 'Exercises.pdf',
+            type: 'application/pdf',
+            bytes: 100,
+          })
+          .execute();
         await t.database.migrator
           .updateTable('lesson_plan_places')
           .set({ moved_from: '2026-11-02' })
@@ -1796,7 +1822,16 @@ describe('plan items follow the timetable', () => {
         expect(copied?.topic).toBe('Topic 1');
         expect(copied?.id).not.toBe(first?.id);
         expect(copied?.classworks.map((work) => work.title)).toEqual(['Exercise 1']);
-        expect(copied?.files.map((file) => file.name)).toEqual(['Sheet.pdf']);
+        // Task 10.8: each file stays with its work's copy, the materials with none, and the copy
+        // of the homework added in the journal keeps its mark (`.claude/rules/lesson-plans.md`).
+        const homework = copied?.homeworks[0];
+        expect(homework?.title).toBe('Exercises');
+        expect(homework?.id).not.toBe(added.id);
+        expect(copied?.files.map((file) => [file.name, file.workId])).toEqual([
+          ['Sheet.pdf', null],
+          ['Exercises.pdf', homework?.id],
+        ]);
+        expect(copied?.addedInJournal).toEqual([homework?.id]);
         expect(copied?.movedFrom).toBe('2026-11-02');
         expect(copied?.copiedFrom).toEqual({ journalId: x.journal, quarterId: x.q2 });
         expect(laid(answer).rows['2026-11-23']).toBe('Topic 2');

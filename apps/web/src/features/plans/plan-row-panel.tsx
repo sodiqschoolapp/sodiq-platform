@@ -1,38 +1,30 @@
-import { PLAN_FILE_TYPES, type Plan, type PlanItem, type PlanRow } from '@sodiq/shared';
+import {
+  PLAN_FILES_MAX,
+  type Plan,
+  type PlanItem,
+  type PlanItemFile,
+  type PlanRow,
+} from '@sodiq/shared';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { TFunction } from 'i18next';
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ApiFailure } from '@/api/failure';
 import { useConfirm } from '@/components/confirm-dialog';
 import { FailureAlert } from '@/components/failure-alert';
-import { Field, TextAreaField } from '@/components/field';
-import { RecordForm } from '@/components/form/record-form';
-import { useRecordForm } from '@/components/form/use-record-form';
 import { PanelActions } from '@/components/list/panel-actions';
 import { usePanelEditing } from '@/components/list/use-panel-editing';
 import { Button } from '@/components/ui/button';
 import { rowDateText } from './plan-page';
 import { CopiedFrom } from './plan-sharing';
-import {
-  baseOf,
-  filledSlots,
-  initialOf,
-  noteField,
-  planFormSchema,
-  titleField,
-  WORK_KINDS,
-  type PlanField,
-  type WorkKind,
-} from './plan-item-form';
+import { FilePicker, NotUploaded, PlanItemEditor, type HeldFile } from './plan-item-editor';
+import { titleField, WORK_KINDS, type PlanField, type WorkKind } from './plan-item-form';
 import {
   addPlanFile,
   clearPlanItem,
-  createPlanItem,
   downloadPlanFile,
   invalidatePlans,
   removePlanFile,
-  savePlanItem,
 } from './plans-api';
 
 /** The value stored now of each field a save was refused for (`plan_item_stale`), by field. */
@@ -84,37 +76,8 @@ export function PlanRowPanel({ plan, row }: { plan: Plan; row: PlanRow }) {
   // Task 7.2: the window or an open period opens the row (`row.open`); the server decides.
   const editable = plan.canEdit && row.open !== 'none';
   const slotText = (slot: number) => t('plans.plan.slot', { number: slot });
-  const [shown, setShown] = useState<Record<WorkKind, number>>({
-    classwork: item?.classworks.length ?? 0,
-    homework: item?.homeworks.length ?? 0,
-  });
-  const fileInput = useRef<HTMLInputElement>(null);
-
-  const form = useRecordForm({
-    schema: planFormSchema(item),
-    initial: initialOf(item),
-    message: (field) => (field === 'links' ? t('plans.panel.linksInvalid') : undefined),
-    save: async (values) => {
-      if (item === null) {
-        await createPlanItem(plan.journalId, {
-          quarterId: plan.quarterId,
-          position: row.number,
-          // Task 7.1b: refused `plan_row_moved` when the rows shifted meanwhile.
-          lessonId: row.lessonId,
-          values: {
-            ...values,
-            classworks: values.classworks.map(({ title, description }) => ({ title, description })),
-            homeworks: values.homeworks.map(({ title, description }) => ({ title, description })),
-          },
-        });
-      } else {
-        await savePlanItem(item.id, { base: baseOf(item), values });
-      }
-      await invalidatePlans(queryClient);
-      panel.stop({ saved: true, key: 'item' });
-    },
-  });
-  const notes = storedNotes(form.failure, item, t);
+  // Task 10.8: the files a save could not upload, kept until sent again or removed.
+  const [failed, setFailed] = useState<HeldFile[]>([]);
 
   const clear = useMutation({
     mutationFn: async (id: string) => {
@@ -131,9 +94,9 @@ export function PlanRowPanel({ plan, row }: { plan: Plan; row: PlanRow }) {
     },
   });
   const upload = useMutation({
-    mutationFn: async (file: File) => {
+    mutationFn: async ({ file, workId }: { file: File; workId: string | null }) => {
       if (item === null) return;
-      await addPlanFile(item.id, file);
+      await addPlanFile(item.id, file, workId);
       await invalidatePlans(queryClient);
     },
   });
@@ -171,89 +134,29 @@ export function PlanRowPanel({ plan, row }: { plan: Plan; row: PlanRow }) {
       <p className="text-sm text-muted-foreground">{rowDateText(row, i18n.language, slotText)}</p>
       {item?.copiedFrom != null && <CopiedFrom from={item.copiedFrom} />}
       {panel.editing === 'item' ? (
-        <RecordForm
-          form={form}
+        <PlanItemEditor
+          journalId={plan.journalId}
+          quarterId={plan.quarterId}
+          position={row.number}
+          lessonId={row.lessonId}
+          item={item}
           label={t('plans.plan.rowName', { number: row.number })}
+          failureNotes={(failure, stored) => storedNotes(failure, stored, t)}
+          {...(item === null &&
+          previous !== undefined &&
+          previous.date === row.date &&
+          previous.item !== null
+            ? { sameTopic: previous.item.topic }
+            : {})}
+          {...(checkedToday === undefined ? {} : { checkedToday })}
+          onSaved={(_saved, notSent) => {
+            setFailed(notSent);
+            panel.stop({ saved: true, key: 'item' });
+          }}
           onCancel={() => {
             panel.stop();
           }}
-        >
-          {item === null &&
-            previous !== undefined &&
-            previous.date === row.date &&
-            previous.item !== null && (
-              <div>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={() => {
-                    form.bind('topic').onChange({ target: { value: previous.item?.topic ?? '' } });
-                  }}
-                >
-                  {t('plans.panel.sameTopic')}
-                </Button>
-              </div>
-            )}
-          <Field label={t('plans.plan.topic')} note={notes.topic} {...form.bind('topic')} />
-          <TextAreaField
-            label={t('plans.panel.objectives')}
-            note={notes.objectives}
-            rows={3}
-            {...form.bind('objectives')}
-          />
-          <TextAreaField
-            label={t('plans.panel.links')}
-            note={notes.links ?? t('plans.panel.linksNote')}
-            rows={2}
-            {...form.bind('links')}
-          />
-          {WORK_KINDS.map((kind) => {
-            const count = Math.max(
-              shown[kind],
-              ...filledSlots(initialOf(item), kind).map((slot) => slot + 1),
-            );
-            return (
-              <fieldset key={kind} className="grid gap-3">
-                <legend className="font-semibold">
-                  {kind === 'classwork' ? t('plans.plan.classworks') : t('plans.plan.homeworks')}
-                </legend>
-                {kind === 'homework' && checkedToday !== undefined && (
-                  <p className="text-sm text-muted-foreground">{checkedToday}</p>
-                )}
-                {Array.from({ length: count }, (_, slot) => (
-                  <div key={slot} className="grid gap-2 sm:grid-cols-2">
-                    <Field
-                      label={t(`plans.panel.${kind}Title`, { number: slot + 1 })}
-                      note={notes[titleField(kind, slot)]}
-                      autoComplete="off"
-                      {...form.bind(titleField(kind, slot))}
-                    />
-                    <Field
-                      label={t('plans.panel.description')}
-                      autoComplete="off"
-                      {...form.bind(noteField(kind, slot))}
-                    />
-                  </div>
-                ))}
-                {count < 10 && (
-                  <div>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      onClick={() => {
-                        setShown((before) => ({ ...before, [kind]: count + 1 }));
-                      }}
-                    >
-                      {kind === 'classwork'
-                        ? t('plans.panel.addClasswork')
-                        : t('plans.panel.addHomework')}
-                    </Button>
-                  </div>
-                )}
-              </fieldset>
-            );
-          })}
-        </RecordForm>
+        />
       ) : (
         <dl className="grid gap-3">
           <div className="grid gap-0.5">
@@ -294,13 +197,37 @@ export function PlanRowPanel({ plan, row }: { plan: Plan; row: PlanRow }) {
                   {kind === 'classwork' ? t('plans.plan.classworks') : t('plans.plan.homeworks')}
                 </dt>
                 <dd>
-                  <ol className="grid list-decimal gap-1 pl-5">
+                  <ol className="grid list-decimal gap-2 pl-5">
                     {works(kind).map((work) => (
-                      <li key={work.id}>
-                        {work.title}
-                        {work.description !== '' && (
-                          <span className="text-muted-foreground"> — {work.description}</span>
-                        )}
+                      <li key={work.id} className="grid gap-1">
+                        <span>
+                          {work.title}
+                          {work.description !== '' && (
+                            <span className="text-muted-foreground"> — {work.description}</span>
+                          )}
+                          {/* Task 10.8: `09`, In the journal: "marked ... as added in the journal". */}
+                          {item?.addedInJournal.includes(work.id) === true && (
+                            <span className="text-muted-foreground">
+                              {' '}
+                              · {t('plans.plan.addedInJournal')}
+                            </span>
+                          )}
+                        </span>
+                        <ItemFiles
+                          files={(item?.files ?? []).filter((file) => file.workId === work.id)}
+                          editable={editable}
+                          busy={upload.isPending}
+                          pickLabel={t('plans.files.attachTo', { name: work.title })}
+                          onDownload={(file) => {
+                            download.mutate(file);
+                          }}
+                          onRemove={(file) => {
+                            removeFile.mutate(file);
+                          }}
+                          onPick={(file) => {
+                            upload.mutate({ file, workId: work.id });
+                          }}
+                        />
                       </li>
                     ))}
                   </ol>
@@ -313,64 +240,24 @@ export function PlanRowPanel({ plan, row }: { plan: Plan; row: PlanRow }) {
           )}
           {item !== null && (
             <div className="grid gap-1">
-              <dt className="text-sm text-muted-foreground">{t('plans.plan.files')}</dt>
+              {/* Task 10.8: the item's own files are its "Materials", for staff only. */}
+              <dt className="text-sm text-muted-foreground">{t('plans.files.materials')}</dt>
               <dd className="grid gap-2">
-                {item.files.length > 0 && (
-                  <ul className="grid gap-1">
-                    {item.files.map((file) => (
-                      <li key={file.id} className="flex flex-wrap items-center gap-2">
-                        <button
-                          type="button"
-                          className="text-link text-left"
-                          onClick={() => {
-                            download.mutate({ id: file.id, name: file.name });
-                          }}
-                        >
-                          {file.name}
-                        </button>
-                        {editable && (
-                          <Button
-                            type="button"
-                            variant="destructive"
-                            size="sm"
-                            aria-label={t('plans.panel.removeFileOf', { name: file.name })}
-                            onClick={() => {
-                              removeFile.mutate({ id: file.id, name: file.name });
-                            }}
-                          >
-                            {t('plans.panel.removeFile')}
-                          </Button>
-                        )}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-                {editable && item.files.length < 10 && (
-                  <div>
-                    <input
-                      ref={fileInput}
-                      type="file"
-                      className="sr-only"
-                      aria-label={t('plans.panel.addFile')}
-                      accept={PLAN_FILE_TYPES.join(',')}
-                      onChange={(event) => {
-                        const chosen = event.target.files?.[0];
-                        event.target.value = '';
-                        if (chosen !== undefined) upload.mutate(chosen);
-                      }}
-                    />
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      disabled={upload.isPending}
-                      onClick={() => {
-                        fileInput.current?.click();
-                      }}
-                    >
-                      {t('plans.panel.addFile')}
-                    </Button>
-                  </div>
-                )}
+                <ItemFiles
+                  files={item.files.filter((file) => file.workId === null)}
+                  editable={editable}
+                  busy={upload.isPending}
+                  pickLabel={t('plans.files.attachMaterial')}
+                  onDownload={(file) => {
+                    download.mutate(file);
+                  }}
+                  onRemove={(file) => {
+                    removeFile.mutate(file);
+                  }}
+                  onPick={(file) => {
+                    upload.mutate({ file, workId: null });
+                  }}
+                />
                 <FailureAlert error={upload.error ?? removeFile.error ?? download.error} />
               </dd>
             </div>
@@ -383,7 +270,8 @@ export function PlanRowPanel({ plan, row }: { plan: Plan; row: PlanRow }) {
             <Button
               {...panel.opener('item')}
               onClick={() => {
-                panel.start('item', form.reset);
+                // The editor is drawn fresh each time it opens (`PlanItemEditor`).
+                panel.start('item', () => undefined);
               }}
             >
               {item === null ? t('plans.panel.fill') : t('form.edit')}
@@ -406,6 +294,65 @@ export function PlanRowPanel({ plan, row }: { plan: Plan; row: PlanRow }) {
         />
       )}
       <FailureAlert error={clear.error} />
+      <NotUploaded itemId={item?.id ?? null} failed={failed} onChange={setFailed} />
+    </div>
+  );
+}
+
+/** Task 10.8: the files of a work or of the materials, with download, remove and a picker. */
+function ItemFiles({
+  files,
+  editable,
+  busy,
+  pickLabel,
+  onDownload,
+  onRemove,
+  onPick,
+}: {
+  files: readonly PlanItemFile[];
+  editable: boolean;
+  busy: boolean;
+  pickLabel: string;
+  onDownload: (file: { id: string; name: string }) => void;
+  onRemove: (file: { id: string; name: string }) => void;
+  onPick: (file: File) => void;
+}) {
+  const { t } = useTranslation();
+  return (
+    <div className="grid gap-1">
+      {files.length > 0 && (
+        <ul className="grid gap-1">
+          {files.map((file) => (
+            <li key={file.id} className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                className="text-link text-left"
+                onClick={() => {
+                  onDownload({ id: file.id, name: file.name });
+                }}
+              >
+                {file.name}
+              </button>
+              {editable && (
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="sm"
+                  aria-label={t('plans.panel.removeFileOf', { name: file.name })}
+                  onClick={() => {
+                    onRemove({ id: file.id, name: file.name });
+                  }}
+                >
+                  {t('plans.panel.removeFile')}
+                </Button>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+      {editable && files.length < PLAN_FILES_MAX && (
+        <FilePicker label={pickLabel} disabled={busy} onPick={onPick} />
+      )}
     </div>
   );
 }

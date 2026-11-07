@@ -81,8 +81,8 @@ export class PortalHomeworkService {
   }
 
   /**
-   * A file of the homework page: only a file of a plan item that the page lists for this
-   * child in some week (held lesson, a homework given there, the child in the unit on that
+   * A file of the homework page: only a file of a homework that the page lists for this
+   * child in some week (task 10.8: a homework's own files) (held lesson, a homework given there, the child in the unit on that
    * date); 404 otherwise, whatever the reason.
    */
   async file(accountId: string, studentId: string, fileId: string): Promise<StoredFile> {
@@ -110,8 +110,12 @@ export class PortalHomeworkService {
           .where('lesson_plan_items.cleared_at', 'is', null)
           .executeTakeFirst();
         if (file === undefined) return undefined;
+        // Task 10.8: only a file of a homework the page lists for the child; never one of the
+        // item's materials or of a classwork (`10`, Homework: "never the plan item's materials").
         const given = await givenIn(transaction, studentId, span, file.item_id);
-        if (!given.some((one) => one.itemId === file.item_id)) return undefined;
+        if (!given.some((one) => one.files.some((listed) => listed.id === file.id))) {
+          return undefined;
+        }
         return {
           name: file.name,
           type: file.type,
@@ -202,7 +206,8 @@ async function givenIn(
             names: journal.subject.names,
             colour: subjectColourSchema.parse(journal.subject.colour),
           },
-          topic: item?.topic ?? null,
+          // Task 10.8: an item made by a work added in the journal has no topic yet.
+          topic: item === null || item.topic.trim() === '' ? null : item.topic,
           title: one.title,
           number: index + 1,
           dueOn: one.checkAt === null ? null : (dateOf.get(one.checkAt) ?? null),
@@ -213,7 +218,7 @@ async function givenIn(
     }
   }
   const workIds = rows.flatMap((one) => (one.planWorkId === null ? [] : [one.planWorkId]));
-  const itemIds = [...new Set(rows.flatMap((one) => (one.itemId === null ? [] : [one.itemId])))];
+
   const [works, files] = await Promise.all([
     workIds.length === 0
       ? []
@@ -222,19 +227,21 @@ async function givenIn(
           .select(['id', 'description'])
           .where('id', 'in', workIds)
           .execute(),
-    itemIds.length === 0
+    workIds.length === 0
       ? []
       : transaction
           .selectFrom('lesson_plan_files')
           .innerJoin('lesson_plan_items', 'lesson_plan_items.id', 'lesson_plan_files.item_id')
           .select([
             'lesson_plan_files.id',
-            'lesson_plan_files.item_id',
+            'lesson_plan_files.work_id',
             'lesson_plan_files.name',
             'lesson_plan_files.type',
             'lesson_plan_files.bytes',
           ])
-          .where('lesson_plan_files.item_id', 'in', itemIds)
+          // Task 10.8: the files of each homework itself; the item's materials (no work) and the
+          // files of its classworks are for staff only.
+          .where('lesson_plan_files.work_id', 'in', workIds)
           .where('lesson_plan_files.removed_at', 'is', null)
           // The same conditions as the download (permission review should-fix 3).
           .where('lesson_plan_items.cleared_at', 'is', null)
@@ -245,8 +252,9 @@ async function givenIn(
   const descriptionOf = new Map(works.map((one) => [one.id, one.description]));
   const filesOf = new Map<string, PlanFile[]>();
   for (const file of files) {
-    filesOf.set(file.item_id, [
-      ...(filesOf.get(file.item_id) ?? []),
+    if (file.work_id === null) continue;
+    filesOf.set(file.work_id, [
+      ...(filesOf.get(file.work_id) ?? []),
       {
         id: file.id,
         name: file.name,
@@ -260,7 +268,7 @@ async function givenIn(
     return {
       ...row,
       description: description.trim() === '' ? null : description,
-      files: row.itemId === null ? [] : (filesOf.get(row.itemId) ?? []),
+      files: planWorkId === null ? [] : (filesOf.get(planWorkId) ?? []),
     };
   });
 }

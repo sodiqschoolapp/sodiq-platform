@@ -918,7 +918,8 @@ export const uz: Texts<'one' | 'other'> = {
       'Bu qatorni kimdir oʻzgartirdi. Hozir saqlangan qiymat maydon ostida koʻrsatilgan; oʻzgarishingizni qayta kiriting.',
     plan_row_held: 'Bu qatorning darsi oʻtilgan, qatorni tozalab boʻlmaydi.',
     plan_file_too_large: 'Fayl 20 MB dan katta. Kichikroq fayl tanlang.',
-    plan_files_full: 'Qatorda allaqachon 10 ta fayl bor. Avval bittasini oʻchiring.',
+    plan_files_full: 'Bu yerda allaqachon 10 ta fayl bor. Avval bittasini oʻchiring.',
+    plan_work_not_found: 'Bu ish endi rejada yoʻq. Sahifani yangilang.',
     plan_window_closed:
       'Reja oynasi tugagan va bu qatorni tasdiqlangan soʻrov ochmaydi. Rejani oʻzgartirishni soʻrang.',
     plan_window_not_open:
@@ -4128,6 +4129,7 @@ export const uz: Texts<'one' | 'other'> = {
         export: 'Dars rejasi chop etildi yoki eksport qilindi',
         file_add: 'Reja qatoriga fayl qoʻshildi',
         file_remove: 'Reja qatoridan fayl oʻchirildi',
+        work_journal_add: 'Jurnalda qoʻshilgan ish rejaga yozildi',
         items_followed: 'Reja qatorlari dars jadvali oʻzgarishiga ergashdi',
         request_prepared: 'Rejani oʻzgartirish soʻrovi tayyorlandi',
         window_open: 'Reja oynasi ochildi',
@@ -6022,6 +6024,24 @@ export const uz: Texts<'one' | 'other'> = {
     },
   },
   plans: {
+    files: {
+      closeText: 'Ular rejada yoʻq. Kartani ularsiz yopasizmi?',
+      closeAction: 'Ularsiz yopish',
+      materials: 'Materiallar (faqat xodimlar uchun)',
+      materialsNote:
+        'Oʻqituvchining oʻz fayllari, masalan slaydlar yoki javoblar kaliti. Oʻquvchilar va ota-onalar ularni koʻrmaydi.',
+      attachTo: '«{{name}}» ga fayl biriktirish',
+      attachMaterial: 'Material biriktirish',
+      pending: 'saqlanganda yuklanadi',
+      drop: 'Olib tashlash',
+      dropOf: '{{name}} ni olib tashlash',
+      notUploaded: 'Bu fayllar yuklanmadi',
+      retry: 'Qayta urinish',
+      full: 'Bu yerda allaqachon 10 ta fayl bor. Avval bittasini oʻchiring.',
+      tooLarge: '{{name}} 20 MB dan katta.',
+      wrongType:
+        '{{name}} reja qabul qiladigan fayl turi emas: PDF, JPEG, PNG, Word, Excel, PowerPoint, MP3 yoki MP4.',
+    },
     // Task 9.2d: the outcomes of not-covered items and the tray.
     outcomes: {
       carriedIn: 'Oʻtgan chorakdan koʻchirilgan',
@@ -6156,6 +6176,7 @@ export const uz: Texts<'one' | 'other'> = {
       incomplete_other: 'Mavzusiz {{count}} qator',
     },
     plan: {
+      addedInJournal: 'jurnalda qoʻshilgan',
       marks: 'Belgilar',
       title: 'Dars rejasi',
       caption: 'Reja qatorlari',
@@ -6196,6 +6217,7 @@ export const uz: Texts<'one' | 'other'> = {
       plan: '{{unit}}, {{subject}}, {{quarter}}-chorak',
       moved_one: '{{count}} ta yozuv boshqa darsga oʻtadi',
       moved_other: '{{count}} ta yozuv boshqa darslarga oʻtadi',
+      noTopic: 'hali mavzusiz qator',
       notFitting: 'Endi sigʻmaydi: {{topics}}',
       emptyRows_one: '{{count}} ta qator boʻsh qoladi',
       emptyRows_other: '{{count}} ta qator boʻsh qoladi',
@@ -6527,6 +6549,11 @@ export const uz: Texts<'one' | 'other'> = {
       hiddenBy: '{{kind}} ozod qilish bilan yashirilgan {{from}} – {{until}}',
     },
     card: {
+      editPlan: 'Bu dars rejasini oʻzgartirish',
+      askToEdit: 'Bu darsni oʻzgartirishni soʻrash',
+      askReason: 'Nega oʻzgartirish kerak',
+      askSend: 'Soʻrovni yuborish',
+      asked: 'Soʻrov yuborildi.',
       titleLoading: 'Dars',
       title: '{{number}}-dars · {{date}}',
       titleNoNumber: '{{date}} darsi',

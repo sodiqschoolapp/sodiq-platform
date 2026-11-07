@@ -445,6 +445,150 @@ describe('plans in the journal', () => {
       });
     });
 
+    // Task 10.8 (`09`, In the journal: "The lesson card is a second way into the plan item of its
+    // lesson"; plan decision 11; review 11).
+    it('opens the item to its owner while the row is open, offers the request after the window ends at 23:59, opens it again under an approved request, and gives no way in to anyone else', async () => {
+      const owner = await account();
+      const s = await scene({ teacher: owner.account.id });
+      const item = await itemAt(s, s.second, { homeworks: ['Read'] });
+      const plan = await planOf(s.journal, s.q1);
+      // The window of quarter 1 ends on Tuesday 27 October, 23:59 branch time.
+      await sql`
+        insert into lesson_plan_windows
+          (branch_id, quarter_id, start_date, end_date, starts_at, ends_at, opened_at, opened_by)
+        select q.branch_id, q.id, date '2020-01-01', date '2026-10-27',
+          timestamptz '2020-01-01T00:00:00+05:00', timestamptz '2026-10-27T23:59:59.999+05:00',
+          now(), ${owner.account.id}::uuid
+        from quarters q where q.id = ${s.q1}::uuid
+      `.execute(t.database.migrator);
+      const stateAt = (moment: string, lessonId = s.second) =>
+        as(
+          owner,
+          s.branch,
+          teacherIn(s),
+          async (calls) => (await cardOf(calls, lessonId)).plan,
+          moment,
+        );
+      const open = await stateAt('2026-10-27T23:59:00+05:00');
+      expect(open).toMatchObject({
+        quarterId: s.q1,
+        edit: 'open',
+        position: await rowOf(s.classId, s.second),
+      });
+      expect(open.item?.id).toBe(item.itemId);
+      expect(open.item?.homeworks.map((one) => one.title)).toEqual(['Read']);
+      // An empty row is open for a create too.
+      expect((await stateAt('2026-10-27T23:59:00+05:00', s.third)).edit).toBe('open');
+      const closed = await stateAt('2026-10-28T00:00:00+05:00');
+      expect(closed).toMatchObject({ edit: 'request' });
+      expect(closed.item?.id).toBe(item.itemId);
+      // An approved Text request for the lesson opens it again.
+      const approver = await load.classes.account();
+      const asked = await t.database.migrator
+        .insertInto('lesson_plan_requests')
+        .values({
+          branch_id: s.branch,
+          plan_id: plan,
+          journal_id: s.journal,
+          quarter_id: s.q1,
+          kind: 'text',
+          status: 'approved',
+          reason: 'Fix the topic',
+          requested_by: owner.account.id,
+          prepared_at: new Date('2026-10-28T08:00:00+05:00'),
+          sent_at: new Date('2026-10-28T08:00:00+05:00'),
+          decided_at: new Date('2026-10-28T09:00:00+05:00'),
+          decided_by: approver,
+          days: 3,
+          open_until: new Date('2026-10-31T23:59:59.999+05:00'),
+          updated_at: new Date('2026-10-28T09:00:00+05:00'),
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      await t.database.migrator
+        .insertInto('lesson_plan_request_lessons')
+        .values({
+          branch_id: s.branch,
+          request_id: asked.id,
+          lesson_id: s.second,
+          lesson_date: '2026-10-19',
+          approved: true,
+        })
+        .execute();
+      const reopened = await stateAt('2026-10-28T10:00:00+05:00');
+      expect(reopened.edit).toBe('open');
+      // The card's save goes through the plan's route on the item it answered (its base), and the
+      // item of the held lesson is marked "edited after the lesson" (code review, spec 2).
+      const base = reopened.item;
+      if (base === null) throw new Error('The card answers the item to its owner.');
+      const saved = await as(
+        owner,
+        s.branch,
+        teacherIn(s),
+        async (calls) => {
+          const body = {
+            topic: base.topic,
+            objectives: base.objectives,
+            links: base.links,
+            classworks: base.classworks,
+            homeworks: base.homeworks,
+          };
+          return calls.put(`/api/plans/items/${base.id}`, {
+            base: body,
+            values: { ...body, topic: 'Fractions, revised' },
+          });
+        },
+        '2026-10-28T10:00:00+05:00',
+      );
+      expect(saved.status, JSON.stringify(saved.body)).toBe(200);
+      const marked = await t.database.migrator
+        .selectFrom('lesson_plan_places')
+        .innerJoin('lesson_plan_items', 'lesson_plan_items.id', 'lesson_plan_places.item_id')
+        .select(['lesson_plan_items.topic', 'lesson_plan_places.edited_after_lesson'])
+        .where('lesson_plan_places.item_id', '=', base.id)
+        .executeTakeFirstOrThrow();
+      expect(marked).toEqual({ topic: 'Fractions, revised', edited_after_lesson: true });
+      // Another lesson stays closed.
+      expect((await stateAt('2026-10-28T10:00:00+05:00', s.first)).edit).toBe('request');
+      // A Head Teacher of the subject reads the card whole but is no way into the plan.
+      const head = await account();
+      await as(
+        head,
+        s.branch,
+        [{ role: 'head_teacher', branchId: s.branch, subjectIds: [s.subject] }],
+        async (calls) => {
+          const card = await cardOf(calls, s.second);
+          expect(card.whole).toBe(true);
+          expect(card.plan).toMatchObject({ edit: 'none', item: null });
+        },
+      );
+      // A teacher who reads the plan through the subject and grade of the profile (permission
+      // review 4), and the class's Tutor, read the card but are no way into the plan.
+      const colleague = await account();
+      await load.teacher(s.branch, {
+        subjects: [{ subject: s.subject, grades: [7] }],
+        accountId: colleague.account.id,
+      });
+      await as(colleague, s.branch, teacherIn(s), async (calls) => {
+        const card = await cardOf(calls, s.second);
+        expect(card.whole).toBe(true);
+        expect(card.plan).toMatchObject({ edit: 'none', item: null });
+      });
+      const tutor = await account();
+      await as(tutor, s.branch, [{ role: 'tutor', branchId: s.branch }], () => Promise.resolve());
+      const assignment = await t.database.migrator
+        .selectFrom('assignments')
+        .select('id')
+        .where('account_id', '=', tutor.account.id)
+        .where('role', '=', 'tutor')
+        .executeTakeFirstOrThrow();
+      await load.classes.person(s.branch, ['uz'], { accountId: tutor.account.id });
+      await load.classes.tutorRow(s.branch, s.classId, assignment.id);
+      await as(tutor, s.branch, [], async (calls) => {
+        expect((await cardOf(calls, s.second)).plan).toMatchObject({ edit: 'none', item: null });
+      });
+    });
+
     it('refuses a teacher who reads neither the journal nor the plan, and 404s another branch or an unknown lesson', async () => {
       const owner = await account();
       const s = await scene({ teacher: owner.account.id });
@@ -833,6 +977,8 @@ describe('plans in the journal', () => {
         const card = await cardOf(calls, s.third);
         expect(card).toMatchObject({ whole: true, canMark: true, topic: 'Fractions' });
         expect(card.files.map((one) => one.id)).toEqual([own]);
+        // Task 10.8: the substitute is no way into the plan.
+        expect(card.plan).toMatchObject({ edit: 'none', item: null });
         expect((await calls.get(`/api/plans/files/${own}`)).status).toBe(200);
         const other = await calls.get(`/api/plans/files/${elsewhere}`);
         expect(codeOf(other)).toBe('plan_scope');

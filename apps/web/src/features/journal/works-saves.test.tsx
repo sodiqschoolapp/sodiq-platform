@@ -82,6 +82,7 @@ const LESSON_ROW = {
   number: null,
   topic: null,
   notDelivered: false,
+  addedInJournal: [],
   copyFrom: null,
   lock: OPEN_LOCK,
   works: [TEST],

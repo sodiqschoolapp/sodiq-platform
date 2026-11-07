@@ -12,6 +12,7 @@ import {
   type PublishCheck,
   type Role,
   type ScoresSaved,
+  type WorkAdded,
   type WorkSaved,
 } from '@sodiq/shared';
 import {
@@ -906,13 +907,15 @@ describe(`the speed run, ${size.name} (task 10.1)`, () => {
             title: 'Dictation',
           });
           expect(work.status, JSON.stringify(work.body)).toBeLessThan(300);
-          const added = work.body as WorkSaved;
+          // Task 10.8: written into the lesson's plan item; its column is planned.
+          const planned = work.body as WorkAdded;
           const total = await teacher.put(`/api/journal/lessons/${lesson}/works/total`, {
-            column: { workId: added.id },
+            column: { planWorkId: planned.planWorkId, sourceLessonId: lesson },
             total: 30,
-            version: added.version,
+            version: null,
           });
           expect(total.status, JSON.stringify(total.body)).toBeLessThan(300);
+          const added = total.body as WorkSaved;
           let scoreVersion: number | null = null;
           let score = 0;
           await measure(`${branch.name}: save a score`, TARGET.save, async () => {

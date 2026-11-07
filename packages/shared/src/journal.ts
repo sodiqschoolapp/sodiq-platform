@@ -175,6 +175,11 @@ export const journalLessonSchema = z.object({
    */
   number: z.int().min(1).nullable(),
   topic: z.string().nullable(),
+  /**
+   * Task 10.8: the works of the lesson's plan item added in the journal; renamed and removed in
+   * the journal while the item has no topic (`planItem` false).
+   */
+  addedInJournal: z.array(z.uuid()),
   /** Task 8.8: "topic not delivered" is set on the lesson (`edge/lesson-plans`). */
   notDelivered: z.boolean(),
   /** The works of the lesson marked "not held": out of the columns, listed for the undo (`09`: "its column is removed from that lesson"). */

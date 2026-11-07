@@ -76,6 +76,19 @@ describe('lessonColumns', () => {
     expect(columns.get('L3')?.planItem).toBe(true);
   });
 
+  // Task 10.8 (plan decision 4): an item the journal's add made, with no topic yet, is "No plan",
+  // while its works are planned columns.
+  it('counts an item with no topic as no plan item, and still gives its works their columns', () => {
+    const columns = run({
+      lessons: [lesson(1), lesson(2)],
+      planned: new Map([['L1', [cw('c1'), hw('h1')]]]),
+      topicless: new Set(['L1']),
+    });
+    expect(columns.get('L1')?.planItem).toBe(false);
+    expect(titles(columns, 'L1')).toEqual(['c1']);
+    expect(titles(columns, 'L2', 'homework')).toEqual(['h1']);
+  });
+
   it('takes three homeworks and no classwork, each its own column', () => {
     const columns = run({
       lessons: [lesson(1), lesson(2)],

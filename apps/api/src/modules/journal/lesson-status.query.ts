@@ -225,6 +225,27 @@ export async function lessonStatusFacts(
     worksOf.set(lesson.id, graded(lesson) ? (own?.columns ?? []) : []);
     notHeldOf.set(lesson.id, own?.notHeld.length ?? 0);
   }
+  // Task 10.8 (plan decision 15): a work added in the journal is now a plan work marked so; the
+  // discipline report lists it as "added in the journal" beside the works added by hand before.
+  const planWorkIds = [
+    ...new Set(
+      [...worksOf.values()]
+        .flat()
+        .flatMap((column) => (column.planWorkId === null ? [] : [column.planWorkId])),
+    ),
+  ];
+  const addedInJournal = new Set(
+    planWorkIds.length === 0
+      ? []
+      : (
+          await transaction
+            .selectFrom('lesson_plan_works')
+            .select('id')
+            .where(sql<boolean>`id = any(${planWorkIds}::uuid[])`)
+            .where('added_in_journal_at', 'is not', null)
+            .execute()
+        ).map((row) => row.id),
+  );
   const held = lessons.filter(heldOf).map((one) => one.id);
   const heldIds = new Set(held);
   const sources = [
@@ -307,7 +328,9 @@ export async function lessonStatusFacts(
         isHeld &&
         graded(lesson) &&
         (item === undefined || item === null || item.topic.trim() === ''),
-      unplanned: works.filter((one) => one.unplanned).length,
+      unplanned: works.filter(
+        (one) => one.unplanned || (one.planWorkId !== null && addedInJournal.has(one.planWorkId)),
+      ).length,
       locksAt: locks.get(lesson.id) ?? null,
     };
     if (!isHeld) {

@@ -97,6 +97,7 @@ const lesson = (id: string, date: string, enters: boolean, total: number | null)
   number: null,
   topic: 'Fractions',
   notDelivered: false,
+  addedInJournal: [],
   copyFrom: null,
   lock: OPEN_LOCK,
   notHeldWorks: [],

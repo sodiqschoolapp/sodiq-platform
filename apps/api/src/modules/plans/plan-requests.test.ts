@@ -482,6 +482,26 @@ describe('the plan window and edit requests', () => {
           .set('Content-Type', 'application/pdf')
           .send(Buffer.concat([Buffer.from('%PDF-1.7\n'), Buffer.alloc(64, 0x20)]));
         expect(codeOf(upload)).toBe('plan_window_closed');
+        // Task 10.8 (review correction 4): the upload to a work passes the same gate.
+        const work = await t.database.migrator
+          .insertInto('lesson_plan_works')
+          .values({
+            branch_id: x.s.branch,
+            item_id: saved.id,
+            kind: 'homework',
+            position: 1,
+            title: 'Exercises',
+            description: '',
+          })
+          .returning('id')
+          .executeTakeFirstOrThrow();
+        const toWork = await request(t.kit.server)
+          .put(`/api/plans/items/${saved.id}/files?name=notes.pdf&workId=${work.id}`)
+          .set('Cookie', x.owner.cookie)
+          .set(BRANCH_HEADER, x.s.branch)
+          .set('Content-Type', 'application/pdf')
+          .send(Buffer.concat([Buffer.from('%PDF-1.7\n'), Buffer.alloc(64, 0x20)]));
+        expect(codeOf(toWork)).toBe('plan_window_closed');
         const queue = await send(
           'put',
           `/api/plans/journals/${x.journal}/queue`,
@@ -710,10 +730,23 @@ describe('the plan window and edit requests', () => {
         201,
       );
       ok(await at(THURSDAY, async () => decide(x, asked.id, { decision: 'approve', days: 2 })));
+      // Task 10.8 (review correction 4): a file of a work marks the item as one of its materials.
+      const work = await t.database.migrator
+        .insertInto('lesson_plan_works')
+        .values({
+          branch_id: x.s.branch,
+          item_id: first.id,
+          kind: 'homework',
+          position: 1,
+          title: 'Exercises',
+          description: '',
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow();
       await at(THURSDAY, async () => {
         ok(
           await request(t.kit.server)
-            .put(`/api/plans/items/${first.id}/files?name=sheet.pdf`)
+            .put(`/api/plans/items/${first.id}/files?name=sheet.pdf&workId=${work.id}`)
             .set('Cookie', x.owner.cookie)
             .set(BRANCH_HEADER, x.s.branch)
             .set('Content-Type', 'application/pdf')

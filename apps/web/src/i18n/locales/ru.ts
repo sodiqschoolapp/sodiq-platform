@@ -894,7 +894,8 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       'Кто-то уже изменил эту строку. Сохранённое значение показано под полем; введите изменение снова.',
     plan_row_held: 'Урок этой строки уже проведён, строку нельзя очистить.',
     plan_file_too_large: 'Файл больше 20 МБ. Выберите файл поменьше.',
-    plan_files_full: 'В строке уже 10 файлов. Сначала удалите один.',
+    plan_files_full: 'Здесь уже 10 файлов. Сначала удалите один.',
+    plan_work_not_found: 'Этой работы больше нет в плане. Обновите страницу.',
     plan_window_closed:
       'Окно планов закрыто, и одобренного запроса на эту строку нет. Запросите изменение плана.',
     plan_window_not_open:
@@ -4273,6 +4274,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
         export: 'План уроков распечатан или выгружен',
         file_add: 'Добавлен файл в строку плана',
         file_remove: 'Удалён файл из строки плана',
+        work_journal_add: 'Работа, добавленная в журнале, записана в план',
         items_followed: 'Строки плана последовали за изменением расписания',
         request_prepared: 'Подготовлен запрос на изменение плана',
         window_open: 'Открыто окно планов',
@@ -6300,6 +6302,24 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
     },
   },
   plans: {
+    files: {
+      closeText: 'Их нет в плане. Закрыть карточку без них?',
+      closeAction: 'Закрыть без них',
+      materials: 'Материалы (только для сотрудников)',
+      materialsNote:
+        'Собственные файлы учителя, например слайды или ключ ответов. Ученики и родители их не видят.',
+      attachTo: 'Прикрепить файл к «{{name}}»',
+      attachMaterial: 'Прикрепить материал',
+      pending: 'загрузится при сохранении',
+      drop: 'Убрать',
+      dropOf: 'Убрать {{name}}',
+      notUploaded: 'Эти файлы не загрузились',
+      retry: 'Повторить',
+      full: 'Здесь уже 10 файлов. Сначала удалите один.',
+      tooLarge: '{{name}} больше 20 МБ.',
+      wrongType:
+        '{{name}} — тип файла, который план не принимает: PDF, JPEG, PNG, Word, Excel, PowerPoint, MP3 или MP4.',
+    },
     // Task 9.2d: the outcomes of not-covered items and the tray.
     outcomes: {
       carriedIn: 'Перенесено из прошлой четверти',
@@ -6436,6 +6456,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       incomplete_other: '{{count}} строки без темы',
     },
     plan: {
+      addedInJournal: 'добавлено в журнале',
       marks: 'Отметки',
       title: 'План уроков',
       caption: 'Строки плана',
@@ -6484,6 +6505,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       moved_few: '{{count}} записи переходят на другие уроки',
       moved_many: '{{count}} записей переходят на другие уроки',
       moved_other: '{{count}} записи переходят на другие уроки',
+      noTopic: 'строка ещё без темы',
       notFitting: 'Больше не помещаются: {{topics}}',
       emptyRows_one: '{{count}} строка остаётся пустой',
       emptyRows_few: '{{count}} строки остаются пустыми',
@@ -6825,6 +6847,11 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       hiddenBy: 'скрыто освобождением ({{kind}}) {{from}} – {{until}}',
     },
     card: {
+      editPlan: 'Изменить план этого урока',
+      askToEdit: 'Запросить изменение этого урока',
+      askReason: 'Почему нужно изменить',
+      askSend: 'Отправить запрос',
+      asked: 'Запрос отправлен.',
       titleLoading: 'Урок',
       title: 'Урок {{number}} · {{date}}',
       titleNoNumber: 'Урок {{date}}',
