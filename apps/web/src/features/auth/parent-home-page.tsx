@@ -8,6 +8,10 @@ import { FailureAlert } from '@/components/failure-alert';
 import { SECTION_TITLE } from '@/components/ui/control';
 import { momentText } from '@/lib/dates';
 import { Button, buttonVariants } from '@/components/ui/button';
+import { DIGEST_FREQUENCIES, digestFrequencySchema } from '@sodiq/shared';
+import { SelectField } from '@/components/field';
+import { ErrorState, LoadingOutline } from '@/components/states';
+import { chooseDigestFrequency, digestFrequencyQuery } from '@/features/portal/digest-api';
 import { LanguageSection } from './account/language-section';
 import { AuthPage } from './auth-page';
 import { refreshSession, sessionQuery } from './session';
@@ -25,6 +29,7 @@ export function ParentHomePage(): React.JSX.Element {
   return (
     <ParentFrame signOut={signOut} name={session?.fullName ?? session?.login ?? ''}>
       <TelegramSection linkedAt={session?.telegramLinkedAt ?? null} />
+      <DigestSection />
     </ParentFrame>
   );
 }
@@ -87,6 +92,63 @@ function TelegramSection({ linkedAt }: { linkedAt: string | null }): React.JSX.E
         </div>
       )}
       <FailureAlert error={unlink.error} />
+    </section>
+  );
+}
+
+/**
+ * Task 11.5 (`10`: "In the portal a parent changes only their own password, language and digest
+ * frequency"): how often the school's bot sends the digest, twice a week until chosen.
+ */
+function DigestSection(): React.JSX.Element {
+  const { t } = useTranslation();
+  const queryClient = useQueryClient();
+  const frequency = useQuery(digestFrequencyQuery);
+  const choose = useMutation({
+    mutationFn: chooseDigestFrequency,
+    onSuccess: (answer) => {
+      queryClient.setQueryData(digestFrequencyQuery.queryKey, answer);
+    },
+  });
+  let body;
+  if (frequency.isError) {
+    body = (
+      <ErrorState
+        error={frequency.error}
+        onRetry={() => {
+          void frequency.refetch();
+        }}
+      />
+    );
+  } else if (frequency.data === undefined) {
+    body = <LoadingOutline />;
+  } else {
+    body = (
+      <div className="max-w-xs">
+        <SelectField
+          label={t('digest.parent.frequency')}
+          name="digest-frequency"
+          value={frequency.data.frequency}
+          disabled={choose.isPending}
+          options={DIGEST_FREQUENCIES.map((value) => ({
+            value,
+            label: t(`digest.parent.frequencies.${value}`),
+          }))}
+          onChange={(event) => {
+            const chosen = digestFrequencySchema.safeParse(event.target.value);
+            if (chosen.success) choose.mutate(chosen.data);
+          }}
+        />
+      </div>
+    );
+  }
+  return (
+    <section className="grid gap-2" aria-labelledby="parent-digest">
+      <h2 id="parent-digest" className={SECTION_TITLE}>
+        {t('digest.parent.title')}
+      </h2>
+      {body}
+      <FailureAlert error={choose.error} />
     </section>
   );
 }

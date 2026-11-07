@@ -67,6 +67,17 @@ export class TelegramController {
     ) {
       return {};
     }
+    // Task 11.5: /start shows the chat no longer blocks the bot (Release 2 plan, reading 8): the
+    // digest is sent to it again.
+    await this.transactions.run([], (transaction) =>
+      transaction
+        .updateTable('telegram_links')
+        .set({ bot_blocked_at: null })
+        .where('telegram_user_id', '=', String(message.chat.id))
+        .where('ended_at', 'is', null)
+        .where('bot_blocked_at', 'is not', null)
+        .execute(),
+    );
     const texts =
       TELEGRAM_TEXTS[await this.languageOf(message.chat.id, message.from?.language_code)];
     return {

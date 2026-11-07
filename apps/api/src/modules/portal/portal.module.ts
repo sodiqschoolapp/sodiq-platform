@@ -4,6 +4,9 @@ import { tellMovedJob } from '../auth/telegram-links.js';
 import { nodeFetch, TELEGRAM_FETCH, TelegramBot } from './telegram/bot-api.js';
 import { TelegramController } from './telegram/telegram.controller.js';
 import { TellMovedSender } from './telegram/tell-moved.job.js';
+import { DigestAdmin } from './digest/digest-admin.service.js';
+import { DigestController } from './digest/digest.controller.js';
+import { DigestService, digestSendJob, digestTickJob } from './digest/digest.service.js';
 import { type AppConfig } from '../../config/config.js';
 import { CONFIG } from '../../config/config.module.js';
 import { PHOTO_STORE, photoStoreOf } from '../people/photo-store.js';
@@ -20,7 +23,7 @@ import { PortalController } from './portal.controller.js';
  */
 @Module({
   imports: [TimetableModule, ResultsModule],
-  controllers: [PortalController, TelegramController],
+  controllers: [PortalController, TelegramController, DigestController],
   providers: [
     PortalTimetable,
     PortalHomeworkService,
@@ -28,6 +31,8 @@ import { PortalController } from './portal.controller.js';
     TelegramBot,
     { provide: TELEGRAM_FETCH, useValue: nodeFetch },
     TellMovedSender,
+    DigestService,
+    DigestAdmin,
     // The plan files are read from the photos' store under `plans/` (as `plans.module.ts`).
     {
       provide: PHOTO_STORE,
@@ -40,9 +45,13 @@ export class PortalModule implements OnModuleInit {
   constructor(
     private readonly runner: JobRunner,
     private readonly tellMoved: TellMovedSender,
+    private readonly digest: DigestService,
   ) {}
 
   onModuleInit(): void {
     this.runner.handle(tellMovedJob, (transaction, data) => this.tellMoved.send(transaction, data));
+    // Task 11.5: the parents' digest.
+    this.runner.handleWithoutTransaction(digestTickJob, () => this.digest.tick());
+    this.runner.handleWithoutTransaction(digestSendJob, (data) => this.digest.send(data.digestId));
   }
 }

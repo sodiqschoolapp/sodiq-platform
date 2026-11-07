@@ -1172,6 +1172,14 @@ export class Sessions {
       if (account.must_change_password || !(await isParentAccount(transaction, account.id))) {
         return 'none' as const;
       }
+      // Task 11.5 (Release 2 plan, reading 8): a launch from the chat shows it opens the bot
+      // again, so the digest is sent to it again.
+      await transaction
+        .updateTable('telegram_links')
+        .set({ bot_blocked_at: null })
+        .where('id', '=', link.id)
+        .where('bot_blocked_at', 'is not', null)
+        .execute();
       const now = this.clock.now();
       const session = await transaction
         .insertInto('sessions')

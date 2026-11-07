@@ -150,6 +150,13 @@ export class TelegramLinks {
     };
     const ofChat = await this.lockOpenLinkOfChat(transaction, request.telegramUserId);
     if (ofChat !== undefined && ofChat.accountId === request.accountId) {
+      // Task 11.5: a launch from the chat shows the bot is open again (Release 2 plan, reading 8).
+      await transaction
+        .updateTable('telegram_links')
+        .set({ bot_blocked_at: null })
+        .where('id', '=', ofChat.id)
+        .where('bot_blocked_at', 'is not', null)
+        .execute();
       await transaction
         .updateTable('sessions')
         .set({ telegram_link_id: ofChat.id })

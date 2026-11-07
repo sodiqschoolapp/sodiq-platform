@@ -2104,6 +2104,50 @@ export const uz: Texts<'one' | 'other'> = {
     signOut: 'Chiqish',
     portal: 'Portalga qaytish',
   },
+  digest: {
+    settings: {
+      title: 'Ota-onalar uchun xabarnoma',
+      sendAt: 'Xabarnoma vaqti',
+      sendAtNote: 'Tinch soatlardan tashqarida. Toshkent vaqti.',
+      quietFrom: 'Tinch soatlar boshlanishi',
+      quietUntil: 'Tinch soatlar tugashi',
+    },
+    parent: {
+      title: 'Maktab botining xabarnomasi',
+      frequency: 'Qanchalik tez-tez',
+      frequencies: {
+        daily: 'Har kuni',
+        twice_weekly: 'Haftada ikki marta, chorshanba va shanba',
+        weekly: 'Haftada bir marta, shanba',
+      },
+    },
+    log: {
+      title: 'Xabarnomalar yuborilishi jurnali',
+      caption: 'Ota-onalarga yuborilgan xabarnomalar',
+      allStatuses: 'Hammasi',
+      range: '{{total}} tadan {{first}}–{{last}}',
+      earlier: 'Yangiroq',
+      later: 'Eskiroq',
+      chooseDate: 'Sana',
+      date: 'Sana',
+      parent: 'Ota-ona',
+      login: 'Login',
+      children: 'Farzandlar',
+      status: 'Holat',
+      sentAt: 'Yuborilgan vaqt',
+      attempts: 'Urinishlar',
+      emptyTitle: 'Xabarnomalar yoʻq',
+      empty: 'Ota-onalar Telegramni bogʻlagach, xabarnomalar shu yerda koʻrinadi.',
+      statuses: {
+        due: 'Kutilmoqda',
+        nothing: 'Yangilik yoʻq',
+        delivered: 'Yetkazildi',
+        blocked: 'Chat botni bloklagan',
+        failed: 'Yetkazilmadi',
+        no_chat: 'Bogʻlangan chat yoʻq',
+      },
+    },
+  },
   portal: {
     telegram: {
       title: 'Kirish',
@@ -3736,6 +3780,7 @@ export const uz: Texts<'one' | 'other'> = {
       },
       parent_account: {
         slip: 'Ota-ona varaqasi chop etildi',
+        digest_frequency: 'Xabarnoma chastotasi tanlandi',
         first_sign_in: 'Ota-ona birinchi marta kirdi',
         never_used: 'Foydalanilmagan ota-ona akkauntlari: hisobot oʻqildi',
         never_used_export: 'Foydalanilmagan ota-ona akkauntlari: hisobot yuklab olindi',
@@ -3856,6 +3901,7 @@ export const uz: Texts<'one' | 'other'> = {
       },
       school_settings: {
         rating_exams_primary: '0–4-sinflarda reyting imtihonlari oʻzgartirildi',
+        digest: 'Xabarnoma vaqti va tinch soatlar oʻzgartirildi',
       },
       demo_clock: {
         jump: 'Demo vaqt oldinga surildi',

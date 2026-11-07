@@ -747,6 +747,7 @@ describe('a frozen permission table', () => {
       'current_period',
       'day_templates',
       'demo_clock',
+      'digest_log',
       'divisions',
       'early_warning',
       'exemptions',

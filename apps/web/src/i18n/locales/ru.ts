@@ -2181,6 +2181,50 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
     signOut: 'Выйти',
     portal: 'Вернуться в портал',
   },
+  digest: {
+    settings: {
+      title: 'Сводка для родителей',
+      sendAt: 'Время сводки',
+      sendAtNote: 'Вне тихих часов. Время Ташкента.',
+      quietFrom: 'Тихие часы с',
+      quietUntil: 'Тихие часы до',
+    },
+    parent: {
+      title: 'Сводка от бота школы',
+      frequency: 'Как часто',
+      frequencies: {
+        daily: 'Каждый день',
+        twice_weekly: 'Два раза в неделю, в среду и субботу',
+        weekly: 'Раз в неделю, в субботу',
+      },
+    },
+    log: {
+      title: 'Журнал отправки сводок',
+      caption: 'Сводки, отправленные родителям',
+      allStatuses: 'Все',
+      range: '{{first}}–{{last}} из {{total}}',
+      earlier: 'Новее',
+      later: 'Старее',
+      chooseDate: 'Дата',
+      date: 'Дата',
+      parent: 'Родитель',
+      login: 'Логин',
+      children: 'Дети',
+      status: 'Статус',
+      sentAt: 'Отправлено',
+      attempts: 'Попытки',
+      emptyTitle: 'Сводок нет',
+      empty: 'Сводки появятся здесь, когда родители привяжут Telegram.',
+      statuses: {
+        due: 'Ожидает',
+        nothing: 'Нового нет',
+        delivered: 'Доставлено',
+        blocked: 'Чат заблокировал бота',
+        failed: 'Не доставлено',
+        no_chat: 'Нет привязанного чата',
+      },
+    },
+  },
   portal: {
     telegram: {
       title: 'Вход',
@@ -3880,6 +3924,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       },
       parent_account: {
         slip: 'Напечатан бланк родителя',
+        digest_frequency: 'Выбрана частота сводки',
         first_sign_in: 'Родитель вошёл впервые',
         never_used: 'Неиспользованные аккаунты родителей: отчёт прочитан',
         never_used_export: 'Неиспользованные аккаунты родителей: отчёт выгружен',
@@ -4000,6 +4045,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       },
       school_settings: {
         rating_exams_primary: 'Изменены рейтинговые экзамены в 0–4 классах',
+        digest: 'Изменены время сводки и тихие часы',
       },
       demo_clock: {
         jump: 'Демо-время переведено вперёд',

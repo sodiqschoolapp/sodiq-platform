@@ -60,6 +60,16 @@ const SCHOOL_WIDE_TABLES: Record<string, string> = {
     'A link of the password reset by email belongs to an account, which has no branch, and is asked for before any branch is known; a row holds ids, a token hash and moments (task 2.3c-2, pull request #66).',
   telegram_links:
     'The Telegram chat link of a Parent account, which has no branch, written at sign-in before any branch is known; a row holds ids, a Telegram user id and moments (task 11.4, pull request #298).',
+  digest_settings:
+    "The parents' digest time and quiet hours of the whole school, one row set by the Super Admin (10, The parents' digest; task 11.5, pull request #299). Clock times only.",
+  digest_frequencies:
+    'The digest frequency a Parent account chose; an account has no branch (task 11.5, pull request #299). An id, a frequency and a moment.',
+  digests:
+    "One parents' digest of a Parent account and date, the send log the Super Admin reads; a parent's digest covers children in several branches (task 11.5, decision 11 of pull request #299). Ids, a status and moments.",
+  digest_parts:
+    "The children a delivered digest named, first name and class as sent (task 11.5, decision 11 of pull request #299); read by the Super Admin's send log and by the digest itself.",
+  digest_entries:
+    "What a delivered parents' digest carried, one row per entry with the value sent; one digest covers children in several branches and is read by the digest job alone (task 11.5, decision 11 of pull request #299). Ids, a date and the values sent.",
 };
 
 /**
@@ -233,6 +243,8 @@ const SECURITY_DEFINER_FUNCTIONS: Record<string, string> = {
     "The children a Parent account may see at a moment (open link, portal access on, relative not archived or merged, student active), each with its present branch, first and last name and class: the child scope of every portal route, read before any branch is known, since a parent's session names none and a child may be in any branch (10, What parents see; task 11.2, decisions 3 and 4 of pull request #294, Look first). Nothing else of the student.",
   'portal_child_branches(uuid,uuid,date,date,timestamp with time zone)':
     "The branches of a child's class memberships over a span of dates, with the part of the span each covers, only for a child in the account's scope (task 11.2, decision 6 of pull request #294): a branch move accepted ahead keeps the old branch until it takes effect, so a week can lie in two branches. Ids and dates only.",
+  'digest_children(uuid,timestamp with time zone)':
+    'The children a parents\' digest may name at a moment: those of portal_children whose link also has "receives notices" on, read before any branch is known (10, The parents\' digest, Privacy; task 11.5, pull request #299). The same columns as portal_children, without the last name.',
   'own_relative_name(uuid)':
     'The full name of the relative of the account of the session, for its own session answer, as own_person_name for staff (task 11.1, plan of pull request #292).',
   'parent_slip_state(uuid,uuid,timestamp with time zone)':

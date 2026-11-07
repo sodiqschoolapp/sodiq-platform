@@ -2072,6 +2072,50 @@ export const en = {
     signOut: 'Sign out',
     portal: 'Back to the portal',
   },
+  digest: {
+    settings: {
+      title: "Parents' digest",
+      sendAt: 'Time of the digest',
+      sendAtNote: 'Outside the quiet hours. Tashkent time.',
+      quietFrom: 'Quiet hours from',
+      quietUntil: 'Quiet hours until',
+    },
+    parent: {
+      title: 'Digest of the school bot',
+      frequency: 'How often',
+      frequencies: {
+        daily: 'Every day',
+        twice_weekly: 'Twice a week, Wednesday and Saturday',
+        weekly: 'Once a week, Saturday',
+      },
+    },
+    log: {
+      title: 'Digest send log',
+      caption: 'Digests sent to parents',
+      allStatuses: 'All',
+      range: '{{first}}–{{last}} of {{total}}',
+      earlier: 'Newer',
+      later: 'Older',
+      chooseDate: 'Date',
+      date: 'Date',
+      parent: 'Parent',
+      login: 'Login',
+      children: 'Children',
+      status: 'Status',
+      sentAt: 'Sent at',
+      attempts: 'Attempts',
+      emptyTitle: 'No digests',
+      empty: 'Digests appear here once parents link Telegram.',
+      statuses: {
+        due: 'Waiting',
+        nothing: 'Nothing new',
+        delivered: 'Delivered',
+        blocked: 'Chat blocked the bot',
+        failed: 'Not delivered',
+        no_chat: 'No linked chat',
+      },
+    },
+  },
   portal: {
     telegram: {
       title: 'Sign in',
@@ -3696,6 +3740,7 @@ export const en = {
       },
       parent_account: {
         slip: 'Parent slip printed',
+        digest_frequency: 'Digest frequency chosen',
         first_sign_in: 'Parent signed in for the first time',
         never_used: 'Parent accounts never used: report read',
         never_used_export: 'Parent accounts never used: report exported',
@@ -3816,6 +3861,7 @@ export const en = {
       },
       school_settings: {
         rating_exams_primary: 'Rating exams in grades 0–4 changed',
+        digest: 'Digest time and quiet hours changed',
       },
       demo_clock: {
         jump: 'Demo time moved forward',

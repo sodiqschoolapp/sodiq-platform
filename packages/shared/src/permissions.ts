@@ -912,6 +912,16 @@ export const PERMISSIONS = freezeTable({
     parent: ['view'],
   }),
   /**
+   * The send log of the parents' digest (task 11.5, pull request #299; `10`, The parents' digest,
+   * Sending: "Every digest is kept in a send log (to whom, for which children, when, delivered or
+   * not) that the Super Admin can read"). A new area for a new route, approved by the owner on
+   * 6 November 2026 (build plan 11.5, stop-list item 5): "a new area `digest_log`, view" for the
+   * Super Admin only. No role is widened.
+   */
+  digest_log: rows({
+    super_admin: ['view'],
+  }),
+  /**
    * The Super Admin's forced delete of a dated lesson and its restore within
    * 30 days, and the store of forced deletes (task 5.8b, pull request #195,
    * decision 10): 06, Protection: "Forced delete is for Super Admin only, with

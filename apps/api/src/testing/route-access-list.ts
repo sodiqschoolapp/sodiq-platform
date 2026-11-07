@@ -301,6 +301,11 @@ export const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
   // its own chat"; plan of #298, review decision 4, Look first): the fifth route of a parent
   // session. A staff session is answered 409 `no_telegram_link` (telegram.test.ts).
   'DELETE /api/auth/telegram-link': 'any_signed_in_parent',
+  // Task 11.5 (approved by the owner on 6 November 2026: "the `parent` role edits its own
+  // frequency and language"; plan of #299, decision 1, Look first): the sixth and seventh
+  // routes of a parent session. A staff session is answered 403 (digest.routes.test.ts).
+  'GET /api/auth/digest-frequency': 'any_signed_in_parent',
+  'PUT /api/auth/digest-frequency': 'any_signed_in_parent',
   // The parent portal (task 11.2, decision 1 of pull request #294, Look first): a Parent
   // account only, every staff role refused; each route checks the child scope itself
   // (`portal.test.ts`).
@@ -439,6 +444,11 @@ export const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
     roles: ['super_admin'],
   },
   'PUT /api/setup/school-settings/rating-exams-primary': { branch: 'none', roles: ['super_admin'] },
+  // Task 11.5 (plan of #299, decision 2, Look first): the digest's time and quiet hours, read
+  // and changed by the Super Admin alone, school-wide; the send log under `digest_log`.
+  'GET /api/setup/school-settings/digest': { branch: 'none', roles: ['super_admin'] },
+  'PUT /api/setup/school-settings/digest': { branch: 'none', roles: ['super_admin'] },
+  'GET /api/digest-log': { branch: 'none', roles: ['super_admin'] },
   // Task 10.5: the demo time of the test environment, the Super Admin alone, school-wide.
   'GET /api/setup/demo-clock': { branch: 'none', roles: ['super_admin'] },
   'POST /api/setup/demo-clock/jumps': { branch: 'none', roles: ['super_admin'] },
