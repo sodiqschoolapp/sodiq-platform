@@ -29,6 +29,7 @@ export function ParentsPage() {
   const search = useSearch({ from: '/app/people/parents' });
   const { branchId, role } = useView();
   const canReadNeverUsed = role !== null && permits(PERMISSIONS, role, 'parent_accounts', 'export');
+  const canReadDigestLog = role !== null && permits(PERMISSIONS, role, 'digest_log', 'view');
   const all = useQuery(relativesQuery(branchId));
   // "No valid phone" comes from the server, which knows the active students
   // of the branch (task 2.5b-1, decision 3).
@@ -108,11 +109,24 @@ export function ParentsPage() {
           { label: t('people.title'), to: '/people' },
         ]}
         actions={
-          // Task 11.1: the Parent accounts never used, for the readers of `parent_accounts`.
-          canReadNeverUsed ? (
-            <Link to="/people/parent-accounts" className={buttonVariants({ variant: 'secondary' })}>
-              {t('people.parentsNeverUsed.title')}
-            </Link>
+          canReadNeverUsed || canReadDigestLog ? (
+            <>
+              {/* Task 11.1: the Parent accounts never used, for the readers of `parent_accounts`. */}
+              {canReadNeverUsed ? (
+                <Link
+                  to="/people/parent-accounts"
+                  className={buttonVariants({ variant: 'secondary' })}
+                >
+                  {t('people.parentsNeverUsed.title')}
+                </Link>
+              ) : null}
+              {/* Task 11.5: the send log of the parents' digest, for the Super Admin. */}
+              {canReadDigestLog ? (
+                <Link to="/people/digest-log" className={buttonVariants({ variant: 'secondary' })}>
+                  {t('digest.log.title')}
+                </Link>
+              ) : null}
+            </>
           ) : undefined
         }
       />

@@ -77,6 +77,8 @@ export const ENTRY_ABOUT: Readonly<Record<PeopleAction, readonly About[]>> = {
   'parent_account.never_used_export': ['none'],
   'account.linked': ['account', 'person'],
   'account.language_changed': ['account'],
+  // Task 11.5: the parent's own digest frequency, on the account.
+  'parent_account.digest_frequency': ['account'],
   'account.locked': ['account', 'person'],
   'account.unlocked': ['account', 'person'],
   'account.password_reset': ['account', 'person'],

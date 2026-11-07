@@ -363,6 +363,58 @@ export interface Departments {
   tutors: Generated<boolean>;
 }
 
+export interface DigestEntries {
+  account_id: string;
+  digest_id: string;
+  id: Generated<string>;
+  kind: string;
+  lesson_date: string | null;
+  sent_mark: number | null;
+  sent_score: number | null;
+  sent_total: number | null;
+  sent_version: number | null;
+  source_id: string;
+  state: string;
+  student_id: string;
+  subject_id: string | null;
+}
+
+export interface DigestFrequencies {
+  account_id: string;
+  chosen_at: Timestamp;
+  frequency: string;
+}
+
+export interface DigestParts {
+  class_name: string | null;
+  digest_id: string;
+  first_name: string;
+  id: Generated<string>;
+  student_id: string;
+}
+
+export interface Digests {
+  account_id: string;
+  attempts: Generated<number>;
+  created_at: Generated<Timestamp>;
+  digest_date: string;
+  due_at: Timestamp;
+  id: Generated<string>;
+  next_try_at: Timestamp;
+  period_from: Timestamp | null;
+  period_until: Timestamp | null;
+  sent_at: Timestamp | null;
+  status: Generated<string>;
+  telegram_link_id: string;
+}
+
+export interface DigestSettings {
+  id: Generated<boolean>;
+  quiet_from: string;
+  quiet_until: string;
+  send_at: string;
+}
+
 export interface Divisions {
   archived_at: Timestamp | null;
   built_in: Generated<boolean>;
@@ -2118,6 +2170,7 @@ export interface TeachingLoadRows {
 
 export interface TelegramLinks {
   account_id: string;
+  bot_blocked_at: Timestamp | null;
   end_reason: string | null;
   ended_at: Timestamp | null;
   ended_by: string | null;
@@ -2278,6 +2331,11 @@ export interface DB {
   day_templates: DayTemplates;
   demo_clock: DemoClock;
   departments: Departments;
+  digest_entries: DigestEntries;
+  digest_frequencies: DigestFrequencies;
+  digest_parts: DigestParts;
+  digest_settings: DigestSettings;
+  digests: Digests;
   divisions: Divisions;
   early_warning_handled: EarlyWarningHandled;
   exam_invigilators: ExamInvigilators;

@@ -13,6 +13,7 @@ import {
   type RelativeReport,
   type StaffReport,
   type StudentReport,
+  digestStatusSchema,
 } from '@sodiq/shared';
 import { sql } from 'kysely';
 import { CLOCK } from '../../clock/clock.module.js';
@@ -677,6 +678,17 @@ export class PersonalData {
               .orderBy('linked_at')
               .orderBy('id')
               .execute();
+      // Task 11.5 (plan decision 15): each digest of the account, its date and status only.
+      const digests =
+        accountId === null
+          ? []
+          : await transaction
+              .selectFrom('digests')
+              .select(['digest_date', 'status', 'sent_at'])
+              .where('account_id', '=', accountId)
+              .orderBy('digest_date')
+              .orderBy('id')
+              .execute();
       const samePersonId = (await staffOfRelatives(transaction, [id])).get(id);
       const samePerson =
         samePersonId === undefined
@@ -749,6 +761,11 @@ export class PersonalData {
                     linkedAt: link.linked_at.toISOString(),
                     endedAt: link.ended_at?.toISOString() ?? null,
                     endReason: telegramLinkEndOf(link.end_reason),
+                  })),
+                  digests: digests.map((digest) => ({
+                    digestDate: digest.digest_date,
+                    status: digestStatusSchema.parse(digest.status),
+                    sentAt: digest.sent_at?.toISOString() ?? null,
                   })),
                 },
         },

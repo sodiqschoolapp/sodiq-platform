@@ -314,6 +314,36 @@ describe('the Telegram chat link', () => {
       expect((en.body as { text: string }).text).toBe(TELEGRAM_TEXTS.en.start);
     });
 
+    // Task 11.5 (Release 2 plan, reading 8): a chat that blocked the bot is skipped by the digest
+    // until /start or a launch shows it open again.
+    it('clears the mark of a chat that blocked the bot on /start and on a launch', async () => {
+      const linked = await linkedParent();
+      const blocked = () =>
+        t.database.migrator
+          .updateTable('telegram_links')
+          .set({ bot_blocked_at: new Date('2026-10-20T19:00:00+05:00') })
+          .where('account_id', '=', linked.account.id)
+          .where('ended_at', 'is', null)
+          .execute();
+      const mark = async () =>
+        (
+          await t.database.migrator
+            .selectFrom('telegram_links')
+            .select('bot_blocked_at')
+            .where('account_id', '=', linked.account.id)
+            .where('ended_at', 'is', null)
+            .executeTakeFirstOrThrow()
+        ).bot_blocked_at;
+      await blocked();
+      await webhook(start(chat()), TEST_WEBHOOK_SECRET);
+      expect(await mark()).not.toBeNull();
+      await webhook(start(linked.chatId), TEST_WEBHOOK_SECRET);
+      expect(await mark()).toBeNull();
+      await blocked();
+      expect((await launchSignIn(launch(linked.chatId))).status).toBe(200);
+      expect(await mark()).toBeNull();
+    });
+
     it('answers nothing to another message, a group chat or an update without a message', async () => {
       for (const body of [
         start(chat(), undefined, 'private', 'hello'),

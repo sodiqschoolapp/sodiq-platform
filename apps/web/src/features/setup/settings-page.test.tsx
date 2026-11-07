@@ -424,6 +424,36 @@ describe('the settings page', () => {
     ]);
   });
 
+  // Task 11.5: the digest's time and quiet hours, for the Super Admin alone.
+  it('lets the Super Admin set the digest time and quiet hours, and hides them from others', async () => {
+    const calls = settingsApi('super_admin', {
+      'GET /api/setup/school-settings/digest': () =>
+        json({ sendAt: '19:00', quietFrom: '21:00', quietUntil: '08:00' }),
+      'PUT /api/setup/school-settings/digest': () =>
+        json({ sendAt: '18:30', quietFrom: '21:00', quietUntil: '08:00' }),
+    });
+    renderApp('/setup/settings');
+    const digest = await section(en.digest.settings.title);
+    const time = await digest.findByLabelText(en.digest.settings.sendAt);
+    expect((time as HTMLInputElement).value).toBe('19:00');
+    fireEvent.change(time, { target: { value: '18:30' } });
+    fireEvent.click(digest.getByRole('button', { name: en.form.save }));
+    await waitFor(() => {
+      expect(
+        calls.find((call) => call.route === 'PUT /api/setup/school-settings/digest')?.body,
+      ).toEqual({ sendAt: '18:30', quietFrom: '21:00', quietUntil: '08:00' });
+    });
+  });
+
+  it('shows the digest settings to no role but the Super Admin', async () => {
+    const calls = settingsApi('academic_vice_principal');
+    renderApp('/setup/settings');
+    await screen.findByRole('heading', { name: en.setup.settings.title });
+    await section(en.setup.settings.school.title);
+    expect(screen.queryByRole('region', { name: en.digest.settings.title })).toBeNull();
+    expect(calls.some((call) => call.route.includes('/digest'))).toBe(false);
+  });
+
   it('speaks Russian', async () => {
     fakeApi({
       'GET /api/auth/session': () => json(sessionAs('academic_vice_principal', 'ru')),

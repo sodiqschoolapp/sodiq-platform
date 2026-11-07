@@ -97,6 +97,14 @@ const parentAccountReportSchema = z.strictObject({
       endReason: telegramLinkEndSchema.nullable(),
     }),
   ),
+  /** Task 11.5 (plan decision 15): each parents' digest of the account, never its text. */
+  digests: z.array(
+    z.strictObject({
+      digestDate: z.iso.date(),
+      status: z.enum(['due', 'nothing', 'delivered', 'blocked', 'failed', 'no_chat']),
+      sentAt: z.iso.datetime().nullable(),
+    }),
+  ),
 });
 
 /** What every report holds besides the person. */

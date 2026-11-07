@@ -62,6 +62,7 @@ import { StaffImportPage } from '@/features/people/staff-import-page';
 import { StudentImportPage } from '@/features/people/student-import-page';
 import { StudentsPage } from '@/features/people/students-page';
 import { ParentsPage } from '@/features/people/parents-page';
+import { DigestLogPage } from '@/features/portal/digest-log-page';
 import { VacanciesPage } from '@/features/people/vacancies-page';
 import { YearsPage } from '@/features/setup/years-page';
 import { SlotTypesPage } from '@/features/setup/slot-types-page';
@@ -812,6 +813,14 @@ const parentSlipsRoute = createRoute({
   component: guarded('parent_accounts', ParentSlipsPage),
 });
 
+/** The send log of the parents' digest, a section of People (task 11.5). */
+const digestLogRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/people/digest-log',
+  validateSearch: listSearch,
+  component: guarded('digest_log', DigestLogPage),
+});
+
 /** The Parent accounts never used, a section of People (task 11.1). */
 const parentsNeverUsedRoute = createRoute({
   getParentRoute: () => appRoute,
@@ -985,6 +994,7 @@ const routeTree = rootRoute.addChildren([
     resetEntriesRoute,
     parentSlipsRoute,
     parentsNeverUsedRoute,
+    digestLogRoute,
     auditRoute,
     forcedDeletesRoute,
     personalDataRoute,

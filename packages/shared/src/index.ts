@@ -2594,3 +2594,4 @@ export {
   type TelegramUpdate,
   type TelegramWebhookAnswer,
 } from './telegram.js';
+export * from './digest.js';

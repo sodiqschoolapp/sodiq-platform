@@ -16,18 +16,23 @@ const PARENT = sessionOf({
 
 describe('the frame of a parent', () => {
   it('opens as the account page, with language, password, sign-out and the way back to the portal', async () => {
-    const calls = fakeApi({ 'GET /api/auth/session': () => json(PARENT) });
+    const calls = fakeApi({
+      'GET /api/auth/session': () => json(PARENT),
+      'GET /api/auth/digest-frequency': () => json({ frequency: 'twice_weekly', chosen: false }),
+    });
     renderApp('/parent');
     await screen.findByRole('heading', { name: en.parent.title });
     expect(screen.getByText('Dilfuza Karimova')).toBeDefined();
     expect(screen.getByRole('link', { name: en.parent.password })).toBeDefined();
     expect(screen.getByRole('button', { name: en.parent.signOut })).toBeDefined();
     expect(screen.getByRole('link', { name: en.parent.portal })).toBeDefined();
-    // No staff menu, and no call of a staff route.
+    // No staff menu, and no call of a staff route: the own digest frequency only (task 11.5).
     expect(screen.queryByRole('navigation', { name: en.layout.menu })).toBeNull();
-    expect(
-      calls.filter((call) => call.route !== 'GET /api/auth/session').map((call) => call.route),
-    ).toEqual([]);
+    await waitFor(() => {
+      expect(
+        calls.filter((call) => call.route !== 'GET /api/auth/session').map((call) => call.route),
+      ).toEqual(['GET /api/auth/digest-frequency']);
+    });
   });
 
   it('sends a parent away from a staff page, to the portal (task 11.2)', async () => {

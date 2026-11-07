@@ -133,11 +133,11 @@ Neither was done by hand (owner, 29 October 2026, issue #42). In their place: th
 
 ## The routes in numbers
 
-- Routes of the application: 509, each called by the role harness as the 15 roles, an account without a role, a Parent account (task 11.1) and nobody, in the own and in another branch.
-- Without sign-in: 5. For the own account: 22. The parent portal: 6. With a permission of the table: 476.
+- Routes of the application: 514, each called by the role harness as the 15 roles, an account without a role, a Parent account (task 11.1) and nobody, in the own and in another branch.
+- Without sign-in: 5. For the own account: 24. The parent portal: 6. With a permission of the table: 479.
 - Routes with a limit inside the route: 154.
 - Routes that take an id: 400, with 839 ids (branch 738, school 76, own 9, none 16).
-- Areas of the permission table: 60.
+- Areas of the permission table: 61.
 
 ## Routes without a role
 
@@ -156,6 +156,7 @@ Every signed-in account, for its own account only (`@AnySignedIn`):
 - `DELETE /api/auth/photo`
 - `DELETE /api/auth/telegram-link` (a parent session too, task 11.1)
 - `DELETE /api/auth/trusted-devices/:id`
+- `GET /api/auth/digest-frequency` (a parent session too, task 11.1)
 - `GET /api/auth/photo`
 - `GET /api/auth/second-step`
 - `GET /api/auth/session` (a parent session too, task 11.1)
@@ -173,6 +174,7 @@ Every signed-in account, for its own account only (`@AnySignedIn`):
 - `POST /api/feedback`
 - `POST /api/notifications/:id/read`
 - `POST /api/notifications/read-all`
+- `PUT /api/auth/digest-frequency` (a parent session too, task 11.1)
 - `PUT /api/auth/language` (a parent session too, task 11.1)
 - `PUT /api/auth/photo`
 
@@ -1554,6 +1556,12 @@ Every area of `PERMISSIONS` (`packages/shared/src/permissions.ts`), the table th
 | Role | view | create | edit | archive | export |
 | --- | :-: | :-: | :-: | :-: | :-: |
 | super_admin | yes |  | yes |  |  |
+
+### `digest_log`
+
+| Role | view | create | edit | archive | export |
+| --- | :-: | :-: | :-: | :-: | :-: |
+| super_admin | yes |  |  |  |  |
 
 ### `divisions`
 

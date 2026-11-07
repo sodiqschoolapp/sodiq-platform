@@ -46,6 +46,8 @@ export const AUDIT_ACTION_GROUPS = {
     'telegram.linked',
     'telegram.moved',
     'telegram.unlinked',
+    // Task 11.5: the parent chose the frequency of the digest.
+    'parent_account.digest_frequency',
     'account.second_step_started',
     'account.second_step_on',
     'account.second_step_off',
@@ -113,6 +115,8 @@ export const AUDIT_ACTION_GROUPS = {
     'subject_quarter_weights.set',
     'subject_quarter_primary_weights.set',
     'school_settings.rating_exams_primary',
+    // Task 11.5: the digest's time of day and quiet hours.
+    'school_settings.digest',
     // Task 10.5: a jump of the demo clock of the test environment.
     'demo_clock.jump',
   ],
