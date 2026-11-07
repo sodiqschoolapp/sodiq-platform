@@ -401,6 +401,20 @@ The owner's answers to the questions the plans of these tasks would ask. `next-t
 23. The checklist per branch (Super Admin, Academic Vice Principal, Principal): branch and weekdays; rooms (at least one in use); departments (school-wide, shown as "whole school"); a year exists; four quarters dated; at least one lesson slot type; a default template in force; calendar (shows the count of entries, never blocks).
 24. Permissions: area `settings` — Super Admin and Academic Vice Principal view, edit; Principal view. Travel time is under `branches` edit (Super Admin only).
 
+## 7 November 2026: the rating in the portal (task 11.6)
+
+Plan approved on pull request #302 with corrections 1 to 3. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first** (spec reading). "Own position" is the class across all subjects: the child's place in the class's all-subject list and that class's average; no per-subject place. Proposed `/spec-change` of `08`, Rating, row Own position, only if the owner wants it: "The student's own place and the class average, across all subjects and in each subject, without other students' names." | `08` gives a class average only for that list, and its one-subject list names no parent among its readers; a small group's average gives away a classmate's figure (decision 1) |
+| **Look first** (privacy, changed by the review). No count of the students ranked is sent or shown. In a class with two ranked students the class average, which `08` requires, still gives away the other's figure (2 × average − own): for the owner to weigh | `08` asks for the own place and the class average only; Done when: "no other student's ... place reaches a parent" (decision 2, review correction 1) |
+| The started quarters of the child's present branch's current year, the current one by default; another year, a quarter not started and another branch are 404 | As Grades, 11.3 decisions 3 and 10 (decision 3) |
+| Reference date, who is counted and who is ranked are the staff rating's; the child's class is a class of the branch and of the quarter's year, not archived, on the reference date, else none | 9.3a decisions 5 and 6 (decision 4, review corrections 2 and 3) |
+| "Provisional" and "not official" exactly as `listStateOf` gives them to the staff list | `08`; 9.2b, 9.2c (decision 5) |
+| The "updated at" stamp of the prepared totals is not shown to parents | Staff information (decision 6) |
+| A portal read is not audited | 11.2 decisions 10 and 11 (decision 7) |
+
 ## 7 November 2026: the parents' digest (task 11.5)
 
 Plan approved on pull request #299 with corrections 1 to 3. Flagged on issue #42.
