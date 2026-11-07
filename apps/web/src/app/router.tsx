@@ -26,6 +26,7 @@ import { BranchesPage } from '@/features/setup/branches-page';
 import { BuildingsPage } from '@/features/setup/buildings-page';
 import { DivisionsPage } from '@/features/setup/divisions-page';
 import { SubjectsPage } from '@/features/setup/subjects-page';
+import { SubjectImportPage } from '@/features/setup/subject-import-page';
 import { ClassesPage } from '@/features/classes/classes-page';
 import { GroupPlacementPage } from '@/features/classes/group-placement-page';
 import { GroupsPage } from '@/features/classes/groups-page';
@@ -427,6 +428,14 @@ const divisionsRoute = createRoute({
   path: '/setup/divisions',
   validateSearch: listSearch,
   component: guarded('divisions', DivisionsPage),
+});
+
+/** The subject import from the system's template (the owner's change of 7 November 2026, #316). */
+const subjectImportRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/setup/subjects/import',
+  validateSearch: listSearch,
+  component: guarded('subjects', SubjectImportPage),
 });
 
 /** Subjects and their weights (task 2.1). */
@@ -990,6 +999,7 @@ const routeTree = rootRoute.addChildren([
     demoClockRoute,
     travelTimesRoute,
     subjectsRoute,
+    subjectImportRoute,
     classesRoute,
     groupsRoute,
     groupPlacementRoute,

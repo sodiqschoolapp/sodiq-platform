@@ -8,7 +8,7 @@ import {
   type SubjectRecord,
 } from '@sodiq/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useNavigate, useSearch } from '@tanstack/react-router';
+import { Link, useNavigate, useSearch } from '@tanstack/react-router';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, branchHeader } from '@/api/client';
@@ -19,7 +19,7 @@ import { useNewRecord } from '@/components/list/use-new-record';
 import { type Column, type Filter, type ListSearch } from '@/components/list/list-state';
 import { PageHeader } from '@/components/page-header';
 import { ErrorState } from '@/components/states';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { useView } from '@/features/access/use-view';
 import { divisionsQuery, nameOf } from './setup-api';
 import { SubjectChip } from './subject-colour';
@@ -275,6 +275,12 @@ export function SubjectsPage() {
     <span className="flex flex-wrap items-center gap-2">
       {noDepartment && (
         <span className="text-sm text-muted-foreground">{t('setup.subjects.needsDepartment')}</span>
+      )}
+      {/* The import from the system's template (#316): it creates subjects and sets their weights. */}
+      {canEdit && (
+        <Link to="/setup/subjects/import" className={buttonVariants({ variant: 'secondary' })}>
+          {t('setup.subjectImport.open')}
+        </Link>
       )}
       <Button
         id={newRecord.buttonId}

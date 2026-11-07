@@ -311,6 +311,10 @@ export const ERROR_CODES = [
   'import_decision_unknown',
   /** A change made at the same moment met the import; nothing was saved, try again (task 9.4g). */
   'import_changed',
+  /** This subject import was confirmed already (#316): its own code, the text of `import_already_confirmed` names the student list. */
+  'subject_import_already_confirmed',
+  /** A change of subjects or quarters made at the same moment met the subject import; nothing was saved (#316). */
+  'subject_import_changed',
   /** No photo store is configured on this server: photos cannot be added or shown yet (answer 2; task 2.2c-2). */
   'photos_not_configured',
   /** The photo store did not answer in time or refused; only photos fail (`edge/system-behaviour`; task 2.2c-2). */
@@ -577,6 +581,12 @@ export const ERROR_CODES = [
   'class_group_no_seat',
   /** A class row would be saved without a group of a split or group subject of its class (task 3.2c, decision 1): a fault of the path, never a choice of the person. */
   'class_group_missing',
+  /** The student import names no group for a split or group subject of the class (owner's change of 7 November 2026). `details` names the subject (`subjectId`) and its first day (`day`). */
+  'class_group_required',
+  /** A group the student import names does not take students from the class on some day of the class row (`recordId` the group, `day` the first such day). */
+  'class_group_not_offered',
+  /** A group the student import names has no free seat on some day of the class row (`recordId` the group, `day` the first such day). */
+  'class_group_chosen_full',
   /** The change would put the student in the same class or group on the day after a stay there ends, which is one stay (task 3.5c, decision 11: `*_one_stay`); the earlier change is cancelled or undone instead. */
   'stay_continues',
   /** A move dated before today is for the Super Admin and the Academic Vice Principal (`edge/students-classes-groups`: "Backdating is for the Academic Vice Principal"; task 3.3a, decision 4). */

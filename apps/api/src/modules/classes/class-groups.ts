@@ -77,7 +77,11 @@ export interface CoverRow {
   until: SchoolDate;
   ownUntil: SchoolDate;
   leavingId: string | null;
-  cause: 'automatic' | 'cancel' | 'undo';
+  /**
+   * `placement`: a group the person named for the student (the student import, owner's
+   * change of 7 November 2026), as the bulk screen writes it.
+   */
+  cause: 'automatic' | 'cancel' | 'undo' | 'placement';
   review: boolean;
   /** The move whose action writes the row (task 3.3a, 0050), if any. */
   writtenByMoveId: string | null;
@@ -229,6 +233,30 @@ export class SeatBook {
     return (
       peakWith(await this.storedOf(group.id), [...this.addedTo(group.id), range]) <= group.maxSize
     );
+  }
+
+  /**
+   * The first day of `range` on which the group has no free seat, the rows added so far
+   * counted; `undefined` when it has one on every day. The count changes only where a row
+   * begins, so those days and the range's first day are the ones looked at.
+   */
+  async firstFullDay(
+    group: { id: string; maxSize: number },
+    range: HeldRange,
+  ): Promise<SchoolDate | undefined> {
+    const held = [...(await this.storedOf(group.id)), ...this.addedTo(group.id)];
+    const days = [
+      ...new Set([
+        range.from,
+        ...held.map((one) => one.from).filter((day) => day > range.from && day < range.until),
+      ]),
+    ].sort();
+    for (const day of days) {
+      if ((await this.membersOn(group.id, day)) >= group.maxSize) {
+        return day;
+      }
+    }
+    return undefined;
   }
 
   /** The members of the group on `day`, the rows added so far counted. */
@@ -518,6 +546,14 @@ export async function planClassGroups(
   pathOf: (index: number) => string = (index) => `students.${String(index)}`,
   moveId: string | null = null,
   preferredOf: (studentId: string, subjectId: string) => string | undefined = () => undefined,
+  /**
+   * The preferred group is the one the person named and the only one taken (the student
+   * import, owner's change of 7 November 2026): a subject with no group named, a group not
+   * offered on some stretch, or a named group with no seat on some day is refused, never
+   * replaced by the smallest group; the rows are `placement` rows without the review tag, and
+   * touching stretches of one group are one row (`group_memberships_one_stay`).
+   */
+  required = false,
 ): Promise<{ rows: CoverRow[]; refused: ErrorDetail[] }> {
   const rows: CoverRow[] = [];
   const refused: ErrorDetail[] = [];
@@ -548,6 +584,29 @@ export async function planClassGroups(
         preferredId === undefined
           ? undefined
           : offered.find((group) => group.id.toLowerCase() === preferredId);
+      if (required && preferred === undefined) {
+        refused.push(
+          preferredId === undefined
+            ? {
+                path: pathOf(index),
+                code: 'class_group_required',
+                message: 'No group is named for a split or group subject of the class.',
+                recordId: row.studentId,
+                subjectId,
+                day: stretch.from,
+              }
+            : {
+                path: pathOf(index),
+                code: 'class_group_not_offered',
+                message: 'The named group does not take students from the class on some day.',
+                recordId: preferredId,
+                subjectId,
+                day: stretch.from,
+              },
+        );
+        refusedSubjects.add(subjectId);
+        continue;
+      }
       let day = stretch.from;
       while (day < stretch.until) {
         const holding = held.find((one) => one.from <= day && day < one.until);
@@ -562,7 +621,21 @@ export async function planClassGroups(
         const best =
           preferred !== undefined && (await book.fits(preferred, { from: day, until: stop }))
             ? preferred
-            : await smallestGroup(book, offered, { from: day, until: stop });
+            : required
+              ? undefined
+              : await smallestGroup(book, offered, { from: day, until: stop });
+        if (best === undefined && required && preferred !== undefined) {
+          refused.push({
+            path: pathOf(index),
+            code: 'class_group_chosen_full',
+            message: 'The named group has no free seat on some day.',
+            recordId: preferred.id,
+            subjectId,
+            day: (await book.firstFullDay(preferred, { from: day, until: stop })) ?? day,
+          });
+          refusedSubjects.add(subjectId);
+          break;
+        }
         if (best === undefined) {
           refused.push({
             path: pathOf(index),
@@ -576,6 +649,27 @@ export async function planClassGroups(
         }
         book.add(best.id, { from: day, until: stop });
         const ownEnd = atEnd ? row.ownUntil : stop;
+        // One stay: a named group's row that ends where this one begins grows instead.
+        const touching = required
+          ? rows.find(
+              (one) =>
+                one.studentId === row.studentId &&
+                one.groupId === best.id &&
+                one.until === day &&
+                one.cause === 'placement',
+            )
+          : undefined;
+        if (touching !== undefined) {
+          touching.until = stop;
+          touching.ownUntil = ownEnd;
+          touching.leavingId = atEnd && row.until < row.ownUntil ? row.leavingId : null;
+          touching.endedByMoveId =
+            atEnd && row.until < row.ownUntil && row.leavingId === null
+              ? (row.endedByMoveId ?? null)
+              : null;
+          day = stop;
+          continue;
+        }
         rows.push({
           studentId: row.studentId,
           groupId: best.id,
@@ -585,8 +679,8 @@ export async function planClassGroups(
           until: stop,
           ownUntil: ownEnd,
           leavingId: atEnd && row.until < row.ownUntil ? row.leavingId : null,
-          cause: 'automatic',
-          review: true,
+          cause: required ? 'placement' : 'automatic',
+          review: !required,
           writtenByMoveId: moveId,
           endedByMoveId:
             atEnd && row.until < row.ownUntil && row.leavingId === null
@@ -603,7 +697,15 @@ export async function planClassGroups(
 /** Throws the refusals of `planClassGroups`, all or none (decision 3); the code is the first one's. */
 export function refuseNoSeat(refused: readonly ErrorDetail[]): void {
   if (refused.length > 0) {
-    throw new ApiException('class_group_no_seat', 409, undefined, [...refused]);
+    // A path that names its groups (the student import) is refused with its own code.
+    const first = refused[0]?.code;
+    const code: ErrorCode =
+      first === 'class_group_required' ||
+      first === 'class_group_not_offered' ||
+      first === 'class_group_chosen_full'
+        ? first
+        : 'class_group_no_seat';
+    throw new ApiException(code, 409, undefined, [...refused]);
   }
 }
 
@@ -619,6 +721,8 @@ export async function writeCoverRows(
   access: Access,
   rows: readonly CoverRow[],
   requestId: string,
+  /** The import that names the groups, carried into each entry of a `placement` row. */
+  importId?: string,
 ): Promise<GroupRowWritten[]> {
   const written: GroupRowWritten[] = [];
   for (const row of rows) {
@@ -673,7 +777,8 @@ export async function writeCoverRows(
       cause: row.cause,
       review: row.review,
     });
-    if (row.cause === 'automatic') {
+    // A row the person named (`placement`) has its entry as on the bulk screen.
+    if (row.cause === 'automatic' || row.cause === 'placement') {
       await audit.record(transaction, {
         branchId: row.branchId,
         actorId: access.accountId,
@@ -688,6 +793,7 @@ export async function writeCoverRows(
           cause: row.cause,
           review: row.review,
           ...(row.writtenByMoveId === null ? {} : { moveId: row.writtenByMoveId }),
+          ...(row.cause === 'placement' && importId !== undefined ? { importId } : {}),
         },
         requestId,
       });
@@ -848,6 +954,13 @@ export async function coverClassRows(
      * subject id (task 3.3b, decision 5 with correction 1).
      */
     preferred?: ReadonlyMap<string, ReadonlyMap<string, string>>;
+    /**
+     * `preferred` names the only groups taken (the student import; owner's change of
+     * 7 November 2026): see `planClassGroups`.
+     */
+    required?: boolean;
+    /** The import whose rows these are, for the entries of the named rows. */
+    importId?: string;
   },
   requestId: string,
 ): Promise<{ written: GroupRowWritten[]; automatic: GroupRowWritten[] }> {
@@ -902,6 +1015,7 @@ export async function coverClassRows(
     input.pathOf,
     input.moveId ?? null,
     (studentId, subjectId) => input.preferred?.get(studentId)?.get(subjectId),
+    input.required ?? false,
   );
   refuseNoSeat(
     [...planned.refused].sort(
@@ -912,7 +1026,14 @@ export async function coverClassRows(
   );
   const joined = joinCoverRows(given, planned.rows);
   const written = await writeCoverRows(transaction, audit, access, joined.given, requestId);
-  const automatic = await writeCoverRows(transaction, audit, access, joined.automatic, requestId);
+  const automatic = await writeCoverRows(
+    transaction,
+    audit,
+    access,
+    joined.automatic,
+    requestId,
+    input.importId,
+  );
   return { written: [...written, ...automatic], automatic };
 }
 

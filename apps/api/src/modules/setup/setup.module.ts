@@ -27,6 +27,8 @@ import { TravelTimes } from './travel-times.service.js';
 import { Rooms } from './rooms.service.js';
 import { SubjectsController } from './subjects.controller.js';
 import { Subjects } from './subjects.service.js';
+import { SubjectImports } from './subject-imports.service.js';
+import { AccessModule } from '../access/access.module.js';
 import { QuarterLessons } from './quarter-lessons.js';
 import { TemplateLessons } from './template-lessons.js';
 import { PlansModule } from '../plans/plans.module.js';
@@ -41,7 +43,7 @@ import { PlansModule } from '../plans/plans.module.js';
  * environment (task 10.5).
  */
 @Module({
-  imports: [TimetableModule, PlansModule, NotificationsModule],
+  imports: [AccessModule, TimetableModule, PlansModule, NotificationsModule],
   controllers: [
     BranchesController,
     BuildingsController,
@@ -73,6 +75,7 @@ import { PlansModule } from '../plans/plans.module.js';
     DemoClockService,
     TravelTimes,
     Subjects,
+    SubjectImports,
   ],
 })
 export class SetupModule {}

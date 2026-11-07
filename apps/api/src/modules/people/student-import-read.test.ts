@@ -137,6 +137,18 @@ describe('reading an upload', () => {
     expect(cellText('   ')).toBeUndefined();
   });
 
+  // Owner's change of 7 November 2026: a row names its groups in up to eight columns.
+  it('reads the group cells with their columns, empty ones left out', async () => {
+    const parsed = await one(
+      studentRow('Oxford', { group1: '7-M-1', group3: ' 7-E-2 ', group8: '' }),
+    );
+    expect(parsed.groups).toEqual([
+      { column: 'group1', name: '7-M-1' },
+      { column: 'group3', name: '7-E-2' },
+    ]);
+    expect((await one(studentRow('Oxford'))).groups).toEqual([]);
+  });
+
   it('takes real dates and dd.mm.yyyy only', () => {
     expect(dottedDateOf('2.9.2026')).toBe('2026-09-02');
     expect(dottedDateOf('31.02.2026')).toBeUndefined();

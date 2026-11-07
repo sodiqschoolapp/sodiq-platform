@@ -448,6 +448,12 @@ export const en = {
       'No group of the screen has a free seat for some students, so nobody was placed. Raise the maximum size of a group or add a group.',
     class_group_no_seat:
       'No group of a split or group subject of the class has a free seat on every day the student would be in the class, so nothing was saved. Raise the maximum size of a group or add a group, then try again.',
+    class_group_required:
+      'No group is named for a subject the class is split for. Name the group, then try again.',
+    class_group_not_offered:
+      'The named group does not take students from this class on every day the student would be in it. Name another group, then try again.',
+    class_group_chosen_full:
+      'The named group has no free seat on every day the student would be in it. Name another group or raise its maximum size, then try again.',
     class_group_missing:
       'The student would be in a class without a group of one of its group subjects. Nothing was saved. Reload and try again.',
     stay_continues:
@@ -1044,6 +1050,9 @@ export const en = {
     import_decision_unknown: 'The rows changed. Upload the file again.',
     import_changed:
       'Someone changed students or relatives at the same moment. Nothing was saved; try again.',
+    subject_import_already_confirmed: 'This import was already saved. Open the subject list.',
+    subject_import_changed:
+      'Someone changed subjects or quarters at the same moment. Nothing was saved; try again.',
     photos_not_configured: 'Photos are not configured yet. Ask the administrator.',
     photos_unavailable: 'Photos cannot be reached right now. Try again later.',
     reset_link_invalid:
@@ -1744,6 +1753,38 @@ export const en = {
       groupsElsewhere_other: 'In other branches: {{n}} groups.',
       takenNames: 'Not restored, because an active subject has one of its names now: {{names}}.',
       departmentArchivedNames: 'Not restored, because the department is archived: {{names}}.',
+    },
+    subjectImport: {
+      open: 'Import from Excel',
+      title: 'Subject import',
+      name: 'Subject',
+      saved_one: '{{count}} subject saved.',
+      saved_other: '{{count}} subjects saved.',
+      toList: 'Open the subject list',
+      confirm_one: 'Save {{count}} subject',
+      confirm_other: 'Save all {{count}} subjects',
+      quarters_one:
+        'The quarterly distribution of a graded subject goes to {{count}} open quarter of the current and later years.',
+      quarters_other:
+        'The quarterly distribution of a graded subject goes to {{count}} open quarters of the current and later years.',
+      noQuarters:
+        'The branch has no open quarter of the current or a later year: set the quarterly distributions when a year is added.',
+      notClean: 'Nothing is saved until every row is clean. Correct the file and upload it again.',
+      problems: {
+        required: 'fill this in.',
+        invalid: 'this value is not accepted.',
+        value_unknown: 'choose a value from the list.',
+        name_unknown: 'no active department of the school has this name.',
+        name_ambiguous: 'two departments have this name; write the name in another language.',
+        grades_invalid: 'write the grades as “5, 6, 7” or “5-7”, from 0 to 11.',
+        weight_invalid: 'write a whole number from 1 to 100.',
+        weights_total: 'the parts of this distribution must total 100.',
+        weights_attendance_only: 'an attendance-only subject has no weights; leave this empty.',
+        rating_exam_attendance_only: 'an attendance-only subject has no rating exam.',
+        rating_exam_weight_unwanted:
+          'the rating exam switch is off; leave this empty, or turn the switch on.',
+        duplicate_in_file: 'the same name is on rows {{rows}}.',
+      },
     },
     travelTimes: {
       title: 'Travel time',
@@ -2468,6 +2509,13 @@ export const en = {
         phone_two_names_in_file:
           'this phone is under another name on rows {{rows}}. Correct the phone or the name.',
         phone_held: 'another person has this phone. Link to that person, or correct the phone.',
+        group_unknown: 'no group of this name in the branch for the year of the start date.',
+        group_subject_twice: 'another group column of the row is of the same subject.',
+        group_not_of_class: 'the class is not split for this group’s subject.',
+        group_without_class: 'a group needs the class of the row; write the class.',
+        groupSubject: '{{text}} ({{subject}})',
+        groupDay: '{{text}} (from {{day}})',
+        groupSubjectDay: '{{text}} ({{subject}}, from {{day}})',
       },
     },
     students: {
@@ -3999,6 +4047,10 @@ export const en = {
       staff_import: {
         upload: 'Staff import file uploaded',
         confirm: 'Staff import confirmed',
+      },
+      subject_import: {
+        upload: 'Subject import file uploaded',
+        confirm: 'Subject import confirmed',
       },
       student_import: {
         upload: 'Student import file uploaded',

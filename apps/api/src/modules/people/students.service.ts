@@ -538,6 +538,11 @@ export class Students {
     input: StudentCreate,
     requestId: string,
     importId?: string,
+    /**
+     * The groups the import names, by subject id (owner's change of 7 November 2026):
+     * the only groups taken, never the smallest one. The hand create passes none.
+     */
+    chosenGroups?: ReadonlyMap<string, string>,
   ): Promise<string> {
     const branchId = branchOf(access);
     // Task 3.1b, decision 2: a student who starts today or earlier
@@ -664,6 +669,13 @@ export class Students {
           giveBack: null,
           groups,
           pathOf: () => 'classId',
+          ...(chosenGroups === undefined
+            ? {}
+            : {
+                preferred: new Map([[id, chosenGroups]]),
+                required: true,
+                ...(importId === undefined ? {} : { importId }),
+              }),
         },
         requestId,
       );

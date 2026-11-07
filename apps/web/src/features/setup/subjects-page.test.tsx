@@ -397,6 +397,15 @@ describe('the subjects page', () => {
     });
   });
 
+  // The owner's change of 7 November 2026 (#316): the import, beside "Add subject".
+  it('links to the import from Excel for a role that creates subjects', async () => {
+    await openList();
+
+    expect(
+      screen.getByRole('link', { name: en.setup.subjectImport.open }).getAttribute('href'),
+    ).toBe('/setup/subjects/import');
+  });
+
   // The review's correction 1: a switched-off action says what is missing.
   it('switches "Add subject" off and says why while Academic has no active department', async () => {
     await openList({ divisions: [academic([])] });
@@ -951,6 +960,8 @@ describe('the subjects page', () => {
     await openList({ session: principal() });
 
     expect(screen.queryByRole('button', { name: subjectsText.add })).toBeNull();
+    // Nor the import (#316), which creates subjects.
+    expect(screen.queryByRole('link', { name: en.setup.subjectImport.open })).toBeNull();
     fireEvent.click(rowButton('Mathematics'));
     const panel = await screen.findByRole('complementary', { name: 'Mathematics' });
     expect(within(panel).queryByRole('form')).toBeNull();

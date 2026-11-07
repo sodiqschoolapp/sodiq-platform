@@ -8,7 +8,9 @@ import { relativeHolderSchema } from './relatives.js';
  * Student record: Excel import; the owner's spec change of 3 November 2026).
  * One row is one student: every typed field of the record, the UID, the
  * start date, the class (grade and name), the contract, the scholarship and up
- * to three close relatives, the first the main contact.
+ * to three close relatives, the first the main contact. Since the owner's change of
+ * 7 November 2026 a row also names the student's groups (up to eight group
+ * columns); nothing is placed automatically.
  */
 
 /** Up to three relatives on a row (the spec change: "up to three close relatives"). */
@@ -23,6 +25,25 @@ export const relativeColumnsOf = <P extends 1 | 2 | 3>(position: P) =>
   RELATIVE_PARTS.map(
     (part) => `relative${String(position)}${part}` as `relative${P}${ImportRelativePart}`,
   );
+
+/** Up to eight groups on a row (owner's change of 7 November 2026). */
+export const STUDENT_IMPORT_GROUPS = 8;
+
+const GROUP_COLUMNS = [
+  'group1',
+  'group2',
+  'group3',
+  'group4',
+  'group5',
+  'group6',
+  'group7',
+  'group8',
+] as const;
+
+export type StudentImportGroupColumn = (typeof GROUP_COLUMNS)[number];
+
+/** The group columns in their order: each holds a group name such as 7-M-1. */
+export const STUDENT_IMPORT_GROUP_COLUMNS: readonly StudentImportGroupColumn[] = GROUP_COLUMNS;
 
 /**
  * The columns of the template, in their order. Row 1 of the sheet holds
@@ -56,6 +77,7 @@ export const STUDENT_IMPORT_COLUMNS = [
   ...relativeColumnsOf(1),
   ...relativeColumnsOf(2),
   ...relativeColumnsOf(3),
+  ...GROUP_COLUMNS,
 ] as const;
 
 export type StudentImportColumn = (typeof STUDENT_IMPORT_COLUMNS)[number];
@@ -84,6 +106,8 @@ interface ImportWords {
   firstName: string;
   className: string;
   relative: string;
+  /** The heading of a group column, with `{{n}}`. */
+  group: string;
   parts: Record<ImportRelativePart, string>;
 }
 
@@ -93,6 +117,7 @@ const WORDS: Readonly<Record<Language, ImportWords>> = {
     firstName: 'Ism',
     className: 'Sinf nomi',
     relative: '{{n}}-yaqin qarindosh',
+    group: '{{n}}-guruh',
     parts: {
       FullName: 'F.I.Sh.',
       Relationship: 'Qarindoshlik',
@@ -106,6 +131,7 @@ const WORDS: Readonly<Record<Language, ImportWords>> = {
     firstName: 'Имя',
     className: 'Название класса',
     relative: 'Близкий родственник {{n}}',
+    group: 'Группа {{n}}',
     parts: {
       FullName: 'ФИО',
       Relationship: 'Родство',
@@ -119,6 +145,7 @@ const WORDS: Readonly<Record<Language, ImportWords>> = {
     firstName: 'Name',
     className: 'Class name',
     relative: 'Relative {{n}}',
+    group: 'Group {{n}}',
     parts: {
       FullName: 'Full name',
       Relationship: 'Relationship',
@@ -138,6 +165,10 @@ export function importHeading(column: StudentImportColumn, language: Language): 
   if (relative !== null) {
     const [, position = '', part = ''] = relative;
     return `${words.relative.replace('{{n}}', position)}: ${words.parts[part as ImportRelativePart]}`;
+  }
+  const group = /^group(\d)$/.exec(column);
+  if (group !== null) {
+    return words.group.replace('{{n}}', group[1] ?? '');
   }
   if (column === 'lastName' || column === 'firstName' || column === 'className') {
     return words[column];
@@ -197,6 +228,14 @@ export const STUDENT_IMPORT_PROBLEMS = [
   'phone_two_names_in_file',
   /** The relative phone is held in the system under another name: link or correct. */
   'phone_held',
+  /** No group in service of that name in the branch for the year of the start date. */
+  'group_unknown',
+  /** Two group cells of the row are of one subject (the same group twice included). */
+  'group_subject_twice',
+  /** The group's subject is not one the row's class is split for on the row's days. */
+  'group_not_of_class',
+  /** Group cells on a row that names no class. */
+  'group_without_class',
 ] as const;
 
 /** One problem of a row: the column it is in (or none), its code and what it names. */
@@ -209,6 +248,10 @@ export const studentImportProblemSchema = z.object({
   recordId: z.uuid().optional(),
   /** The holder is a student of another branch: nothing more is told. */
   elsewhere: z.boolean().optional(),
+  /** The subject a group problem is about, by its three names (`class_group_required` has no column). */
+  subject: z.object({ uz: z.string(), ru: z.string(), en: z.string() }).optional(),
+  /** The first day a named group is missing, not offered or full. */
+  day: z.string().optional(),
 });
 
 export type StudentImportProblem = z.infer<typeof studentImportProblemSchema>;

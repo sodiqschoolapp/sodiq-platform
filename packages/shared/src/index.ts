@@ -2524,6 +2524,8 @@ export {
   STUDENT_IMPORT_MAX_BYTES,
   STUDENT_IMPORT_MAX_ROWS,
   STUDENT_IMPORT_PROBLEMS,
+  STUDENT_IMPORT_GROUP_COLUMNS,
+  STUDENT_IMPORT_GROUPS,
   STUDENT_IMPORT_SHEET,
   STUDENT_IMPORT_TYPES,
   importHeading,
@@ -2541,6 +2543,7 @@ export {
   studentImportTemplateQuerySchema,
   type ImportRelativePart,
   type StudentImportColumn,
+  type StudentImportGroupColumn,
   type StudentImportConfirmResult,
   type StudentImportDecisions,
   type StudentImportParams,
@@ -2591,6 +2594,8 @@ export {
   type StaffImportTemplateQuery,
   type StaffImportWords,
 } from './staff-import.js';
+
+export * from './subject-import.js';
 
 export * from './parent-accounts.js';
 export { latinSpelling } from './names.js';

@@ -2,6 +2,15 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 7 November 2026: the student import names the groups; the subject import
+
+Not a task of the build plan: the owner's change of the day (`docs/spec-changes.md`), pull request #316.
+
+- **Groups in the student import**: columns `group1`–`group8`; each row names its groups and nothing is placed automatically. `planClassGroups` with `required` refuses `class_group_required`, `class_group_not_offered` and `class_group_chosen_full` per stretch of `class_group_subject_runs`, writes `placement` rows (one row over touching stretches of one group) with a `student.group_joined` entry carrying `importId`; the import also checks `group_unknown`, `group_subject_twice`, `group_not_of_class` and `group_without_class` before the save. A group problem carries its first day (for a full group, the first day without a seat), and the import page shows it with the subject. The hand create keeps automatic placement.
+- **Subject import** (migration 0167 `subject_imports`): `GET subjects/import-template`, `PUT subjects/imports`, preview and confirm, guarded by `subjects` create with the service checking `subjects` edit; each row runs `Subjects.createIn` and `writeQuarterWeightsIn` (open quarters of the branch's open years ending today or later, written as first settings: no reason, no notice). Page `/setup/subjects/import`.
+
+Left out: the grades 0–4 distribution and other branches' distributions (set on screen). The staff import still shows the student texts of `import_already_confirmed` and `import_changed` (found while building; untouched).
+
 ## 7 November 2026: new tasks paused (owner gate before 11.9)
 
 The owner paused the build plan after 11.7 (11.8 is dropped, #312): an owner gate line now stands before 11.9 in `docs/build-plan.md`, so the start routine starts no new task. The time goes into improving what is already built. The owner deletes the gate line to resume.
