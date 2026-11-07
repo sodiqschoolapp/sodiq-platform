@@ -10,7 +10,7 @@ The first version of the portal is for parents only (owner, 6 November 2026). It
 | Page | What a parent sees for each child |
 | --- | --- |
 | Timetable | The child's week, with rooms and teachers, and changes marked. |
-| Homework | Tasks by date and subject, with their titles and files. |
+| Homework | Tasks by date and subject, with their titles and the files attached to each homework; never the plan item's materials, which are for staff. |
 | Grades | Each score with the work's name and the lesson date; the averages and quarter results of each subject as the staff pages show them, the current quarter marked "provisional" until it is closed; the comments marked "visible to parents". |
 | Attendance | The child's marks by day and lesson. An exempt lesson shows as exempt, never as an absence. |
 

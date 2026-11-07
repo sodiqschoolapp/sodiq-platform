@@ -7,7 +7,7 @@ These rules apply to every page and every role.
 
 ## One pattern everywhere
 
-- **Home page.** Each role opens on "what do I need to do today", with one click to the place where it is done.
+- **Home page.** Each role opens on "what do I need to do today", with one click to the place where it is done. On a teacher's home page, the row of the lesson happening now is highlighted and its "Open the journal" button pulses gently, so a teacher who opens the platform in class finds it at once; people who ask the system for reduced motion get the highlight only.
 - **Lists.** Every list (students, teachers, classes, groups, subjects, rooms) works the same way: search, filters, column chooser, sorting, checkboxes with bulk actions, export, and a side panel that opens a record without leaving the list.
 - **Search.** Ctrl+K opens a search across students, staff, relatives (by phone, for the readers named in the edge cases), classes, groups and pages.
 - **Context.** The branch, academic year and quarter in use are always shown in the top bar. Past years open read only with a clear label.
