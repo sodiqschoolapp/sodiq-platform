@@ -2,6 +2,13 @@
 
 The spec in `docs/spec/` was taken from the full spec document on 3 October 2026 (revision 88). Every later change to a spec file is listed here, newest first, with the date, what changed, why, and the files touched. Changes are made only with the `/spec-change` skill and the owner's approval.
 
+## 7 November 2026: parents cannot turn off the digest or announcements
+
+- What changed: the general line "Each person can turn off notices for events that are not required" now names staff only. Parents cannot turn off the digest or the announcements sent through the bot; every parent whose link has portal access and "receives notices" on gets them. The school's "receives notices" switch on each link stays, for example for a relative listed only for emergencies, and is the school's alone. The close-relatives edge case now says that announcements need "receives notices" too, as the digest does.
+- Why: the owner, 7 November 2026, in chat, after the review of #312 asked whether the parent needs a switch of their own for announcements now that task 11.8 is dropped: parents always get the digest and announcements, and the school keeps its switch per link.
+- Code: none. The built code already works this way: a parent changes only the digest's frequency (daily, twice a week, weekly; no "off"), and only staff routes change "receives notices" (`docs/progress.md`, 11.5 and 11.7).
+- Files: `docs/spec/10-portal-notifications-release-2.md` (Notifications), `docs/spec/edge-cases/close-relatives.md` (the row on divorced parents and an uncle listed for emergencies).
+
 ## 7 November 2026: no instant messages to families
 
 - What changed: parents get no single message for school data from the platform: no instant message for an absence, a timetable change or quarter results (the Release 2 plan had them "later, through the bot"), and still no SMS. Attendance, grades and comments reach parents only in the digest and the portal. Announcements to a chosen audience may still reach parents through the bot (owner's choice).
