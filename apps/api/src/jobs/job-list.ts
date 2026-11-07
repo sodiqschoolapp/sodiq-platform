@@ -2,6 +2,7 @@ import { passwordResetMailJob } from '../modules/auth/password-reset-mail.job.js
 import { tellMovedJob } from '../modules/auth/telegram-links.js';
 import { branchExportJob } from '../modules/journal/journal-exports.service.js';
 import { DIGEST_JOBS } from '../modules/portal/digest/digest.service.js';
+import { ANNOUNCEMENT_JOBS } from '../modules/announcements/announcement-jobs.js';
 import { deliverNotificationsJob } from '../modules/notifications/deliver.job.js';
 import { DAILY_JOBS } from '../modules/results/daily/daily-jobs.js';
 import { prepareTotalsJob } from '../modules/results/prepared/prepare.job.js';
@@ -27,4 +28,5 @@ export const JOB_DEFINITIONS: readonly JobDefinition<unknown>[] = [
   tellMovedJob,
   // Task 11.5: the parents' digest, its tick every minute and its send.
   ...DIGEST_JOBS,
+  ...ANNOUNCEMENT_JOBS,
 ];

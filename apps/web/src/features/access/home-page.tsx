@@ -1,8 +1,10 @@
-import { HOME_KIND } from '@sodiq/shared';
+import { HOME_KIND, PERMISSIONS, permits } from '@sodiq/shared';
+import { Link } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { PageHeader } from '@/components/page-header';
 import { EmptyState } from '@/components/states';
+import { buttonVariants } from '@/components/ui/button';
 import { relativeNoValidPhoneQuery, studentNoClassQuery } from '@/features/people/people-api';
 import { TeachingHome } from '@/features/timetable/teaching-home';
 import { attentionQuery } from '@/features/timetable/timetable-api';
@@ -32,9 +34,21 @@ export function HomePage() {
   const { t } = useTranslation();
   const { role } = useView();
   const kind = role === null ? null : HOME_KIND[role];
+  // Task 11.7: the announcements addressed to the person. The menu holds at most ten items
+  // (`12`), so the page opens from the home page of every staff role.
+  const reads = role !== null && permits(PERMISSIONS, role, 'announcements_feed', 'view');
   return (
     <section>
-      <PageHeader title={t('home.title')} />
+      <PageHeader
+        title={t('home.title')}
+        actions={
+          reads ? (
+            <Link to="/announcements" className={buttonVariants({ variant: 'secondary' })}>
+              {t('announcements.title')}
+            </Link>
+          ) : undefined
+        }
+      />
       {kind === 'academic_vice_principal' ? (
         <ViceHome />
       ) : kind === 'teaching' ? (

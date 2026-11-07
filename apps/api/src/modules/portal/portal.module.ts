@@ -40,6 +40,8 @@ import { PortalController } from './portal.controller.js';
       inject: [CONFIG],
     },
   ],
+  // Task 11.7: the announcements send through the same bot.
+  exports: [TelegramBot],
 })
 export class PortalModule implements OnModuleInit {
   constructor(

@@ -722,6 +722,20 @@ describe('a frozen permission table', () => {
     }
   });
 
+  it('gives announcements to the three authors and the feed to every staff role (task 11.7, the owner on 7 November 2026)', () => {
+    const authors = ['super_admin', 'academic_vice_principal', 'spiritual_vice_principal'];
+    for (const role of ROLES) {
+      expect(PERMISSIONS.announcements[role], role).toEqual(
+        authors.includes(role) ? ['view', 'create', 'edit', 'archive'] : [],
+      );
+      expect(PERMISSIONS.announcements_feed[role], role).toEqual(
+        role === 'student' || role === 'parent' ? [] : ['view'],
+      );
+    }
+    // `edge/people-roles-accounts`: the Principal changes nothing.
+    expect(PERMISSIONS.announcements.principal).toEqual([]);
+  });
+
   it('gives the Super Admin alone the demo time of the test environment (task 10.5, the owner on 4 November 2026)', () => {
     for (const role of ROLES) {
       expect(PERMISSIONS.demo_clock[role], role).toEqual(
@@ -736,6 +750,8 @@ describe('a frozen permission table', () => {
       'academic_years',
       'account_access',
       'accounts',
+      'announcements',
+      'announcements_feed',
       'attendance_report',
       'attendance_today',
       'audit_log',
