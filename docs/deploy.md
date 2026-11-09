@@ -178,7 +178,7 @@ The parent portal opens as a Telegram mini app of the school's bot (`docs/spec/1
 
    Telegram answers `"ok":true`. Then send `/start` to the bot: it answers with an "Open the portal" button.
 
-The production bot, its token and `render.production.yaml` are set up by the owner at go-live of the portal (after task 11.5), the same way, with `https://app.sodiqschool.uz`.
+The production bot, its token and `render.production.yaml` are set up by the owner at go-live of the portal (after task 11.5): section "Production", "The production bot" below.
 
 **Telegram Web.** The web version of Telegram (web.telegram.org) shows a mini app inside a frame, which the platform refuses (`frame-ancestors 'none'`); parents use the phone or desktop app, or the portal in a browser (plan of #298, decision 2).
 
@@ -237,6 +237,32 @@ Do one step at a time and check it before the next. Every value in angle bracket
 11. Go on with `docs/go-live/checklist.md`.
 
 Email stays off in production (answer 16): a password reset by email is written to the log only, and an administrator resets passwords in the app.
+
+### The production bot (go-live of the parent portal, after task 11.5)
+
+The owner's steps (stop-list item 1): no session sees the token or the secret. Do steps 3 to 5 after 18:00 or at the weekend, Tashkent time: saving the values restarts the services.
+
+1. **Create the bot.** In Telegram, open @BotFather, `/newbot`, a name parents will see (for example "Sodiq School") and a user name ending in `bot`. Keep the token it answers in the password manager; it is a password. A different bot from the test one, never the same token.
+2. **Set it up in @BotFather**: `/mybots`, the bot, **Bot Settings**:
+   - **Menu Button**: the address `https://app.sodiqschool.uz/portal/telegram`, the label "Portal".
+   - **Allow Groups?**: turn groups off (the bot talks to one parent at a time).
+   - Optional: **Edit Bot**, the description and the picture.
+3. **Make the webhook secret**: 16 to 256 letters, digits, `_` or `-`, made up for this in the password manager (for example 40 letters and digits). Never the test secret.
+4. **The values on Render.** After the merge that added them to `render.production.yaml`: the production Blueprint's page, **Manual Sync** (Auto-Sync stays off). Render does not ask for a `sync: false` value of a Blueprint that already exists, so open each service's **Environment** and enter them, adding a key that is not listed:
+   - `sodiq-api`: `TELEGRAM_BOT_TOKEN` (the token), `TELEGRAM_WEBHOOK_SECRET` (the secret), `PARENT_BOT_USERNAME` (the user name, without the @);
+   - `sodiq-worker`: `TELEGRAM_BOT_TOKEN` (the same token).
+
+   **Save and deploy** (no rebuild is needed: none of them is read by the build). A wrong form is refused at start (the log names the variable) and the previous version keeps running.
+5. **Register the webhook, once**, in a terminal of your own computer (not in a session). Read the two values without echo and without a trace in the history, then send:
+   ```bash
+   read -s BOT_TOKEN && read -s WEBHOOK_SECRET
+   ```
+   ```bash
+   curl -sS "https://api.telegram.org/bot$BOT_TOKEN/setWebhook" -d url=https://app.sodiqschool.uz/api/telegram/webhook -d "secret_token=$WEBHOOK_SECRET" -d 'allowed_updates=["message"]'
+   ```
+   Telegram answers `"ok":true`. Check with `curl -sS "https://api.telegram.org/bot$BOT_TOKEN/getWebhookInfo"`: the address is the production one and `last_error_message` is absent. Close the terminal.
+6. **Try it.** Send `/start` to the bot: it answers with a button that opens the portal (in the language of your Telegram, Uzbek when it is not one of the three). The menu button opens the sign-in page of the portal.
+7. **The first slips.** A Super Admin, or the Academic Vice Principal of the branch: **Classes**, open the class, **Parent slips**. Only relatives linked with **portal access** on to a student of the class are listed; check those links on the students' Relatives tabs first. Choose the language, **Print the slips**, print at once (the passwords are shown only then; four slips to an A4 page, each valid 30 days, naming the bot). Start with one class, have a parent sign in from the bot, then the rest. People, Parents, **Parents never signed in** lists the accounts not used yet.
 
 ## Rare cases
 

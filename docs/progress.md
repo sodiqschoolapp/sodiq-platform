@@ -2,6 +2,16 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 9 November 2026: the production bot's settings (go-live of the parent portal)
+
+Not a task of the build plan: the owner's step after 11.5, asked for on 9 November 2026.
+
+- `render.production.yaml` names `TELEGRAM_BOT_TOKEN` (API and worker), `TELEGRAM_WEBHOOK_SECRET` and `PARENT_BOT_USERNAME` (API), each `sync: false`; no value is in the repository.
+- **Look first**, a test changed because the requirement changed: `render-blueprint.test.ts` no longer refuses `TELEGRAM_` in the production Blueprint (it waited for this go-live); it now requires the three keys as `sync: false` on the right services and refuses the webhook secret on the worker.
+- `docs/deploy.md`, Production, "The production bot": the owner's steps (the bot, its menu button, the values on Render, the webhook, the first slips).
+
+The next sessions must know: until the owner enters the values on Render, production refuses everything Telegram and the portal works in a browser.
+
 ## 7 November 2026: the student import names the groups; the subject import
 
 Not a task of the build plan: the owner's change of the day (`docs/spec-changes.md`), pull request #316.

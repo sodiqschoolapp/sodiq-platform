@@ -101,6 +101,12 @@ describe('the production Blueprint', () => {
       ['GRAFANA_LOGS_USER', [api, worker]],
       ['GRAFANA_TOKEN', [api, worker]],
       ['SENTRY_ORG', [api]],
+      // The production bot, at go-live of the parent portal (after task 11.5): the token on
+      // both services (the worker sends the digest and the announcements), the webhook's
+      // secret and the bot's public name on the API, all entered by the owner in the dashboard.
+      ['TELEGRAM_BOT_TOKEN', [api, worker]],
+      ['TELEGRAM_WEBHOOK_SECRET', [api]],
+      ['PARENT_BOT_USERNAME', [api]],
     ];
     for (const [secret, services] of secrets) {
       for (const service of services) {
@@ -110,8 +116,8 @@ describe('the production Blueprint', () => {
     expect(production.match(/- key: /g)?.length).toBe(
       production.match(/- key: [A-Z0-9_]+\n\s+(sync: false|value: .+)\n/g)?.length,
     );
-    // Task 11.4: the production bot is the owner's, at go-live of the portal.
-    expect(production).not.toContain('TELEGRAM_');
+    // The worker never takes the webhook's secret: only the API answers Telegram's calls.
+    expect(worker).not.toContain('TELEGRAM_WEBHOOK_SECRET');
     expect(production).not.toMatch(/postgres:\/\//);
     expect(production).not.toMatch(/https:\/\/[0-9a-f]+@/);
   });
