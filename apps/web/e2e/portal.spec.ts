@@ -75,11 +75,16 @@ test('a parent opens the timetable and the homework of both children, then the g
   ).toBe(false);
 
   // Attendance: late yesterday (this week, or the week before on a Monday); no staff comment.
+  // On a Monday this week holds no lesson before 08:45 Tashkent time (the empty line) and
+  // today's unmarked lesson after it (the seed has a lesson every day at 08:00).
   await page.getByRole('link', { name: en.portal.attendance.title, exact: true }).click();
   await expect(page).toHaveURL(/\/attendance$/);
   const late = page.getByText(en.portal.attendance.marks.late, { exact: true });
   await expect(
-    late.or(page.getByText(en.portal.attendance.empty, { exact: true })).first(),
+    late
+      .or(page.getByText(en.portal.attendance.empty, { exact: true }))
+      .or(page.getByText(en.portal.attendance.marks.unmarked, { exact: true }))
+      .first(),
   ).toBeVisible();
   if (!(await late.isVisible())) {
     await page.getByRole('button', { name: en.portal.previousWeek, exact: true }).click();
