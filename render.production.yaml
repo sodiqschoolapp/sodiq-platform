@@ -71,6 +71,18 @@ services:
         sync: false
       - key: SENTRY_PROJECT
         value: sodiq-production-web
+      # The school's Telegram bot, at go-live of the parent portal (after task 11.5;
+      # docs/deploy.md, Production, The production bot). Created by the owner with
+      # @BotFather (stop-list item 1); the token and the webhook's secret are entered
+      # in the dashboard, never here. Unset, everything Telegram is refused and the
+      # portal works in a browser. PARENT_BOT_USERNAME is the bot's public name for
+      # the slips, without the @.
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_WEBHOOK_SECRET
+        sync: false
+      - key: PARENT_BOT_USERNAME
+        sync: false
 
   - type: worker
     name: sodiq-worker
@@ -105,4 +117,7 @@ services:
       - key: GRAFANA_LOGS_USER
         sync: false
       - key: GRAFANA_TOKEN
+        sync: false
+      # The worker sends the digest and the announcements through the bot; the same token.
+      - key: TELEGRAM_BOT_TOKEN
         sync: false
