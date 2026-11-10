@@ -933,10 +933,11 @@ describe('publish', () => {
       ]);
     });
 
-    // Task 9.4f (`edge/academic-year`, publishing without weights; `05`, Grades 0–4): a rating
-    // subject of a class of grades 0–4 needs its distribution without the rating exam in each
-    // touched quarter whose state of "Rating exams in grades 0–4" is off, and only there.
-    it('refuses a rating subject of grade 1 without its distribution without the rating exam while the state is off', async () => {
+    // The owner's spec change of 10 November 2026 (`edge/academic-year`, publishing without
+    // weights; `05`, Grades 0 and 1): a rating subject of a class of grade 1 has no distribution of
+    // its own; its usual distributions are all it needs (before, task 9.4f asked for a distribution
+    // without the rating exam).
+    it('publishes a rating subject of grade 1 with its usual distributions alone', async () => {
       const s = await scene({ journalType: 'graded', grade: 1 });
       await t.database.migrator
         .updateTable('subjects')
@@ -968,42 +969,20 @@ describe('publish', () => {
           })
           .execute();
       }
-      expect(blockedBy(await publish(s.branch, s.version, MONDAY))).toEqual(
-        [1, 2, 3, 4].map((quarter) => ({
-          code: 'subject_quarter_primary_weights',
-          path: `subjects.${s.subject}.quarters.${String(quarter)}`,
-        })),
-      );
-      // Quarters 2 to 4 typed; quarter 1's state turned on: nothing is missing.
-      for (const quarter of quarters.slice(1)) {
-        await t.database.migrator
-          .insertInto('subject_quarter_primary_weights')
-          .values({
-            branch_id: s.branch,
-            subject_id: s.subject,
-            quarter_id: quarter,
-            attendance: 10,
-            classwork: 50,
-            homework: 40,
-            weights_round: 1,
-            rating_round: 1,
-          })
-          .execute();
-      }
-      expect(blockedBy(await publish(s.branch, s.version, MONDAY))).toEqual([
-        { code: 'subject_quarter_primary_weights', path: `subjects.${s.subject}.quarters.1` },
-      ]);
+      expect(checkOf(await check(s.branch, s.version, MONDAY)).refusals).toEqual([]);
+      // One quarter's usual distribution missing is still refused.
       await t.database.migrator
-        .updateTable('quarter_rating_states')
-        .set({ rating_exams_primary: true })
+        .deleteFrom('subject_quarter_weights')
+        .where('subject_id', '=', s.subject)
         .where('quarter_id', '=', quarters[0] ?? '')
         .execute();
-      expect(checkOf(await check(s.branch, s.version, MONDAY)).refusals).toEqual([]);
+      expect(blockedBy(await publish(s.branch, s.version, MONDAY))).toEqual([
+        { code: 'subject_quarter_weights', path: `subjects.${s.subject}.quarters.1` },
+      ]);
     });
 
-    // The review of #276, finding 2 (`edge/academic-year`, publishing without weights: "a class or
-    // group of grades 0–4"): a group of grades 0–4 needs the distribution too.
-    it('refuses a rating subject taught in a group of grade 1 without its distribution without the rating exam while the state is off', async () => {
+    // As above, for a group of grade 1 (the review of #276, finding 2, read the groups too).
+    it('publishes a rating subject taught in a group of grade 1 with its usual distributions alone', async () => {
       const s = await scene();
       const reading = await load.classes.subject({ grades: [1], journalType: 'graded' });
       await t.database.migrator
@@ -1056,27 +1035,6 @@ describe('publish', () => {
       });
       await placeAt(s.branch, version, rowId, 2);
       await confirmTemplates(s.branch, version);
-      expect(blockedBy(await publish(s.branch, version, MONDAY))).toEqual(
-        [1, 2, 3, 4].map((quarter) => ({
-          code: 'subject_quarter_primary_weights',
-          path: `subjects.${reading}.quarters.${String(quarter)}`,
-        })),
-      );
-      await t.database.migrator
-        .insertInto('subject_quarter_primary_weights')
-        .values(
-          quarters.map((quarter) => ({
-            branch_id: s.branch,
-            subject_id: reading,
-            quarter_id: quarter,
-            attendance: 10,
-            classwork: 50,
-            homework: 40,
-            weights_round: 1,
-            rating_round: 1,
-          })),
-        )
-        .execute();
       expect(checkOf(await check(s.branch, version, MONDAY)).refusals).toEqual([]);
     });
 

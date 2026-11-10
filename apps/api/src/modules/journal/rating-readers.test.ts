@@ -14,7 +14,7 @@ import { LoadKit } from '../../testing/load-kit.js';
 import { MembersKit } from '../../testing/members-kit.js';
 import { BRANCH_HEADER } from '@sodiq/shared';
 import { Audit } from '../audit/audit.service.js';
-import { OWN_CLASS_CASES, ownRoleOf } from '../../testing/own-class-cases.js';
+import { RATING_OWN_CLASS_CASES, ownRoleOf } from '../../testing/own-class-cases.js';
 
 /** Tuesday 27 October 2026, noon in Tashkent. */
 const MOMENT = '2026-10-27T12:00:00+05:00';
@@ -91,13 +91,6 @@ describe('the readers of the rating exam and comments', () => {
     const oxford = await load.classes.schoolClass(branch, year, { grade });
     const cambridge = await load.classes.schoolClass(branch, year, { grade });
     const group = await load.classes.group(branch, year, cells.subject, [oxford, cambridge]);
-    // Task 9.4f: a journal of grades 0–4 has the rating exam only while its quarter's state of
-    // "Rating exams in grades 0–4" is on (`05`, Grades 0–4); this scene's group has one.
-    await t.database.migrator
-      .updateTable('quarter_rating_states')
-      .set({ rating_exams_primary: true })
-      .where('branch_id', '=', branch)
-      .execute();
     await t.database.migrator
       .insertInto('subject_quarter_weights')
       .values({
@@ -256,7 +249,7 @@ describe('the readers of the rating exam and comments', () => {
     await t.close();
   });
 
-  it.each(OWN_CLASS_CASES)(
+  it.each(RATING_OWN_CLASS_CASES)(
     'gives the %s of one class of the group the rows of own class only, also in both histories',
     async (_who, grade) => {
       const s = await scene(grade);

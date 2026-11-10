@@ -18,8 +18,6 @@ import { Divisions } from './divisions.service.js';
 import { PlaceForcedDeletesController } from './place-forced-deletes.controller.js';
 import { PlaceForcedDeletes } from './place-forced-deletes.service.js';
 import { RoomsController } from './rooms.controller.js';
-import { SchoolSettingsController } from './school-settings.controller.js';
-import { SchoolSettingsService } from './school-settings.service.js';
 import { SettingsController } from './settings.controller.js';
 import { Settings } from './settings.service.js';
 import { TravelTimesController } from './travel-times.controller.js';
@@ -54,7 +52,6 @@ import { PlansModule } from '../plans/plans.module.js';
     DayTemplatesController,
     CalendarController,
     SettingsController,
-    SchoolSettingsController,
     DemoClockController,
     TravelTimesController,
     SubjectsController,
@@ -71,7 +68,6 @@ import { PlansModule } from '../plans/plans.module.js';
     TemplateLessons,
     Calendar,
     Settings,
-    SchoolSettingsService,
     DemoClockService,
     TravelTimes,
     Subjects,

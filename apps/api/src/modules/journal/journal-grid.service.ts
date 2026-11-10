@@ -65,6 +65,8 @@ import {
   formerMemberNames,
   gridWeights,
   absenceCategories,
+  leftOutShown,
+  ratingEntryForCalc,
   journalLessons,
   journalRows,
   lessonCells,
@@ -464,13 +466,7 @@ export class JournalGridReader {
         lessonCells(transaction, lessonIds),
         expectedStudents(transaction, lessonIds),
         unitMemberships(transaction, journal, quarter.startDate, quarter.endDate),
-        gridWeights(
-          transaction,
-          branchId,
-          journal.subjectId,
-          quarter.id,
-          switchesIn(journal, quarter.id)?.withoutRating ?? false,
-        ),
+        gridWeights(transaction, branchId, journal.subjectId, quarter.id),
         weightsChangedAt(transaction, branchId, journal.subjectId, quarter.id, timeZone),
         staffNames(transaction, ownerId === null ? [] : [ownerId]),
         goLiveOf(transaction, branchId),
@@ -626,6 +622,8 @@ export class JournalGridReader {
     const attendanceOnly = quarterSwitches?.attendanceOnly ?? true;
     const ratingOn = !attendanceOnly && quarterSwitches?.ratingExam === true;
     const ratingShown = ratingOn && (quarterly?.ratingExam ?? null) !== null;
+    // 0168: a journal of grades 0 and 1 of a rating subject leaves the rating exam out.
+    const withoutRating = !attendanceOnly && quarterSwitches?.withoutRating === true;
     // The rating exam of the quarter (task 8.2) for a reader of the whole journal.
     const ratingStaffId = await ownStaffOf(transaction, access.accountId);
     const rating =
@@ -647,11 +645,14 @@ export class JournalGridReader {
             requests: requestsUnlocks(access, branchId),
           });
     /** The student's rating entry as `packages/calc` takes it (`null` while empty). */
-    const ratingEntryOf = (studentId: string): RatingExamEntry | null => {
-      if (rating === null || !ratingShown) return null;
-      if (rating.notHeld) return { kind: 'not_held' };
-      return rating.entries.find((one) => one.studentId === studentId)?.entry ?? null;
-    };
+    const ratingEntryOf = (studentId: string): RatingExamEntry | null =>
+      ratingEntryForCalc(withoutRating, rating !== null && ratingShown, () =>
+        rating === null
+          ? null
+          : rating.notHeld
+            ? { kind: 'not_held' }
+            : (rating.entries.find((one) => one.studentId === studentId)?.entry ?? null),
+      );
     const comments = await gridComments(transaction, {
       studentIds: students.map((student) => student.id),
       lessonIds: lessons.map((lesson) => lesson.id),
@@ -832,9 +833,11 @@ export class JournalGridReader {
       const ratingOf = (): RatingExamEntry | null =>
         across === undefined
           ? ratingEntryOf(student.id)
-          : rating === null || !ratingShown
-            ? null
-            : across.ratingExam;
+          : ratingEntryForCalc(
+              withoutRating,
+              rating !== null && ratingShown,
+              () => across.ratingExam,
+            );
       const figuresOf = (inMonth: string | null): { figures: JournalFigures; exact: Exact } => {
         const counted = lessonsOf(inMonth);
         if (attendanceOnly || quarterly === null || shape === 'attendance') {
@@ -901,9 +904,9 @@ export class JournalGridReader {
                   : (() => {
                       // A month leaves the rating exam out by the rule itself, labelled so,
                       // never provisional for it (decision 23).
-                      const leftOut = result.leftOut.filter(
-                        (one) => inMonth === null || one.part !== 'ratingExam',
-                      );
+                      const leftOut = result.leftOut
+                        .filter((one) => inMonth === null || one.part !== 'ratingExam')
+                        .filter(leftOutShown(withoutRating));
                       return {
                         kind: 'number' as const,
                         shown: Number(result.shown),

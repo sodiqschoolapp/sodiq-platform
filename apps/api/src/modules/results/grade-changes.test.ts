@@ -145,43 +145,10 @@ describe('the preview and the reason of a change of weights or values', () => {
     return { s, owner, spare, journal, quarters, aziz, bekzod };
   }
 
-  /**
-   * Task 9.4f (the permission review of the code, must-fix 5): the scene's subject with the rating
-   * exam and its distribution without it in every quarter, so the 404 tests of the routes of that
-   * distribution hold rows a leaked id would reach.
-   */
-  const withPrimary = async (x: { s: { branch: string; subject: string }; quarters: string[] }) => {
-    await t.database.migrator
-      .updateTable('subjects')
-      .set({ rating_exam: true })
-      .where('id', '=', x.s.subject)
-      .execute();
-    await t.database.migrator
-      .insertInto('subject_quarter_primary_weights')
-      .values(
-        x.quarters.map((quarter) => ({
-          branch_id: x.s.branch,
-          subject_id: x.s.subject,
-          quarter_id: quarter,
-          attendance: 20,
-          classwork: 40,
-          homework: 40,
-          weights_round: 1,
-          rating_round: 1,
-        })),
-      )
-      .execute();
-  };
-
   /** Every row the writes touch, in every branch, and the audit log. */
   const rowsOf = async () => ({
     weights: await t.database.migrator
       .selectFrom('subject_quarter_weights')
-      .selectAll()
-      .orderBy(['branch_id', 'subject_id', 'quarter_id'])
-      .execute(),
-    primary: await t.database.migrator
-      .selectFrom('subject_quarter_primary_weights')
       .selectAll()
       .orderBy(['branch_id', 'subject_id', 'quarter_id'])
       .execute(),
@@ -212,8 +179,6 @@ describe('the preview and the reason of a change of weights or values', () => {
 
   /** 60 · 20 · 20: Aziz (60 × 50 + 20 × 90) ÷ 80 = 60, grade 3; Bekzod 62.5, grade 3. */
   const CHANGED = { attendance: 60, classwork: 20, homework: 20, ratingExam: null };
-  /** Task 9.4f: a distribution without the rating exam. */
-  const PRIMARY = { attendance: 10, classwork: 50, homework: 40 };
 
   beforeAll(async () => {
     t = await dayTemplatesKit({ jobs: true });
@@ -444,8 +409,6 @@ describe('the preview and the reason of a change of weights or values', () => {
   it('answers 404 for another branch’s and an unknown quarter and year, and an unknown subject, with every row unchanged', async () => {
     const x = await scene();
     const other = await scene();
-    await withPrimary(x);
-    await withPrimary(other);
     const before = await rowsOf();
     const subject = x.s.subject;
     for (const [path, body] of [
@@ -463,16 +426,6 @@ describe('the preview and the reason of a change of weights or values', () => {
       ],
       [`/api/setup/subjects/${subject}/quarter-weights/${UNKNOWN}/preview`, CHANGED],
       [`/api/setup/subjects/${UNKNOWN}/quarter-weights/${x.quarters[0] ?? ''}/preview`, CHANGED],
-      // Task 9.4f: the preview of the distribution without the rating exam (answer A on #276).
-      [
-        `/api/setup/subjects/${subject}/quarter-weights/${other.quarters[0] ?? ''}/primary/preview`,
-        PRIMARY,
-      ],
-      [`/api/setup/subjects/${subject}/quarter-weights/${UNKNOWN}/primary/preview`, PRIMARY],
-      [
-        `/api/setup/subjects/${UNKNOWN}/quarter-weights/${x.quarters[0] ?? ''}/primary/preview`,
-        PRIMARY,
-      ],
       [`/api/setup/subjects/${subject}/quarter-weights/copy/preview`, { yearId: other.s.year }],
       [`/api/setup/subjects/${subject}/quarter-weights/copy/preview`, { yearId: UNKNOWN }],
       [`/api/setup/subjects/${UNKNOWN}/quarter-weights/copy/preview`, { yearId: x.s.year }],
@@ -489,12 +442,9 @@ describe('the preview and the reason of a change of weights or values', () => {
   it('answers 404 to the writes of weights for another branch’s and an unknown quarter and year, and an unknown subject, with no notice and every row unchanged', async () => {
     const x = await scene();
     const other = await scene();
-    await withPrimary(x);
-    await withPrimary(other);
     const before = await rowsOf();
     const subject = x.s.subject;
     const withReason = { ...CHANGED, reason: 'Agreed by the department' };
-    const primaryWithReason = { ...PRIMARY, reason: 'Agreed by the department' };
     for (const [method, path, body] of [
       [
         'put',
@@ -503,22 +453,6 @@ describe('the preview and the reason of a change of weights or values', () => {
       ],
       ['put', `/api/setup/subjects/${subject}/quarter-weights/${UNKNOWN}`, withReason],
       ['put', `/api/setup/subjects/${UNKNOWN}/quarter-weights/${x.quarters[0] ?? ''}`, withReason],
-      // Task 9.4f: the distribution without the rating exam.
-      [
-        'put',
-        `/api/setup/subjects/${subject}/quarter-weights/${other.quarters[0] ?? ''}/primary`,
-        primaryWithReason,
-      ],
-      [
-        'put',
-        `/api/setup/subjects/${subject}/quarter-weights/${UNKNOWN}/primary`,
-        primaryWithReason,
-      ],
-      [
-        'put',
-        `/api/setup/subjects/${UNKNOWN}/quarter-weights/${x.quarters[0] ?? ''}/primary`,
-        primaryWithReason,
-      ],
       [
         'post',
         `/api/setup/subjects/${subject}/quarter-weights/copy`,

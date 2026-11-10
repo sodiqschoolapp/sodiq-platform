@@ -38,9 +38,9 @@ export const GROUP_REFUSALS: Readonly<Record<string, ErrorCode>> = {
   group_has_members: 'group_has_members',
   group_size_below_members: 'group_size_below_members',
   group_class_has_members: 'group_class_has_members',
-  // Task 9.4f (0153, decision 5): grades 4 and 5 of a rating subject while "Rating exams in
-  // grades 0–4" is off; on create, on a class added and on restore.
-  groups_rating_primary_span: 'groups_rating_primary_span',
+  // 0168 (the owner's spec change of 10 November 2026): grades 1 and 2 of a rating subject; on
+  // create, on a class added and on restore.
+  groups_rating_grades_span: 'groups_rating_grades_span',
 };
 
 /** The refusals of a restore, whose texts say what can be done then (spec review of the build, must-fix 4). */
@@ -61,8 +61,8 @@ export const GROUP_SIDE_REFUSALS: Readonly<Record<string, ErrorCode>> = {
   group_language: 'request_refused',
   subject_grade_groups: 'subject_grade_groups',
   subject_has_groups: 'subject_has_groups',
-  // Task 9.4f (0153, decision 6): a class moved from 5–11 into 0–4 that would hide rating exam
-  // entries or change a closed quarter's rating column.
+  // Task 9.4f (0153, decision 6), as 0168: a class moved across grades 1 and 2 that would hide
+  // rating exam entries or change a closed quarter's rating column.
   classes_grade_rating_primary: 'class_grade_rating_primary',
 };
 

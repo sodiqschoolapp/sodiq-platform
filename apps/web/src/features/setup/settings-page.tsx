@@ -43,7 +43,6 @@ import {
 } from '@/components/ui/table';
 import { useView } from '@/features/access/use-view';
 import { DigestSettingsSection } from './digest-settings-section';
-import { SchoolSettingsSection } from './school-settings-section';
 import { attendanceValuesQuery, invalidateSettings, settingsQuery } from './settings-api';
 import { cn } from 'cn';
 import { PANEL, SECTION_TITLE } from '@/components/ui/control';
@@ -468,7 +467,6 @@ export function SettingsPage() {
           }}
         />
         <AttendanceValuesSection key={branchId} branchId={branchId} canEdit={canEdit} />
-        <SchoolSettingsSection key={`school-${branchId}`} branchId={branchId} />
         <DigestSettingsSection />
         <FixedSections />
       </>

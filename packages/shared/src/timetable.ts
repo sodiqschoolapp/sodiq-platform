@@ -1256,9 +1256,6 @@ export const PUBLISH_REFUSALS = [
   'year_quarters',
   'subject_daily_weights',
   'subject_quarter_weights',
-  // Task 9.4f: a rating subject of a class or group of grades 0–4 without its distribution
-  // without the rating exam in a touched quarter whose state of "Rating exams in grades 0–4" is off.
-  'subject_quarter_primary_weights',
   // Task 5.5a-2b-1, decision 11: a transition week that differs from the load, not acknowledged.
   'transition_unacknowledged',
   // Task 5.5a-3a: "carry the change into them" sent when it is not offered;

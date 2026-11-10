@@ -437,35 +437,7 @@ test('the Super Admin sees Academic as built in, adds a division with a departme
   // Task 3.3d: the seed holds no fourth Super Admin (correction 1 of #87).
   await test.step('merges a record created again into the old one; the older UID stays', () =>
     mergeRecords(page));
-
-  // Task 9.4f (`05`, Grades 0–4: "A school setting 'Rating exams in grades 0–4', kept by the
-  // Super Admin, off by default"): the seed holds no fourth Super Admin, so this test's turns it
-  // on with a reason in the settings, and off again.
-  await test.step('turns rating exams in grades 0–4 on with a reason and off again', () =>
-    turnRatingExamsPrimary(page));
 });
-
-async function turnRatingExamsPrimary(page: Page): Promise<void> {
-  await page.goto('/setup/settings');
-  const school = page.getByRole('region', { name: en.setup.settings.school.title });
-  const state = school.getByTestId('rating-exams-primary');
-  await expect(state).toHaveText(en.setup.settings.school.off);
-  for (const [button, reason, after] of [
-    [
-      en.setup.settings.school.turnOn,
-      'Rating exams from grade 1 this year',
-      en.setup.settings.school.on,
-    ],
-    [en.setup.settings.school.turnOff, 'Back to the default', en.setup.settings.school.off],
-  ] as const) {
-    await school.getByRole('button', { name: button, exact: true }).click();
-    const dialog = page.getByRole('dialog', { name: en.results.change.title });
-    await dialog.getByLabel(en.results.change.reason, { exact: true }).fill(reason);
-    await dialog.getByRole('button', { name: en.results.change.save, exact: true }).click();
-    await expect(state).toHaveText(after);
-  }
-  await expect(school.getByRole('alert')).toHaveCount(0);
-}
 
 // Task 2.3a, pull request #62: the account section of a staff record. With
 // SCREENSHOTS=1 the slip is saved for the report under docs/screens/2.3a/.

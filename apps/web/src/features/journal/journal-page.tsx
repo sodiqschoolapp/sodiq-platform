@@ -943,12 +943,20 @@ function Legend({ grid }: { grid: JournalGrid }) {
                           classwork: legend.quarterly.classwork,
                           homework: legend.quarterly.homework,
                         })
-                      : t('journal.legend.quarterlyRating', {
-                          attendance: legend.quarterly.attendance,
-                          classwork: legend.quarterly.classwork,
-                          homework: legend.quarterly.homework,
-                          ratingExam: legend.quarterly.ratingExam,
-                        })}
+                      : // A journal of grades 0 and 1 of a rating subject: the subject's one
+                        // distribution, its rating exam left out (`05`, Grades 0 and 1).
+                        !grid.journal.ratingExam
+                        ? t('journal.legend.quarterlyNoRating', {
+                            attendance: legend.quarterly.attendance,
+                            classwork: legend.quarterly.classwork,
+                            homework: legend.quarterly.homework,
+                          })
+                        : t('journal.legend.quarterlyRating', {
+                            attendance: legend.quarterly.attendance,
+                            classwork: legend.quarterly.classwork,
+                            homework: legend.quarterly.homework,
+                            ratingExam: legend.quarterly.ratingExam,
+                          })}
                     {legend.weightsChangedOn !== null && (
                       <>
                         {' '}

@@ -505,6 +505,38 @@ describe('a journal', () => {
     );
   });
 
+  // The owner's spec change of 10 November 2026 (`05`, Grades 0 and 1): a journal of grade 1 of a
+  // rating subject has no rating exam; its legend names the subject's distribution without it.
+  it.each([
+    [
+      'a grade 1 journal',
+      false,
+      'Quarter result: attendance 20 · classwork 30 · homework 30; no rating exam in grades 0 and 1, the other weights scaled up (changed on 21 October 2026)',
+    ],
+    [
+      'a grade 2 journal',
+      true,
+      'Quarter result: attendance 20 · classwork 30 · homework 30 · rating exam 20 (changed on 21 October 2026)',
+    ],
+  ] as const)(
+    'names the rating exam in the legend of %s of a rating subject as it counts',
+    async (_which, ratingExam, text) => {
+      open({
+        ...GRID,
+        journal: { ...GRID.journal, ratingExam },
+        legend: {
+          ...GRID.legend,
+          quarterly: { attendance: 20, classwork: 30, homework: 30, ratingExam: 20 },
+        },
+      });
+      await waitFor(() => {
+        expect(
+          document.querySelector('[data-journal-legend] [data-quarter-weights]')?.textContent,
+        ).toBe(text);
+      });
+    },
+  );
+
   it('shows lesson mode for the lesson of the date asked', async () => {
     open(GRID, `/journal/${JOURNAL}?mode=lesson&date=2026-10-19`);
     const section = await waitFor(() => {

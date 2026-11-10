@@ -16,7 +16,7 @@ import { setEditDays } from '../../testing/branch-filter-sql.js';
 import { dayTemplatesKit, START, type DayTemplatesKit } from '../../testing/day-templates-kit.js';
 import { LoadKit } from '../../testing/load-kit.js';
 import { MembersKit } from '../../testing/members-kit.js';
-import { OWN_CLASS_CASES, ownRoleOf } from '../../testing/own-class-cases.js';
+import { RATING_OWN_CLASS_CASES, ownRoleOf } from '../../testing/own-class-cases.js';
 import { publishedScene } from '../../testing/published-scene.js';
 
 /** Tuesday 27 October 2026, noon in Tashkent: with 7 edit days the Mondays 12 and 19 October are locked, the 26th is open. */
@@ -196,13 +196,6 @@ describe('the journal routes outside the scope of a role', () => {
       .updateTable('subject_quarter_weights')
       .set({ attendance: 20, classwork: 20, homework: 20, rating_exam: 40 })
       .where('subject_id', '=', s.subject)
-      .where('branch_id', '=', s.branch)
-      .execute();
-    // Task 9.4f: a journal of grades 0–4 has the rating exam only while its quarter's state of
-    // "Rating exams in grades 0–4" is on (`05`, Grades 0–4); the Class teacher's case has one.
-    await t.database.migrator
-      .updateTable('quarter_rating_states')
-      .set({ rating_exams_primary: true })
       .where('branch_id', '=', s.branch)
       .execute();
     for (const browser of [owner, spare])
@@ -480,7 +473,7 @@ describe('the journal routes outside the scope of a role', () => {
       expect(await snapshot(s.branch)).toEqual(before);
     };
 
-    it.each(OWN_CLASS_CASES)(
+    it.each(RATING_OWN_CLASS_CASES)(
       'refuses the %s of the class every write of a graded lesson of the class, its rating exam and its comments, writing nothing',
       async (_who, grade) => {
         const s = await scene(grade);
@@ -528,7 +521,7 @@ describe('the journal routes outside the scope of a role', () => {
   });
 
   describe('unlock requests', () => {
-    it.each(OWN_CLASS_CASES)(
+    it.each(RATING_OWN_CLASS_CASES)(
       'lists, decides and withdraws only own requests and those of own subjects, refusing the rest and writing nothing, with a %s',
       async (_who, grade) => {
         const s = await scene(grade);
@@ -587,7 +580,7 @@ describe('the journal routes outside the scope of a role', () => {
   });
 
   describe('the reads of a role', () => {
-    it.each(OWN_CLASS_CASES)(
+    it.each(RATING_OWN_CLASS_CASES)(
       "gives every role its own reminders only, never the lessons of the journal's teacher, with a %s",
       async (_who, grade) => {
         const s = await scene(grade);
@@ -640,7 +633,7 @@ describe('the journal routes outside the scope of a role', () => {
       });
     });
 
-    it.each(OWN_CLASS_CASES)(
+    it.each(RATING_OWN_CLASS_CASES)(
       'refuses the lesson card to a %s of another class and a Senior Head Teacher of another subject',
       async (_who, grade) => {
         const s = await scene(grade);
@@ -710,7 +703,7 @@ describe('the journal routes outside the scope of a role', () => {
   });
 
   describe('the branch export', () => {
-    it.each(OWN_CLASS_CASES)(
+    it.each(RATING_OWN_CLASS_CASES)(
       'keeps the branch export to its readers: a scoped role asks for none, lists none of another and gets no file of it, writing nothing, with a %s',
       async (_who, grade) => {
         const s = await scene(grade);
