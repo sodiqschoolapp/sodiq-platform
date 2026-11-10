@@ -792,7 +792,11 @@ function inputOf(
     weights: quarterly,
     attendanceValues: valuesOf(one.weights),
     lessons: one.found.lessons.map((lesson) => lesson.lesson),
-    ratingExam: ratingEntryForCalc(one.withoutRating, ratingShownOf(one), () => one.found.ratingExam),
+    ratingExam: ratingEntryForCalc(
+      one.withoutRating,
+      ratingShownOf(one),
+      () => one.found.ratingExam,
+    ),
     quarterClosed,
     heldInJournals: one.found.heldInJournals,
     countsFrom: countsFromOf(context.goLive, one.quarter),

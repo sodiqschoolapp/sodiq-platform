@@ -332,7 +332,7 @@ const SECURITY_DEFINER_FUNCTIONS: Record<string, string> = {
   'subject_primary_span_groups(uuid)':
     'The number of active groups of a subject in every branch that draw from grades 4 and 5, a count only (task 9.4f, the permission review of the code of pull request #276, Look first): turning the subject\'s rating exam on is refused while one exists and "Rating exams in grades 0–4" is off, whichever branch the edit is made in.',
   'subject_rating_span_groups(uuid)':
-    'The number of active groups of a subject in every branch that draw from grades 1 and 2, a count only (0168, the owner\'s spec change of 10 November 2026, as `subject_primary_span_groups`): turning the subject\'s rating exam on is refused while one exists, whichever branch the edit is made in.',
+    "The number of active groups of a subject in every branch that draw from grades 1 and 2, a count only (0168, the owner's spec change of 10 November 2026, as `subject_primary_span_groups`): turning the subject's rating exam on is refused while one exists, whichever branch the edit is made in.",
   'subject_group_grades(uuid)':
     'The grades of the active groups of a subject in every branch with the number of those groups outside the branches of the transaction, grades and counts only (task 3.2a, decision 12 of pull request #91, Look first): a subject cannot lose a grade, nor be archived, while a group of another branch needs it.',
   'tutor_classes_of_language(uuid,text)':

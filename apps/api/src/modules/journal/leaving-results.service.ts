@@ -144,7 +144,11 @@ export class LeavingResults {
           weights: weights.quarterly,
           attendanceValues: { lateValue: weights.lateValue, skippedValue: weights.skippedValue },
           lessons: found.lessons.map((one) => one.lesson),
-          ratingExam: ratingEntryForCalc(switches.withoutRating, ratingShown, () => found.ratingExam),
+          ratingExam: ratingEntryForCalc(
+            switches.withoutRating,
+            ratingShown,
+            () => found.ratingExam,
+          ),
           quarterClosed: false,
           heldInJournals: found.heldInJournals,
           countsFrom,

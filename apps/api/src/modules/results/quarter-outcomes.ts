@@ -176,16 +176,16 @@ async function outcomesOfQuarter(
     );
     const found: ReadonlyMap<string, StudentSubjectQuarter> =
       weights.quarterly === null
-      ? new Map()
-      : await subjectQuarterLessons(transaction, {
-          branchId: input.branchId,
-          timeZone: input.timeZone,
-          now: input.now,
-          academicYearId: quarter.academicYearId,
-          subjectId,
-          quarter,
-          studentIds,
-        });
+        ? new Map()
+        : await subjectQuarterLessons(transaction, {
+            branchId: input.branchId,
+            timeZone: input.timeZone,
+            now: input.now,
+            academicYearId: quarter.academicYearId,
+            subjectId,
+            quarter,
+            studentIds,
+          });
     const decisions = await decisionsOf(transaction, quarter.id, subjectId, studentIds);
     for (const journal of own) {
       const withoutRating = switchesIn(journal, quarter.id)?.withoutRating ?? false;
