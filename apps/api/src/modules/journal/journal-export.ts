@@ -369,12 +369,20 @@ export function legendLines(input: JournalFileInput, texts: JournalExportTexts):
     ...(legend.quarterly === null
       ? []
       : [
-          fillText(l.quarterly, {
-            attendance: String(legend.quarterly.attendance),
-            classwork: String(legend.quarterly.classwork),
-            homework: String(legend.quarterly.homework),
-            ratingExam: String(legend.quarterly.ratingExam ?? 0),
-          }),
+          // A journal of grades 0 and 1 of a rating subject: the subject's distribution, its
+          // rating exam left out (`05`, Grades 0 and 1).
+          legend.quarterly.ratingExam !== null && !input.grid.journal.ratingExam
+            ? fillText(l.quarterlyNoRating, {
+                attendance: String(legend.quarterly.attendance),
+                classwork: String(legend.quarterly.classwork),
+                homework: String(legend.quarterly.homework),
+              })
+            : fillText(l.quarterly, {
+                attendance: String(legend.quarterly.attendance),
+                classwork: String(legend.quarterly.classwork),
+                homework: String(legend.quarterly.homework),
+                ratingExam: String(legend.quarterly.ratingExam ?? 0),
+              }),
         ]),
   ];
 }

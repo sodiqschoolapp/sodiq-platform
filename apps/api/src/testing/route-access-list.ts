@@ -473,14 +473,6 @@ export const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
     roles: SETTINGS_WRITERS,
   },
   'GET /api/setup/checklist': { branch: 'request', roles: SETTINGS_VIEWERS },
-  // Task 9.4f: the school setting "Rating exams in grades 0–4": read by the readers of the
-  // settings, previewed and changed by the Super Admin alone, for every branch at once.
-  'GET /api/setup/school-settings': { branch: 'request', roles: SETTINGS_VIEWERS },
-  'POST /api/setup/school-settings/rating-exams-primary/preview': {
-    branch: 'none',
-    roles: ['super_admin'],
-  },
-  'PUT /api/setup/school-settings/rating-exams-primary': { branch: 'none', roles: ['super_admin'] },
   // Task 11.5 (plan of #299, decision 2, Look first): the digest's time and quiet hours, read
   // and changed by the Super Admin alone, school-wide; the send log under `digest_log`.
   'GET /api/setup/school-settings/digest': { branch: 'none', roles: ['super_admin'] },
@@ -519,16 +511,6 @@ export const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
     roles: SUBJECT_WRITERS,
   },
   'POST /api/setup/subjects/:id/quarter-weights/copy/preview': {
-    branch: 'request',
-    roles: SUBJECT_WRITERS,
-  },
-  // Task 9.4f: the distribution without the rating exam, as the usual one.
-  'PUT /api/setup/subjects/:id/quarter-weights/:quarterId/primary': {
-    branch: 'request',
-    roles: SUBJECT_WRITERS,
-  },
-  // Its preview, writing nothing: the roles of the write (the owner's answer A on #276).
-  'POST /api/setup/subjects/:id/quarter-weights/:quarterId/primary/preview': {
     branch: 'request',
     roles: SUBJECT_WRITERS,
   },

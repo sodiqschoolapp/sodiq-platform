@@ -107,17 +107,6 @@ export function publishTexts(
           ? t('timetable.publish.refusals.subject_quarter_weights_any', { quarter })
           : t('timetable.publish.refusals.subject_quarter_weights', { subject: name, quarter });
       }
-      // Task 9.4f: a rating subject of grades 0–4 without its distribution without the exam.
-      case 'subject_quarter_primary_weights': {
-        const name = subjectName(refusal.subjectId);
-        const quarter = refusal.quarter ?? 1;
-        return name === null
-          ? t('timetable.publish.refusals.subject_quarter_primary_weights_any', { quarter })
-          : t('timetable.publish.refusals.subject_quarter_primary_weights', {
-              subject: name,
-              quarter,
-            });
-      }
       case 'date_blocked':
         return refusal.result === undefined
           ? t('timetable.publish.refusals.pattern_blocked_any')

@@ -228,14 +228,6 @@ export const ERROR_CODES = [
   'quarter_one_not_set',
   /** A change of stored weights or late and skipped values in an open quarter needs a reason (`edge/calculation`, week 7: "asks for a reason"; task 9.1, decision 5). */
   'reason_required',
-  /**
-   * Task 9.4f: turning "Rating exams in grades 0–4" off is refused while a journal of grades 0–4
-   * of an open quarter holds a rating exam entry or a group of grades 4 and 5 of a rating subject
-   * exists (`05`); `details` is the preview with the journals and groups in the way.
-   */
-  'rating_primary_refused',
-  /** Task 9.4f (decision 12): the setting already has this value in every open quarter. */
-  'setting_unchanged',
   /** Task 10.5: the demo clock runs on the test environment only (`DEMO_CLOCK=1`). */
   'demo_clock_off',
   /** Task 10.5 (decision 5): a jump goes forward only, past the demo time when it takes effect. */
@@ -244,12 +236,10 @@ export const ERROR_CODES = [
   'demo_clock_too_far',
   /** Task 10.5: the last jump takes effect in a few seconds; a new one waits for it. */
   'demo_clock_pending',
-  /** Task 9.4f: a group of grades 4 and 5 of a rating subject while "Rating exams in grades 0–4" is off (`05`, Group). */
-  'groups_rating_primary_span',
-  /** Task 9.4f (decision 6): a class moved into grades 0–4 would hide rating exam entries or change a closed quarter's rating column. */
+  /** A group of a rating subject joining grade 0 or 1 with grades 2–11 (`05`, Group; the owner's spec change of 10 November 2026). */
+  'groups_rating_grades_span',
+  /** Task 9.4f, 0168: a class moved across grades 1 and 2 would hide rating exam entries or change a closed quarter's rating column. */
   'class_grade_rating_primary',
-  /** Task 9.4f: the distribution without the rating exam is for a subject with the rating exam in the quarter only. */
-  'primary_weights_no_rating',
   /** The 9,999 staff IDs of the year of first hire are all given (`edge/people-roles-accounts`: "A 10,000th hire in one year is refused"; task 2.2a). */
   'staff_id_exhausted',
   /** A staff member in the Academic division has a department there (`04`; task 2.2a). */

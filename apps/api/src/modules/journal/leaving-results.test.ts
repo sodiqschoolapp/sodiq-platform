@@ -105,10 +105,23 @@ describe('the results at leaving (edge/calculation, a result at leaving)', () =>
   async function leftScene(
     accounts?: { readonly teacher?: string; readonly spare?: string },
     grade = 7,
+    ratingExam = false,
   ) {
+    // A subject with the rating exam, when asked: the scene's own has none.
+    const rated = ratingExam
+      ? await load.classes.subject({ grades: [grade], journalType: 'graded' })
+      : null;
+    if (rated !== null) {
+      await t.database.migrator
+        .updateTable('subjects')
+        .set({ rating_exam: true })
+        .where('id', '=', rated)
+        .execute();
+    }
     const scene = await publishedScene(t, load, {
       graded: true,
       grade,
+      ...(rated === null ? {} : { ratingExam: true, subject: rated }),
       ...(accounts === undefined ? {} : { accounts }),
     });
     const lessons = await t.database.migrator
@@ -250,6 +263,38 @@ describe('the results at leaving (edge/calculation, a result at leaving)', () =>
       .where('action', 'like', '%leaving_result%')
       .execute();
     expect(audited).toEqual([]);
+  });
+
+  // The owner's spec change of 10 November 2026 (`05`, Grades 0 and 1): a rating subject (A 20 ·
+  // CW 30 · HW 30 · RE 20) of a class of grade 1 has no rating exam; the result at leaving leaves it
+  // out and never names it, while grade 2 keeps it as a part with no data yet.
+  it.each([
+    [1, ['homework']],
+    [2, ['homework', 'ratingExam']],
+  ] as const)('leaves the rating exam of grade %i as the grade has it', async (grade, leftOut) => {
+    const s = await leftScene(undefined, grade, true);
+    const browser = await account();
+    await as(
+      browser,
+      [{ role: 'principal', branchId: s.scene.branch }],
+      async (get) => {
+        const answer = resultsOf(
+          await get(s.scene.branch, `/api/people/students/${s.left}/leaving-results`),
+        );
+        // Attendance 100, classwork 60: (20 × 100 + 30 × 60) ÷ 50 = 76.
+        expect(answer.results.map((one) => one.outcome)).toEqual([
+          {
+            kind: 'number',
+            shown: 76,
+            grade: 4,
+            provisional: true,
+            leftOut: [...leftOut],
+            basedOn: { expected: 2, held: 2 },
+          },
+        ]);
+      },
+      '2026-10-21T12:00:00+05:00',
+    );
   });
 
   it('answers no result for a student who has not left', async () => {

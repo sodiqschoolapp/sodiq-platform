@@ -39,6 +39,8 @@ import { decisionOf } from './quarter-decisions.js';
 import {
   gridWeights,
   journalRows,
+  leftOutShown,
+  ratingEntryForCalc,
   switchesIn,
   type GridWeights,
   type JournalRow,
@@ -155,6 +157,8 @@ interface SubjectQuarter {
   readonly reading: StudentRowReading;
   readonly attendanceOnly: boolean;
   readonly ratingExam: boolean;
+  /** A journal of grades 0 and 1 of a rating subject: the rating exam left out (0168). */
+  readonly withoutRating: boolean;
   readonly weights: GridWeights;
 }
 
@@ -506,7 +510,7 @@ async function resultsIn(context: Context, yearId: string | undefined): Promise<
         homework: shown(averages.homework),
         ratingExam: ratingShownOf(one) ? shown(averages.ratingExam) : null,
         ratingShown: ratingShownOf(one),
-        outcome: outcomeShown(outcome),
+        outcome: outcomeShown(outcome, one.withoutRating),
         basedOn: outcome.basedOn,
         countsFrom: outcome.from,
         leftSubjectOn: outcome.leftSubjectOn,
@@ -762,13 +766,8 @@ async function subjectQuarter(
     reading,
     attendanceOnly: switches.attendanceOnly,
     ratingExam: switches.ratingExam,
-    weights: await gridWeights(
-      context.transaction,
-      context.branchId,
-      subjectId,
-      quarter.id,
-      switches.withoutRating,
-    ),
+    withoutRating: switches.withoutRating,
+    weights: await gridWeights(context.transaction, context.branchId, subjectId, quarter.id),
   };
 }
 
@@ -793,7 +792,11 @@ function inputOf(
     weights: quarterly,
     attendanceValues: valuesOf(one.weights),
     lessons: one.found.lessons.map((lesson) => lesson.lesson),
-    ratingExam: ratingShownOf(one) ? one.found.ratingExam : null,
+    ratingExam: ratingEntryForCalc(
+      one.withoutRating,
+      ratingShownOf(one),
+      () => one.found.ratingExam,
+    ),
     quarterClosed,
     heldInJournals: one.found.heldInJournals,
     countsFrom: countsFromOf(context.goLive, one.quarter),
@@ -809,7 +812,7 @@ const unitOf = (journal: JournalRow) => ({
   name: journal.unitName,
 });
 
-function outcomeShown(outcome: StudentQuarterOutcome): QuarterOutcomeShown {
+function outcomeShown(outcome: StudentQuarterOutcome, withoutRating: boolean): QuarterOutcomeShown {
   switch (outcome.kind) {
     case 'number':
       return {
@@ -817,7 +820,9 @@ function outcomeShown(outcome: StudentQuarterOutcome): QuarterOutcomeShown {
         shown: Number(outcome.result.shown),
         grade: outcome.result.grade,
         provisional: outcome.result.provisional,
-        leftOut: outcome.result.leftOut.map((one): JournalPart => one.part),
+        leftOut: outcome.result.leftOut
+          .filter(leftOutShown(withoutRating))
+          .map((one): JournalPart => one.part),
         flags: [...outcome.flags],
       };
     case 'exempt':

@@ -187,23 +187,6 @@ export async function publishedScene(
         })),
       )
       .execute();
-    if (input.ratingExam === true) {
-      await t.database.migrator
-        .insertInto('subject_quarter_primary_weights')
-        .values(
-          quarters.map((quarter) => ({
-            branch_id: branch,
-            subject_id: subject,
-            quarter_id: quarter.id,
-            attendance: 10,
-            classwork: 50,
-            homework: 40,
-            weights_round: 1,
-            rating_round: 1,
-          })),
-        )
-        .execute();
-    }
   }
   const room = await load.classes.room(branch);
   const otherRoom = await load.classes.room(branch);

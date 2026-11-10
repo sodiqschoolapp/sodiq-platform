@@ -13,6 +13,16 @@ export const OWN_CLASS_CASES: readonly (readonly [string, number])[] = [
   ['Class teacher', 1],
 ];
 
+/**
+ * The same two cases for a scene with the rating exam: the Class teacher's class is of grade 2, as
+ * a journal of grades 0 and 1 has no rating exam (`05`, Grades 0 and 1; the owner's spec change of
+ * 10 November 2026).
+ */
+export const RATING_OWN_CLASS_CASES: readonly (readonly [string, number])[] = [
+  ['Tutor', 7],
+  ['Class teacher', 2],
+];
+
 /** The role that holds a class of the grade as its own (the Tutor or the Class teacher). */
 export const ownRoleOf = (grade: number): OwnClassRole => ownClassRoleFor(grade);
 

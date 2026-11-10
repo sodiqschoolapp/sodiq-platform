@@ -891,6 +891,80 @@ describe('groups', () => {
     });
   });
 
+  // The owner's spec change of 10 November 2026 (`05`, Group: "a group of grades 1 and 2 in a
+  // rating subject is refused"; 0168): through the routes, the group's side and the subject's.
+  describe('a group of grades 1 and 2 of a rating subject', () => {
+    const ratingSubject = async (grades: number[], rating: boolean) => {
+      const id = await classes.subject({ grades, journalType: 'graded' });
+      if (rating) {
+        await t.database.migrator
+          .updateTable('subjects')
+          .set({ rating_exam: true })
+          .where('id', '=', id)
+          .execute();
+      }
+      return id;
+    };
+
+    it('refuses the create, and creates one of grades 4 and 5 and one of a subject without the rating exam', async () => {
+      const rating = await ratingSubject([1, 2, 4, 5], true);
+      const first = await schoolClass({ grade: 1 });
+      const second = await schoolClass({ grade: 2 });
+      refusedWith(
+        await post('/api/groups', body([first, second], { subjectId: rating })),
+        409,
+        'groups_rating_grades_span',
+      );
+      await create([await schoolClass({ grade: 4 }), await schoolClass({ grade: 5 })], {
+        subjectId: rating,
+      });
+      const plain = await ratingSubject([1, 2], false);
+      await create([first, second], { subjectId: plain });
+    });
+
+    it('refuses the rating switch turned on while such a group exists in another branch', async () => {
+      const own = await ratingSubject([1, 2], false);
+      await classes.group(t.south, southYear, own, [
+        await schoolClass({ branch: t.south, year: southYear, grade: 1 }),
+        await schoolClass({ branch: t.south, year: southYear, grade: 2 }),
+      ]);
+      const steam = await t.database.migrator
+        .selectFrom('departments')
+        .select('id')
+        .where('name_en', '=', 'STEAM')
+        .executeTakeFirstOrThrow();
+      const read = await t.database.migrator
+        .selectFrom('subjects')
+        .selectAll()
+        .where('id', '=', own)
+        .executeTakeFirstOrThrow();
+      const turned = await put(
+        `/api/setup/subjects/${own}`,
+        {
+          names: { uz: read.name_uz, ru: read.name_ru, en: read.name_en },
+          departmentId: steam.id,
+          grades: [1, 2],
+          colour: 'blue',
+          journalType: 'graded',
+          ratingExam: true,
+          groupSubject: false,
+          languageRule: true,
+          demanding: false,
+          daily: { attendance: 20, classwork: 40, homework: 40 },
+          switchesFrom: 1,
+        },
+        t.admin,
+      );
+      refusedWith(turned, 409, 'groups_rating_grades_span');
+      const after = await t.database.migrator
+        .selectFrom('subjects')
+        .select('rating_exam')
+        .where('id', '=', own)
+        .executeTakeFirstOrThrow();
+      expect(after.rating_exam).toBe(false);
+    });
+  });
+
   // .claude/rules/api.md: two changes at one moment, each pair in both directions.
   describe('at the same moment', () => {
     it('refuses a create that waited for its class to be archived', async () => {

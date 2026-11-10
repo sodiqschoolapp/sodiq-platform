@@ -16,7 +16,13 @@ import type { Access } from '../access/permission.guard.js';
 import { branchOf } from '../classes/classes.service.js';
 import { notFound } from '../setup/setup-refusals.js';
 import { ownStaffOf } from './attendance-entry.js';
-import { gridWeights, journalRows, switchesIn } from './journal-grid.query.js';
+import {
+  gridWeights,
+  journalRows,
+  leftOutShown,
+  ratingEntryForCalc,
+  switchesIn,
+} from './journal-grid.query.js';
 import { teaches } from './journal-scope.js';
 import { countsFromOf, goLiveOf } from './start-quarter.js';
 import { studentRowReading } from './student-row-reading.js';
@@ -130,13 +136,7 @@ export class LeavingResults {
         if (reading !== 'whole') continue;
         const switches = switchesIn(journal, quarter.id);
         if (switches === undefined || switches.attendanceOnly) continue;
-        const weights = await gridWeights(
-          transaction,
-          branchId,
-          subjectId,
-          quarter.id,
-          switches.withoutRating,
-        );
+        const weights = await gridWeights(transaction, branchId, subjectId, quarter.id);
         if (weights.quarterly === null) continue;
         const ratingShown = switches.ratingExam && weights.quarterly.ratingExam !== null;
         const atLeaving = found.atLeaving ?? lastDay;
@@ -144,7 +144,11 @@ export class LeavingResults {
           weights: weights.quarterly,
           attendanceValues: { lateValue: weights.lateValue, skippedValue: weights.skippedValue },
           lessons: found.lessons.map((one) => one.lesson),
-          ratingExam: ratingShown ? found.ratingExam : null,
+          ratingExam: ratingEntryForCalc(
+            switches.withoutRating,
+            ratingShown,
+            () => found.ratingExam,
+          ),
           quarterClosed: false,
           heldInJournals: found.heldInJournals,
           countsFrom,
@@ -167,7 +171,7 @@ export class LeavingResults {
           quarter: { id: quarter.id, number: quarter.number },
           lastDay: atLeaving,
           countsFrom,
-          outcome: shownOf(studentQuarterOutcome(record.inputs)),
+          outcome: shownOf(studentQuarterOutcome(record.inputs), switches.withoutRating),
         });
       }
       results.sort((a, b) => a.subject.names.en.localeCompare(b.subject.names.en, 'en'));
@@ -245,7 +249,10 @@ export async function subjectsOf(
 }
 
 /** The outcome as the record shows it: "based on n of N lessons" on every number. */
-function shownOf(outcome: ReturnType<typeof studentQuarterOutcome>): LeavingOutcome {
+function shownOf(
+  outcome: ReturnType<typeof studentQuarterOutcome>,
+  withoutRating: boolean,
+): LeavingOutcome {
   if (outcome.kind === 'exempt') return { kind: 'exempt' };
   if (outcome.kind !== 'number') return { kind: 'no_result' };
   return {
@@ -253,7 +260,9 @@ function shownOf(outcome: ReturnType<typeof studentQuarterOutcome>): LeavingOutc
     shown: Number(outcome.result.shown),
     grade: outcome.result.grade,
     provisional: outcome.result.provisional,
-    leftOut: outcome.result.leftOut.map((one): JournalPart => one.part),
+    leftOut: outcome.result.leftOut
+      .filter(leftOutShown(withoutRating))
+      .map((one): JournalPart => one.part),
     basedOn: outcome.basedOn,
   };
 }

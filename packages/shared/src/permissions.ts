@@ -362,11 +362,11 @@ export const PERMISSIONS = freezeTable({
     academic_vice_principal: ['view', 'edit'],
   }),
   /**
-   * `school_settings` (task 9.4f, pull request #276; `05`, Grading weights on a subject,
-   * Grades 0–4: "A school setting 'Rating exams in grades 0–4', kept by the Super Admin"): the
-   * preview and the change of a setting of the whole school, for the Super Admin alone. Reading it
-   * is under `settings` view. A new area for new routes, approved by the owner (answer A on the
-   * pull request); no role is widened.
+   * `school_settings` (task 9.4f, pull request #276): the settings of the whole school, for the
+   * Super Admin alone. A new area for new routes, approved by the owner (answer A on the pull
+   * request); no role is widened. Today it holds the parents' digest (task 11.5); the setting
+   * "Rating exams in grades 0–4" and its routes were removed by the owner's spec change of
+   * 10 November 2026 (rating exams in grades 2–11, no setting), with no right changed.
    */
   school_settings: rows({
     super_admin: ['view', 'edit'],

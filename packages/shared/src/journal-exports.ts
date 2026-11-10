@@ -135,6 +135,8 @@ export interface JournalExportTexts {
     readonly weights: string;
     readonly daily: string;
     readonly quarterly: string;
+    /** A journal of grades 0 and 1 of a rating subject: the rating exam left out (10 November 2026). */
+    readonly quarterlyNoRating: string;
   };
   readonly weekdays: readonly string[];
   readonly fileName: string;
@@ -194,6 +196,8 @@ const en: JournalExportTexts = {
     daily: 'Lesson: attendance {{attendance}} · classwork {{classwork}} · homework {{homework}}',
     quarterly:
       'Quarter: attendance {{attendance}} · classwork {{classwork}} · homework {{homework}} · rating exam {{ratingExam}}',
+    quarterlyNoRating:
+      'Quarter: attendance {{attendance}} · classwork {{classwork}} · homework {{homework}}; no rating exam in grades 0 and 1, the other weights scaled up',
   },
   weekdays: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
   fileName: 'journal',
@@ -254,6 +258,8 @@ const ru: JournalExportTexts = {
       'Урок: посещаемость {{attendance}} · классная работа {{classwork}} · домашняя работа {{homework}}',
     quarterly:
       'Четверть: посещаемость {{attendance}} · классная работа {{classwork}} · домашняя работа {{homework}} · рейтинговый экзамен {{ratingExam}}',
+    quarterlyNoRating:
+      'Четверть: посещаемость {{attendance}} · классная работа {{classwork}} · домашняя работа {{homework}}; в 0 и 1 классах рейтингового экзамена нет, остальные веса пропорционально увеличены',
   },
   weekdays: ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'],
   fileName: 'журнал',
@@ -313,6 +319,8 @@ const uz: JournalExportTexts = {
     daily: 'Dars: davomat {{attendance}} · sinf ishi {{classwork}} · uy ishi {{homework}}',
     quarterly:
       'Chorak: davomat {{attendance}} · sinf ishi {{classwork}} · uy ishi {{homework}} · reyting imtihoni {{ratingExam}}',
+    quarterlyNoRating:
+      'Chorak: davomat {{attendance}} · sinf ishi {{classwork}} · uy ishi {{homework}}; 0- va 1-sinflarda reyting imtihoni yoʻq, qolgan ulushlar mutanosib oshiriladi',
   },
   weekdays: ['Du', 'Se', 'Ch', 'Pa', 'Ju', 'Sh', 'Ya'],
   fileName: 'jurnal',
