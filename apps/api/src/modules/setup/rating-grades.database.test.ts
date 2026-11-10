@@ -309,6 +309,51 @@ describe('rating exams in grades 2–11 in the database', () => {
       await group(b, plain, [await classOf(b, 1), await classOf(b, 2)]);
     });
 
+    // Decided without the owner (10 November 2026): any group that joins grade 0 or 1 with a
+    // grade of 2 or more holds students with and without the exam in one journal.
+    it('is refused for grades 0 and 2 and for grades 1 and 3, and allowed for grades 0 and 1', async () => {
+      const b = await fresh();
+      const id = await subject([0, 1, 2, 3]);
+      for (const [low, high] of [
+        [0, 2],
+        [1, 3],
+      ] as const) {
+        expect(
+          (await refusal(group(b, id, [await classOf(b, low), await classOf(b, high)]))).message,
+          `grades ${String(low)} and ${String(high)}`,
+        ).toContain('groups_rating_grades_span');
+      }
+      await group(b, id, [await classOf(b, 0), await classOf(b, 1)]);
+    });
+
+    it('is refused on the restore of such a group whose subject took the rating exam meanwhile', async () => {
+      const b = await fresh();
+      const id = await subject([1, 2], false);
+      const both = await group(b, id, [await classOf(b, 1), await classOf(b, 2)]);
+      await database.migrator
+        .updateTable('groups')
+        .set({ archived_at: new Date(NOW) })
+        .where('id', '=', both)
+        .execute();
+      // An archived group refuses nothing: the subject takes the rating exam.
+      await database.migrator
+        .updateTable('subjects')
+        .set({ rating_exam: true })
+        .where('id', '=', id)
+        .execute();
+      expect(
+        (
+          await refusal(
+            database.migrator
+              .updateTable('groups')
+              .set({ archived_at: null })
+              .where('id', '=', both)
+              .execute(),
+          )
+        ).message,
+      ).toContain('groups_rating_grades_span');
+    });
+
     it('refuses the rating switch turned on while such a group exists', async () => {
       const groupBranch = await fresh();
       const id = await subject([1, 2], false);

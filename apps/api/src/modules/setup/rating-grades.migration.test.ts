@@ -56,7 +56,7 @@ async function sceneOf(base: Awaited<ReturnType<typeof kitOf>>, name: string) {
   const { database, kit, transactions, account } = base;
   const branch = await insertBranch(database.migrator, name);
   const { year, quarters } = await kit.year(branch);
-  const subject = await kit.load.classes.subject({ grades: [1, 2, 3], journalType: 'graded' });
+  const subject = await kit.load.classes.subject({ grades: [0, 1, 2, 3], journalType: 'graded' });
   await database.migrator
     .updateTable('subjects')
     .set({ rating_exam: true })
@@ -126,19 +126,41 @@ async function sceneOf(base: Awaited<ReturnType<typeof kitOf>>, name: string) {
   const close = (quarter: string) =>
     transactions.run([branch], async (transaction) => {
       await audited(transaction);
-      await transaction
-        .insertInto('quarter_closings')
-        .values({
-          branch_id: branch,
-          quarter_id: quarter,
-          version: 1,
-          closed_at: new Date(0),
-          closed_by: account,
-          lock_now: false,
-          warnings: sql`'[]'::jsonb`,
-        })
-        .execute();
+      return (
+        await transaction
+          .insertInto('quarter_closings')
+          .values({
+            branch_id: branch,
+            quarter_id: quarter,
+            version: 1,
+            closed_at: new Date(0),
+            closed_by: account,
+            lock_now: false,
+            warnings: sql`'[]'::jsonb`,
+          })
+          .returning('id')
+          .executeTakeFirstOrThrow()
+      ).id;
     });
+  /** The final result a close stored for the student of a journal (its record as data only). */
+  const finalResult = (
+    closing: string,
+    quarter: string,
+    journal: { journal: string; student: string },
+  ) =>
+    database.migrator
+      .insertInto('quarter_final_results')
+      .values({
+        branch_id: branch,
+        closing_id: closing,
+        quarter_id: quarter,
+        subject_id: subject,
+        student_id: journal.student,
+        journal_id: journal.journal,
+        kind: 'closing',
+        record: sql`'{"kind": "closing"}'::jsonb`,
+      })
+      .execute();
   const groupOf = (classIds: string[]) =>
     database.migrator.transaction().execute(async (transaction) => {
       const row = await transaction
@@ -161,7 +183,7 @@ async function sceneOf(base: Awaited<ReturnType<typeof kitOf>>, name: string) {
       }
       return row.id;
     });
-  return { branch, quarters, states, classOf, journalOf, scoreOf, close, groupOf };
+  return { branch, quarters, states, classOf, journalOf, scoreOf, close, finalResult, groupOf };
 }
 
 /** The rows 0153 wrote and 0168 must leave as they are. */
@@ -174,6 +196,11 @@ const keptRows = async (database: TestDatabase) => ({
     .execute(),
   entries: await database.migrator
     .selectFrom('journal_rating_entries')
+    .selectAll()
+    .orderBy('id')
+    .execute(),
+  results: await database.migrator
+    .selectFrom('quarter_final_results')
     .selectAll()
     .orderBy('id')
     .execute(),
@@ -208,15 +235,23 @@ describe('migration 0168: rating exams in grades 2–11', () => {
       const b = await sceneOf(base, 'South');
       await b.journalOf(2);
       await b.close(b.quarters[0] ?? '');
-      // (c) A group of grades 1 and 2 of the subject, allowed under 0153.
+      // (c) A final result of a grade 1 journal stored by a close of quarter 1.
+      const stored = await sceneOf(base, 'West');
+      const first = await stored.journalOf(1);
+      await stored.finalResult(
+        await stored.close(stored.quarters[0] ?? ''),
+        stored.quarters[0] ?? '',
+        first,
+      );
+      // (d) A group of grades 0 and 2 of the subject, allowed under 0153.
       const c = await sceneOf(base, 'East');
-      await c.groupOf([await c.classOf(1), await c.classOf(2)]);
+      await c.groupOf([await c.classOf(0), await c.classOf(2)]);
     }, 240_000);
 
     it('stops with the count of each, and changes nothing', async () => {
       const before = await keptRows(x.database);
       await expect(run0168(x)).rejects.toThrow(
-        /1 rating exam entries in journals of grades 0 and 1, 1 closed quarters without the rating exam in grades 0–4, 1 groups of grades 1 and 2/,
+        /1 rating exam entries in journals of grades 0 and 1, 1 closed quarters without the rating exam in grades 0–4, 1 final results of journals of grades 0 and 1 in closed quarters, 1 groups of grades 0–1 with grades 2–11/,
       );
       const applied = await sql<{ last: number }>`
         select max(number) as last from schema_migrations
@@ -237,9 +272,10 @@ describe('migration 0168: rating exams in grades 2–11', () => {
       // A score of grade 2 under a state on, its quarter closed with the state on (it had the
       // rating exam in grades 2–4 already), and a grade 1 journal with no entry.
       await s.states(true);
-      await s.scoreOf(await s.journalOf(2));
+      const second = await s.journalOf(2);
+      await s.scoreOf(second);
       await s.journalOf(1);
-      await s.close(s.quarters[0] ?? '');
+      await s.finalResult(await s.close(s.quarters[0] ?? ''), s.quarters[0] ?? '', second);
     }, 240_000);
 
     it('applies, keeps every row, and puts the branch behind for the prepared totals', async () => {

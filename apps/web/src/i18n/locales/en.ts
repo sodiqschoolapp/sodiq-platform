@@ -157,7 +157,7 @@ export const en = {
     demo_clock_pending:
       'The last move of the demo time takes effect in a few seconds. Try again then.',
     groups_rating_grades_span:
-      'A group of a subject with the rating exam cannot join grades 1 and 2: only grades 2 to 11 have the rating exam. Make the group of one of the grades.',
+      'A group of a subject with the rating exam cannot join grade 0 or 1 with grades 2 to 11: only grades 2 to 11 have the rating exam. Make the group of one of the grades.',
     class_grade_rating_primary:
       'The class cannot move between grades 1 and 2: its rating exam entries would be hidden, or a closed quarter would change. Clear the entries, or keep its grade.',
     reason_required: 'This change alters stored results. Give a reason for it.',

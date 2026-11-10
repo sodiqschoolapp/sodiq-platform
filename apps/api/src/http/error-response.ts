@@ -157,7 +157,7 @@ const MESSAGE: Record<ErrorCode, string> = {
   demo_clock_pending:
     'The last jump of the demo time takes effect in a few seconds; try again then.',
   groups_rating_grades_span:
-    'A group of a subject with the rating exam cannot join grades 1 and 2: only grades 2 to 11 have the rating exam.',
+    'A group of a subject with the rating exam cannot join grade 0 or 1 with grades 2 to 11: only grades 2 to 11 have the rating exam.',
   class_grade_rating_primary:
     'The class cannot move across grades 1 and 2: its rating exam entries or a closed quarter would change.',
   staff_id_exhausted: 'All staff IDs of this year of first hire are given.',

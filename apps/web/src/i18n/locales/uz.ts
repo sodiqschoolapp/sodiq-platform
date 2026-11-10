@@ -161,7 +161,7 @@ export const uz: Texts<'one' | 'other'> = {
     demo_clock_pending:
       'Demo vaqtning oxirgi surilishi bir necha soniyada kuchga kiradi. Shunda qayta urinib koʻring.',
     groups_rating_grades_span:
-      'Reyting imtihoni bor fan guruhi 1- va 2-sinflarni birlashtira olmaydi: reyting imtihoni faqat 2–11-sinflarda boʻladi. Guruhni bitta sinf darajasidan tuzing.',
+      'Reyting imtihoni bor fan guruhi 0- yoki 1-sinfni 2–11-sinflar bilan birlashtira olmaydi: reyting imtihoni faqat 2–11-sinflarda boʻladi. Guruhni bitta sinf darajasidan tuzing.',
     class_grade_rating_primary:
       'Sinfni 1- va 2-sinflar oraligʻida oʻtkazib boʻlmaydi: reyting imtihoni yozuvlari yashirinadi yoki yopilgan chorak oʻzgaradi. Yozuvlarni tozalang yoki sinf darajasini qoldiring.',
     reason_required: 'Bu oʻzgarish natijalarni oʻzgartiradi. Sababini kiriting.',

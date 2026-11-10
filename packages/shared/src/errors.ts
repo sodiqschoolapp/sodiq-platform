@@ -236,7 +236,7 @@ export const ERROR_CODES = [
   'demo_clock_too_far',
   /** Task 10.5: the last jump takes effect in a few seconds; a new one waits for it. */
   'demo_clock_pending',
-  /** A group of grades 1 and 2 of a rating subject (`05`, Group; the owner's spec change of 10 November 2026). */
+  /** A group of a rating subject joining grade 0 or 1 with grades 2–11 (`05`, Group; the owner's spec change of 10 November 2026). */
   'groups_rating_grades_span',
   /** Task 9.4f, 0168: a class moved across grades 1 and 2 would hide rating exam entries or change a closed quarter's rating column. */
   'class_grade_rating_primary',

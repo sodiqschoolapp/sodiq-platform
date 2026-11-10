@@ -50,7 +50,10 @@ $$;
 
 grant execute on function journal_rating_grades(uuid) to sodiq_app;
 
--- Whether the active group draws from a class of grade 1 and a class of grade 2.
+-- Whether the active group draws from a class of grade 0 or 1 and a class of grade 2 or more: one
+-- journal that would hold students with and without the rating exam. A group joins at most two
+-- grades (`group_grades`); grades 1 and 2 are the case the spec names (`05`, Group), 0 and 2 or 1
+-- and 3 the same in effect (decided without the owner, 10 November 2026).
 create function group_spans_rating_grades(group_ref uuid) returns boolean
 language sql
 stable
@@ -58,10 +61,10 @@ set search_path = pg_catalog, public
 as $$
   select exists (
     select 1 from group_classes gc join classes c on c.id = gc.class_id
-    where gc.group_id = group_ref and c.grade = 1
+    where gc.group_id = group_ref and c.grade < 2
   ) and exists (
     select 1 from group_classes gc join classes c on c.id = gc.class_id
-    where gc.group_id = group_ref and c.grade = 2
+    where gc.group_id = group_ref and c.grade >= 2
   )
 $$;
 
@@ -74,6 +77,7 @@ do $$
 declare
   hidden integer;
   closed_off integer;
+  stored integer;
   spans integer;
 begin
   -- (a) A rating exam entry (a score, "did not sit" or "exempt") in a journal of grades 0 and 1:
@@ -101,8 +105,19 @@ begin
         and journal_primary(j.id)
         and journal_rating_grades(j.id)
     );
-  -- (c) An active group of grades 1 and 2 of a subject with the rating exam in an open quarter
-  -- of its year, in a year that is not closed.
+  -- (c) A final result stored by a closing in force for a journal of grades 0 and 1 of a subject
+  -- with the rating exam in that quarter: it was stored with the rating exam as a part with no
+  -- data (the state on) or with the distribution without the rating exam (the state off); the new
+  -- rule would read its inputs again with the rating exam "not held", and the nightly check would
+  -- report every such result as changed.
+  select count(*) into stored
+  from quarter_final_results r
+  cross join lateral subject_quarter_switches(r.subject_id, r.quarter_id) s
+  where quarter_is_closed(r.quarter_id)
+    and s.journal_type = 'graded' and s.rating_exam
+    and not journal_rating_grades(r.journal_id);
+  -- (d) An active group of grades 0–1 with grades 2–11 of a subject with the rating exam in an
+  -- open quarter of its year, in a year that is not closed.
   select count(*) into spans
   from groups g
   join academic_years y on y.id = g.academic_year_id
@@ -110,9 +125,9 @@ begin
     and y.status <> 'closed'
     and group_spans_rating_grades(g.id)
     and subject_rating_open_in_year(g.subject_id, g.academic_year_id);
-  if hidden > 0 or closed_off > 0 or spans > 0 then
-    raise exception 'rating_grades_migration_refused: % rating exam entries in journals of grades 0 and 1, % closed quarters without the rating exam in grades 0–4, % groups of grades 1 and 2 of a rating subject; nothing was changed',
-      hidden, closed_off, spans;
+  if hidden > 0 or closed_off > 0 or stored > 0 or spans > 0 then
+    raise exception 'rating_grades_migration_refused: % rating exam entries in journals of grades 0 and 1, % closed quarters without the rating exam in grades 0–4, % final results of journals of grades 0 and 1 in closed quarters, % groups of grades 0–1 with grades 2–11 of a rating subject; nothing was changed',
+      hidden, closed_off, stored, spans;
   end if;
 end;
 $$;
@@ -142,7 +157,7 @@ $$;
 
 -- ---------------------------------------------------------------------------
 -- The group rule (`05`, Group): a group of a subject with the rating exam in an open quarter of
--- its year, whose classes include grade 1 and grade 2, is refused. It replaces the rule of grades
+-- its year, whose classes include a grade 0 or 1 and a grade 2 or more, is refused. It replaces the rule of grades
 -- 4 and 5 while the setting is off (0153); every other rule of `group_rules` is as before.
 
 create or replace function group_rules(group_ref uuid)
@@ -235,7 +250,7 @@ begin
       using errcode = 'check_violation', constraint = 'group_language';
   end if;
 
-  -- The owner's spec change of 10 November 2026: grades 1 and 2 of a rating subject. The subject
+  -- The owner's spec change of 10 November 2026: grades 0–1 with grades 2–11 of a rating subject. The subject
   -- row is held `for share` above, so a change of its switches waits for the group or the group
   -- for it.
   if group_spans_rating_grades(group_ref)
@@ -247,7 +262,7 @@ end;
 $function$;
 
 -- The number of active groups of a subject, of a year that is not closed, in every branch, that
--- draw from a class of grade 1 and one of grade 2: a count only. As `subject_primary_span_groups`
+-- draw from a class of grade 0 or 1 and one of grade 2 or more: a count only. As `subject_primary_span_groups`
 -- (0153), a SECURITY DEFINER named in the allow-list of `catalog.test.ts`: the subject is
 -- school-wide and its edit runs for the branch of the request.
 create function subject_rating_span_groups(subject uuid) returns integer
@@ -264,11 +279,11 @@ as $$
     and y.status <> 'closed'
     and exists (
       select 1 from public.group_classes gc join public.classes c on c.id = gc.class_id
-      where gc.group_id = g.id and c.grade = 1
+      where gc.group_id = g.id and c.grade < 2
     )
     and exists (
       select 1 from public.group_classes gc join public.classes c on c.id = gc.class_id
-      where gc.group_id = g.id and c.grade = 2
+      where gc.group_id = g.id and c.grade >= 2
     )
 $$;
 
@@ -276,7 +291,7 @@ revoke execute on function subject_rating_span_groups(uuid) from public;
 grant execute on function subject_rating_span_groups(uuid) to sodiq_app;
 
 -- The same refusal when a subject's rating switch is turned on: a new switch row with the rating
--- exam, where the subject's row before it had none, while an active group of grades 1 and 2 of
+-- exam, where the subject's row before it had none, while an active group of grades 0–1 with 2–11 of
 -- the subject exists in a year that is not closed, in any branch. The setting is no longer read.
 create or replace function subject_switches_rating_primary() returns trigger
 language plpgsql
