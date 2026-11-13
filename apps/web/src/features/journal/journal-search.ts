@@ -21,7 +21,8 @@ export type JournalFilter = (typeof JOURNAL_FILTERS)[number];
 /**
  * The address of a journal (task 6.2): the quarter, the month of the figures,
  * the date to scroll to (from the teacher's timetable or home page), the
- * student search, the Filter and lesson mode.
+ * student search, the Filter, lesson mode and full screen (`view=full`: the teacher home
+ * opens a lesson's journal with its grid over the whole window; owner, 13 November 2026).
  */
 export interface JournalSearch {
   quarter?: string;
@@ -30,6 +31,7 @@ export interface JournalSearch {
   q?: string;
   filter?: JournalFilter;
   mode?: 'lesson';
+  view?: 'full';
 }
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -49,5 +51,6 @@ export function journalSearch(search: Record<string, unknown>): JournalSearch {
     result.filter = search.filter as JournalFilter;
   }
   if (search.mode === 'lesson') result.mode = 'lesson';
+  if (search.view === 'full') result.view = 'full';
   return result;
 }

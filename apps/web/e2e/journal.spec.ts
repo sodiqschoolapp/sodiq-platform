@@ -32,6 +32,13 @@ test('a teacher opens the journal from today’s lesson on the home page and rea
   // Decision 18: the time is recorded for the report, not asserted (CI machines vary).
   testInfo.annotations.push({ type: 'journal-open-ms', description: String(opened) });
 
+  // Opened from the home page, the grid covers the whole window (owner, 13 November 2026);
+  // leaving it brings back the selectors, and the address no longer asks for it.
+  await expect(page.locator('[data-journal-full-screen] [data-journal-grid]')).toBeVisible();
+  await page.getByRole('button', { name: en.journal.page.exitFullScreen, exact: true }).click();
+  await expect(page.locator('[data-journal-full-screen]')).toHaveCount(0);
+  await expect(page).not.toHaveURL(/view=full/);
+
   await expect(page.locator('[data-journal-header]')).toContainText('7 Oxford · Geography');
   await expect(page.locator('[data-journal-header]')).toContainText('Teacher: Qodirov Sanjar');
   // The students in the one fixed order: A, Z, then oʻ after z.

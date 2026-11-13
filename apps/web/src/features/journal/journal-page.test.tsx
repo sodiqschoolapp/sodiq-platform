@@ -606,6 +606,46 @@ describe('a journal', () => {
     });
   });
 
+  it('draws the full screen button right above the grid, in its panel (owner, 13 November 2026)', async () => {
+    open(GRID);
+    const button = await screen.findByRole('button', { name: en.journal.page.fullScreen });
+    const panel = button.closest('[data-journal-grid-panel]');
+    expect(panel).not.toBeNull();
+    expect(panel?.querySelector('[data-journal-grid]')).not.toBeNull();
+    // Not among the selectors of the journal's header panel.
+    expect(document.querySelector('[data-journal-header]')?.parentElement?.contains(button)).toBe(
+      false,
+    );
+  });
+
+  it('opens over the whole window from the address and drops it from the address on Esc (owner, 13 November 2026)', async () => {
+    fakeApi({
+      'GET /api/auth/session': () =>
+        json(sessionOf({ assignments: [{ role: 'principal', branchId: NORTH.id }] })),
+      [GRID_ROUTE]: () => json(GRID),
+      'GET /api/journal/journals': () => json(LIST),
+    });
+    const shell = renderApp(`/journal/${JOURNAL}?view=full`, 'en');
+    await waitFor(() => {
+      expect(
+        document.querySelector('[data-journal-full-screen] [data-journal-grid]'),
+      ).not.toBeNull();
+    });
+    fireEvent.keyDown(document, { key: 'Escape' });
+    await waitFor(() => {
+      expect(document.querySelector('[data-journal-full-screen]')).toBeNull();
+    });
+    await waitFor(() => {
+      expect(shell.router.state.location.search).toEqual({});
+    });
+  });
+
+  it('opens lesson mode, not full screen, when the address asks for both', async () => {
+    open(GRID, `/journal/${JOURNAL}?view=full&mode=lesson`);
+    await screen.findByRole('radio', { name: en.journal.page.lessonMode, checked: true });
+    expect(document.querySelector('[data-journal-full-screen]')).toBeNull();
+  });
+
   it('hides the columns the person unticks and keeps them hidden on the next visit (owner, 27 October 2026)', async () => {
     const header = (colId: string) => document.querySelector(`.ag-header-cell[col-id="${colId}"]`);
     try {
