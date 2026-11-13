@@ -212,7 +212,7 @@ describe('the teaching home page', () => {
     await waitFor(() => {
       expect(calls.shell.router.state.location.pathname).toBe(`/journal/${uid(901)}`);
     });
-    expect(calls.shell.router.state.location.search).toEqual({ date: TODAY });
+    expect(calls.shell.router.state.location.search).toEqual({ date: TODAY, view: 'full' });
     expect(calls.shell.view.snapshot().branchId).toBe(SOUTH.id);
     await waitFor(() => {
       const read = calls.filter((call) => call.route === `GET /api/journal/journals/${uid(901)}`);

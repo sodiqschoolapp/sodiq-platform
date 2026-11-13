@@ -176,9 +176,9 @@ function JournalLoaded({
   const navigate = useNavigate();
   const [foldedOpen, setFoldedOpen] = useState(false);
   const [exemptOpen, setExemptOpen] = useState(false);
-  // The grid over the whole window (asked for by the owner, 27 October 2026).
-  const [full, setFull] = useState(false);
-  useFullScreen(full, setFull);
+  // The grid over the whole window (asked for by the owner, 27 October 2026); opened so from the
+  // teacher home (`view=full`; owner, 13 November 2026).
+  const [fullAsked, setFull] = useState(search.view === 'full');
   // The columns the person hid, kept in the browser like a list's (owner, 27 October 2026); a
   // browser with no choice hides every one but the photo (task 10.7; owner, 7 November 2026).
   const [hiddenColumns, setHiddenColumns] = useState(() =>
@@ -261,6 +261,14 @@ function JournalLoaded({
   const gridPanel = useRef<HTMLDivElement>(null);
   const scrolledTo = useRef<string | null>(null);
   const hasGrid = !lessonMode && data.lessons.length > 0;
+  // Full screen holds the grid only: lesson mode (a phone) or a quarter with no lessons stays.
+  const full = fullAsked && hasGrid;
+  useFullScreen(full, setFull);
+  // Once full screen ends, the address no longer asks for it, so a reload keeps the page as is.
+  const askedInAddress = search.view === 'full';
+  useEffect(() => {
+    if (!fullAsked && askedInAddress) go({ view: undefined });
+  }, [fullAsked, askedInAddress, go]);
   // The router puts the window back at the top when a navigation ends (status "idle"): with the
   // journal already in the cache the page draws before that, and a scroll then would be undone.
   const routing = useRouterState({ select: (state) => state.status });
@@ -485,18 +493,6 @@ function JournalLoaded({
                 }}
               />
             )}
-            {!lessonMode && data.lessons.length > 0 && (
-              <Button
-                variant="secondary"
-                onClick={() => {
-                  setFull(true);
-                }}
-              >
-                <FullscreenIcon aria-hidden="true" />
-                {t('journal.page.fullScreen')}
-              </Button>
-            )}
-            {!lessonMode && data.lessons.length > 0 && columnsButton}
             {undoButton}
             <Link to="/journal" search={{ year: data.journal.year.id }} className="text-link">
               {t('journal.page.otherYear', { year: yearText(data.journal.year) })}
@@ -538,8 +534,24 @@ function JournalLoaded({
                 ? 'fixed inset-0 z-40 flex flex-col gap-3 bg-background p-4'
                 : `${PANEL} scroll-mt-4`
             }
+            data-journal-grid-panel="true"
             data-journal-full-screen={full ? 'true' : undefined}
           >
+            {/* Right above the grid, not among the selectors (owner, 13 November 2026). */}
+            {!full && (
+              <div className="mb-3 flex flex-wrap items-center justify-end gap-3">
+                {columnsButton}
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    setFull(true);
+                  }}
+                >
+                  <FullscreenIcon aria-hidden="true" />
+                  {t('journal.page.fullScreen')}
+                </Button>
+              </div>
+            )}
             {full && (
               <>
                 <div className="flex flex-wrap items-center gap-3">

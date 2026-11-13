@@ -348,7 +348,12 @@ function OpenJournal({
   const navigate = useNavigate();
   const switchBranch = useSwitchBranch();
   const open = () => {
-    void navigate({ to: '/journal/$journalId', params: { journalId }, search: { date } });
+    // The journal opens with its grid over the whole window (owner, 13 November 2026).
+    void navigate({
+      to: '/journal/$journalId',
+      params: { journalId },
+      search: { date, view: 'full' },
+    });
   };
   return (
     <Button

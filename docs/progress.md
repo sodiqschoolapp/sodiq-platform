@@ -2,6 +2,16 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 13 November 2026: the journal's full screen button above the grid, and the teacher home opens the journal in full screen
+
+Not a task of the build plan: asked for by the owner on 13 November 2026 while testing the parents' digest on the test site.
+
+- **Web** (feature `journal`): "Full screen" and "Columns" move from the row of selectors to a bar at the top of the grid's own panel, right above the grid; Undo stays with the selectors. The journal's address takes `view=full` (`journalSearch`): the page opens with the grid over the whole window, and leaving full screen (its button, Esc, the browser's own) drops it from the address, so a reload keeps the page as it is. Lesson mode (a phone, or `mode=lesson`) and a quarter with no lessons ignore it.
+- **Teacher home** (feature `timetable`): "Open the journal" of today's lessons opens `/journal/<id>?date=<date>&view=full`. The other ways into a journal (Journals list, timetable, reminders, home cards) open it as before.
+- **Tests**: `journal-page.test.tsx` (the button in the grid's panel, `view=full` and Esc, lesson mode wins), `teaching-home.test.tsx` (the address), `e2e/journal.spec.ts` (opened from home in full screen, then left).
+
+Decided without the owner: "Columns" moves with "Full screen" (both act on the grid, as in the full screen bar); only the home page's button opens in full screen. No API, database, permission or `packages/calc` change.
+
 ## 10 November 2026: rating exams in grades 2–11, no setting and no distribution of grades 0–4
 
 Not a task of the build plan: the owner's spec change of the day (`docs/spec-changes.md`), built at once.
