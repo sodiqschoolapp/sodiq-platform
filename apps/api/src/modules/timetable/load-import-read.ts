@@ -176,6 +176,8 @@ export interface ParsedLoadRow {
   readonly rowNumber: number;
   readonly cells: LoadImportRow['cells'];
   readonly problems: LoadImportProblem[];
+  /** The class or group the row names, when its cell was matched (even when another cell was not). */
+  readonly unit: { readonly kind: 'class' | 'group'; readonly id: string } | null;
   /** Set when every cell was read and matched. */
   readonly record: {
     readonly unitKind: 'class' | 'group';
@@ -296,7 +298,13 @@ export function parseLoadImportRow(row: LoadImportRow, indexes: MatchIndexes): P
           shortReason,
         }
       : null;
-  return { rowNumber: row.rowNumber, cells, problems, record };
+  return {
+    rowNumber: row.rowNumber,
+    cells,
+    problems,
+    unit: unit === undefined || unit === null ? null : { kind: unit.kind, id: unit.id },
+    record,
+  };
 }
 
 /**

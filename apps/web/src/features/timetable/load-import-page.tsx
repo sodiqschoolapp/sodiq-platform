@@ -23,6 +23,7 @@ import { EmptyState, ErrorState, LoadingOutline } from '@/components/states';
 import { Button } from '@/components/ui/button';
 import { PANEL, SECTION_TITLE } from '@/components/ui/control';
 import { useView } from '@/features/access/use-view';
+import { schoolDateText } from '@/lib/dates';
 import {
   confirmLoadImport,
   downloadLoadImportTemplate,
@@ -264,7 +265,9 @@ export function LoadImportPage(): React.JSX.Element {
             </p>
             {preview.alreadyImportedOn !== null && (
               <p className="text-sm text-destructive">
-                {t('timetable.loadImport.alreadyImported', { date: preview.alreadyImportedOn })}
+                {t('timetable.loadImport.alreadyImported', {
+                  date: schoolDateText(preview.alreadyImportedOn, language),
+                })}
               </p>
             )}
             {confirm.isError && <FailureAlert error={confirm.error} />}

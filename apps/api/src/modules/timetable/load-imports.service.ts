@@ -174,11 +174,11 @@ export class LoadImports {
       throw new ApiException('import_not_template', 422);
     }
     const branchId = branchOf(access);
+    // The file is read before the draft is locked, so no hand write of the draft waits for it.
+    const read = await readLoadImportWorkbook(file.bytes);
     const fileSha256 = createHash('sha256').update(file.bytes).digest('hex');
     const id = await this.transactions.run(access.branchIds, async (transaction) => {
-      // The draft first, so another branch's or an unknown one is 404 whatever the file is.
       const version = await this.timetable.lockDraftRow(transaction, branchId, versionId);
-      const read = await readLoadImportWorkbook(file.bytes);
       // Decision 3: a template of another draft is refused before anything is kept.
       if (read.versionId !== version.id) {
         throw new ApiException('load_import_other_draft', 422);
@@ -637,8 +637,25 @@ export class LoadImports {
           live.map((one) => one.id),
         );
         const names = new Map(live.map((one) => [one.id, one.name]));
+        // A group the file names counts as given, also when its row is held back for another
+        // problem: the block is then not told a part it has (review of the code, should-fix 1).
+        const heldBack = parsed
+          .filter(
+            (row) =>
+              row.unit?.kind === 'group' &&
+              !candidates.some((one) => one.rowNumber === row.rowNumber),
+          )
+          .map((row) => ({
+            id: placeholderOf(row.rowNumber),
+            classId: null,
+            groupId: row.unit?.id ?? null,
+            subjectId: '',
+            teacherId: '',
+            lessonsPerWeek: 0,
+            mixedBlock: false,
+          }));
         const missing = missingBlockGroups(
-          versionRows.map(blockRowOf),
+          [...versionRows.map(blockRowOf), ...heldBack],
           [...liveGroups.values()],
           facts.groups,
         );

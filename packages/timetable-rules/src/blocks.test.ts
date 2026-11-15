@@ -309,9 +309,17 @@ describe('missingBlockGroups', () => {
     expect(found.get('a')).toEqual([]);
   });
 
-  it('never counts a group out of service, which the caller leaves out of the list', () => {
-    const found = missingBlockGroups([row('a', '7o-1')], [half1]);
-    expect(found.get('a')).toEqual([]);
+  it('never counts a group that is not in service, even when it is linked', () => {
+    // Row a names an archived half, read from `rowGroups`; row b a live half. The other live half
+    // is asked for on both; the archived half is never asked for of b, though it is linked to it.
+    const archived = group('7o-0', ['7o'], [7]);
+    const found = missingBlockGroups(
+      [row('a', '7o-0'), row('b', '7o-1')],
+      [half1, half2],
+      new Map([[archived.id, archived]]),
+    );
+    expect(found.get('a')).toEqual(['7o-2']);
+    expect(found.get('b')).toEqual(['7o-2']);
   });
 
   it('gives a class row nothing', () => {

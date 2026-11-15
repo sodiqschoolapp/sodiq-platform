@@ -221,6 +221,14 @@ describe('the teaching load import', () => {
     princeton = await load.classes.schoolClass(t.north, year, { grade: 7, name: 'Princeton' });
     await load.classes.group(t.north, year, pe, [oxford], { name: '7O-PE-1' });
     await load.classes.group(t.north, year, pe, [oxford], { name: '7O-PE-2' });
+    // An archived third half: never asked for (review of the code, must-fix 1). The clean file of
+    // the Done-when gives the two live halves only.
+    const gone = await load.classes.group(t.north, year, pe, [oxford], { name: '7O-PE-0' });
+    await t.database.migrator
+      .updateTable('groups')
+      .set({ archived_at: new Date('2026-09-20T10:00:00+05:00') })
+      .where('id', '=', gone)
+      .execute();
     for (const one of ['7-E-1', '7-E-2', '7-E-3']) {
       await load.classes.group(t.north, year, english, [oxford, princeton], { name: one });
     }
@@ -527,7 +535,7 @@ describe('the teaching load import', () => {
           teacher: name(mathsTeacher),
           lessonsPerWeek: '3',
         }),
-      ).toContain('load_group_subject');
+      ).toEqual(['load_group_subject']);
     });
 
     it('an archived subject: load_subject_archived', async () => {
@@ -573,7 +581,7 @@ describe('the teaching load import', () => {
           teacher: name(swimmer),
           lessonsPerWeek: '1',
         }),
-      ).toContain('load_group_no_shared_slot');
+      ).toEqual(['load_group_no_shared_slot']);
     });
 
     it('a class row and a group row of it for one subject: load_split_and_whole', async () => {
@@ -584,7 +592,7 @@ describe('the teaching load import', () => {
           { unit: '7O-PE-2', subject: PE, teacher: name(pe2), lessonsPerWeek: '2' },
         ],
       );
-      expect(codes).toContain('load_split_and_whole');
+      expect(codes).toEqual(['load_split_and_whole']);
     });
 
     it('a mixed mark on a group across classes: load_mixed_not_split', async () => {
@@ -715,6 +723,71 @@ describe('the teaching load import', () => {
           version,
         ),
       ).toEqual(['load_teacher_status']);
+      // The archived half of a split and a closed room, in the same draft: told as by hand.
+      expect(
+        await codesFor(
+          { unit: '7O-PE-0', subject: PE, teacher: name(pe1), lessonsPerWeek: '2' },
+          [],
+          version,
+        ),
+      ).toEqual(['load_unit_archived', 'load_import_block_part']);
+      const closed = await load.classes.room(t.north, 'closed');
+      const closedName = (
+        await t.database.migrator
+          .selectFrom('rooms')
+          .select('name')
+          .where('id', '=', closed)
+          .executeTakeFirstOrThrow()
+      ).name;
+      expect(
+        await codesFor(
+          {
+            unit: '7 Princeton',
+            subject: MATHS,
+            teacher: name(mathsTeacher),
+            lessonsPerWeek: '4',
+            room: closedName,
+          },
+          [],
+          version,
+        ),
+      ).toEqual(['load_room_closed']);
+    });
+
+    it('a class of another year of the branch is not found', async () => {
+      const later = await load.classes.year(t.north, 'planned', '2027-09-01', '2028-05-31');
+      await load.classes.schoolClass(t.north, later, { grade: 7, name: 'Stanford' });
+      expect(
+        await codesFor({
+          unit: '7 Stanford',
+          subject: MATHS,
+          teacher: name(mathsTeacher),
+          lessonsPerWeek: '4',
+        }),
+      ).toEqual(['load_import_unknown']);
+    });
+
+    it('asks for every group linked through a chain, by name', async () => {
+      const chess = await load.classes.subject({ grades: [7], name: 'Chess Lime' });
+      await load.classes.group(t.north, year, chess, [oxford], { name: 'CH-A' });
+      await load.classes.group(t.north, year, chess, [oxford, princeton], { name: 'CH-B' });
+      await load.classes.group(t.north, year, chess, [princeton], { name: 'CH-C' });
+      const player = await teacher([{ subject: chess, grades: [7] }]);
+      const preview = await uploaded(await draft(), [
+        { unit: 'CH-A', subject: 'Chess Lime', teacher: name(player), lessonsPerWeek: '1' },
+      ]);
+      expect(rowOf(preview, 3).problems).toEqual([
+        { column: 'unit', code: 'load_import_block_part', groups: ['CH-B', 'CH-C'] },
+      ]);
+    });
+
+    it('never tells a part missing that the file names on a row with another problem', async () => {
+      const preview = await uploaded(await draft(), [
+        { unit: '7O-PE-1', subject: PE, teacher: name(pe1), lessonsPerWeek: '2' },
+        { unit: '7O-PE-2', subject: PE, teacher: 'Nobody Unknown (S-999998)', lessonsPerWeek: '2' },
+      ]);
+      expect(codesOf(preview, 3)).toEqual([]);
+      expect(codesOf(preview, 4)).toEqual(['load_import_unknown']);
     });
 
     it('a closed room: load_room_closed; a room and a room type: load_import_room_and_type', async () => {
