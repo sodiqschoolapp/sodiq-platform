@@ -37,6 +37,42 @@ Not written yet for most of the teaching load and the timetable: task 3.7 descri
 | Someone else is editing the draft | The import is refused until they leave it, as for any change of the draft. |
 | Someone added a row of the file by hand meanwhile | The confirm shows the preview again with that row's problem; nothing is added. |
 
+## Importing the timetable from Excel
+
+<!-- Sources: spec 06 (Building a timetable; Importing the load and the timetable; Editing in the grid; Rules), edge/timetable (Structure); docs/spec-changes.md, 15 November 2026, with the owner's answer of 16 November 2026; task 5.14, its decisions and plan review -->
+
+**What it is.** The weekly timetable of a draft can be filled from the system's Excel template, all at once, instead of placing lessons one by one in the grid. One row of the file is one lesson of the week. The file only chooses records that already exist in the branch, and every lesson must match a row of the draft's teaching load. The load itself is not changed.
+
+**Who can do it.** The Super Admin and the Academic Vice Principal, into a draft of their branch. The Principal does not see the link. A published version is never changed by an import, and an import never publishes.
+
+**How to do it.**
+
+1. Open the draft builder, step 7 (the grid). Press **Import the timetable from Excel** (**Dars jadvalini Exceldan import qilish**).
+2. Press **Download the template**. The file is made for this draft: its sheet "Lists" holds the weekdays, the branch's classes and groups, the classes each group draws from, the subjects, the teachers (surname, name and staff ID) and vacancies, and the rooms. Each column that names a record is a dropdown of that list.
+3. Fill one row per lesson: weekday, lesson number (1 for the first lesson of the day; breaks are not counted), class or group, subject, teacher or vacancy, and a room (optional: without one, the lesson takes the row's room or the class's main classroom). For a Tutor subject on a class (the Homework slot, Ma'naviyat soati) the teacher may be left empty: the class's Tutor takes it.
+4. Press **Upload the filled file**. The page lists every row, the rows with problems first, and below them the warnings. It also says how many lessons the draft holds now: the import replaces them.
+5. When every row is ready, press **Place all lessons**. If the draft already holds lessons, the page asks first: "Remove N placed lessons of this draft?" Only after **Remove and place** are they replaced. The page then links back to the grid.
+
+**Rules.**
+
+- Each row is matched to the draft's load row of that class or group and subject, and the teacher must be that row's teacher. A lesson has one teacher: a lesson given by two teachers at once is entered under one of them, and the other is kept out of that slot by their availability.
+- All groups of a block, and both halves of a split, go in the same weekday and lesson number; a block given only in part is a problem of its rows.
+- Two lessons of the same row in consecutive lessons of a day are one double lesson when the load row allows doubles.
+- The whole file is checked with the same rules as the grid: a teacher, a room or a class in two places, availability, subject and grades of the teacher, language, two-grade groups, travel time between branches. Every blocked rule is a problem of the rows it names. Warnings (for example the same subject twice in a day, or fewer lessons than the load) are listed and do not stop the import.
+- Nothing is saved until every row is ready; then all lessons are placed at once and every lesson the draft held before is removed. Class, teacher and day locks and the pinned lessons of step 5 stay; a lock of a single lesson goes with it.
+- The same file is not imported twice into a draft, and a template made for another draft, or the load template, is refused.
+
+**What happens if…**
+
+| Case | What happens |
+| --- | --- |
+| A name is not in the list (a typo, or pasted past the dropdown) | "no record of this branch and year has this name; choose one from the list." |
+| The load has no row for that class and subject | "the draft's teaching load has no row for this class or group and subject; add it to the load first." |
+| The teacher is not the load row's | "the teaching load gives this lesson to …; name that teacher or change the load." |
+| The day has no such lesson number | "the day has no lesson with this number on this weekday." |
+| Someone placed or removed a lesson in the grid after the preview | "The lessons of the draft changed after the preview." Nothing is saved; upload the file again to see what is removed now. |
+| Someone else is editing the draft | The import is refused until they leave it, as for any change of the draft. |
+
 ## Teacher absences
 
 <!-- Sources: spec 06 (Teachers who work in several branches, Absence; How surprises are prevented), edge/timetable (After publishing: "A teacher is ill for weeks", "The lesson time passes and nobody was assigned"; Versions and drafts), edge/00-definitions (Held lesson); task 5.7a-1, decisions 1 to 13 and plan review corrections 1 and 2 -->
