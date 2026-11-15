@@ -2,6 +2,19 @@
 
 The spec in `docs/spec/` was taken from the full spec document on 3 October 2026 (revision 88). Every later change to a spec file is listed here, newest first, with the date, what changed, why, and the files touched. Changes are made only with the `/spec-change` skill and the owner's approval.
 
+## 15 November 2026: the load import and the timetable import
+
+- What changed:
+  1. **The teaching load can be imported** into a draft from the system's Excel template: one row per load row (class or group, subject, teacher or vacancy, lessons per week, room or room type, doubles allowed, "deliberately short" with its reason). Every rule of a row typed by hand applies; a repeated row is a problem; the rows are added to the draft's load.
+  2. **The timetable can be imported** into a draft: one row per lesson of the weekly pattern (weekday, slot number of the day template in force on the start date, class or group, subject, teacher or vacancy, room). Each row is matched to a row of the draft's load; blocks, splits and doubles are placed as in the grid; the whole file is checked by the timetable rule engine, every blocked rule a problem of its rows, warnings listed. The draft's placements are replaced after a confirmation; the load is not changed.
+  3. **Chosen, never created.** Both templates are made for the branch and the draft at download, with a sheet of the branch's existing classes, groups, subjects, teachers and vacancies (surname, name and staff ID), rooms and room types; every column naming such a record is a dropdown of it. An import creates no record it refers to; an unknown value, or one not in service on the start date, is a problem of its row, also when pasted past the dropdown.
+  4. Both: the Super Admin and the Academic Vice Principal, into a draft of their branch (the rights of editing the load and the grid); never a published version, never a publish; preview with problems, all rows or none, the same file not twice; one audit entry with each row written.
+- Why: the owner, 15 November 2026, in chat, preparing go-live: the load and the timetable of a whole branch are too much to enter by hand; the school builds its timetable in its own files and will convert them into the template. The owner asked that an import only choose values that already exist in the platform ("import only chooses values from there … avoiding typo problems").
+- Not in this change: the general rule that every import (students, staff) names records from a sheet of dropdowns (part C of the proposal; the owner did not take it in). Open question, to be answered before the timetable import is built: a lesson the school gives with two teachers at once (two classes together) has no place under "A lesson has one teacher or one vacancy" (`06`, Model); the school chooses one group of both classes with one teacher, or two groups in one slot, one per teacher.
+- Permissions: no role gains a right. The import routes are new routes of the existing rights to edit the load and the grid; the owner approved them with this change (stop-list item 5, 15 November 2026).
+- Code: not built yet. Two tasks in `docs/build-plan.md`, placed by the owner before 11.9: 5.13 the load import, then 5.14 the timetable import.
+- Files: `docs/spec/06-timetable.md` (Building a timetable: step 2 and the line under the table; the new section "Importing the load and the timetable").
+
 ## 10 November 2026: rating exams in grades 2–11, no setting and no distribution of grades 0–4
 
 - What changed:
