@@ -65,6 +65,10 @@ describe('the teaching load import', () => {
   let e2: string;
   let e3: string;
   let label: Map<string, string>;
+  let southDraft = '';
+  let southImport = '';
+  let southTeacher = '';
+  let southRoom = '';
   const MATHS = 'Algebra Lime';
   const PE = 'Movement Lime';
   const ENGLISH = 'Language Lime';
@@ -232,8 +236,46 @@ describe('the teaching load import', () => {
       from: new Date('2026-09-01T00:00:00+05:00'),
     });
     // The South has records of its own; none of them is ever listed or found in the North.
-    await load.classes.schoolClass(t.south, southYear, { grade: 7, name: 'Cambridge' });
-    await load.classes.room(t.south);
+    const cambridge = await load.classes.schoolClass(t.south, southYear, {
+      grade: 7,
+      name: 'Cambridge',
+    });
+    const room = await load.classes.room(t.south);
+    southRoom = (
+      await t.database.migrator
+        .selectFrom('rooms')
+        .select('name')
+        .where('id', '=', room)
+        .executeTakeFirstOrThrow()
+    ).name;
+    const south = await load.teacher(t.south, { subjects: [{ subject: maths, grades: [7] }] });
+    const southRow = await t.database.migrator
+      .selectFrom('staff')
+      .select(['first_name', 'last_name', 'staff_id'])
+      .where('id', '=', south.staffId)
+      .executeTakeFirstOrThrow();
+    southTeacher = `${southRow.last_name ?? ''} ${southRow.first_name ?? ''} (${southRow.staff_id ?? ''})`;
+    // A South draft with a load row and a kept import, so a stray write to them would show.
+    southDraft = await load.version(t.south, southYear);
+    await load.row({
+      branch_id: t.south,
+      version_id: southDraft,
+      class_id: cambridge,
+      subject_id: maths,
+      teacher_id: south.staffId,
+    });
+    const southTemplate = await templateOf(southDraft, t.admin, t.south);
+    expect(southTemplate.status).toBe(200);
+    const southUpload = await upload(
+      southDraft,
+      await filledLoadTemplate(southTemplate.body as Buffer, [
+        { unit: '7 Cambridge', subject: MATHS, teacher: southTeacher, lessonsPerWeek: '3' },
+      ]),
+      t.admin,
+      t.south,
+    );
+    expect(southUpload.status, JSON.stringify(southUpload.body)).toBe(200);
+    southImport = loadImportPreviewSchema.parse(southUpload.body).importId;
   }, 120_000);
 
   afterAll(async () => {
@@ -356,6 +398,9 @@ describe('the teaching load import', () => {
       expect(units).not.toContain('7 Cambridge');
       const teachers = await templateList(bytes, EN.lists.teachers);
       expect(teachers).toContain(name(mathsTeacher));
+      // Nothing of the South: its teacher and its room.
+      expect(teachers).not.toContain(southTeacher);
+      expect(await templateList(bytes, EN.lists.rooms)).not.toContain(southRoom);
       expect(await templateList(bytes, EN.lists.subjects)).toContain(MATHS);
       const entries = await t.database.migrator
         .selectFrom('audit_log')
@@ -370,8 +415,11 @@ describe('the teaching load import', () => {
       const version = await draft();
       const other = await draft();
       const bytes = await filledLoadTemplate(await template(other), cleanRows());
+      const before = await rowsOf();
       const response = await upload(version, bytes);
       refusedWith(response, 422, 'load_import_other_draft');
+      // Refused before anything is kept: no import row and no audit entry.
+      expect(await rowsOf()).toEqual(before);
     });
 
     it('folds look-alike letters, matches the subject in the template language only, and names unknown values', async () => {
@@ -386,12 +434,24 @@ describe('the teaching load import', () => {
           lessonsPerWeek: '5',
         },
         { unit: '7 Cambridge', subject: MATHS, teacher: name(mathsTeacher), lessonsPerWeek: '5' },
+        { unit: '7 Princeton', subject: MATHS, teacher: southTeacher, lessonsPerWeek: '5' },
+        {
+          unit: '7 Oxford',
+          subject: MATHS,
+          teacher: name(mathsTeacher),
+          lessonsPerWeek: '5',
+          room: southRoom,
+        },
       ]);
       expect(codesOf(preview, 3)).toEqual([]);
       expect(codesOf(preview, 4)).toEqual(['load_import_unknown']);
       expect(rowOf(preview, 4).problems[0]?.column).toBe('subject');
-      // Another branch's class is never found.
+      // Another branch's class, teacher and room are never found.
       expect(codesOf(preview, 5)).toEqual(['load_import_unknown']);
+      expect(rowOf(preview, 6).problems).toEqual([
+        { column: 'teacher', code: 'load_import_unknown' },
+      ]);
+      expect(rowOf(preview, 7).problems).toEqual([{ column: 'room', code: 'load_import_unknown' }]);
     });
 
     it('tells two live vacancies of one name ambiguous, and an archived namesake of a live subject not', async () => {
@@ -888,7 +948,13 @@ describe('the teaching load import', () => {
       const bytes = await filledLoadTemplate(await template(version), cleanRows());
       const before = await rowsOf();
       for (const id of [south, UNKNOWN]) {
-        expect((await templateOf(id)).status).toBe(404);
+        const file = await templateOf(id);
+        expect(file.status).toBe(404);
+        // The template is read as bytes: the refusal is the JSON error shape in them.
+        expect(
+          (JSON.parse((file.body as Buffer).toString('utf8')) as { error: { code: string } }).error
+            .code,
+        ).toBe('not_found');
         refusedWith(await upload(id, bytes), 404, 'not_found');
         refusedWith(await previewOf(id, kept.importId), 404, 'not_found');
         refusedWith(await confirm(id, kept.importId), 404, 'not_found');
@@ -896,7 +962,15 @@ describe('the teaching load import', () => {
       // The import named under another draft of the branch, and an unknown import.
       refusedWith(await previewOf(otherDraft, kept.importId), 404, 'not_found');
       refusedWith(await confirm(otherDraft, kept.importId), 404, 'not_found');
+      refusedWith(await previewOf(version, UNKNOWN), 404, 'not_found');
       refusedWith(await confirm(version, UNKNOWN), 404, 'not_found');
+      // An import of the South named under a North draft, also as the Super Admin.
+      for (const cookie of [t.vicePrincipal, t.admin]) {
+        refusedWith(await previewOf(version, southImport, cookie), 404, 'not_found');
+        refusedWith(await confirm(version, southImport, cookie), 404, 'not_found');
+      }
+      // The South's import under its own draft, with the North header.
+      refusedWith(await confirm(southDraft, southImport, t.admin), 404, 'not_found');
       // The draft named with the South's header: another branch's draft.
       refusedWith(await confirm(version, kept.importId, t.admin, t.south), 404, 'not_found');
       const after = await rowsOf();
