@@ -214,3 +214,46 @@ export function splitAndWhole(
   }
   return others.some((other) => other.classId !== null && group.classIds.includes(other.classId));
 }
+
+/**
+ * Task 5.13, decision 2 (`06`, Importing the load and the timetable: "a split or group subject is
+ * given to every part of its block"): for every group row, the groups of `inService` connected to
+ * its group through any chain of links (`groupsLinked`, the connected set `loadBlocks` builds)
+ * that no row names, sorted by id. `inService` holds the groups of the branch and the year in
+ * service on the day the caller reads (`statusOn`); a row's own group missing from it is read
+ * from `rowGroups`. A class row has no entry.
+ */
+export function missingBlockGroups(
+  rows: readonly BlockRow[],
+  inService: readonly BlockGroup[],
+  rowGroups: ReadonlyMap<string, BlockGroup> = new Map(),
+): Map<string, string[]> {
+  const named = new Set(rows.map((row) => row.groupId).filter((id): id is string => id !== null));
+  const byId = new Map(inService.map((one) => [one.id, one]));
+  const found = new Map<string, string[]>();
+  for (const row of rows) {
+    if (row.groupId === null) continue;
+    const start = byId.get(row.groupId) ?? rowGroups.get(row.groupId);
+    if (start === undefined) {
+      found.set(row.id, []);
+      continue;
+    }
+    const seen = new Set<string>([start.id]);
+    const queue: BlockGroup[] = [start];
+    while (queue.length > 0) {
+      const current = queue.shift();
+      if (current === undefined) break;
+      for (const other of inService) {
+        if (!seen.has(other.id) && groupsLinked(current, other)) {
+          seen.add(other.id);
+          queue.push(other);
+        }
+      }
+    }
+    found.set(
+      row.id,
+      [...seen].filter((id) => byId.has(id) && !named.has(id)).sort((a, b) => a.localeCompare(b)),
+    );
+  }
+  return found;
+}
