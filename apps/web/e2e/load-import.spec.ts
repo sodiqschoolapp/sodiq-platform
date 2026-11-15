@@ -51,6 +51,9 @@ test('an Academic Vice Principal imports the teaching load of a draft', async ({
   await expect(heading(page, en.timetable.load.title)).toBeVisible();
   const list = page.locator('tbody tr');
   // The row of the load, and the vacancy with its 3 lessons in the totals.
-  await expect(list.filter({ hasText: '7 Seeded' })).toContainText('Geometry');
-  await expect(list.filter({ hasText: 'Geometry wanted (vacancy)' })).toContainText('3');
+  // The class also has a line in the totals, which names no subject.
+  await expect(list.filter({ hasText: '7 Seeded' }).filter({ hasText: 'Geometry' })).toHaveCount(1);
+  await expect(
+    list.filter({ hasText: 'Geometry wanted (vacancy)' }).filter({ hasNotText: 'Seeded' }),
+  ).toContainText('3');
 });
