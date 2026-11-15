@@ -12,7 +12,7 @@ The spec in `docs/spec/` was taken from the full spec document on 3 October 2026
 - Why: the owner, 15 November 2026, in chat, preparing go-live: the load and the timetable of a whole branch are too much to enter by hand; the school builds its timetable in its own files and will convert them into the template. The owner asked that an import only choose values that already exist in the platform ("import only chooses values from there … avoiding typo problems").
 - Not in this change: the general rule that every import (students, staff) names records from a sheet of dropdowns (part C of the proposal; the owner did not take it in). Open question, to be answered before the timetable import is built: a lesson the school gives with two teachers at once (two classes together) has no place under "A lesson has one teacher or one vacancy" (`06`, Model); the school chooses one group of both classes with one teacher, or two groups in one slot, one per teacher.
 - Permissions: no role gains a right. The import routes are new routes of the existing rights to edit the load and the grid; the owner approved them with this change (stop-list item 5, 15 November 2026).
-- Code: not built yet. Two tasks to add to `docs/build-plan.md` where the owner places them: the load import first, then the timetable import.
+- Code: not built yet. Two tasks in `docs/build-plan.md`, placed by the owner before 11.9: 5.13 the load import, then 5.14 the timetable import.
 - Files: `docs/spec/06-timetable.md` (Building a timetable: step 2 and the line under the table; the new section "Importing the load and the timetable").
 
 ## 10 November 2026: rating exams in grades 2–11, no setting and no distribution of grades 0–4
