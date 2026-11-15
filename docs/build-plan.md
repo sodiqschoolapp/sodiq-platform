@@ -1465,6 +1465,8 @@ The pause of new tasks of 7 November 2026 (an owner gate after 11.8) was lifted 
   - Done when: a template of the invented branch of 5.13 (a split, a group block, a double, a Tutor's Homework slot) fills an empty draft in one confirm with zero blocked rules and the conflict panel shows what the board would; a file with one teacher in two places in one slot, a block missing one group and a lesson with no load row saves nothing and lists the rows with the rule's reason; a draft with placements made by hand keeps them until the person confirms the replacement; a published version is never written.
   - Permissions approved by the owner on 15 November 2026 with the spec change: under `timetable` edit, as 5.13. No other role gains a right, so stop-list item 5 does not stop this task. Items 3 and 4 still stop it.
 
+> **Owner gate.** The start routine stops here: the owner paused new tasks on 15 November 2026, after 5.14, and stopped the plan of 11.9 (pull request #325, closed). The owner deletes this line to start building again.
+
 - [ ] **11.9 Quarterly stipend and scholarship history** — Read `08` (Quarterly stipend), `04` (Student record: contract and scholarship), `edge/people-roles-accounts` (Financial group). The stipend list prepared from `packages/calc`, awarded by the Super Admin, written to the student's history; the history in the portal. A change of `packages/calc` stops the task (item 4).
 
 - [ ] **11.10 Automatic student UIDs** — Read `04` (UID sets, Release 2), `edge/developer-rules` (Identifiers), `edge/academic-year`. The sets per grade and year, the lowest free number offered and reserved in the same transaction as the save, the sets moving up at rollover (with 9.5b). No existing UID changes (item 3).
