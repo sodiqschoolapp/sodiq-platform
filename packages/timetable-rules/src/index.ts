@@ -293,3 +293,13 @@ export {
   type PickedItems,
   type TakenPlan,
 } from './up-to-date.js';
+export {
+  importedBlocks,
+  importKeyOf,
+  importLessonId,
+  importPairId,
+  type ImportedBlock,
+  type ImportHeld,
+  type ImportLesson,
+  type ImportPlacementProblem,
+} from './pattern-import.js';
