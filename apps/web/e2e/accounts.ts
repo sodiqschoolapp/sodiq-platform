@@ -119,6 +119,7 @@ export type AccountKey =
   | 'whoHeadTutor'
   | 'whoHeadTeacher'
   | 'importVice'
+  | 'loadImportVice'
   | 'parentSlips'
   | 'portal'
   | 'telegramParent'
