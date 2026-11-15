@@ -75,6 +75,7 @@ describe('the timetable import', () => {
   let label: Map<string, string>;
   let southDraft = '';
   let southImport = '';
+  let southEntry = '';
   let southTeacher = '';
   let southRoom = '';
   let closedRoom = '';
@@ -468,13 +469,52 @@ describe('the timetable import', () => {
     southTeacher = `${southRow.last_name ?? ''} ${southRow.first_name ?? ''} (${southRow.staff_id ?? ''})`;
     // A South draft with a load row and a kept import, so a stray write to them would show.
     southDraft = await load.version(t.south, southYear);
-    await load.row({
+    const southLoadRow = await load.row({
       branch_id: t.south,
       version_id: southDraft,
       class_id: cambridge,
       subject_id: maths,
       teacher_id: south.staffId,
     });
+    // A placed and locked South lesson, so a stray delete of a confirm would show (permission
+    // review, should-fix 1).
+    const southBlock = await t.database.migrator
+      .insertInto('pattern_blocks')
+      .values({
+        branch_id: t.south,
+        version_id: southDraft,
+        weekday: 1,
+        slot_position: 1,
+        start_minutes: 480,
+        end_minutes: 525,
+      })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    southEntry = (
+      await t.database.migrator
+        .insertInto('pattern_entries')
+        .values({
+          branch_id: t.south,
+          version_id: southDraft,
+          block_id: southBlock.id,
+          weekday: 1,
+          start_minutes: 480,
+          end_minutes: 525,
+          load_row_id: southLoadRow,
+          teacher_id: south.staffId,
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow()
+    ).id;
+    await t.database.migrator
+      .insertInto('timetable_locks')
+      .values({
+        branch_id: t.south,
+        version_id: southDraft,
+        kind: 'block',
+        block_id: southBlock.id,
+      })
+      .execute();
     const southTemplate = await templateOf(southDraft, t.admin, t.south);
     expect(southTemplate.status).toBe(200);
     const southUpload = await upload(
@@ -1080,7 +1120,15 @@ describe('the timetable import', () => {
       const kept = await uploaded(version, cleanRows());
       const bytes = await filledPatternTemplate(await template(version), cleanRows());
       const before = await rowsOf();
-      expect((await templateOf(version, t.principal)).status).toBe(403);
+      const refusedTemplate = await templateOf(version, t.principal);
+      expect(refusedTemplate.status).toBe(403);
+      expect(
+        (
+          JSON.parse((refusedTemplate.body as Buffer).toString('utf8')) as {
+            error: { code: string };
+          }
+        ).error.code,
+      ).toBe('permission_denied');
       refusedWith(await upload(version, bytes, t.principal), 403, 'permission_denied');
       refusedWith(await previewOf(version, kept.importId, t.principal), 403, 'permission_denied');
       refusedWith(await confirm(version, kept.importId, [], t.principal), 403, 'permission_denied');
@@ -1120,6 +1168,21 @@ describe('the timetable import', () => {
         404,
         'not_found',
       );
+      expect(await rowsOf()).toEqual(before);
+    });
+
+    it('refuses a confirm naming a lesson of another branch, or an unknown one, in removes, writing nothing', async () => {
+      const { version, rows } = await draft();
+      expect((await place(version, rows.get('maths-p') ?? '', 3, 1)).status).toBe(201);
+      const kept = await uploaded(version, cleanRows());
+      const before = await rowsOf();
+      for (const extra of [southEntry, UNKNOWN]) {
+        refusedWith(
+          await confirm(version, kept.importId, [...kept.removes, extra]),
+          409,
+          'pattern_import_draft_changed',
+        );
+      }
       expect(await rowsOf()).toEqual(before);
     });
 
