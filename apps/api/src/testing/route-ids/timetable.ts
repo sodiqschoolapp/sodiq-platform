@@ -19,6 +19,7 @@ const VE_BODY = `${VE} > answers 404 for a class, teacher or room of another bra
 const OUT = `${M}/out-of-date.test.ts > answers 404 for a version of another branch or an unknown one, and changes nothing`;
 const TOTALS = `${M}/load-blocks.test.ts > answers 404 for another branch's version and an unknown one, also to the Super Admin, and nothing to a Teacher`;
 
+const PI = `${M}/pattern-imports.test.ts > answers 404 for another branch, an unknown or another draft id, writing nothing in either branch`;
 const LI = `${M}/load-imports.test.ts > answers 404 for another branch, an unknown or another draft id, writing nothing in either branch`;
 
 const RD = `${M}/readiness.test.ts`;
@@ -320,6 +321,27 @@ export const TIMETABLE_IDS: RouteIds = {
   'POST /api/timetable/versions/:id/load/imports/:importId/confirm': [
     version([LI]),
     line('path:importId', 'load_import', PATH, [LI]),
+  ],
+  // Task 5.14: the timetable import of a draft.
+  'GET /api/timetable/versions/:id/pattern/import-template': [version([PI])],
+  'PUT /api/timetable/versions/:id/pattern/imports': [version([PI])],
+  'POST /api/timetable/versions/:id/pattern/imports/:importId/preview': [
+    version([PI]),
+    line('path:importId', 'pattern_import', PATH, [PI]),
+  ],
+  'POST /api/timetable/versions/:id/pattern/imports/:importId/confirm': [
+    version([PI]),
+    line('path:importId', 'pattern_import', PATH, [PI]),
+    // The lessons the person confirmed removing: a snapshot compared with the draft's own lesson
+    // ids and never looked up; any other set is `pattern_import_draft_changed` (decision 3).
+    line(
+      'body:removes',
+      'pattern_entry',
+      'docs/spec/06-timetable.md, Importing the load and the timetable: "after the person confirms how many are removed"',
+      [],
+      undefined,
+      'none',
+    ),
   ],
   'GET /api/timetable/versions/:id/load/teachers': [
     version([TL_ALL]),

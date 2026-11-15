@@ -2598,3 +2598,4 @@ export {
 export * from './digest.js';
 export * from './announcements.js';
 export * from './load-import.js';
+export * from './pattern-import.js';

@@ -1553,6 +1553,19 @@ export interface PatternEntries {
   weekday: number;
 }
 
+export interface PatternImports {
+  branch_id: string;
+  confirmed_at: Timestamp | null;
+  confirmed_by: string | null;
+  file_sha256: string;
+  id: Generated<string>;
+  row_count: number;
+  rows: Json;
+  uploaded_at: Timestamp;
+  uploaded_by: string;
+  version_id: string;
+}
+
 export interface QuarterClosingJournals {
   branch_id: string;
   closing_id: string;
@@ -2490,6 +2503,7 @@ export interface DB {
   pattern_block_classes: PatternBlockClasses;
   pattern_blocks: PatternBlocks;
   pattern_entries: PatternEntries;
+  pattern_imports: PatternImports;
   quarter_closing_journals: QuarterClosingJournals;
   quarter_closings: QuarterClosings;
   quarter_final_results: QuarterFinalResults;

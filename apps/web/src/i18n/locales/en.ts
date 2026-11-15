@@ -1049,6 +1049,14 @@ export const en = {
     load_import_already_confirmed: 'This import was already saved. Open the load.',
     load_import_changed:
       'Someone changed the draft or its records at the same moment. Nothing was saved; try again.',
+    pattern_import_already_confirmed:
+      'This timetable import was confirmed already. Upload the file again to see it.',
+    pattern_import_changed:
+      'Someone changed the draft or its records at the same moment. Nothing was saved; confirm again.',
+    pattern_import_other_draft:
+      'This file is the timetable template of another draft. Download the template of this draft.',
+    pattern_import_draft_changed:
+      'The lessons of the draft changed after the preview. Nothing was saved; upload the file again to see what is removed now.',
     load_import_other_draft:
       'This file is the template of another draft. Download the template of this draft.',
     subject_import_changed:
@@ -4303,6 +4311,13 @@ export const en = {
         delete: 'Teaching load row deleted',
         import: 'Teaching load rows imported',
       },
+      pattern_import: {
+        upload: 'Timetable import file uploaded',
+        template: 'Timetable import template downloaded',
+      },
+      pattern: {
+        import: 'Timetable imported into a draft',
+      },
       load_import: {
         upload: 'Load import file uploaded',
         template: 'Load import template downloaded',
@@ -4804,6 +4819,51 @@ export const en = {
     },
   },
   timetable: {
+    patternImport: {
+      open: 'Import the timetable from Excel',
+      title: 'Timetable import',
+      noDraft: 'The timetable is imported into a draft. Open a draft in the builder first.',
+      saved_one: '{{count}} lesson placed.',
+      saved_other: '{{count}} lessons placed.',
+      removed_one: '{{count}} lesson of the draft was removed.',
+      removed_other: '{{count}} lessons of the draft were removed.',
+      toGrid: 'Open the grid',
+      inDraft_one: 'The draft holds {{count}} placed lesson; confirming removes it.',
+      inDraft_other: 'The draft holds {{count}} placed lessons; confirming removes them.',
+      alreadyImported:
+        'This file was already imported into this draft on {{date}}. It cannot be imported again.',
+      rowColumn: 'Weekday, lesson, class or group, subject, teacher, room',
+      warnings: 'Warnings (they do not stop the import)',
+      warningRows: '{{rule}} Rows: {{rows}}.',
+      ruleWith: '{{rule}} With row {{rows}}.',
+      confirm_one: 'Place {{count}} lesson',
+      confirm_other: 'Place all {{count}} lessons',
+      notClean: 'Nothing is placed until every row is clean. Correct the file and upload it again.',
+      replaceTitle_one: 'Remove {{count}} placed lesson of this draft?',
+      replaceTitle_other: 'Remove {{count}} placed lessons of this draft?',
+      replaceText_one:
+        'They are replaced by the {{count}} lesson of the file. The teaching load does not change.',
+      replaceText_other:
+        'They are replaced by the {{count}} lessons of the file. The teaching load does not change.',
+      replaceAction: 'Remove and place',
+      problems: {
+        required: 'fill this in.',
+        invalid: 'this value is not accepted.',
+        load_import_unknown:
+          'no record of this branch and year has this name; choose one from the list.',
+        name_ambiguous: 'two records have this name; rename one of them first.',
+        pattern_import_row_twice: 'the same lesson is also on row {{rows}}.',
+        pattern_import_no_load_row:
+          "the draft's teaching load has no row for this class or group and subject; add it to the load first.",
+        pattern_import_teacher_differs:
+          'the teaching load gives this lesson to {{teacher}}; name that teacher or change the load.',
+        pattern_import_teacher_needed: 'name the teacher or vacancy of the lesson.',
+        pattern_import_out_of_service: 'this class or group is archived.',
+        pattern_import_no_slot: 'the day has no lesson with this number on this weekday.',
+        pattern_import_block_part:
+          'every part of the block needs a lesson at this time; missing: {{units}}.',
+      },
+    },
     loadImport: {
       open: 'Import from Excel',
       title: 'Teaching load import',

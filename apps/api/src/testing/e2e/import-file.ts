@@ -12,3 +12,6 @@ export const STAFF_IMPORT_FILE = path.join(tmpdir(), 'sodiq-e2e-staff-import.xls
 
 /** The filled load template of the load import browser test (task 5.13), made for its seeded draft. */
 export const LOAD_IMPORT_FILE = path.join(tmpdir(), 'sodiq-e2e-load-import.xlsx');
+
+/** The filled timetable template of the timetable import browser test (task 5.14), made for its seeded draft. */
+export const PATTERN_IMPORT_FILE = path.join(tmpdir(), 'sodiq-e2e-pattern-import.xlsx');

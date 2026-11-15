@@ -1,5 +1,9 @@
 import {
   loadImportConfirmResultSchema,
+  patternImportConfirmResultSchema,
+  patternImportPreviewSchema,
+  type PatternImportConfirmResult,
+  type PatternImportPreview,
   loadImportPreviewSchema,
   STUDENT_IMPORT_TYPES,
   type Language,
@@ -1063,6 +1067,56 @@ export const confirmLoadImport = async (
       api.POST('/api/timetable/versions/{id}/load/imports/{importId}/confirm', {
         params: { header: branchHeader(), path: { id: versionId, importId } },
         body: {},
+      }),
+    ),
+  );
+
+/**
+ * The timetable import of a draft (task 5.14): the system's template of the draft, the upload of a
+ * filled one with its preview, and the confirm that replaces the draft's lessons with the file's,
+ * naming the lessons the person confirmed removing.
+ */
+export const downloadPatternImportTemplate = async (
+  versionId: string,
+  language: Language,
+): Promise<void> => {
+  const answer = await api.GET('/api/timetable/versions/{id}/pattern/import-template', {
+    params: { header: branchHeader(), path: { id: versionId }, query: { language } },
+    parseAs: 'blob',
+  });
+  const file: unknown = await answerOf(Promise.resolve(answer));
+  if (!(file instanceof Blob)) throw new ApiFailure('no_answer');
+  save(
+    file,
+    fileNameOf(answer.response.headers.get('Content-Disposition'), 'timetable-import.xlsx'),
+  );
+};
+
+export const uploadPatternImport = async (
+  versionId: string,
+  file: File,
+): Promise<PatternImportPreview> =>
+  patternImportPreviewSchema.parse(
+    await answerOf(
+      api.PUT('/api/timetable/versions/{id}/pattern/imports', {
+        params: { header: branchHeader(), path: { id: versionId } },
+        body: file as unknown as string,
+        bodySerializer: (body: unknown) => body as Blob,
+        headers: { 'Content-Type': STUDENT_IMPORT_TYPES[0] ?? '' },
+      }),
+    ),
+  );
+
+export const confirmPatternImport = async (
+  versionId: string,
+  importId: string,
+  removes: readonly string[],
+): Promise<PatternImportConfirmResult> =>
+  patternImportConfirmResultSchema.parse(
+    await answerOf(
+      api.POST('/api/timetable/versions/{id}/pattern/imports/{importId}/confirm', {
+        params: { header: branchHeader(), path: { id: versionId, importId } },
+        body: { removes: [...removes] },
       }),
     ),
   );

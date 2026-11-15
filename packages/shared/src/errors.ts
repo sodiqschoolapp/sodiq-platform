@@ -311,6 +311,14 @@ export const ERROR_CODES = [
   'load_import_changed',
   /** The file is the template of another draft: its lists are of that draft (task 5.13, decision 3). */
   'load_import_other_draft',
+  /** This timetable import was confirmed already (task 5.14): its own code, the text of `import_already_confirmed` names the student list. */
+  'pattern_import_already_confirmed',
+  /** A change of the draft or its records made at the same moment met the timetable import; nothing was saved (task 5.14). */
+  'pattern_import_changed',
+  /** The file is the timetable template of another draft: its lists are of that draft (task 5.14). */
+  'pattern_import_other_draft',
+  /** The draft's lessons changed since the preview: the replacement the person confirmed is not the one now (task 5.14, decision 3). */
+  'pattern_import_draft_changed',
   /** No photo store is configured on this server: photos cannot be added or shown yet (answer 2; task 2.2c-2). */
   'photos_not_configured',
   /** The photo store did not answer in time or refused; only photos fail (`edge/system-behaviour`; task 2.2c-2). */

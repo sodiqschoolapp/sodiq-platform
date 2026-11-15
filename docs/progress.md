@@ -2,6 +2,18 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 15 November 2026: task 5.14, the timetable import
+
+- **Built**: the system's Excel template of a draft's weekly pattern (`GET versions/:id/pattern/import-template`, logged), the upload (`PUT versions/:id/pattern/imports`, file route `PATTERN_IMPORT_ROUTE`), the preview and the confirm (`POST …/imports/:importId/preview|confirm`, the confirm with the ids of the draft's lessons the person agreed to remove), all under `timetable` edit; table `pattern_imports` (0170). Each row is matched to the draft's load row by class or group and subject, its teacher checked; `importedBlocks` (new in `packages/timetable-rules`) groups the lessons into the grid's blocks, pairings and doubles at their lesson numbers; `checkTimetable` checks the whole file; one `pattern.import` audit entry with every block removed and written.
+- **Web**: `/timetable/pattern/import` (feature `timetable`), linked from step 7 of the builder; texts in three languages; handbook section "Importing the timetable from Excel".
+- **Left out**: a template filled with the draft's current lessons (not asked for).
+
+The next sessions must know:
+
+- The slot number of a file is the lesson number of the day (breaks not counted), read on `statusOn` (decision 2, Look first, with a proposed `/spec-change`).
+- A confirm whose `removes` is not exactly the draft's lessons now is `pattern_import_draft_changed`; class, teacher and day locks and pins stay, block locks go with their blocks.
+- The full browser run in the cloud once failed `timetable-absence-substitution.spec.ts` on load (it passes alone).
+
 ## 15 November 2026: task 5.13, the teaching load import
 
 - **Built**: the system's Excel template of a draft's load (`GET versions/:id/load/import-template`, logged), the upload (`PUT versions/:id/load/imports`, file route `LOAD_IMPORT_ROUTE`), the preview and the confirm (`POST …/imports/:importId/preview|confirm`), all under `timetable` edit; table `load_imports` (0169). Every name is matched among the branch's records of the draft's year, live ones first; every hand rule runs through `LoadFacts`/`loadRowProblems` with the draft's and the file's rows together; `missingBlockGroups` (new in `packages/timetable-rules`) refuses a block given in part; one `teaching_load.import` entry with every row.

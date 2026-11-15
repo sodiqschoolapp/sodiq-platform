@@ -14,8 +14,15 @@ import { LoadKit } from '../load-kit.js';
 import { linkRelative } from '../relatives-kit.js';
 import { filledStaffTemplate, staffRow } from '../staff-import-kit.js';
 import { filledTemplate, studentRow } from '../student-import-kit.js';
-import { LOAD_IMPORT_FILE, STAFF_IMPORT_FILE, STUDENT_IMPORT_FILE } from './import-file.js';
+import {
+  LOAD_IMPORT_FILE,
+  PATTERN_IMPORT_FILE,
+  STAFF_IMPORT_FILE,
+  STUDENT_IMPORT_FILE,
+} from './import-file.js';
 import { writeLoadImportTemplate } from '../../modules/timetable/load-import-template.js';
+import { writePatternImportTemplate } from '../../modules/timetable/pattern-import-template.js';
+import { filledPatternTemplate } from '../pattern-import-kit.js';
 import { filledLoadTemplate } from '../load-import-kit.js';
 import { e2eDatabaseUrls } from './database.js';
 import { E2E_RESET_EMAIL } from './mail.js';
@@ -3415,8 +3422,14 @@ try {
      * phone given), free all day, to substitute the scene's teacher.
      */
     secondTeacher?: { readonly staffId: string; readonly phone: string };
+    /**
+     * Task 5.14: the filled timetable template of the draft is written to this file: 7 Oxford's
+     * Geometry on Tuesday, lessons 1 and 2, and 7 Princeton's on Wednesday, lesson 1.
+     */
+    patternImportFile?: string;
   }) => {
     const gridBranch = await insertBranch(migrator, scene.branch);
+    let draftId = '';
     const gridVice = await create(scene.vice[0], scene.vice[1]);
     await transactions.run([gridBranch], (transaction) =>
       assignments.give(transaction, {
@@ -3825,6 +3838,7 @@ try {
         })
         .returning('id')
         .executeTakeFirstOrThrow();
+      draftId = draft.id;
       for (const [index, one] of classes.entries()) {
         const row = await transaction
           .insertInto('teaching_load_rows')
@@ -4129,6 +4143,33 @@ try {
         }
       }
     });
+    if (scene.patternImportFile !== undefined) {
+      const teacher = `Aliyeva Zarina (${scene.staffId})`;
+      const lesson = (weekday: string, lessonNumber: string, unit: string) => ({
+        weekday,
+        lessonNumber,
+        unit,
+        subject: 'Geometry',
+        teacher,
+      });
+      writeFileSync(
+        scene.patternImportFile,
+        await filledPatternTemplate(
+          await writePatternImportTemplate('en', draftId, {
+            units: ['7 Oxford', '7 Princeton'],
+            groupClasses: [],
+            subjects: ['Geometry'],
+            teachers: [teacher],
+            rooms: [],
+          }),
+          [
+            lesson('Tuesday', '1', '7 Oxford'),
+            lesson('Tuesday', '2', '7 Oxford'),
+            lesson('Wednesday', '1', '7 Princeton'),
+          ],
+        ),
+      );
+    }
     return gridVice;
   };
   const gridVice = await gridScene({
@@ -4139,6 +4180,21 @@ try {
     rooms: [],
   });
   seeded.draftGrid = { login: gridVice.login, password: gridVice.firstPassword };
+
+  // The timetable import (task 5.14): the same scene in a branch of its own, with the filled
+  // template of its draft written where the browser test reads it (`PATTERN_IMPORT_FILE`).
+  const patternImportVice = await gridScene({
+    branch: 'Timetable import browser test branch',
+    vice: ['Dildora', 'Ochilova'],
+    staffId: 'S-269514',
+    phone: '+998935557514',
+    rooms: [],
+    patternImportFile: PATTERN_IMPORT_FILE,
+  });
+  seeded.patternImportVice = {
+    login: patternImportVice.login,
+    password: patternImportVice.firstPassword,
+  };
 
   // The panels of the grid (task 5.4b-2a): the same scene in a branch of its
   // own, with two rooms for the room picker.
