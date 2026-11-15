@@ -94,6 +94,7 @@ describe('declared file routes', () => {
       '/api/plans/items/:itemId/files',
       '/api/setup/subjects/imports',
       '/api/timetable/versions/:id/load/imports',
+      '/api/timetable/versions/:id/pattern/imports',
     ]);
   });
 

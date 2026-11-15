@@ -212,6 +212,8 @@ export class PatternImports {
       return await refusingGoneRoom(() =>
         refusingPattern(() =>
           this.transactions.run(access.branchIds, async (transaction) => {
+            // An unknown import, or one of another draft or branch, is 404 before the edit lock.
+            await this.readImport(transaction, branchId, versionId, id, false);
             // The draft's edit lock, as every grid write (decision 11); it also holds the version
             // row, so two confirms into one draft run one after the other.
             const version = await this.timetable.lockDraft(

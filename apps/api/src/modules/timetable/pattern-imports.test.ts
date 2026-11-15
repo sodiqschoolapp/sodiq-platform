@@ -434,6 +434,15 @@ describe('the timetable import', () => {
     const tutorMade = await load.teacher(t.north);
     await hours(t.north, tutorMade.staffId, [1, 2, 3, 4, 5]);
     tutor = tutorMade.staffId;
+    const tutorRow = await t.database.migrator
+      .selectFrom('staff')
+      .select(['first_name', 'last_name', 'staff_id'])
+      .where('id', '=', tutor)
+      .executeTakeFirstOrThrow();
+    label.set(
+      tutor,
+      `${tutorRow.last_name ?? ''} ${tutorRow.first_name ?? ''} (${tutorRow.staff_id ?? ''})`,
+    );
     await load.tutorOf(t.north, oxford, tutorMade.accountId, {
       from: new Date('2026-09-01T00:00:00+05:00'),
     });
@@ -681,6 +690,454 @@ describe('the timetable import', () => {
       expect((await templateOf(version)).status).toBe(409);
       refusedWith(await upload(version, bytes), 409, 'version_not_draft');
       expect(await rowsOf()).toEqual(before);
+    });
+  });
+
+  describe('the problems of a row', () => {
+    it('tells each problem of the import on its row, with nothing earlier refusing it', async () => {
+      const { version } = await draft();
+      const vacancyA = await load.vacancy(t.north, { subjects: [{ subject: maths, grades: [7] }] });
+      const vacancyB = await load.vacancy(t.north, { subjects: [{ subject: maths, grades: [7] }] });
+      await t.database.migrator
+        .updateTable('staff')
+        .set({ vacancy_name: 'Twin Plum' })
+        .where('id', 'in', [vacancyA, vacancyB])
+        .execute();
+      const rows: PatternTemplateRow[] = [
+        // 0: another teacher than the load row's.
+        at('Monday', 1, '7 Oxford', MATHS, name(otherTeacher)),
+        // 1: no teacher on a row that is not a Tutor row.
+        at('Monday', 2, '7 Oxford', MATHS),
+        // 2: a Tutor row naming another teacher.
+        at('Friday', 3, '7 Oxford', TUTOR, name(otherTeacher)),
+        // 3: an archived class; 4: an archived group.
+        at('Monday', 1, '7 Gone', MATHS, name(mathsTeacher)),
+        at('Monday', 1, 'Gone-E', ENGLISH, name(e1)),
+        // 5: a vacancy name two open vacancies share.
+        at('Thursday', 2, '7 Princeton', MATHS, 'Twin Plum (vacancy)'),
+        // 6: a lesson number the day does not have.
+        at('Tuesday', 4, '7 Princeton', MATHS, name(mathsTeacher)),
+        // 7 and 8: the same lesson twice.
+        at('Friday', 1, '7 Princeton', MATHS, name(mathsTeacher)),
+        at('Friday', 1, '7 Princeton', MATHS, name(mathsTeacher)),
+        // 9: a weekday and a lesson number not read.
+        { weekday: 'Funday', lessonNumber: 'two', unit: '7 Princeton', subject: MATHS },
+        // 10: values of the South pasted past the drop-downs.
+        at('Monday', 3, '7 Cambridge', MATHS, southTeacher, southRoom),
+      ];
+      const preview = await uploaded(version, rows);
+      expect(preview.clean).toBe(false);
+      expect(rowOf(preview, sheetRow(0)).problems).toEqual([
+        { column: 'teacher', code: 'pattern_import_teacher_differs', teacher: name(mathsTeacher) },
+      ]);
+      expect(codesOf(preview, sheetRow(1))).toEqual(['pattern_import_teacher_needed']);
+      expect(rowOf(preview, sheetRow(2)).problems).toEqual([
+        { column: 'teacher', code: 'pattern_import_teacher_differs', teacher: name(tutor) },
+      ]);
+      expect(codesOf(preview, sheetRow(3))).toEqual([
+        'pattern_import_out_of_service',
+        'pattern_import_no_load_row',
+      ]);
+      expect(codesOf(preview, sheetRow(4))).toEqual([
+        'pattern_import_out_of_service',
+        'pattern_import_no_load_row',
+      ]);
+      expect(rowOf(preview, sheetRow(5)).problems).toEqual([
+        { column: 'teacher', code: 'name_ambiguous' },
+      ]);
+      expect(rowOf(preview, sheetRow(6)).problems).toEqual([
+        { column: 'lessonNumber', code: 'pattern_import_no_slot' },
+      ]);
+      expect(rowOf(preview, sheetRow(7)).problems).toEqual([
+        { column: 'unit', code: 'pattern_import_row_twice', rows: [sheetRow(8)] },
+      ]);
+      expect(rowOf(preview, sheetRow(9)).problems).toEqual([
+        { column: 'weekday', code: 'invalid' },
+        { column: 'lessonNumber', code: 'invalid' },
+        { column: 'teacher', code: 'pattern_import_teacher_needed' },
+      ]);
+      expect(rowOf(preview, sheetRow(10)).problems).toEqual([
+        { column: 'unit', code: 'load_import_unknown' },
+        { column: 'teacher', code: 'load_import_unknown' },
+        { column: 'room', code: 'load_import_unknown' },
+      ]);
+    });
+
+    it('counts a group held back for another problem as given: its partners are not told a part', async () => {
+      const { version } = await draft();
+      const preview = await uploaded(version, [
+        at('Tuesday', 3, '7-E-1', ENGLISH, name(e1)),
+        at('Tuesday', 3, '7-E-2', ENGLISH, name(e2)),
+        // The third group with another teacher than its load row's.
+        at('Tuesday', 3, '7-E-3', ENGLISH, name(e1)),
+      ]);
+      expect(codesOf(preview, sheetRow(0))).toEqual([]);
+      expect(codesOf(preview, sheetRow(1))).toEqual([]);
+      expect(codesOf(preview, sheetRow(2))).toEqual(['pattern_import_teacher_differs']);
+      expect(preview.lessons).toBe(0);
+    });
+
+    it('tells the parts of a block placed in two slots', async () => {
+      const { version } = await draft();
+      const preview = await uploaded(version, [
+        at('Monday', 3, '7O-PE-1', PE, name(pe1)),
+        at('Tuesday', 3, '7O-PE-2', PE, name(pe2)),
+      ]);
+      expect(rowOf(preview, sheetRow(0)).problems).toEqual([
+        { column: 'unit', code: 'pattern_import_block_part', units: ['7O-PE-2'] },
+      ]);
+      expect(rowOf(preview, sheetRow(1)).problems).toEqual([
+        { column: 'unit', code: 'pattern_import_block_part', units: ['7O-PE-1'] },
+      ]);
+    });
+
+    it('refuses by the engine a teacher outside their hours and a closed room', async () => {
+      const { version } = await draft();
+      await load.row({
+        branch_id: t.north,
+        version_id: version,
+        class_id: princeton,
+        subject_id: science,
+        teacher_id: sciTeacher,
+        lessons_per_week: 2,
+      });
+      const closed = (
+        await t.database.migrator
+          .selectFrom('rooms')
+          .select('name')
+          .where('id', '=', closedRoom)
+          .executeTakeFirstOrThrow()
+      ).name;
+      const preview = await uploaded(version, [
+        // The science teacher has no hours on Friday.
+        at('Friday', 1, '7 Princeton', SCIENCE, name(sciTeacher)),
+        at('Monday', 1, '7 Princeton', SCIENCE, name(sciTeacher), closed),
+      ]);
+      expect(codesOf(preview, sheetRow(0))).toContain('teacher_unavailable');
+      expect(codesOf(preview, sheetRow(1))).toContain('room_inactive');
+      expect(preview.clean).toBe(false);
+    });
+
+    it('refuses by the engine a lesson of a teacher who has left', async () => {
+      const { version } = await draft();
+      const leaver = (await teacher(science)).staffId;
+      await load.row({
+        branch_id: t.north,
+        version_id: version,
+        class_id: oxford,
+        subject_id: science,
+        teacher_id: leaver,
+        lessons_per_week: 1,
+      });
+      await load.status(leaver, 'left', '2026-10-01');
+      const preview = await uploaded(version, [
+        at('Wednesday', 2, '7 Oxford', SCIENCE, name(leaver)),
+      ]);
+      expect(codesOf(preview, sheetRow(0))).toContain('teacher_inactive');
+    });
+  });
+
+  describe('what a confirm keeps and removes', () => {
+    it('keeps the class, teacher and day locks and the pins; a block lock goes with its block', async () => {
+      const { version, rows } = await draft();
+      const placed = await place(version, rows.get('maths-p') ?? '', 3, 1);
+      expect(placed.status).toBe(201);
+      const [hand] = await entriesOf(version);
+      const lock = (body: object) =>
+        t.post(`/api/timetable/versions/${version}/locks`, t.north, body, t.vicePrincipal);
+      for (const body of [
+        { kind: 'block', blockId: hand?.block_id },
+        { kind: 'class', classId: oxford },
+        { kind: 'teacher', teacherId: pe1 },
+        { kind: 'day', weekday: 5 },
+      ]) {
+        const answer = await lock(body);
+        expect(answer.status, JSON.stringify(answer.body)).toBe(201);
+      }
+      const pin = await t.post(
+        `/api/timetable/versions/${version}/pins`,
+        t.north,
+        { loadRowId: rows.get('tutor'), weekday: 5, slotPosition: 5 },
+        t.vicePrincipal,
+      );
+      expect(pin.status, JSON.stringify(pin.body)).toBe(200);
+      const preview = await uploaded(version, cleanRows());
+      expect((await confirmed(version, preview)).outcome).toBe('saved');
+      const locks = await t.database.migrator
+        .selectFrom('timetable_locks')
+        .select(['kind'])
+        .where('version_id', '=', version)
+        .execute();
+      expect(locks.map((one) => one.kind).sort()).toEqual(['class', 'day', 'teacher']);
+      const pins = await t.database.migrator
+        .selectFrom('timetable_pins')
+        .select('id')
+        .where('version_id', '=', version)
+        .execute();
+      expect(pins).toHaveLength(1);
+    });
+
+    it('refuses the same file twice, and the same import confirmed again', async () => {
+      const { version } = await draft();
+      const bytes = await filledPatternTemplate(await template(version), cleanRows());
+      const first = patternImportPreviewSchema.parse((await upload(version, bytes)).body);
+      expect((await confirmed(version, first)).outcome).toBe('saved');
+      const after = await rowsOf();
+      refusedWith(
+        await confirm(version, first.importId, []),
+        409,
+        'pattern_import_already_confirmed',
+      );
+      const second = patternImportPreviewSchema.parse((await upload(version, bytes)).body);
+      expect(second.alreadyImportedOn).toBe('2026-10-10');
+      const before = await rowsOf();
+      refusedWith(
+        await confirm(version, second.importId, second.removes),
+        409,
+        'import_already_done',
+      );
+      expect(await rowsOf()).toEqual(before);
+      expect((await rowsOf())[1]).toEqual(after[1]);
+    });
+
+    it('refuses a template of another draft before keeping it, and a load template', async () => {
+      const { version } = await draft();
+      const { version: other } = await draft();
+      const before = await rowsOf();
+      refusedWith(
+        await upload(version, await filledPatternTemplate(await template(other), cleanRows())),
+        422,
+        'pattern_import_other_draft',
+      );
+      const loadTemplate = await asBytes(
+        request(t.kit.server)
+          .get(`/api/timetable/versions/${version}/load/import-template?language=en`)
+          .set('Cookie', t.vicePrincipal)
+          .set(BRANCH_HEADER, t.north),
+      );
+      expect(loadTemplate.status).toBe(200);
+      const loadFile = await filledLoadTemplate(loadTemplate.body as Buffer, [
+        { unit: '7 Oxford', subject: MATHS, teacher: name(mathsTeacher), lessonsPerWeek: '1' },
+      ]);
+      refusedWith(await upload(version, loadFile), 422, 'import_not_template');
+      // And the timetable template is not the load template.
+      const patternFile = await filledPatternTemplate(await template(version), cleanRows());
+      const loadUpload = await request(t.kit.server)
+        .put(`/api/timetable/versions/${version}/load/imports`)
+        .set('Cookie', t.vicePrincipal)
+        .set(BRANCH_HEADER, t.north)
+        .set('Content-Type', XLSX)
+        .send(patternFile);
+      refusedWith(loadUpload, 422, 'import_not_template');
+      const after = await rowsOf();
+      // The template downloads are logged as exports; nothing else is written.
+      expect(after.slice(0, 7)).toEqual(before.slice(0, 7));
+    });
+
+    it('lists only the branch records of the draft in the template, and logs its download', async () => {
+      const { version } = await draft();
+      const bytes = await template(version);
+      const text = JSON.stringify(
+        await (async () => {
+          const { templateList } = await import('../../testing/load-import-kit.js');
+          return {
+            units: await templateList(bytes, 'Classes and groups'),
+            teachers: await templateList(bytes, 'Teachers and vacancies'),
+            rooms: await templateList(bytes, 'Rooms'),
+            weekdays: await templateList(bytes, 'Weekdays'),
+          };
+        })(),
+      );
+      expect(text).toContain('7 Oxford');
+      expect(text).toContain('Monday');
+      expect(text).not.toContain('7 Cambridge');
+      expect(text).not.toContain(southTeacher);
+      expect(text).not.toContain(southRoom);
+      expect(text).not.toContain('7 Gone');
+      const logged = await t.database.migrator
+        .selectFrom('audit_log')
+        .select('id')
+        .where('action', '=', 'pattern_import.template')
+        .where('record_id', '=', version)
+        .execute();
+      expect(logged).toHaveLength(1);
+    });
+  });
+
+  describe('the confirm and other changes at the same moment', () => {
+    /** Starts `run` now (a supertest request runs only once awaited). */
+    const started = <T>(run: () => Promise<T>): Promise<T> =>
+      new Promise((resolve, reject) => {
+        run().then(resolve, reject);
+      });
+
+    async function heldVersion(version: string) {
+      let release: () => void = () => undefined;
+      const released = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      let pid = 0;
+      let ready: () => void = () => undefined;
+      const isReady = new Promise<void>((resolve) => {
+        ready = resolve;
+      });
+      const done = t.app.get(Transactions).run([t.north], async (transaction: Transaction) => {
+        pid =
+          (await sql<{ pid: number }>`select pg_backend_pid() as pid`.execute(transaction)).rows[0]
+            ?.pid ?? 0;
+        await transaction
+          .selectFrom('timetable_versions')
+          .select('id')
+          .where('id', '=', version)
+          .forUpdate()
+          .execute();
+        ready();
+        await released;
+      });
+      await isReady;
+      return { release, done, pid: () => pid };
+    }
+
+    /** Waits until `count` connections wait, the first blocked by the held transaction's pid. */
+    async function blockedBy(pid: number, count: number): Promise<void> {
+      for (let tries = 0; tries < 200; tries += 1) {
+        const found = await sql<{ direct: number; waiting: number }>`
+          select
+            count(*) filter (where ${pid}::int = any(pg_blocking_pids(a.pid)))::int as direct,
+            count(*) filter (where cardinality(pg_blocking_pids(a.pid)) > 0)::int as waiting
+          from pg_stat_activity a
+          where a.datname = current_database()
+        `.execute(t.database.migrator);
+        const row = found.rows[0];
+        if ((row?.direct ?? 0) >= 1 && (row?.waiting ?? 0) >= count) return;
+        await new Promise((resolve) => setTimeout(resolve, 25));
+      }
+      throw new Error('Nothing waited.');
+    }
+
+    it('a hand placement first: the confirm then finds the draft changed and saves nothing', async () => {
+      const { version, rows } = await draft();
+      const kept = await uploaded(version, cleanRows());
+      const held = await heldVersion(version);
+      const placing = started(() => place(version, rows.get('maths-p') ?? '', 3, 1));
+      await blockedBy(held.pid(), 1);
+      const confirming = started(() => confirm(version, kept.importId, kept.removes));
+      await blockedBy(held.pid(), 2);
+      held.release();
+      await held.done;
+      expect((await placing).status).toBe(201);
+      refusedWith(await confirming, 409, 'pattern_import_draft_changed');
+      expect(await entriesOf(version)).toHaveLength(1);
+    });
+
+    it('the confirm first: the hand placement is then checked against the imported lessons', async () => {
+      const { version, rows } = await draft();
+      const kept = await uploaded(version, cleanRows());
+      const held = await heldVersion(version);
+      const confirming = started(() => confirm(version, kept.importId, kept.removes));
+      await blockedBy(held.pid(), 1);
+      // Princeton's maths on Monday lesson 1: its teacher teaches Oxford then.
+      const placing = started(() => place(version, rows.get('maths-p') ?? '', 1, 1));
+      await blockedBy(held.pid(), 2);
+      held.release();
+      await held.done;
+      expect(patternImportConfirmResultSchema.parse((await confirming).body).outcome).toBe('saved');
+      refusedWith(await placing, 409, 'pattern_blocked');
+      expect(await entriesOf(version)).toHaveLength(21);
+    });
+
+    it('two confirms of one file: the second waits on the draft and finds it imported', async () => {
+      const { version } = await draft();
+      const bytes = await filledPatternTemplate(await template(version), cleanRows());
+      const one = patternImportPreviewSchema.parse((await upload(version, bytes)).body);
+      const two = patternImportPreviewSchema.parse((await upload(version, bytes)).body);
+      const held = await heldVersion(version);
+      const first = started(() => confirm(version, one.importId, one.removes));
+      await blockedBy(held.pid(), 1);
+      const second = started(() => confirm(version, two.importId, two.removes));
+      await blockedBy(held.pid(), 2);
+      held.release();
+      await held.done;
+      expect((await first).status).toBe(200);
+      refusedWith(await second, 409, 'import_already_done');
+      expect(await entriesOf(version)).toHaveLength(21);
+    });
+
+    it('a confirm while another person holds the draft edit lock: draft_edit_locked', async () => {
+      const { version } = await draft();
+      const kept = await uploaded(version, cleanRows());
+      expect(
+        (await t.post(`/api/timetable/versions/${version}/edit-lock`, t.north, {}, t.admin)).status,
+      ).toBeLessThan(300);
+      refusedWith(await confirm(version, kept.importId, []), 409, 'draft_edit_locked');
+      expect(await entriesOf(version)).toEqual([]);
+    });
+  });
+
+  describe('permissions and ids', () => {
+    it('refuses the Principal, who views the timetable, on every route, writing nothing', async () => {
+      const { version } = await draft();
+      const kept = await uploaded(version, cleanRows());
+      const bytes = await filledPatternTemplate(await template(version), cleanRows());
+      const before = await rowsOf();
+      expect((await templateOf(version, t.principal)).status).toBe(403);
+      refusedWith(await upload(version, bytes, t.principal), 403, 'permission_denied');
+      refusedWith(await previewOf(version, kept.importId, t.principal), 403, 'permission_denied');
+      refusedWith(await confirm(version, kept.importId, [], t.principal), 403, 'permission_denied');
+      expect(await rowsOf()).toEqual(before);
+    });
+
+    it('answers 404 for another branch, an unknown or another draft id, writing nothing in either branch', async () => {
+      const { version, rows } = await draft();
+      expect((await place(version, rows.get('maths-p') ?? '', 3, 1)).status).toBe(201);
+      const kept = await uploaded(version, cleanRows());
+      const { version: otherDraft } = await draft();
+      const south = await load.version(t.south, southYear);
+      const bytes = await filledPatternTemplate(await template(version), cleanRows());
+      const before = await rowsOf();
+      for (const id of [south, UNKNOWN]) {
+        const file = await templateOf(id);
+        expect(file.status).toBe(404);
+        expect(
+          (JSON.parse((file.body as Buffer).toString('utf8')) as { error: { code: string } }).error
+            .code,
+        ).toBe('not_found');
+        refusedWith(await upload(id, bytes), 404, 'not_found');
+        refusedWith(await previewOf(id, kept.importId), 404, 'not_found');
+        refusedWith(await confirm(id, kept.importId, kept.removes), 404, 'not_found');
+      }
+      refusedWith(await previewOf(otherDraft, kept.importId), 404, 'not_found');
+      refusedWith(await confirm(otherDraft, kept.importId, []), 404, 'not_found');
+      refusedWith(await previewOf(version, UNKNOWN), 404, 'not_found');
+      refusedWith(await confirm(version, UNKNOWN, kept.removes), 404, 'not_found');
+      for (const cookie of [t.vicePrincipal, t.admin]) {
+        refusedWith(await previewOf(version, southImport, cookie), 404, 'not_found');
+        refusedWith(await confirm(version, southImport, kept.removes, cookie), 404, 'not_found');
+      }
+      refusedWith(await confirm(southDraft, southImport, [], t.admin), 404, 'not_found');
+      refusedWith(
+        await confirm(version, kept.importId, kept.removes, t.admin, t.south),
+        404,
+        'not_found',
+      );
+      expect(await rowsOf()).toEqual(before);
+    });
+
+    it('refuses a file that is not a workbook of the template, one too large, and another type', async () => {
+      const { version } = await draft();
+      refusedWith(await upload(version, Buffer.from('not a workbook')), 422, 'import_not_template');
+      refusedWith(
+        await upload(version, Buffer.alloc(5 * 1024 * 1024 + 1, 1)),
+        413,
+        'import_file_too_large',
+      );
+      const text = await request(t.kit.server)
+        .put(`/api/timetable/versions/${version}/pattern/imports`)
+        .set('Cookie', t.vicePrincipal)
+        .set(BRANCH_HEADER, t.north)
+        .set('Content-Type', 'text/plain')
+        .send('rows');
+      refusedWith(text, 415, 'unsupported_media_type');
     });
   });
 });

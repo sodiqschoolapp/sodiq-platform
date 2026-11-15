@@ -1597,6 +1597,23 @@ export const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
     branch: 'request',
     roles: ['super_admin', 'academic_vice_principal'],
   },
+  // Task 5.14: the timetable import, under `timetable` edit (approved by the owner on 15 November 2026).
+  'GET /api/timetable/versions/:id/pattern/import-template': {
+    branch: 'request',
+    roles: ['super_admin', 'academic_vice_principal'],
+  },
+  'PUT /api/timetable/versions/:id/pattern/imports': {
+    branch: 'request',
+    roles: ['super_admin', 'academic_vice_principal'],
+  },
+  'POST /api/timetable/versions/:id/pattern/imports/:importId/preview': {
+    branch: 'request',
+    roles: ['super_admin', 'academic_vice_principal'],
+  },
+  'POST /api/timetable/versions/:id/pattern/imports/:importId/confirm': {
+    branch: 'request',
+    roles: ['super_admin', 'academic_vice_principal'],
+  },
 };
 
 /**
