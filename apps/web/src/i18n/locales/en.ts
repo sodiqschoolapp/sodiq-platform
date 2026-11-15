@@ -4296,6 +4296,11 @@ export const en = {
         create: 'Teaching load row added',
         edit: 'Teaching load row changed',
         delete: 'Teaching load row deleted',
+        import: 'Teaching load rows imported',
+      },
+      load_import: {
+        upload: 'Load import file uploaded',
+        template: 'Load import template downloaded',
       },
       audit: {
         entry_shown: 'Hidden values of a log entry shown',

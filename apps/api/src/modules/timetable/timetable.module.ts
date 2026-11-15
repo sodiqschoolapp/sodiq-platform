@@ -1,4 +1,6 @@
 import { Module } from '@nestjs/common';
+import { LoadImportsController } from './load-imports.controller.js';
+import { LoadImports } from './load-imports.service.js';
 import { AccessModule } from '../access/access.module.js';
 import { NotificationsModule } from '../notifications/notifications.module.js';
 import { BulkCancelsController } from './bulk-cancels.controller.js';
@@ -45,6 +47,7 @@ import { LoadReports } from './load-report.service.js';
   imports: [AccessModule, NotificationsModule, PlansModule],
   controllers: [
     TimetableController,
+    LoadImportsController,
     DayChangesController,
     SubstitutionsController,
     JournalSubstitutionsController,
@@ -62,6 +65,7 @@ import { LoadReports } from './load-report.service.js';
   ],
   providers: [
     Timetable,
+    LoadImports,
     TimetableViews,
     TimetableViewExports,
     TimetableVersionExports,

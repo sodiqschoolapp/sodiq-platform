@@ -141,6 +141,29 @@ const teacherField = (code: 'load_tutor_row_teacher' | 'load_teacher_needed'): A
   ]);
 
 /**
+ * The teacher of a new row (task 3.6c-2, decision 1), for the hand create and the load import
+ * (task 5.13): a Tutor row takes the class's Tutor of the version and nobody names it; every
+ * other row needs the teacher or vacancy named.
+ */
+export function newRowTeacher(
+  unit: UnitFacts['unit'],
+  subject: Parameters<typeof isTutorRow>[1],
+  named: string | null,
+):
+  | { teacherId: string }
+  | { problem: 'load_tutor_row_teacher' | 'load_no_tutor' | 'load_teacher_needed' } {
+  if (isTutorRow(unit, subject)) {
+    if (named !== null) {
+      return { problem: 'load_tutor_row_teacher' };
+    }
+    return unit.tutorOnStart === null
+      ? { problem: 'load_no_tutor' }
+      : { teacherId: unit.tutorOnStart };
+  }
+  return named === null ? { problem: 'load_teacher_needed' } : { teacherId: named.toLowerCase() };
+}
+
+/**
  * The subjects of rows about to be written FOR KEY SHARE in the order of their
  * id, in a statement before the write (task 3.4c, decision 6 of pull request
  * #101): a department move of a subject (FOR UPDATE) waits for the write or is
@@ -225,7 +248,7 @@ export interface VersionRow extends WeightColumns {
 }
 
 /** The fields of a row as the audit entries record them. */
-const fieldsOf = (row: StoredLoadRow) => ({
+export const loadRowFieldsOf = (row: StoredLoadRow) => ({
   classId: row.class_id,
   groupId: row.group_id,
   subjectId: row.subject_id,
@@ -238,7 +261,7 @@ const fieldsOf = (row: StoredLoadRow) => ({
   shortReason: row.short_reason ?? null,
 });
 
-const ROW_COLUMNS = [
+export const ROW_COLUMNS = [
   'id',
   'class_id',
   'group_id',
@@ -1730,20 +1753,16 @@ export class Timetable {
               throw notFound();
             }
             // Task 3.6c-2, decision 1: the server writes a Tutor row's teacher.
-            let teacherId: string;
-            if (isTutorRow(unit.unit, subject)) {
-              if (input.teacherId !== null) {
-                throw teacherField('load_tutor_row_teacher');
+            const chosen = newRowTeacher(unit.unit, subject, input.teacherId);
+            if ('problem' in chosen) {
+              if (chosen.problem === 'load_no_tutor') {
+                this.refuse([chosen.problem]);
               }
-              if (unit.unit.tutorOnStart === null) {
-                this.refuse(['load_no_tutor']);
-              }
-              teacherId = unit.unit.tutorOnStart ?? '';
-            } else if (input.teacherId === null) {
-              throw teacherField('load_teacher_needed');
-            } else {
-              teacherId = input.teacherId.toLowerCase();
+              throw teacherField(
+                chosen.problem === 'load_no_tutor' ? 'load_teacher_needed' : chosen.problem,
+              );
             }
+            const teacherId = chosen.teacherId;
             const teacher = await this.teacherOf(transaction, context, teacherId);
             const room = await this.roomOf(transaction, context, input.roomId);
             // Task 3.4b: the row among the version's rows, for its block and the
@@ -1799,7 +1818,7 @@ export class Timetable {
               assignmentId: access.assignmentId,
               action: 'teaching_load.create',
               record: { type: 'teaching_load_row', id: created.id },
-              newValue: { versionId: id, ...fieldsOf(created) },
+              newValue: { versionId: id, ...loadRowFieldsOf(created) },
               requestId,
             });
             return this.rowAnswer(transaction, context, id, created);
@@ -1855,7 +1874,7 @@ export class Timetable {
               short_reason:
                 input.shortReason === undefined ? (before.short_reason ?? null) : input.shortReason,
             };
-            const changes = changesOf(fieldsOf(before), fieldsOf(after));
+            const changes = changesOf(loadRowFieldsOf(before), loadRowFieldsOf(after));
             if (changes === null) {
               return this.rowAnswer(transaction, context, id, before);
             }
@@ -1956,7 +1975,7 @@ export class Timetable {
             record: { type: 'teaching_load_row', id: rowId },
             oldValue: {
               versionId: id,
-              ...fieldsOf(before),
+              ...loadRowFieldsOf(before),
               pins: pins.map((pin) => ({
                 id: pin.id,
                 weekday: pin.weekday,

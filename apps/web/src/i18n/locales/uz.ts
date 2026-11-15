@@ -4340,6 +4340,11 @@ export const uz: Texts<'one' | 'other'> = {
         create: 'Oʻquv yuklamasi qatori qoʻshildi',
         edit: 'Oʻquv yuklamasi qatori oʻzgartirildi',
         delete: 'Oʻquv yuklamasi qatori oʻchirildi',
+        import: 'Yuklama qatorlari import qilindi',
+      },
+      load_import: {
+        upload: 'Yuklama importi fayli yuklandi',
+        template: 'Yuklama importi shabloni yuklab olindi',
       },
       audit: {
         entry_shown: 'Jurnal yozuvining yashirin qiymatlari koʻrsatildi',
