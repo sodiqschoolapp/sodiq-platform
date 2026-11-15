@@ -50,5 +50,7 @@ test('an Academic Vice Principal imports the teaching load of a draft', async ({
   await page.getByRole('link', { name: en.timetable.loadImport.toLoad, exact: true }).click();
   await expect(heading(page, en.timetable.load.title)).toBeVisible();
   const list = page.locator('tbody tr');
-  await expect(list.filter({ hasText: 'Geometry' })).toContainText('Geometry wanted');
+  // The row of the load, and the vacancy with its 3 lessons in the totals.
+  await expect(list.filter({ hasText: '7 Seeded' })).toContainText('Geometry');
+  await expect(list.filter({ hasText: 'Geometry wanted (vacancy)' })).toContainText('3');
 });
