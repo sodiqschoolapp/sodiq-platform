@@ -613,6 +613,8 @@ describe('the teaching load page', () => {
     expect(screen.queryByRole('button', { name: en.timetable.load.newDraft })).toBeNull();
     expect(screen.queryByRole('button', { name: en.timetable.load.add })).toBeNull();
     expect(screen.queryByRole('button', { name: en.timetable.load.changeStart })).toBeNull();
+    // Task 5.13: the import is for those who edit the load.
+    expect(screen.queryByRole('link', { name: en.timetable.loadImport.open })).toBeNull();
     // The lists of the forms are read only by those who change the load.
     expect(calls.some((call) => call.route === 'GET /api/classes')).toBe(false);
   });
@@ -638,6 +640,14 @@ describe('the teaching load page', () => {
     expect(banner?.textContent).toContain('Tosheva Malika');
     expect(screen.queryByRole('button', { name: en.timetable.load.add })).toBeNull();
     expect(screen.queryByRole('button', { name: en.timetable.load.changeStart })).toBeNull();
+    expect(screen.queryByRole('link', { name: en.timetable.loadImport.open })).toBeNull();
+  });
+
+  it('offers the import of a draft from Excel to the Academic Vice Principal (task 5.13)', async () => {
+    setWindowWidth(1440);
+    await openPage({ load: { rows: [row(1)] } });
+    const link = await screen.findByRole('link', { name: en.timetable.loadImport.open });
+    expect(link.getAttribute('href')).toBe(`/timetable/load/import?version=${version(1).id}`);
   });
 
   it('reads a published version without offering a change', async () => {

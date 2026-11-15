@@ -11,7 +11,7 @@ import {
   type WithdrawBody,
 } from '@sodiq/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useNavigate, useSearch } from '@tanstack/react-router';
+import { Link, useNavigate, useSearch } from '@tanstack/react-router';
 import { useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useConfirm } from '@/components/confirm-dialog';
@@ -341,6 +341,15 @@ export function LoadPage(): React.JSX.Element {
               >
                 {t('timetable.load.add')}
               </Button>
+            )}
+            {free && can('edit') && chosen !== undefined && (
+              <Link
+                to="/timetable/load/import"
+                search={{ version: chosen.id }}
+                className="font-semibold text-link underline-offset-4 hover:underline"
+              >
+                {t('timetable.loadImport.open')}
+              </Link>
             )}
             <Button
               variant={canCreate ? 'secondary' : 'default'}

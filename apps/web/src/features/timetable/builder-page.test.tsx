@@ -308,6 +308,10 @@ describe('the draft builder', () => {
     expect(
       screen.getByRole('link', { name: en.timetable.builder.openLoad }).getAttribute('href'),
     ).toBe(`/timetable/load?version=${VERSION.id}`);
+    // Task 5.13: the import of the load, beside the load.
+    expect(
+      screen.getByRole('link', { name: en.timetable.loadImport.open }).getAttribute('href'),
+    ).toBe(`/timetable/load/import?version=${VERSION.id}`);
   });
 
   it('shows a teacher with no hours and links to the staff record', async () => {
