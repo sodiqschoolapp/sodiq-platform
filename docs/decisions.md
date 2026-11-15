@@ -82,6 +82,7 @@ Plan approved on pull request #324 with its two corrections (no `deferPatternCla
 | The Lists sheet and matching of 5.13 (`recordsOf`, now a module function, `RecordIndex`) with a weekdays list; the keys row tells the templates apart | One place for matching |
 | A row held back by another problem counts as present when its slot's blocks are grouped, and is left out of the engine's run | "A preview of every row with its problems"; a partner is never told a part it has |
 | The grouping into blocks, pairings and doubles is `importedBlocks` in `packages/timetable-rules` (the plan named an API file) | Rules over placements that sit together live in the rule engine, with its fixture to test them |
+| The confirm checks that the import exists (of this draft and branch) before it takes the edit lock: an unknown import is 404 while another person edits the draft, never `draft_edit_locked` | A path id is answered 404 before any lock or write (`.claude/rules/api.md`); permission review of the code |
 
 ## 15 November 2026: the teaching load import (task 5.13)
 
