@@ -1450,9 +1450,7 @@ After 11.5 the owner puts the parent portal live (stop-list item 1): the product
 
 - [x] **11.8 Instant messages to families** — **Dropped** (owner, 7 November 2026, `docs/spec-changes.md`): parents get no instant message for an absence, a timetable change or quarter results; attendance, grades and comments reach them only in the digest and the portal. Nothing was built; its plan pull request #310 was closed. Ticked so the start routine goes on to 11.9.
 
-> **Owner gate.** The start routine stops here: the owner paused new tasks on 7 November 2026, after 11.7 and the drop of 11.8, to improve what is already built first. The owner deletes this line to start building again.
-
-Order decided by the owner on 15 November 2026: 5.13 and 5.14 (the spec change of 15 November 2026, the load import and the timetable import) run next, before 11.9: go-live of the branches needs the load and the timetable of a whole branch, too much to enter by hand.
+The pause of new tasks of 7 November 2026 (an owner gate after 11.8) was lifted by the owner on 15 November 2026. Order decided by the owner on 15 November 2026: 5.13 and 5.14 (the spec change of 15 November 2026, the load import and the timetable import) run next, before 11.9: go-live of the branches needs the load and the timetable of a whole branch, too much to enter by hand.
 
 - [ ] **5.13 Teaching load import** (the owner's spec change of 15 November 2026)
   - Read: `docs/spec-changes.md` (15 November 2026), `06` (Building a timetable; Importing the load and the timetable), `05` (Teaching load; Group: the split set in the load; the language rule), `edge/timetable` (Structure: the parts of a split; the Homework slot and Ma'naviyat soati; Versions and drafts), `edge/students-classes-groups` (the import rows), `edge/developer-rules`; the load routes of the draft (3.4a, 3.4b, 3.6c-2, 5.5a-1) and the student, staff and subject imports (9.4g, 9.4h, the subject import of 7 November 2026).
