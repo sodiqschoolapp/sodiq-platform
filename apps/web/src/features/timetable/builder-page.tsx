@@ -545,13 +545,27 @@ export function BuilderPage(): React.JSX.Element {
     );
   } else if (step === 'grid') {
     panel = (
-      <GridStep
-        key={chosen.id}
-        versionId={chosen.id}
-        canEdit={canEdit}
-        history={gridHistory}
-        onHistory={setGridHistory}
-      />
+      <div className="grid gap-4">
+        {/* Task 5.14: the timetable import, for those who edit a draft nobody else is editing. */}
+        {canEdit && (
+          <div className="flex flex-wrap gap-4">
+            <Link
+              to="/timetable/pattern/import"
+              search={{ version: chosen.id }}
+              className="font-semibold text-link underline-offset-4 hover:underline"
+            >
+              {t('timetable.patternImport.open')}
+            </Link>
+          </div>
+        )}
+        <GridStep
+          key={chosen.id}
+          versionId={chosen.id}
+          canEdit={canEdit}
+          history={gridHistory}
+          onHistory={setGridHistory}
+        />
+      </div>
     );
   } else if (step === 'publish') {
     panel = (

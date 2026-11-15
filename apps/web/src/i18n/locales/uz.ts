@@ -1068,6 +1068,14 @@ export const uz: Texts<'one' | 'other'> = {
     load_import_already_confirmed: 'Bu import allaqachon saqlangan. Yuklamani oching.',
     load_import_changed:
       'Kimdir shu payt qoralama yoki uning yozuvlarini oʻzgartirdi. Hech narsa saqlanmadi; qayta urinib koʻring.',
+    pattern_import_already_confirmed:
+      'Bu dars jadvali importi allaqachon tasdiqlangan. Uni koʻrish uchun faylni qayta yuklang.',
+    pattern_import_changed:
+      'Shu paytda kimdir qoralamani yoki uning yozuvlarini oʻzgartirdi. Hech narsa saqlanmadi; qayta tasdiqlang.',
+    pattern_import_other_draft:
+      'Bu fayl boshqa qoralamaning dars jadvali shabloni. Shu qoralamaning shablonini yuklab oling.',
+    pattern_import_draft_changed:
+      'Oldindan koʻrishdan keyin qoralama darslari oʻzgardi. Hech narsa saqlanmadi; endi nima olib tashlanishini koʻrish uchun faylni qayta yuklang.',
     load_import_other_draft:
       'Bu fayl boshqa qoralamaning shabloni. Shu qoralamadan shablonni yuklab oling.',
     subject_import_changed:
@@ -4855,6 +4863,54 @@ export const uz: Texts<'one' | 'other'> = {
     },
   },
   timetable: {
+    patternImport: {
+      open: 'Dars jadvalini Exceldan import qilish',
+      title: 'Dars jadvali importi',
+      noDraft: 'Dars jadvali qoralamaga import qilinadi. Avval quruvchida qoralamani oching.',
+      saved_one: '{{count}} ta dars joylashtirildi.',
+      saved_other: '{{count}} ta dars joylashtirildi.',
+      removed_one: 'Qoralamaning {{count}} ta darsi olib tashlandi.',
+      removed_other: 'Qoralamaning {{count}} ta darsi olib tashlandi.',
+      toGrid: 'Jadvalni ochish',
+      inDraft_one:
+        'Qoralamada {{count}} ta joylashtirilgan dars bor; tasdiqlash uni olib tashlaydi.',
+      inDraft_other:
+        'Qoralamada {{count}} ta joylashtirilgan dars bor; tasdiqlash ularni olib tashlaydi.',
+      alreadyImported:
+        'Bu fayl {{date}} kuni shu qoralamaga import qilingan. Uni qayta import qilib boʻlmaydi.',
+      rowColumn: 'Hafta kuni, dars, sinf yoki guruh, fan, oʻqituvchi, xona',
+      warnings: 'Ogohlantirishlar (importni toʻxtatmaydi)',
+      warningRows: '{{rule}} Qatorlar: {{rows}}.',
+      ruleWith: '{{rule}} {{rows}}-qator bilan.',
+      confirm_one: '{{count}} ta darsni joylashtirish',
+      confirm_other: 'Barcha {{count}} ta darsni joylashtirish',
+      notClean:
+        'Har bir qator toʻgʻri boʻlmaguncha hech narsa joylashtirilmaydi. Faylni tuzatib, qayta yuklang.',
+      replaceTitle_one: 'Qoralamaning {{count}} ta joylashtirilgan darsi olib tashlansinmi?',
+      replaceTitle_other: 'Qoralamaning {{count}} ta joylashtirilgan darsi olib tashlansinmi?',
+      replaceText_one:
+        'Ularning oʻrniga fayldagi {{count}} ta dars qoʻyiladi. Oʻquv yuklamasi oʻzgarmaydi.',
+      replaceText_other:
+        'Ularning oʻrniga fayldagi {{count}} ta dars qoʻyiladi. Oʻquv yuklamasi oʻzgarmaydi.',
+      replaceAction: 'Olib tashlash va joylashtirish',
+      problems: {
+        required: 'buni toʻldiring.',
+        invalid: 'bu qiymat qabul qilinmaydi.',
+        load_import_unknown:
+          'bu filial va oʻquv yilida bunday nomli yozuv yoʻq; roʻyxatdan tanlang.',
+        name_ambiguous: 'ikkita yozuv shu nomga ega; avval ulardan birining nomini oʻzgartiring.',
+        pattern_import_row_twice: 'xuddi shu dars {{rows}}-qatorda ham bor.',
+        pattern_import_no_load_row:
+          'qoralamaning oʻquv yuklamasida bu sinf yoki guruh va fan uchun qator yoʻq; avval uni yuklamaga qoʻshing.',
+        pattern_import_teacher_differs:
+          'oʻquv yuklamasi bu darsni {{teacher}}ga beradi; shu oʻqituvchini koʻrsating yoki yuklamani oʻzgartiring.',
+        pattern_import_teacher_needed: 'darsning oʻqituvchisi yoki vakansiyasini koʻrsating.',
+        pattern_import_out_of_service: 'bu sinf yoki guruh arxivlangan.',
+        pattern_import_no_slot: 'bu hafta kunida bunday raqamli dars yoʻq.',
+        pattern_import_block_part:
+          'blokning har bir qismiga shu vaqtda dars kerak; yetishmayapti: {{units}}.',
+      },
+    },
     loadImport: {
       open: 'Exceldan import',
       title: 'Oʻquv yuklamasi importi',

@@ -586,6 +586,20 @@ describe('the grid of step 7', () => {
     });
   });
 
+  it('links to the timetable import for the person who edits the draft, not for the Principal (task 5.14)', async () => {
+    await openGrid();
+    expect(
+      (await screen.findByRole('link', { name: en.timetable.patternImport.open })).getAttribute(
+        'href',
+      ),
+    ).toBe(`/timetable/pattern/import?version=${VERSION.id}`);
+  });
+
+  it('shows the Principal no link to the timetable import (task 5.14)', async () => {
+    await openGrid({ session: principal() });
+    expect(screen.queryByRole('link', { name: en.timetable.patternImport.open })).toBeNull();
+  });
+
   it('gives the Principal the board with no move, remove or add', async () => {
     await openGrid({ session: principal() });
     expect(tile(BLOCK_OXFORD)).not.toBeNull();
