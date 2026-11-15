@@ -245,6 +245,8 @@ export const AUDIT_ACTION_GROUPS = {
     // Task 5.13: the upload of a filled load template, and its confirm: one entry with every row.
     'load_import.upload',
     'teaching_load.import',
+    'pattern_import.upload',
+    'pattern.import',
     // Task 5.5c-1: journals opened, and their days changed, by a publish.
     'journal.open',
     'journal.runs',
@@ -442,6 +444,7 @@ export const AUDIT_ACTION_GROUPS = {
     'load_report.export',
     // Task 5.13: the template of the load import, with the branch's staff (decision 10).
     'load_import.template',
+    'pattern_import.template',
     'building.export',
     'room.export',
     'division.export',

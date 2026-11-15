@@ -194,6 +194,12 @@ const MESSAGE: Record<ErrorCode, string> = {
   load_import_already_confirmed: 'This load import was confirmed already.',
   load_import_changed: 'A change made at the same moment met the load import; nothing was saved.',
   load_import_other_draft: 'The file is the template of another draft.',
+  pattern_import_already_confirmed: 'This timetable import was confirmed already.',
+  pattern_import_changed:
+    'A change made at the same moment met the timetable import; nothing was saved. Try again.',
+  pattern_import_other_draft: 'The file is the timetable template of another draft.',
+  pattern_import_draft_changed:
+    'The lessons of the draft changed since the preview; read the preview again.',
   subject_import_changed:
     'A change of subjects made at the same moment met the import; nothing was saved. Try again.',
   photos_not_configured: 'Photos are not configured on this server.',

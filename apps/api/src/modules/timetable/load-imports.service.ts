@@ -139,7 +139,7 @@ export class LoadImports {
     const lists = await this.transactions.run(access.branchIds, async (transaction) => {
       const version = await this.timetable.lockDraftRow(transaction, branchId, versionId);
       const context = await this.timetable.contextOf(transaction, version);
-      const read = await this.recordsOf(transaction, context, language);
+      const read = await recordsOf(transaction, context, language);
       await this.audit.record(transaction, {
         branchId,
         actorId: access.accountId,
@@ -371,136 +371,6 @@ export class LoadImports {
   }
 
   /**
-   * The branch's records of the draft a file is matched against, and the lists of the template:
-   * the classes and groups of the draft's year, the school's subjects (by their name in the
-   * template's language, the dropdown's; every language for a file that names none), the
-   * branch's teachers and vacancies, the branch's rooms. "In service" is read on `statusOn`
-   * (review finding 1); the lists hold only records in service, the matching every record, so a
-   * pasted value out of service is told the hand reason.
-   */
-  private async recordsOf(
-    transaction: Transaction,
-    context: VersionContext,
-    language: Language | null,
-  ): Promise<{ records: ImportRecords; lists: LoadTemplateLists }> {
-    const [classes, groups, groupClasses, subjects, rooms] = await Promise.all([
-      transaction
-        .selectFrom('classes')
-        .select(['id', 'grade', 'name', 'archived_at'])
-        .where('branch_id', '=', context.branchId)
-        .where('academic_year_id', '=', context.yearId)
-        .orderBy('grade')
-        .orderBy('name')
-        .execute(),
-      transaction
-        .selectFrom('groups')
-        .select(['id', 'name', 'archived_at'])
-        .where('branch_id', '=', context.branchId)
-        .where('academic_year_id', '=', context.yearId)
-        .orderBy('name')
-        .execute(),
-      transaction
-        .selectFrom('group_classes')
-        .innerJoin('groups', 'groups.id', 'group_classes.group_id')
-        .innerJoin('classes', 'classes.id', 'group_classes.class_id')
-        .select(['group_classes.group_id', 'classes.grade', 'classes.name'])
-        .where('groups.branch_id', '=', context.branchId)
-        .where('groups.academic_year_id', '=', context.yearId)
-        .orderBy('classes.grade')
-        .orderBy('classes.name')
-        .execute(),
-      transaction
-        .selectFrom('subjects')
-        .select(['id', 'name_uz', 'name_ru', 'name_en', 'archived_at'])
-        .orderBy('name_en')
-        .execute(),
-      transaction
-        .selectFrom('rooms')
-        .select(['id', 'name', 'status'])
-        .where('branch_id', '=', context.branchId)
-        .orderBy('name')
-        .execute(),
-    ]);
-    const teachers = await readTeacherFacts(transaction, context, 'branch');
-    const staffIds = await transaction
-      .selectFrom('staff')
-      .select(['id', 'staff_id', 'first_name', 'last_name', 'vacancy_name', 'kind'])
-      .where('id', 'in', [...teachers.keys(), '00000000-0000-0000-0000-000000000000'])
-      .execute();
-    const nameIn = (row: { name_uz: string; name_ru: string; name_en: string }, at: Language) =>
-      at === 'uz' ? row.name_uz : at === 'ru' ? row.name_ru : row.name_en;
-    const units: ImportUnit[] = [
-      ...classes.map((row) => ({
-        id: row.id,
-        kind: 'class' as const,
-        labels: [classDisplayName(row.grade, row.name)],
-        live: row.archived_at === null,
-      })),
-      ...groups.map((row) => ({
-        id: row.id,
-        kind: 'group' as const,
-        labels: [row.name],
-        live: row.archived_at === null,
-      })),
-    ];
-    const teacherRecords = staffIds
-      .map((row) => {
-        const facts = teachers.get(row.id);
-        const labels =
-          row.kind === 'vacancy'
-            ? LANGUAGES.map((at) => `${row.vacancy_name ?? ''} (${LOAD_IMPORT_WORDS[at].vacancy})`)
-            : [
-                `${listName({ firstName: row.first_name ?? '', lastName: row.last_name ?? '' })} (${row.staff_id ?? ''})`,
-              ];
-        return {
-          id: row.id,
-          kind: row.kind,
-          labels,
-          live: facts !== undefined && facts.inBranch && !facts.out,
-        };
-      })
-      .sort((a, b) => (a.labels[0] ?? '').localeCompare(b.labels[0] ?? ''));
-    const shownIn: Language = language ?? 'uz';
-    const vacancyAt = LANGUAGES.indexOf(shownIn);
-    const records: ImportRecords = {
-      units,
-      subjects: subjects.map((row) => ({
-        id: row.id,
-        labels:
-          language === null ? LANGUAGES.map((at) => nameIn(row, at)) : [nameIn(row, language)],
-        live: row.archived_at === null,
-      })),
-      teachers: teacherRecords,
-      rooms: rooms.map((row) => ({
-        id: row.id,
-        labels: [row.name],
-        live: row.status !== 'closed',
-      })),
-    };
-    const liveGroups = groups.filter((row) => row.archived_at === null);
-    const lists: LoadTemplateLists = {
-      units: units.filter((unit) => unit.live).map((unit) => unit.labels[0] ?? ''),
-      groupClasses: liveGroups.map((row) => [
-        row.name,
-        groupClasses
-          .filter((one) => one.group_id === row.id)
-          .map((one) => classDisplayName(one.grade, one.name))
-          .join(', '),
-      ]),
-      subjects: subjects
-        .filter((row) => row.archived_at === null)
-        .map((row) => nameIn(row, shownIn))
-        .sort((a, b) => a.localeCompare(b)),
-      teachers: [
-        ...teacherRecords.filter((one) => one.live && one.kind !== 'vacancy'),
-        ...teacherRecords.filter((one) => one.live && one.kind === 'vacancy'),
-      ].map((one) => (one.kind === 'vacancy' ? one.labels[vacancyAt] : one.labels[0]) ?? ''),
-      rooms: rooms.filter((row) => row.status !== 'closed').map((row) => row.name),
-    };
-    return { records, lists };
-  }
-
-  /**
    * Reads, matches and checks every row of the file against the draft as it is now. Takes the
    * locks of the hand create for every row: the subjects `for key share` (`lockSubjects`) and
    * every teacher and vacancy `for key share`, in the order of their ids, before their facts are
@@ -515,7 +385,7 @@ export class LoadImports {
       throw new ApiException('load_import_other_draft', 422);
     }
     const context = await this.timetable.contextOf(transaction, version);
-    const { records } = await this.recordsOf(transaction, context, record.file.language);
+    const { records } = await recordsOf(transaction, context, record.file.language);
     const indexes = indexesOf(records);
     const parsed = record.file.rows.map((row) => parseLoadImportRow(row, indexes));
     const repeats = loadFileRepeats(parsed);
@@ -699,4 +569,134 @@ export class LoadImports {
 function conflicted(error: unknown): boolean {
   const failure = error as { code?: unknown };
   return failure.code === DEADLOCK || failure.code === SERIALIZATION_FAILURE;
+}
+
+/**
+ * The branch's records of the draft a file is matched against, and the lists of the template:
+ * the classes and groups of the draft's year, the school's subjects (by their name in the
+ * template's language, the dropdown's; every language for a file that names none), the
+ * branch's teachers and vacancies, the branch's rooms. "In service" is read on `statusOn`
+ * (review finding 1); the lists hold only records in service, the matching every record, so a
+ * pasted value out of service is told the hand reason.
+ */
+export async function recordsOf(
+  transaction: Transaction,
+  context: VersionContext,
+  language: Language | null,
+): Promise<{ records: ImportRecords; lists: LoadTemplateLists }> {
+  const [classes, groups, groupClasses, subjects, rooms] = await Promise.all([
+    transaction
+      .selectFrom('classes')
+      .select(['id', 'grade', 'name', 'archived_at'])
+      .where('branch_id', '=', context.branchId)
+      .where('academic_year_id', '=', context.yearId)
+      .orderBy('grade')
+      .orderBy('name')
+      .execute(),
+    transaction
+      .selectFrom('groups')
+      .select(['id', 'name', 'archived_at'])
+      .where('branch_id', '=', context.branchId)
+      .where('academic_year_id', '=', context.yearId)
+      .orderBy('name')
+      .execute(),
+    transaction
+      .selectFrom('group_classes')
+      .innerJoin('groups', 'groups.id', 'group_classes.group_id')
+      .innerJoin('classes', 'classes.id', 'group_classes.class_id')
+      .select(['group_classes.group_id', 'classes.grade', 'classes.name'])
+      .where('groups.branch_id', '=', context.branchId)
+      .where('groups.academic_year_id', '=', context.yearId)
+      .orderBy('classes.grade')
+      .orderBy('classes.name')
+      .execute(),
+    transaction
+      .selectFrom('subjects')
+      .select(['id', 'name_uz', 'name_ru', 'name_en', 'archived_at'])
+      .orderBy('name_en')
+      .execute(),
+    transaction
+      .selectFrom('rooms')
+      .select(['id', 'name', 'status'])
+      .where('branch_id', '=', context.branchId)
+      .orderBy('name')
+      .execute(),
+  ]);
+  const teachers = await readTeacherFacts(transaction, context, 'branch');
+  const staffIds = await transaction
+    .selectFrom('staff')
+    .select(['id', 'staff_id', 'first_name', 'last_name', 'vacancy_name', 'kind'])
+    .where('id', 'in', [...teachers.keys(), '00000000-0000-0000-0000-000000000000'])
+    .execute();
+  const nameIn = (row: { name_uz: string; name_ru: string; name_en: string }, at: Language) =>
+    at === 'uz' ? row.name_uz : at === 'ru' ? row.name_ru : row.name_en;
+  const units: ImportUnit[] = [
+    ...classes.map((row) => ({
+      id: row.id,
+      kind: 'class' as const,
+      labels: [classDisplayName(row.grade, row.name)],
+      live: row.archived_at === null,
+    })),
+    ...groups.map((row) => ({
+      id: row.id,
+      kind: 'group' as const,
+      labels: [row.name],
+      live: row.archived_at === null,
+    })),
+  ];
+  const teacherRecords = staffIds
+    .map((row) => {
+      const facts = teachers.get(row.id);
+      const labels =
+        row.kind === 'vacancy'
+          ? LANGUAGES.map((at) => `${row.vacancy_name ?? ''} (${LOAD_IMPORT_WORDS[at].vacancy})`)
+          : [
+              `${listName({ firstName: row.first_name ?? '', lastName: row.last_name ?? '' })} (${row.staff_id ?? ''})`,
+            ];
+      return {
+        id: row.id,
+        kind: row.kind,
+        labels,
+        live: facts !== undefined && facts.inBranch && !facts.out,
+      };
+    })
+    .sort((a, b) => (a.labels[0] ?? '').localeCompare(b.labels[0] ?? ''));
+  const shownIn: Language = language ?? 'uz';
+  const vacancyAt = LANGUAGES.indexOf(shownIn);
+  const records: ImportRecords = {
+    units,
+    subjects: subjects.map((row) => ({
+      id: row.id,
+      labels:
+        language === null ? LANGUAGES.map((at) => nameIn(row, at)) : [nameIn(row, language)],
+      live: row.archived_at === null,
+    })),
+    teachers: teacherRecords,
+    rooms: rooms.map((row) => ({
+      id: row.id,
+      labels: [row.name],
+      live: row.status !== 'closed',
+    })),
+  };
+  const liveGroups = groups.filter((row) => row.archived_at === null);
+  const lists: LoadTemplateLists = {
+    units: units.filter((unit) => unit.live).map((unit) => unit.labels[0] ?? ''),
+    groupClasses: liveGroups.map((row) => [
+      row.name,
+      groupClasses
+        .filter((one) => one.group_id === row.id)
+        .map((one) => classDisplayName(one.grade, one.name))
+        .join(', '),
+    ]),
+    subjects: subjects
+      .filter((row) => row.archived_at === null)
+      .map((row) => nameIn(row, shownIn))
+      .sort((a, b) => a.localeCompare(b)),
+    teachers: [
+      ...teacherRecords.filter((one) => one.live && one.kind !== 'vacancy'),
+      ...teacherRecords.filter((one) => one.live && one.kind === 'vacancy'),
+    ].map((one) => (one.kind === 'vacancy' ? one.labels[vacancyAt] : one.labels[0]) ?? ''),
+    rooms: rooms.filter((row) => row.status !== 'closed').map((row) => row.name),
+  };
+  return { records, lists };
 }
