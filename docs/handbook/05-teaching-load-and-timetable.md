@@ -2,6 +2,41 @@
 
 Not written yet for most of the teaching load and the timetable: task 3.7 describes what is built so far. This page holds the parts that later tasks added.
 
+## Importing the teaching load from Excel
+
+<!-- Sources: spec 06 (Building a timetable, step 2; Importing the load and the timetable), spec 05 (Teaching load), edge/timetable (Structure); docs/spec-changes.md, 15 November 2026; task 5.13, its decisions and plan review -->
+
+**What it is.** The rows of a draft's teaching load can be added from the system's Excel template, all at once, instead of one by one. The file only chooses records that already exist in the branch: classes, groups, subjects, teachers, vacancies and rooms. It never creates one.
+
+**Who can do it.** The Super Admin and the Academic Vice Principal, into a draft of their branch. The Principal does not see the link. A published version is never changed by an import.
+
+**How to do it.**
+
+1. Open Timetable, then Teaching load, and choose the draft. Press **Import from Excel** (**Exceldan import**). Step 2 of the builder has the same link.
+2. Press **Download the template**. The file is made for this draft: its sheet "Lists" holds the branch's classes and groups, the classes each group draws from, the subjects, the teachers (surname, name and staff ID) and vacancies, the rooms and the room types. Each column that names a record is a dropdown of that list.
+3. Fill one row per row of the load: class or group, subject, teacher or vacancy, lessons per week, a room or a room type (optional), double lessons (yes or no), mixed block (yes or no, for a split whose halves share one teacher), and a reason for "deliberately short" (optional). Leave the teacher empty for a Tutor subject on a class: the class's Tutor takes it.
+4. Press **Upload the filled file**. The page lists every row, the rows with problems first, each problem with its column.
+5. When every row is ready, press **Add all rows**. The page says how many rows were added, with a link back to the load.
+
+**Rules.**
+
+- Every rule of a row typed by hand applies: the teacher has the subject, the grade and the language of the class or group; the parts of a split or of a set of groups have the same lessons per week and different teachers; a class and a group of it never both have the subject.
+- Every group of a block needs a row: a split given to one half only is a problem. By hand, such a block is only listed until its other part is added.
+- A row that the draft already has, or that the file has twice, is a problem.
+- Nothing is added until every row is ready; then every row is added at once. Rows already in the draft stay.
+- The same file is not imported twice into a draft, and a template made for another draft is refused.
+- Students of the classes who are in none of the block's groups are listed under the row as a warning; they do not stop the import.
+
+**What happens if…**
+
+| Case | What happens |
+| --- | --- |
+| A name is not in the list (a typo, or pasted past the dropdown) | "no record of this branch and year has this name; choose one from the list." |
+| The record exists but is archived, closed or no longer in service | The same reason as by hand, for example "That teacher is inactive or has left, or the vacancy is closed, on the start date of the version." |
+| Two vacancies have the same name | "two records have this name; rename one of them first." |
+| Someone else is editing the draft | The import is refused until they leave it, as for any change of the draft. |
+| Someone added a row of the file by hand meanwhile | The confirm shows the preview again with that row's problem; nothing is added. |
+
 ## Teacher absences
 
 <!-- Sources: spec 06 (Teachers who work in several branches, Absence; How surprises are prevented), edge/timetable (After publishing: "A teacher is ill for weeks", "The lesson time passes and nobody was assigned"; Versions and drafts), edge/00-definitions (Held lesson); task 5.7a-1, decisions 1 to 13 and plan review corrections 1 and 2 -->

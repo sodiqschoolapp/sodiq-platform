@@ -305,6 +305,12 @@ export const ERROR_CODES = [
   'subject_import_already_confirmed',
   /** A change of subjects or quarters made at the same moment met the subject import; nothing was saved (#316). */
   'subject_import_changed',
+  /** This load import was confirmed already (task 5.13): its own code, the text of `import_already_confirmed` names the student list. */
+  'load_import_already_confirmed',
+  /** A change of the draft or its records made at the same moment met the load import; nothing was saved (task 5.13). */
+  'load_import_changed',
+  /** The file is the template of another draft: its lists are of that draft (task 5.13, decision 3). */
+  'load_import_other_draft',
   /** No photo store is configured on this server: photos cannot be added or shown yet (answer 2; task 2.2c-2). */
   'photos_not_configured',
   /** The photo store did not answer in time or refused; only photos fail (`edge/system-behaviour`; task 2.2c-2). */

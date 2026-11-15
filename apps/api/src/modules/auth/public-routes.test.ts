@@ -223,6 +223,7 @@ describe('the routes that work without sign-in', () => {
       'GET /api/timetable/versions/:id/compare',
       'GET /api/timetable/versions/:id/grid',
       'GET /api/timetable/versions/:id/load',
+      'GET /api/timetable/versions/:id/load/import-template',
       'GET /api/timetable/versions/:id/load/teachers',
       'GET /api/timetable/versions/:id/out-of-date',
       'GET /api/timetable/versions/:id/publish-check',
@@ -489,6 +490,8 @@ describe('the routes that work without sign-in', () => {
       'POST /api/timetable/versions/:id/edit-lock',
       'POST /api/timetable/versions/:id/export',
       'POST /api/timetable/versions/:id/load',
+      'POST /api/timetable/versions/:id/load/imports/:importId/confirm',
+      'POST /api/timetable/versions/:id/load/imports/:importId/preview',
       'POST /api/timetable/versions/:id/locks',
       'POST /api/timetable/versions/:id/pattern',
       'POST /api/timetable/versions/:id/pattern/:blockId/move',
@@ -560,6 +563,7 @@ describe('the routes that work without sign-in', () => {
       'PUT /api/setup/travel-times',
       'PUT /api/timetable/exams/:id',
       'PUT /api/timetable/versions/:id/day-keeps',
+      'PUT /api/timetable/versions/:id/load/imports',
       'PUT /api/timetable/versions/:id/preferences',
     ]);
   });

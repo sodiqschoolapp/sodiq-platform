@@ -142,6 +142,19 @@ export const SUBJECT_IMPORT_ROUTE: FileRoute = {
   tooLarge: 'import_file_too_large',
 };
 
+/**
+ * The upload of a filled template of the load import into a draft (task 5.13, decision 1, Look
+ * first; the routes approved by the owner with the spec change of 15 November 2026): an Excel
+ * workbook of at most 5 MB, as the other imports.
+ */
+export const LOAD_IMPORT_ROUTE: FileRoute = {
+  method: 'PUT',
+  path: '/api/timetable/versions/:id/load/imports',
+  types: STUDENT_IMPORT_TYPES,
+  maxBytes: STUDENT_IMPORT_MAX_BYTES,
+  tooLarge: 'import_file_too_large',
+};
+
 export const FILE_ROUTES: readonly FileRoute[] = [
   STAFF_PHOTO_ROUTE,
   OWN_PHOTO_ROUTE,
@@ -152,6 +165,7 @@ export const FILE_ROUTES: readonly FileRoute[] = [
   STUDENT_IMPORT_ROUTE,
   STAFF_IMPORT_ROUTE,
   SUBJECT_IMPORT_ROUTE,
+  LOAD_IMPORT_ROUTE,
 ];
 
 /**

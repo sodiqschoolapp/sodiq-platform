@@ -2,6 +2,17 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 15 November 2026: task 5.13, the teaching load import
+
+- **Built**: the system's Excel template of a draft's load (`GET versions/:id/load/import-template`, logged), the upload (`PUT versions/:id/load/imports`, file route `LOAD_IMPORT_ROUTE`), the preview and the confirm (`POST …/imports/:importId/preview|confirm`), all under `timetable` edit; table `load_imports` (0169). Every name is matched among the branch's records of the draft's year, live ones first; every hand rule runs through `LoadFacts`/`loadRowProblems` with the draft's and the file's rows together; `missingBlockGroups` (new in `packages/timetable-rules`) refuses a block given in part; one `teaching_load.import` entry with every row.
+- **Web**: `/timetable/load/import` (feature `timetable`), linked from the load page and step 2 of the builder; texts in three languages; handbook section "Importing the teaching load from Excel".
+- **Left out**: the timetable import (task 5.14).
+
+The next sessions must know:
+
+- 5.14 reuses the template's sheet of lists and the matching: `recordsOf` of `load-imports.service.ts`, `RecordIndex` and `indexesOf` of `load-import-read.ts`, `writeLoadImportTemplate`; the draft id and the language sit in the hidden column `LOAD_IMPORT_META_COLUMN` of the sheet of lists.
+- The Tutor rule of a new row is `newRowTeacher` of `timetable.service.ts`, shared by the hand create and the import.
+
 ## 13 November 2026: the journal's full screen button above the grid, and the teacher home opens the journal in full screen
 
 Not a task of the build plan: asked for by the owner on 13 November 2026 while testing the parents' digest on the test site.

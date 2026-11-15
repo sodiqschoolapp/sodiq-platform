@@ -1,4 +1,10 @@
 import {
+  loadImportConfirmResultSchema,
+  loadImportPreviewSchema,
+  STUDENT_IMPORT_TYPES,
+  type Language,
+  type LoadImportConfirmResult,
+  type LoadImportPreview,
   teachingHomeSchema,
   forcedDeleteSchema,
   lessonHistorySchema,
@@ -80,7 +86,8 @@ import {
 } from '@sodiq/shared';
 import { queryOptions, type QueryClient } from '@tanstack/react-query';
 import { api, branchHeader } from '@/api/client';
-import { answerOf } from '@/api/failure';
+import { answerOf, ApiFailure } from '@/api/failure';
+import { fileNameOf, save } from '@/components/list/use-export';
 import { SETUP_KEY } from '@/features/setup/setup-api';
 
 /** The draft versions and their teaching load (task 3.4a); `null` while no branch is chosen. */
@@ -1017,3 +1024,45 @@ export const teachingHomeQuery = (branchId: string | null) =>
       ),
     enabled: branchId !== null,
   });
+
+/**
+ * The load import of a draft (task 5.13): the system's template of the draft, the upload of a
+ * filled one with its preview, and the confirm that adds every row or none.
+ */
+export const downloadLoadImportTemplate = async (
+  versionId: string,
+  language: Language,
+): Promise<void> => {
+  const answer = await api.GET('/api/timetable/versions/{id}/load/import-template', {
+    params: { header: branchHeader(), path: { id: versionId }, query: { language } },
+    parseAs: 'blob',
+  });
+  const file: unknown = await answerOf(Promise.resolve(answer));
+  if (!(file instanceof Blob)) throw new ApiFailure('no_answer');
+  save(file, fileNameOf(answer.response.headers.get('Content-Disposition'), 'load-import.xlsx'));
+};
+
+export const uploadLoadImport = async (versionId: string, file: File): Promise<LoadImportPreview> =>
+  loadImportPreviewSchema.parse(
+    await answerOf(
+      api.PUT('/api/timetable/versions/{id}/load/imports', {
+        params: { header: branchHeader(), path: { id: versionId } },
+        body: file as unknown as string,
+        bodySerializer: (body: unknown) => body as Blob,
+        headers: { 'Content-Type': STUDENT_IMPORT_TYPES[0] ?? '' },
+      }),
+    ),
+  );
+
+export const confirmLoadImport = async (
+  versionId: string,
+  importId: string,
+): Promise<LoadImportConfirmResult> =>
+  loadImportConfirmResultSchema.parse(
+    await answerOf(
+      api.POST('/api/timetable/versions/{id}/load/imports/{importId}/confirm', {
+        params: { header: branchHeader(), path: { id: versionId, importId } },
+        body: {},
+      }),
+    ),
+  );

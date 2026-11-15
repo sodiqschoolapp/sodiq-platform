@@ -14,7 +14,9 @@ import { LoadKit } from '../load-kit.js';
 import { linkRelative } from '../relatives-kit.js';
 import { filledStaffTemplate, staffRow } from '../staff-import-kit.js';
 import { filledTemplate, studentRow } from '../student-import-kit.js';
-import { STAFF_IMPORT_FILE, STUDENT_IMPORT_FILE } from './import-file.js';
+import { LOAD_IMPORT_FILE, STAFF_IMPORT_FILE, STUDENT_IMPORT_FILE } from './import-file.js';
+import { writeLoadImportTemplate } from '../../modules/timetable/load-import-template.js';
+import { filledLoadTemplate } from '../load-import-kit.js';
 import { e2eDatabaseUrls } from './database.js';
 import { E2E_RESET_EMAIL } from './mail.js';
 
@@ -801,6 +803,120 @@ try {
     ]),
   );
   seeded.importVice = { login: importVice.login, password: importVice.firstPassword };
+
+  // The Academic Vice Principal of the load import test (task 5.13), in a branch of its own with
+  // a year around today, the class "7 Seeded" (below), an open vacancy of Geometry in grade 7 and
+  // an empty draft; the filled template of that draft, of one row, is written where the test
+  // reads it (`LOAD_IMPORT_FILE`).
+  const loadImportBranch = await insertBranch(migrator, 'Load import browser test branch');
+  classBranches.push(loadImportBranch);
+  const loadImportVice = await create('Shahlo', 'Ergasheva');
+  await transactions.run([loadImportBranch], (transaction) =>
+    assignments.give(transaction, {
+      accountId: loadImportVice.id,
+      role: 'academic_vice_principal',
+      branchId: loadImportBranch,
+      givenBy: null,
+    }),
+  );
+  const loadImportDraft = await migrator.transaction().execute(async (transaction) => {
+    const year = await transaction
+      .insertInto('academic_years')
+      .values({
+        branch_id: loadImportBranch,
+        start_date: startDate,
+        end_date: isoDate(new Date(yearStart.getTime() + 364 * dayMs)),
+      })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    await transaction
+      .insertInto('quarters')
+      .values(
+        [1, 2, 3, 4].map((number) => ({
+          branch_id: loadImportBranch,
+          academic_year_id: year.id,
+          number,
+        })),
+      )
+      .execute();
+    const academic = await transaction
+      .selectFrom('divisions')
+      .select('id')
+      .where('name_en', '=', 'Academic')
+      .executeTakeFirstOrThrow();
+    const steamDepartment = await transaction
+      .selectFrom('departments')
+      .select('id')
+      .where('name_en', '=', 'STEAM')
+      .executeTakeFirstOrThrow();
+    const geometry = await transaction
+      .selectFrom('subjects')
+      .select('id')
+      .where('name_en', '=', 'Geometry')
+      .executeTakeFirstOrThrow();
+    const vacancy = await transaction
+      .insertInto('staff')
+      .values({ kind: 'vacancy', vacancy_name: 'Geometry wanted' })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    await transaction
+      .insertInto('staff_branches')
+      .values({ staff_id: vacancy.id, branch_id: loadImportBranch, is_main: true })
+      .execute();
+    await transaction
+      .insertInto('staff_divisions')
+      .values({
+        staff_id: vacancy.id,
+        division_id: academic.id,
+        department_id: steamDepartment.id,
+        is_main: true,
+      })
+      .execute();
+    await transaction
+      .insertInto('staff_languages')
+      .values({ staff_id: vacancy.id, language: 'uz' })
+      .execute();
+    await transaction
+      .insertInto('staff_subjects')
+      .values({ staff_id: vacancy.id, subject_id: geometry.id, grades: [7] })
+      .execute();
+    await transaction
+      .insertInto('staff_statuses')
+      .values({ staff_id: vacancy.id, status: 'open', valid_from: startDate })
+      .execute();
+    const version = await transaction
+      .insertInto('timetable_versions')
+      .values({
+        branch_id: loadImportBranch,
+        academic_year_id: year.id,
+        number: 1,
+        starts_on: startDate,
+      })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    return version.id;
+  });
+  writeFileSync(
+    LOAD_IMPORT_FILE,
+    await filledLoadTemplate(
+      await writeLoadImportTemplate('en', loadImportDraft, {
+        units: ['7 Seeded'],
+        groupClasses: [],
+        subjects: ['Geometry'],
+        teachers: ['Geometry wanted (vacancy)'],
+        rooms: [],
+      }),
+      [
+        {
+          unit: '7 Seeded',
+          subject: 'Geometry',
+          teacher: 'Geometry wanted (vacancy)',
+          lessonsPerWeek: '3',
+        },
+      ],
+    ),
+  );
+  seeded.loadImportVice = { login: loadImportVice.login, password: loadImportVice.firstPassword };
 
   // The filled staff template of the staff import step (task 9.4h): two invented teachers of
   // STEAM admitted today, without subjects. The seed holds no fourth Super Admin, so the step

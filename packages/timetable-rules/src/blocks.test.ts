@@ -5,6 +5,7 @@ import {
   blocksOfRows,
   blockProblems,
   loadBlocks,
+  missingBlockGroups,
   splitAndWhole,
   type BlockGroup,
   type BlockRow,
@@ -259,5 +260,70 @@ describe('blocksOfRows', () => {
 
   it('gives a class row no block', () => {
     expect(blocksOfRows([classRow('a', 'oxford')], groupsOf()).get('a') ?? []).toEqual([]);
+  });
+});
+
+describe('missingBlockGroups', () => {
+  // Task 5.13, decision 2: "a split or group subject is given to every part of its block" (`06`,
+  // Importing the load and the timetable).
+  const half1 = group('7o-1', ['7o'], [7]);
+  const half2 = group('7o-2', ['7o'], [7]);
+
+  it('names the other half of a split given to one half only', () => {
+    const found = missingBlockGroups([row('a', '7o-1')], [half1, half2]);
+    expect(found.get('a')).toEqual(['7o-2']);
+  });
+
+  it('finds nothing when both halves have a row', () => {
+    const found = missingBlockGroups([row('a', '7o-1'), row('b', '7o-2')], [half1, half2]);
+    expect(found.get('a')).toEqual([]);
+    expect(found.get('b')).toEqual([]);
+  });
+
+  it('names a group across two classes left out of three', () => {
+    const groups = [
+      group('e1', ['1o', '1p'], [1]),
+      group('e2', ['1o', '1p'], [1]),
+      group('e3', ['1o', '1p'], [1]),
+    ];
+    const found = missingBlockGroups([row('a', 'e1'), row('b', 'e2')], groups);
+    expect(found.get('a')).toEqual(['e3']);
+    expect(found.get('b')).toEqual(['e3']);
+  });
+
+  it('follows a chain of links, not one step out', () => {
+    // A and B share 7o; B and C share 7p; A and C have nothing in common and are of two grades'
+    // pairs that do not link them directly.
+    const groups = [
+      group('A', ['7o'], [7]),
+      group('B', ['7o', '7p'], [7]),
+      group('C', ['7p'], [7]),
+    ];
+    const found = missingBlockGroups([row('a', 'A')], groups);
+    expect(found.get('a')).toEqual(['B', 'C']);
+  });
+
+  it('never counts a group of another subject', () => {
+    const maths = group('7o-m', ['7o'], [7], 'maths');
+    const found = missingBlockGroups([row('a', '7o-1'), row('b', '7o-2')], [half1, half2, maths]);
+    expect(found.get('a')).toEqual([]);
+  });
+
+  it('never counts a group that is not in service, even when it is linked', () => {
+    // Row a names an archived half, read from `rowGroups`; row b a live half. The other live half
+    // is asked for on both; the archived half is never asked for of b, though it is linked to it.
+    const archived = group('7o-0', ['7o'], [7]);
+    const found = missingBlockGroups(
+      [row('a', '7o-0'), row('b', '7o-1')],
+      [half1, half2],
+      new Map([[archived.id, archived]]),
+    );
+    expect(found.get('a')).toEqual(['7o-2']);
+    expect(found.get('b')).toEqual(['7o-2']);
+  });
+
+  it('gives a class row nothing', () => {
+    const found = missingBlockGroups([classRow('c', '7o')], [half1, half2]);
+    expect(found.has('c')).toBe(false);
   });
 });

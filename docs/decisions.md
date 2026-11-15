@@ -65,6 +65,25 @@ The owner's answers to the decided-ahead questions for Phase 10, given in chat o
 19. Production deploys only after 18:00 or at the weekend, Tashkent time.
 20. The test environment stays after go-live; every change is tried there first.
 
+## 15 November 2026: the teaching load import (task 5.13)
+
+Plan approved on pull request #322 with its correction (the composite key of the draft). Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first.** A new file route, `LOAD_IMPORT_ROUTE` (`PUT /api/timetable/versions/:id/load/imports`, an Excel workbook of at most 5 MB) | The owner approved the template, the upload and the confirm with the spec change of 15 November 2026; an upload needs a file route |
+| **Look first.** A block given in part is a problem of the import (`missingBlockGroups`): every group of the subject in service, connected to the row's group through any chain of `groupsLinked`, needs a row in the draft or the file; students not placed stay a listed warning (`load_group_gaps`). By hand a block given in part is listed, not refused: a spec contradiction, `/spec-change` wording on #42 | `06`: "a split or group subject is given to every part of its block"; the Done-when: "a split given to one half only saves nothing" |
+| A template carries its draft's id and language (hidden column of the sheet of lists); a file of another draft is `load_import_other_draft`; the same file is refused per draft (unique `(version_id, file_sha256)`) | `06`: "made for that branch and that draft"; its lists are that draft's records |
+| One `teaching_load.import` entry with every row, no per-row create entries; the upload keeps its `load_import.upload` entry; the template download is `load_import.template` (an export: it names staff) | `06`, Audit; `CLAUDE.md`: every export is logged |
+| An optional "mixed block" column, no by default | A mixed split cannot be imported otherwise (`edge/timetable`, Structure) |
+| One unit column (a class "7 Oxford" or a group by name); a vacancy is "name (vacancy)" in any of the three languages; a teacher "Surname Name (S-000123)"; names folded as `staffImportNameKey`; live records matched first, an out-of-service one only when it is the one match (its hand reason told); subjects by the template's language | `06`: surname, name and staff ID; an archived namesake must not make a live record ambiguous |
+| "In service" read on `statusOn` (the later of the start date and today), as every hand load check | `contextOf`; review finding 1 of the plan |
+| The preview takes no edit lock; the confirm takes it (`draft_edit_locked`) and holds the version row, so two confirms run one after the other (no advisory lock) | As every hand load write |
+| Every refusing problem of a row is listed, not only the first: the reading and matching problems of a row together, and the rules of a load row once every cell is read and matched (narrowed after the code review) | "a preview of every row with its problems"; a rule needs every record of its row |
+| The plan's shared `loadRowCheck` built narrower: the Tutor rule `newRowTeacher` is shared by the hand create and the import; the rules run through `LoadFacts.problemsOf` (the same `loadRowProblems`) | The rules cannot drift; the hand create refuses on its first problem, the import lists them |
+| A group the file names on a row held back for another problem counts as given in `missingBlockGroups` | Its block is never told a part it has (`.claude/rules/web.md`: a code's text is true on every path) |
+| `load_import_room_and_type`, a code of its own for a room and a room type both given | The hand schema refuses it with no code to show |
+
 ## 7 November 2026: the student import names the groups (owner's change, pull request #316, Part 1)
 
 Plan approved on pull request #316. Flagged on issue #42.

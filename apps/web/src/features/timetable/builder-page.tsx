@@ -113,6 +113,8 @@ export function BuilderPage(): React.JSX.Element {
   // Task 5.4c-1: one edits at a time; the others read.
   const editLock = useEditLock(writable ? chosen : undefined, writable && can('edit'));
   const canEdit = writable && can('edit') && !editLock.othersEditing;
+  // Task 5.13: the load import, for those who edit a draft that nobody else is editing.
+  const mayImportLoad = canEdit;
   const years = useQuery({ ...yearsQuery(branchId), enabled: branchId !== null && canEdit });
   const step: BuiltStep = search.step ?? 'templates';
   // Task 5.4c-2: the undo and redo of the grid outlive a visit to another step.
@@ -410,7 +412,7 @@ export function BuilderPage(): React.JSX.Element {
             </ul>
           </section>
         )}
-        <div>
+        <div className="flex flex-wrap gap-4">
           <Link
             to="/timetable/load"
             search={{ version: chosen.id }}
@@ -418,6 +420,15 @@ export function BuilderPage(): React.JSX.Element {
           >
             {t('timetable.builder.openLoad')}
           </Link>
+          {mayImportLoad && (
+            <Link
+              to="/timetable/load/import"
+              search={{ version: chosen.id }}
+              className="font-semibold text-link underline-offset-4 hover:underline"
+            >
+              {t('timetable.loadImport.open')}
+            </Link>
+          )}
         </div>
       </div>
     );

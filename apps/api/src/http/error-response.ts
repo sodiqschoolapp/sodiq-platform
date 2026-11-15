@@ -191,6 +191,9 @@ const MESSAGE: Record<ErrorCode, string> = {
   import_decision_unknown: 'A decision names a row or a relative the preview did not offer.',
   import_changed: 'A change made at the same moment met the import; nothing was saved. Try again.',
   subject_import_already_confirmed: 'This subject import was confirmed already.',
+  load_import_already_confirmed: 'This load import was confirmed already.',
+  load_import_changed: 'A change made at the same moment met the load import; nothing was saved.',
+  load_import_other_draft: 'The file is the template of another draft.',
   subject_import_changed:
     'A change of subjects made at the same moment met the import; nothing was saved. Try again.',
   photos_not_configured: 'Photos are not configured on this server.',

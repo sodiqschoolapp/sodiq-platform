@@ -1465,6 +1465,19 @@ export interface Lessons {
   teacher_id: string | null;
 }
 
+export interface LoadImports {
+  branch_id: string;
+  confirmed_at: Timestamp | null;
+  confirmed_by: string | null;
+  file_sha256: string;
+  id: Generated<string>;
+  row_count: number;
+  rows: Json;
+  uploaded_at: Timestamp;
+  uploaded_by: string;
+  version_id: string;
+}
+
 export interface Notifications {
   account_id: string;
   branch_id: string | null;
@@ -2470,6 +2483,7 @@ export interface DB {
   lesson_plan_works: LessonPlanWorks;
   lesson_plans: LessonPlans;
   lessons: Lessons;
+  load_imports: LoadImports;
   notifications: Notifications;
   parent_slips: ParentSlips;
   password_reset_links: PasswordResetLinks;

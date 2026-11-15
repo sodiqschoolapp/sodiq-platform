@@ -27,6 +27,7 @@ import { BuildingsPage } from '@/features/setup/buildings-page';
 import { DivisionsPage } from '@/features/setup/divisions-page';
 import { SubjectsPage } from '@/features/setup/subjects-page';
 import { SubjectImportPage } from '@/features/setup/subject-import-page';
+import { LoadImportPage } from '@/features/timetable/load-import-page';
 import { ClassesPage } from '@/features/classes/classes-page';
 import { GroupPlacementPage } from '@/features/classes/group-placement-page';
 import { GroupsPage } from '@/features/classes/groups-page';
@@ -483,6 +484,14 @@ const loadRoute = createRoute({
   path: '/timetable/load',
   validateSearch: loadSearch,
   component: guarded('timetable', LoadPage),
+});
+
+/** The load import into a draft (task 5.13). */
+const loadImportRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/timetable/load/import',
+  validateSearch: loadSearch,
+  component: guarded('timetable', LoadImportPage),
 });
 
 /** The draft builder, steps 1 to 4 (task 5.3a). */
@@ -1037,6 +1046,7 @@ const routeTree = rootRoute.addChildren([
     planParallelRoute,
     planRoute,
     loadRoute,
+    loadImportRoute,
     peopleRoute,
     staffRoute,
     staffImportRoute,

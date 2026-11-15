@@ -81,7 +81,8 @@ describe('declared file routes', () => {
     // file of a reason of absence (8.5, decisions 8 and 17 of #223, Look first);
     // the upload of the student import (9.4g, decision 1 of #278, Look first) and of the staff
     // import (9.4h, decision 1 of #279, Look first); the upload of the subject import (the
-    // owner's change of 7 November 2026, #316, Look first).
+    // owner's change of 7 November 2026, #316, Look first); the upload of the load import
+    // (task 5.13, decision 1, Look first).
     expect(FILE_ROUTES.map((route) => route.path).sort()).toEqual([
       '/api/auth/photo',
       '/api/exemptions/:id/document',
@@ -92,6 +93,7 @@ describe('declared file routes', () => {
       '/api/people/students/imports',
       '/api/plans/items/:itemId/files',
       '/api/setup/subjects/imports',
+      '/api/timetable/versions/:id/load/imports',
     ]);
   });
 

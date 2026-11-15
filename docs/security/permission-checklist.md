@@ -133,10 +133,10 @@ Neither was done by hand (owner, 29 October 2026, issue #42). In their place: th
 
 ## The routes in numbers
 
-- Routes of the application: 523, each called by the role harness as the 15 roles, an account without a role, a Parent account (task 11.1) and nobody, in the own and in another branch.
-- Without sign-in: 5. For the own account: 24. The parent portal: 8. With a permission of the table: 486.
+- Routes of the application: 527, each called by the role harness as the 15 roles, an account without a role, a Parent account (task 11.1) and nobody, in the own and in another branch.
+- Without sign-in: 5. For the own account: 24. The parent portal: 8. With a permission of the table: 490.
 - Routes with a limit inside the route: 157.
-- Routes that take an id: 408, with 849 ids (branch 747, school 74, own 12, none 16).
+- Routes that take an id: 412, with 855 ids (branch 753, school 74, own 12, none 16).
 - Areas of the permission table: 63.
 
 ## Routes without a role
@@ -735,6 +735,7 @@ For every id a route takes, in its path, its query or its body, the record it na
 | `GET /api/timetable/versions/:id/compare` | `query:with` | timetable_version | branch | `src/modules/timetable/versions-history.test.ts > answers 404 for another branch's and an unknown version, in the path and in `with`` |
 | `GET /api/timetable/versions/:id/grid` | `path:id` | timetable_version | branch | `src/modules/timetable/pattern.test.ts > answers 404 for another branch's, another version's and an unknown version, row and block, changing nothing` |
 | `GET /api/timetable/versions/:id/load` | `path:id` | timetable_version | branch | `src/modules/timetable/teaching-load.test.ts > answers another branch's and an unknown version, row, class, group, subject, teacher and room 404, changing nothing` |
+| `GET /api/timetable/versions/:id/load/import-template` | `path:id` | timetable_version | branch | `src/modules/timetable/load-imports.test.ts > answers 404 for another branch, an unknown or another draft id, writing nothing in either branch` |
 | `GET /api/timetable/versions/:id/load/teachers` | `path:id` | timetable_version | branch | `src/modules/timetable/teaching-load.test.ts > answers another branch's and an unknown version, row, class, group, subject, teacher and room 404, changing nothing` |
 | `GET /api/timetable/versions/:id/load/teachers` | `query:classId` | class | branch | `src/modules/timetable/teaching-load.test.ts > answers another branch's and an unknown id of the teachers' query and of a row edit 404, also as the Super Admin` |
 | `GET /api/timetable/versions/:id/load/teachers` | `query:groupId` | group | branch | `src/modules/timetable/teaching-load.test.ts > answers another branch's and an unknown id of the teachers' query and of a row edit 404, also as the Super Admin` |
@@ -1279,6 +1280,10 @@ For every id a route takes, in its path, its query or its body, the record it na
 | `POST /api/timetable/versions/:id/load` | `body:classId` | class | branch | `src/modules/timetable/teaching-load.test.ts > answers another branch's and an unknown version, row, class, group, subject, teacher and room 404, changing nothing` |
 | `POST /api/timetable/versions/:id/load` | `body:groupId` | group | branch | `src/modules/timetable/teaching-load.test.ts > answers another branch's and an unknown version, row, class, group, subject, teacher and room 404, changing nothing` |
 | `POST /api/timetable/versions/:id/load` | `body:subjectId` | subject | school | `src/modules/timetable/teaching-load.test.ts > answers another branch's and an unknown version, row, class, group, subject, teacher and room 404, changing nothing` |
+| `POST /api/timetable/versions/:id/load/imports/:importId/confirm` | `path:id` | timetable_version | branch | `src/modules/timetable/load-imports.test.ts > answers 404 for another branch, an unknown or another draft id, writing nothing in either branch` |
+| `POST /api/timetable/versions/:id/load/imports/:importId/confirm` | `path:importId` | load_import | branch | `src/modules/timetable/load-imports.test.ts > answers 404 for another branch, an unknown or another draft id, writing nothing in either branch` |
+| `POST /api/timetable/versions/:id/load/imports/:importId/preview` | `path:id` | timetable_version | branch | `src/modules/timetable/load-imports.test.ts > answers 404 for another branch, an unknown or another draft id, writing nothing in either branch` |
+| `POST /api/timetable/versions/:id/load/imports/:importId/preview` | `path:importId` | load_import | branch | `src/modules/timetable/load-imports.test.ts > answers 404 for another branch, an unknown or another draft id, writing nothing in either branch` |
 | `POST /api/timetable/versions/:id/locks` | `path:id` | timetable_version | branch | `src/modules/timetable/pattern.test.ts > answers 404 for another branch’s, another version’s and an unknown id of the path and the body, changing nothing` |
 | `POST /api/timetable/versions/:id/locks` | `body<kind=block>.blockId` | pattern_block | branch | `src/modules/timetable/pattern.test.ts > answers 404 for another branch’s, another version’s and an unknown id of the path and the body, changing nothing` |
 | `POST /api/timetable/versions/:id/locks` | `body<kind=class>.classId` | class | branch | `src/modules/timetable/pattern.test.ts > answers 404 for another branch’s, another version’s and an unknown id of the path and the body, changing nothing` |
@@ -1424,6 +1429,7 @@ For every id a route takes, in its path, its query or its body, the record it na
 | `PUT /api/timetable/exams/:id` | `body:keepCancelled` | lesson | branch | `src/modules/timetable/exams.test.ts > answers 404 for every id of the path and the body, as the Super Admin, and changes nothing`<br>`repeat: src/modules/timetable/exams.test.ts > answers 404 for every id of the path and the body, as the Super Admin, and changes nothing` |
 | `PUT /api/timetable/versions/:id/day-keeps` | `path:id` | timetable_version | branch | `src/modules/timetable/publish.test.ts > answers 404 for another branch's or an unknown version or class, changing nothing` |
 | `PUT /api/timetable/versions/:id/day-keeps` | `body:classId` | class | branch | `src/modules/timetable/publish.test.ts > answers 404 for another branch's or an unknown version or class, changing nothing` |
+| `PUT /api/timetable/versions/:id/load/imports` | `path:id` | timetable_version | branch | `src/modules/timetable/load-imports.test.ts > answers 404 for another branch, an unknown or another draft id, writing nothing in either branch` |
 | `PUT /api/timetable/versions/:id/preferences` | `path:id` | timetable_version | branch | `src/modules/timetable/readiness.test.ts > answers 404 for another branch's version and an unknown one, changing nothing, and 403 to the Principal and a Teacher` |
 
 ## The permission table

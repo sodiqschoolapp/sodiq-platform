@@ -1046,6 +1046,11 @@ export const en = {
     import_changed:
       'Someone changed students or relatives at the same moment. Nothing was saved; try again.',
     subject_import_already_confirmed: 'This import was already saved. Open the subject list.',
+    load_import_already_confirmed: 'This import was already saved. Open the load.',
+    load_import_changed:
+      'Someone changed the draft or its records at the same moment. Nothing was saved; try again.',
+    load_import_other_draft:
+      'This file is the template of another draft. Download the template of this draft.',
     subject_import_changed:
       'Someone changed subjects or quarters at the same moment. Nothing was saved; try again.',
     photos_not_configured: 'Photos are not configured yet. Ask the administrator.',
@@ -4296,6 +4301,11 @@ export const en = {
         create: 'Teaching load row added',
         edit: 'Teaching load row changed',
         delete: 'Teaching load row deleted',
+        import: 'Teaching load rows imported',
+      },
+      load_import: {
+        upload: 'Load import file uploaded',
+        template: 'Load import template downloaded',
       },
       audit: {
         entry_shown: 'Hidden values of a log entry shown',
@@ -4794,6 +4804,34 @@ export const en = {
     },
   },
   timetable: {
+    loadImport: {
+      open: 'Import from Excel',
+      title: 'Teaching load import',
+      noDraft: 'The load is imported into a draft. Open a draft on the load page first.',
+      saved_one: '{{count}} row added to the load.',
+      saved_other: '{{count}} rows added to the load.',
+      toLoad: 'Open the load',
+      inDraft_one: 'The draft holds {{count}} row; it stays.',
+      inDraft_other: 'The draft holds {{count}} rows; they stay.',
+      alreadyImported:
+        'This file was already imported into this draft on {{date}}. Confirming it again adds nothing.',
+      rowColumn: 'Class or group, subject, teacher, lessons',
+      unplaced_one: '{{count}} student of these classes is in none of the groups of the block.',
+      unplaced_other: '{{count}} students of these classes are in none of the groups of the block.',
+      confirm_one: 'Add {{count}} row',
+      confirm_other: 'Add all {{count}} rows',
+      notClean: 'Nothing is added until every row is clean. Correct the file and upload it again.',
+      problems: {
+        required: 'fill this in.',
+        invalid: 'this value is not accepted.',
+        load_import_unknown:
+          'no record of this branch and year has this name; choose one from the list.',
+        name_ambiguous: 'two records have this name; rename one of them first.',
+        load_import_room_and_type: 'give a room or a room type, not both.',
+        load_import_row_twice: 'the same class and subject, or group, is also on row {{rows}}.',
+        load_import_block_part: 'every group of the block needs a row; missing: {{groups}}.',
+      },
+    },
     title: 'Timetable',
     loadLink: 'Teaching load',
     builderLink: 'Draft builder',

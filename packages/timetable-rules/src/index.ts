@@ -70,6 +70,7 @@ export {
   blockOf,
   blockProblems,
   blocksOfRows,
+  missingBlockGroups,
   groupsLinked,
   loadBlocks,
   splitAndWhole,

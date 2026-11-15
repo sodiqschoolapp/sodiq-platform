@@ -1065,6 +1065,11 @@ export const uz: Texts<'one' | 'other'> = {
     import_changed:
       'Shu paytda kimdir oʻquvchilar yoki qarindoshlarni oʻzgartirdi. Hech narsa saqlanmadi; qayta urinib koʻring.',
     subject_import_already_confirmed: 'Bu import allaqachon saqlangan. Fanlar roʻyxatini oching.',
+    load_import_already_confirmed: 'Bu import allaqachon saqlangan. Yuklamani oching.',
+    load_import_changed:
+      'Kimdir shu payt qoralama yoki uning yozuvlarini oʻzgartirdi. Hech narsa saqlanmadi; qayta urinib koʻring.',
+    load_import_other_draft:
+      'Bu fayl boshqa qoralamaning shabloni. Shu qoralamadan shablonni yuklab oling.',
     subject_import_changed:
       'Shu paytda kimdir fanlar yoki choraklarni oʻzgartirdi. Hech narsa saqlanmadi; qayta urinib koʻring.',
     photos_not_configured: 'Suratlar hali sozlanmagan. Administratorga murojaat qiling.',
@@ -4340,6 +4345,11 @@ export const uz: Texts<'one' | 'other'> = {
         create: 'Oʻquv yuklamasi qatori qoʻshildi',
         edit: 'Oʻquv yuklamasi qatori oʻzgartirildi',
         delete: 'Oʻquv yuklamasi qatori oʻchirildi',
+        import: 'Yuklama qatorlari import qilindi',
+      },
+      load_import: {
+        upload: 'Yuklama importi fayli yuklandi',
+        template: 'Yuklama importi shabloni yuklab olindi',
       },
       audit: {
         entry_shown: 'Jurnal yozuvining yashirin qiymatlari koʻrsatildi',
@@ -4845,6 +4855,34 @@ export const uz: Texts<'one' | 'other'> = {
     },
   },
   timetable: {
+    loadImport: {
+      open: 'Exceldan import',
+      title: 'Oʻquv yuklamasi importi',
+      noDraft: 'Yuklama qoralamaga import qilinadi. Avval yuklama sahifasida qoralamani oching.',
+      saved_one: 'Yuklamaga {{count}} ta qator qoʻshildi.',
+      saved_other: 'Yuklamaga {{count}} ta qator qoʻshildi.',
+      toLoad: 'Yuklamani ochish',
+      inDraft_one: 'Qoralamada {{count}} ta qator bor; u qoladi.',
+      inDraft_other: 'Qoralamada {{count}} ta qator bor; ular qoladi.',
+      alreadyImported:
+        'Bu fayl ushbu qoralamaga {{date}} kuni import qilingan. Qayta tasdiqlash hech narsa qoʻshmaydi.',
+      rowColumn: 'Sinf yoki guruh, fan, oʻqituvchi, darslar',
+      unplaced_one: 'Bu sinflarning {{count}} ta oʻquvchisi blokning hech bir guruhida emas.',
+      unplaced_other: 'Bu sinflarning {{count}} ta oʻquvchisi blokning hech bir guruhida emas.',
+      confirm_one: '{{count}} ta qatorni qoʻshish',
+      confirm_other: 'Barcha {{count}} ta qatorni qoʻshish',
+      notClean:
+        'Har bir qator toza boʻlmaguncha hech narsa qoʻshilmaydi. Faylni tuzating va qayta yuklang.',
+      problems: {
+        required: 'buni toʻldiring.',
+        invalid: 'bu qiymat qabul qilinmaydi.',
+        load_import_unknown: 'bu filial va yilda bunday nomli yozuv yoʻq; roʻyxatdan tanlang.',
+        name_ambiguous: 'bu nom ikki yozuvda bor; avval ulardan birining nomini oʻzgartiring.',
+        load_import_room_and_type: 'xona yoki xona turini koʻrsating, ikkalasini emas.',
+        load_import_row_twice: 'shu sinf va fan yoki shu guruh {{rows}}-qatorda ham bor.',
+        load_import_block_part: 'blokning har bir guruhiga qator kerak; yoʻq: {{groups}}.',
+      },
+    },
     title: 'Dars jadvali',
     loadLink: 'Oʻquv yuklamasi',
     builderLink: 'Qoralama yigʻuvchi',
