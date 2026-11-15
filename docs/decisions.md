@@ -65,6 +65,24 @@ The owner's answers to the decided-ahead questions for Phase 10, given in chat o
 19. Production deploys only after 18:00 or at the weekend, Tashkent time.
 20. The test environment stays after go-live; every change is tried there first.
 
+## 15 November 2026: the timetable import (task 5.14)
+
+Plan approved on pull request #324 with its two corrections (no `deferPatternClashes` in the confirm; decision 2 marked Look first). Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first.** A new file route, `PATTERN_IMPORT_ROUTE` (`PUT /api/timetable/versions/:id/pattern/imports`, an Excel workbook of at most 5 MB) | The owner approved the template, the upload and the confirm with the spec change of 15 November 2026 |
+| **Look first.** The slot number of a row is the lesson number of the day (breaks not counted), read on the template in force on `statusOn` (the later of the start date and today); proposed `/spec-change` for `06`: "slot number of the day template in force on the later of the draft's start date and today" | A break holds no lesson and the bulk cancel already asks for lesson numbers; every draft check reads `statusOn` |
+| The confirm carries `removes`, the ids of the draft's lessons the preview showed; another set now, also of the same count, is `pattern_import_draft_changed` and nothing is written | `06`: "after the person confirms how many are removed"; a count alone lets a swapped lesson go unconfirmed |
+| A confirm removes every block of the draft, locked ones with their block locks; class, teacher and day locks, the pins and `left_blocks` stay; the file is not checked against the pins | A lock binds the generator, not a person (5.4c-1); pins and locks are not placements |
+| Doubles are found: two consecutive lessons of one row set of a doubles row on one day, paired from the earliest; a third stays single | `06`: "two consecutive slots of a load row that allows doubles"; the file has no double column |
+| A Tutor row may leave the teacher empty or name the class's Tutor; another teacher is `pattern_import_teacher_differs` | Each row is matched by its teacher; the Tutor is never picked by hand |
+| Weekdays by name in any of the three languages or 1 to 7; warnings never stop the confirm | `06`: "The warnings are listed and do not stop the import" |
+| One `pattern.import` entry with every block removed (with its lock ids) and written; `pattern_import.upload`; `pattern_import.template` logged as an export | `06`, Audit; `CLAUDE.md`: every export is logged |
+| The Lists sheet and matching of 5.13 (`recordsOf`, now a module function, `RecordIndex`) with a weekdays list; the keys row tells the templates apart | One place for matching |
+| A row held back by another problem counts as present when its slot's blocks are grouped, and is left out of the engine's run | "A preview of every row with its problems"; a partner is never told a part it has |
+| The grouping into blocks, pairings and doubles is `importedBlocks` in `packages/timetable-rules` (the plan named an API file) | Rules over placements that sit together live in the rule engine, with its fixture to test them |
+
 ## 15 November 2026: the teaching load import (task 5.13)
 
 Plan approved on pull request #322 with its correction (the composite key of the draft). Flagged on issue #42.
