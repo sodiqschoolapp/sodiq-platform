@@ -39,7 +39,7 @@ Not written yet for most of the teaching load and the timetable: task 3.7 descri
 
 ## Importing the timetable from Excel
 
-<!-- Sources: spec 06 (Building a timetable; Importing the load and the timetable; Editing in the grid; Rules), edge/timetable (Structure); docs/spec-changes.md, 15 November 2026, with the owner's answer of 16 November 2026; task 5.14, its decisions and plan review -->
+<!-- Sources: spec 06 (Building a timetable; Importing the load and the timetable; Editing in the grid; Rules), edge/timetable (Structure); docs/spec-changes.md, 15 November 2026, with the owner's answer of 15 November 2026; task 5.14, its decisions and plan review -->
 
 **What it is.** The weekly timetable of a draft can be filled from the system's Excel template, all at once, instead of placing lessons one by one in the grid. One row of the file is one lesson of the week. The file only chooses records that already exist in the branch, and every lesson must match a row of the draft's teaching load. The load itself is not changed.
 
