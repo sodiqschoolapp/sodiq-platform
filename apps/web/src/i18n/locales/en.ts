@@ -4311,6 +4311,13 @@ export const en = {
         delete: 'Teaching load row deleted',
         import: 'Teaching load rows imported',
       },
+      pattern_import: {
+        upload: 'Timetable import file uploaded',
+        template: 'Timetable import template downloaded',
+      },
+      pattern: {
+        import: 'Timetable imported into a draft',
+      },
       load_import: {
         upload: 'Load import file uploaded',
         template: 'Load import template downloaded',

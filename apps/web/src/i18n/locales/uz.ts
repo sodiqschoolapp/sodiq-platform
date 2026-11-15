@@ -4355,6 +4355,13 @@ export const uz: Texts<'one' | 'other'> = {
         delete: 'Oʻquv yuklamasi qatori oʻchirildi',
         import: 'Yuklama qatorlari import qilindi',
       },
+      pattern_import: {
+        upload: 'Dars jadvali importi fayli yuklandi',
+        template: 'Dars jadvali importi shabloni yuklab olindi',
+      },
+      pattern: {
+        import: 'Dars jadvali qoralamaga import qilindi',
+      },
       load_import: {
         upload: 'Yuklama importi fayli yuklandi',
         template: 'Yuklama importi shabloni yuklab olindi',

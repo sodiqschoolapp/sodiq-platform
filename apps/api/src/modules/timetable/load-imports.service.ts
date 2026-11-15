@@ -667,8 +667,7 @@ export async function recordsOf(
     units,
     subjects: subjects.map((row) => ({
       id: row.id,
-      labels:
-        language === null ? LANGUAGES.map((at) => nameIn(row, at)) : [nameIn(row, language)],
+      labels: language === null ? LANGUAGES.map((at) => nameIn(row, at)) : [nameIn(row, language)],
       live: row.archived_at === null,
     })),
     teachers: teacherRecords,

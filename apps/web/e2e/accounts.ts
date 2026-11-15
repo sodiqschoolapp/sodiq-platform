@@ -120,6 +120,7 @@ export type AccountKey =
   | 'whoHeadTeacher'
   | 'importVice'
   | 'loadImportVice'
+  | 'patternImportVice'
   | 'parentSlips'
   | 'portal'
   | 'telegramParent'
