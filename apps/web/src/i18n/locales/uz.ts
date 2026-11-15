@@ -1065,6 +1065,11 @@ export const uz: Texts<'one' | 'other'> = {
     import_changed:
       'Shu paytda kimdir oʻquvchilar yoki qarindoshlarni oʻzgartirdi. Hech narsa saqlanmadi; qayta urinib koʻring.',
     subject_import_already_confirmed: 'Bu import allaqachon saqlangan. Fanlar roʻyxatini oching.',
+    load_import_already_confirmed: 'Bu import allaqachon saqlangan. Yuklamani oching.',
+    load_import_changed:
+      'Kimdir shu payt qoralama yoki uning yozuvlarini oʻzgartirdi. Hech narsa saqlanmadi; qayta urinib koʻring.',
+    load_import_other_draft:
+      'Bu fayl boshqa qoralamaning shabloni. Shu qoralamadan shablonni yuklab oling.',
     subject_import_changed:
       'Shu paytda kimdir fanlar yoki choraklarni oʻzgartirdi. Hech narsa saqlanmadi; qayta urinib koʻring.',
     photos_not_configured: 'Suratlar hali sozlanmagan. Administratorga murojaat qiling.',

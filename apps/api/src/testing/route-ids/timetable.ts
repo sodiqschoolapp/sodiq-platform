@@ -19,6 +19,8 @@ const VE_BODY = `${VE} > answers 404 for a class, teacher or room of another bra
 const OUT = `${M}/out-of-date.test.ts > answers 404 for a version of another branch or an unknown one, and changes nothing`;
 const TOTALS = `${M}/load-blocks.test.ts > answers 404 for another branch's version and an unknown one, also to the Super Admin, and nothing to a Teacher`;
 
+const LI = `${M}/load-imports.test.ts > answers 404 for another branch, an unknown or another draft id, writing nothing in either branch`;
+
 const RD = `${M}/readiness.test.ts`;
 const RD_TEMPLATES = `${RD} > answers 404 for another branch's version and an unknown one, changing nothing, and 403 to a Teacher`;
 const RD_RULES = `${RD} > answers 404 for another branch's version and an unknown one, changing nothing, and 403 to the Principal and a Teacher`;
@@ -307,6 +309,17 @@ export const TIMETABLE_IDS: RouteIds = {
   'DELETE /api/timetable/versions/:id/pattern/:blockId': [
     version([PT_IDS]),
     line('path:blockId', 'pattern_block', PATH, [PT_IDS, PT_DOUBLE]),
+  ],
+  // Task 5.13: the load import of a draft.
+  'GET /api/timetable/versions/:id/load/import-template': [version([LI])],
+  'PUT /api/timetable/versions/:id/load/imports': [version([LI])],
+  'POST /api/timetable/versions/:id/load/imports/:importId/preview': [
+    version([LI]),
+    line('path:importId', 'load_import', PATH, [LI]),
+  ],
+  'POST /api/timetable/versions/:id/load/imports/:importId/confirm': [
+    version([LI]),
+    line('path:importId', 'load_import', PATH, [LI]),
   ],
   'GET /api/timetable/versions/:id/load/teachers': [
     version([TL_ALL]),

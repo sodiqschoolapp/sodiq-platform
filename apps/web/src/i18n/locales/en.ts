@@ -1046,6 +1046,11 @@ export const en = {
     import_changed:
       'Someone changed students or relatives at the same moment. Nothing was saved; try again.',
     subject_import_already_confirmed: 'This import was already saved. Open the subject list.',
+    load_import_already_confirmed: 'This import was already saved. Open the load.',
+    load_import_changed:
+      'Someone changed the draft or its records at the same moment. Nothing was saved; try again.',
+    load_import_other_draft:
+      'This file is the template of another draft. Download the template of this draft.',
     subject_import_changed:
       'Someone changed subjects or quarters at the same moment. Nothing was saved; try again.',
     photos_not_configured: 'Photos are not configured yet. Ask the administrator.',
