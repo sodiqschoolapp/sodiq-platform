@@ -208,7 +208,6 @@ export function LoadImportPage(): React.JSX.Element {
       {header}
       <div className="grid gap-4">
         <section className={`${PANEL} grid gap-4`}>
-          <p className="text-sm">{t('timetable.loadImport.intro', { number: version.number })}</p>
           <div className="flex flex-wrap gap-3">
             <Button
               variant="secondary"

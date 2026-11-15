@@ -69,9 +69,9 @@ export class LoadImportsController {
   @Requires('timetable', 'edit')
   @Returns(loadImportPreviewSchema)
   preview(
+    @ValidBody(loadImportRunSchema) _run: LoadImportRun,
     @CurrentAccess() access: Access,
     @ValidParams(loadImportParamsSchema) params: LoadImportParams,
-    @ValidBody(loadImportRunSchema) _run: LoadImportRun,
   ): Promise<LoadImportPreview> {
     return this.imports.preview(access, params.id, params.importId);
   }
