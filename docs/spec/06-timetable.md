@@ -25,7 +25,7 @@ The builder is one screen with a checklist of steps on the left, in the manner o
 | Step | What the Academic Vice Principal does | Ready when |
 | --- | --- | --- |
 | 1. Period and day template | Sets the intended start date — next Monday by default, the first day of a coming quarter as a shortcut — and confirms the day templates of each weekday in force on that date, per grade range where they differ, from the table in School setup. A version has no end date. | The start date is set and the table of templates per weekday and grade is confirmed. |
-| 2. Teaching load | For each class and group: subjects, lessons per week, teacher. Copied from an earlier version or year. | The weekly lessons of every class fit into the week's lesson slots, and every load has a teacher or a vacancy. |
+| 2. Teaching load | For each class and group: subjects, lessons per week, teacher. Copied from an earlier version or year, or imported from Excel (Importing the load and the timetable, below). | The weekly lessons of every class fit into the week's lesson slots, and every load has a teacher or a vacancy. |
 | 3. Teachers | Availability by day and slot, most lessons per day, school days of part-time teachers. | No teacher has more lessons than free slots. |
 | 4. Rooms | Main classroom of each class; special rooms by subject (laboratory, sports hall, robotics). | Every subject that needs a special room has one. |
 | 5. Rules | Reviews the fixed rules, sets the weight of each preference, and pins lessons that must stay at a fixed time (for example the Homework slot at the end of the day). | Confirmed. |
@@ -33,7 +33,18 @@ The builder is one screen with a checklist of steps on the left, in the manner o
 | 7. Edit in the grid | Drags, swaps, changes rooms and teachers, locks lessons and regenerates the rest. | The conflict panel shows no errors. |
 | 8. Review and publish | Reads the impact preview, confirms or changes the start date, publishes. Print and export. | Published. |
 
-A draft can also be started empty or copied from any earlier version, and built entirely by hand.
+A draft can also be started empty or copied from any earlier version, and built entirely by hand or filled by the timetable import.
+
+## Importing the load and the timetable
+
+The Super Admin and the Academic Vice Principal import into a draft of their branch; the same rights as editing the load and the grid. A published version is never changed by an import, and an import never publishes.
+
+- **The template.** Each import has the system's Excel template, downloaded from the draft, with its column headings in Uzbek, Russian and English. The template is made for that branch and that draft at the moment of download.
+- **Chosen, never created.** The template has a sheet of the branch's existing records: classes, groups (with the classes they draw from), subjects, teachers and vacancies, rooms and room types. Each column that names such a record is a dropdown of that sheet, in the language of the template. A teacher is named with surname, name and staff ID, so two people of the same name are never confused. An import creates no class, group, subject, person or room: a value not among the branch's records, or no longer in service on the draft's start date, is a problem of its row, also when it was pasted past the dropdown. Records are set up before the import, in their own pages or imports.
+- **The load import.** One row is one row of the teaching load: class or group, subject, teacher or vacancy, lessons per week, a room or a room type (optional), double lessons allowed (yes or no), and "deliberately short" with its reason (optional). A Tutor subject on a class takes the class's Tutor, and a teacher typed there is a problem. Every rule of a load row typed by hand applies: the teacher has the subject, the grade and the language; a split or group subject is given to every part of its block with the same lessons per week; a class and a group of it never both have the subject. A row that repeats a row of the draft's load, or of the file, is a problem. The rows are added to the draft's load; rows already there stay.
+- **The timetable import.** One row is one lesson of the weekly pattern: weekday, slot number of the day template in force on the draft's start date, class or group, subject, teacher or vacancy, room (optional: the row's room, or the class's main classroom). Each row is matched to a row of the draft's load by class or group, subject and teacher; a lesson with no such load row is a problem. The groups of one block and the halves of a split are placed in the same slot, as in the grid; a block given only in part is a problem of its rows. Two rows of one double lesson are two consecutive slots of a load row that allows doubles. The draft's placements are replaced by the file's, after the person confirms how many are removed; the load is not changed.
+- **Preview and checks.** The upload first shows a preview of every row with its problems. The timetable import checks the whole file with the timetable rule engine, as a draft built in the grid: every blocked rule is a problem of the rows it names, with the rule's reason. The warnings are listed and do not stop the import. Nothing is saved until every row is clean; confirming checks everything again and saves all rows or none, and the same file is not imported twice.
+- **Audit.** An import is one entry in the audit log, with each row it wrote.
 
 ## Editing in the grid
 
