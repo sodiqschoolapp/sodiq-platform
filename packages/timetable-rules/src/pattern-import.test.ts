@@ -189,6 +189,39 @@ describe('importedBlocks', () => {
     ]);
   });
 
+  it('groups a slot the same way whatever the order of its rows (spec review of the code)', () => {
+    const half = (
+      id: string,
+      groupId: string,
+      subjectId: string,
+      block: string[],
+    ): PatternRowData =>
+      row(id, { classId: null, groupId, subjectId, teacherId: 't3', mixedBlock: true, block });
+    const mixed = patternModel(
+      patternData([
+        ...ROWS,
+        half('pe-b', '7a-e1', 'math', ['pe-b', 'pe-g']),
+        half('pe-g', '7a-e2', 'math', ['pe-b', 'pe-g']),
+        half('tech-b', '7a-e1', 'science', ['tech-b', 'tech-g']),
+        half('tech-g', '7a-e2', 'science', ['tech-b', 'tech-g']),
+      ]),
+    );
+    const orders = [
+      [lesson(3, 'tech-g', 3, 1), lesson(4, 'pe-b', 3, 1), lesson(5, 'pe-g', 3, 1)],
+      [lesson(4, 'pe-b', 3, 1), lesson(5, 'pe-g', 3, 1), lesson(3, 'tech-g', 3, 1)],
+    ];
+    for (const lessons of orders) {
+      const { blocks, problems } = importedBlocks(mixed, lessons);
+      // The whole PE split is one block; technology given in part is told; no lesson twice.
+      expect(blocks.map((one) => one.block.lessons.map((l) => l.loadRowId))).toEqual([
+        ['pe-b', 'pe-g'],
+      ]);
+      expect(problems).toEqual([
+        { key: 3, code: 'pattern_import_block_part', missingRowIds: ['tech-b'] },
+      ]);
+    }
+  });
+
   it('reads back the row number of a lesson of the file only', () => {
     expect(importKeyOf(importLessonId(17))).toBe(17);
     expect(importKeyOf('entry-1')).toBeNull();

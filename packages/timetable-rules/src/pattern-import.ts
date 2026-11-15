@@ -96,37 +96,43 @@ export function importedBlocks(
     );
     const taken = new Set<string>();
     const byRow = new Map(inSlot.map((one) => [one.rowId, one]));
+    // Whole blocks first, then the pairings of mixed halves, so the grouping does not depend on
+    // the order of the rows (spec review of the code, should-fix 1): a block one of whose rows a
+    // pairing would take is never grouped as whole after it.
     for (const one of inSlot) {
       if (taken.has(one.rowId)) continue;
       const block = model.rowOf(one.rowId).block;
-      if (block.every((id) => present.has(id))) {
-        for (const id of block) taken.add(id);
-        // A part held back for another problem: nothing of the block is placed.
-        if (block.some((id) => heldHere.has(id))) continue;
-        grouped.push({
-          weekday: one.weekday,
-          lessonNumber: one.lessonNumber,
-          members: block.map((id) => byRow.get(id)).filter((m): m is ImportLesson => !!m),
-        });
-        continue;
-      }
+      if (!block.every((id) => present.has(id) && !taken.has(id))) continue;
+      for (const id of block) taken.add(id);
+      // A part held back for another problem: nothing of the block is placed.
+      if (block.some((id) => heldHere.has(id))) continue;
+      grouped.push({
+        weekday: one.weekday,
+        lessonNumber: one.lessonNumber,
+        members: block.map((id) => byRow.get(id)).filter((m): m is ImportLesson => !!m),
+      });
+    }
+    for (const one of inSlot) {
+      if (taken.has(one.rowId)) continue;
       // A mixed half with exactly one partner in the slot: their pairing (task 5.4c-3b).
       const partners = [...present].filter(
         (id) => id !== one.rowId && !taken.has(id) && pairingOf(model, [one.rowId, id]) !== null,
       );
       const [partner] = partners;
-      if (partner !== undefined && partners.length === 1) {
-        const pair = pairingOf(model, [one.rowId, partner]) ?? [one.rowId, partner];
-        taken.add(one.rowId);
-        taken.add(partner);
-        if (pair.some((id) => heldHere.has(id))) continue;
-        grouped.push({
-          weekday: one.weekday,
-          lessonNumber: one.lessonNumber,
-          members: pair.map((id) => byRow.get(id)).filter((m): m is ImportLesson => !!m),
-        });
-        continue;
-      }
+      if (partner === undefined || partners.length !== 1) continue;
+      const pair = pairingOf(model, [one.rowId, partner]) ?? [one.rowId, partner];
+      taken.add(one.rowId);
+      taken.add(partner);
+      if (pair.some((id) => heldHere.has(id))) continue;
+      grouped.push({
+        weekday: one.weekday,
+        lessonNumber: one.lessonNumber,
+        members: pair.map((id) => byRow.get(id)).filter((m): m is ImportLesson => !!m),
+      });
+    }
+    for (const one of inSlot) {
+      if (taken.has(one.rowId)) continue;
+      const block = model.rowOf(one.rowId).block;
       problems.push({
         key: one.key,
         code: 'pattern_import_block_part',

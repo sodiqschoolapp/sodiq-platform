@@ -13,7 +13,12 @@ import { sql } from 'kysely';
 import request, { type Response } from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { Transactions, type Transaction } from '../../database/transactions.js';
-import { dayTemplatesKit, UNKNOWN, type DayTemplatesKit } from '../../testing/day-templates-kit.js';
+import {
+  dayTemplatesKit,
+  START,
+  UNKNOWN,
+  type DayTemplatesKit,
+} from '../../testing/day-templates-kit.js';
 import { filledLoadTemplate } from '../../testing/load-import-kit.js';
 import { LoadKit } from '../../testing/load-kit.js';
 import {
@@ -720,16 +725,33 @@ describe('the timetable import', () => {
       expect(perBlock).toEqual([]);
     });
 
-    it('never writes a published version', async () => {
-      const { version } = await draft();
-      const bytes = await filledPatternTemplate(await template(version), cleanRows());
-      const preview = await uploaded(version, cleanRows());
-      await load.setVersion(version, 'published');
-      const before = await rowsOf();
-      refusedWith(await confirm(version, preview.importId, []), 409, 'version_not_draft');
-      expect((await templateOf(version)).status).toBe(409);
-      refusedWith(await upload(version, bytes), 409, 'version_not_draft');
-      expect(await rowsOf()).toEqual(before);
+    it('never writes a published or an archived version', async () => {
+      for (const status of ['published', 'archived'] as const) {
+        const { version } = await draft();
+        const bytes = await filledPatternTemplate(await template(version), cleanRows());
+        const preview = await uploaded(version, cleanRows());
+        await load.setVersion(version, status);
+        const before = await rowsOf();
+        refusedWith(await confirm(version, preview.importId, []), 409, 'version_not_draft');
+        expect((await templateOf(version)).status).toBe(409);
+        refusedWith(await upload(version, bytes), 409, 'version_not_draft');
+        expect(await rowsOf()).toEqual(before);
+      }
+    });
+
+    it('lists a load short of its lessons as a warning that does not stop the import', async () => {
+      const { version, rows } = await draft();
+      // Two of Oxford's four maths lessons, and nothing else.
+      const preview = await uploaded(version, [
+        at('Thursday', 1, '7 Oxford', MATHS, name(mathsTeacher)),
+        at('Friday', 1, '7 Oxford', MATHS, name(mathsTeacher)),
+      ]);
+      expect(preview.clean).toBe(true);
+      expect(preview.warnings.map((one) => one.rule)).toContain('load_mismatch');
+      expect((await confirmed(version, preview)).outcome).toBe('saved');
+      expect(
+        (await entriesOf(version)).filter((one) => one.load_row_id === rows.get('maths-o')),
+      ).toHaveLength(2);
     });
   });
 
@@ -1201,6 +1223,130 @@ describe('the timetable import', () => {
         .set('Content-Type', 'text/plain')
         .send('rows');
       refusedWith(text, 415, 'unsupported_media_type');
+    });
+  });
+
+  describe('records out of service, other branches and the date the slots are read on', () => {
+    it('matches a live vacancy beside a closed namesake, never ambiguous', async () => {
+      const { version } = await draft();
+      const live = await load.vacancy(t.north, { subjects: [{ subject: science, grades: [7] }] });
+      const closed = await load.vacancy(t.north, { subjects: [{ subject: science, grades: [7] }] });
+      await t.database.migrator
+        .updateTable('staff')
+        .set({ vacancy_name: 'Plum Gap' })
+        .where('id', 'in', [live, closed])
+        .execute();
+      await load.status(closed, 'closed', '2026-10-01');
+      await hours(t.north, live, [1, 2, 3, 4, 5]);
+      await load.row({
+        branch_id: t.north,
+        version_id: version,
+        class_id: princeton,
+        subject_id: science,
+        teacher_id: live,
+        lessons_per_week: 1,
+      });
+      const preview = await uploaded(version, [
+        at('Monday', 3, '7 Princeton', SCIENCE, 'Plum Gap (vacancy)'),
+      ]);
+      expect(rowOf(preview, sheetRow(0)).problems).toEqual([]);
+    });
+
+    it('refuses a lesson of a teacher busy at that time in a published timetable of another branch', async () => {
+      const { version } = await draft();
+      const shared = (await teacher(science)).staffId;
+      await t.database.migrator
+        .insertInto('staff_branches')
+        .values({ staff_id: shared, branch_id: t.south, is_main: false })
+        .execute();
+      await load.row({
+        branch_id: t.north,
+        version_id: version,
+        class_id: princeton,
+        subject_id: science,
+        teacher_id: shared,
+        lessons_per_week: 1,
+      });
+      // The South's published timetable: the same teacher on Monday 08:00–08:45.
+      const south = await load.version(t.south, southYear, { startsOn: '2026-09-07' });
+      const southClass = await load.classes.schoolClass(t.south, southYear, {
+        grade: 7,
+        name: 'Busy',
+      });
+      const row = await load.row({
+        branch_id: t.south,
+        version_id: south,
+        class_id: southClass,
+        subject_id: science,
+        teacher_id: shared,
+      });
+      const block = await t.database.migrator
+        .insertInto('pattern_blocks')
+        .values({
+          branch_id: t.south,
+          version_id: south,
+          weekday: 1,
+          slot_position: 1,
+          start_minutes: 480,
+          end_minutes: 525,
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      await t.database.migrator
+        .insertInto('pattern_entries')
+        .values({
+          branch_id: t.south,
+          version_id: south,
+          block_id: block.id,
+          weekday: 1,
+          start_minutes: 480,
+          end_minutes: 525,
+          load_row_id: row,
+          teacher_id: shared,
+        })
+        .execute();
+      await load.setVersion(south, 'published');
+      const preview = await uploaded(version, [
+        at('Monday', 1, '7 Princeton', SCIENCE, name(shared)),
+        at('Wednesday', 2, '7 Princeton', SCIENCE, name(shared)),
+      ]);
+      expect(codesOf(preview, sheetRow(0))).toContain('teacher_double');
+      expect(codesOf(preview, sheetRow(1))).not.toContain('teacher_double');
+      expect(preview.clean).toBe(false);
+    });
+
+    it('reads the lesson numbers on today, once the start date of the draft has passed', async () => {
+      const { version } = await draft();
+      // From Wednesday 21 October every day has two lessons.
+      const long = await t.createSlotType(t.north, 'Lesson two', 'lesson', 45);
+      const short = await t.createTemplate(t.north, 'Two lessons', [long, long]);
+      await t.assign(t.north, short, {}, '2026-10-21');
+      const rows = [at('Tuesday', 3, '7 Princeton', MATHS, name(mathsTeacher))];
+      // Before the start date: the start date's template, three lessons.
+      expect(codesOf(await uploaded(version, rows), sheetRow(0))).toEqual([]);
+      // On 22 October, the start date passed: today's template, two lessons.
+      // The kit's sessions end after 15 idle minutes: a person signed in then.
+      t.clock.set('2026-10-22T09:00:00+05:00');
+      try {
+        const browser = await t.kit.completeSession('Lola', 'Rahimova');
+        await t.kit.giveRole(browser.account.id, {
+          role: 'academic_vice_principal',
+          branchId: t.north,
+        });
+        const file = await templateOf(version, browser.cookie);
+        expect(file.status).toBe(200);
+        const answer = await upload(
+          version,
+          await filledPatternTemplate(file.body as Buffer, rows),
+          browser.cookie,
+        );
+        expect(answer.status, JSON.stringify(answer.body)).toBe(200);
+        expect(codesOf(patternImportPreviewSchema.parse(answer.body), sheetRow(0))).toEqual([
+          'pattern_import_no_slot',
+        ]);
+      } finally {
+        t.clock.set(START);
+      }
     });
   });
 });
