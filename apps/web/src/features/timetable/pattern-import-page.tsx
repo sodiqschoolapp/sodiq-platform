@@ -22,7 +22,7 @@ import type { Column, ListSearch } from '@/components/list/list-state';
 import { PageHeader } from '@/components/page-header';
 import { EmptyState, ErrorState, LoadingOutline } from '@/components/states';
 import { Button } from '@/components/ui/button';
-import { PANEL, SECTION_TITLE } from '@/components/ui/control';
+import { PANEL, SECTION_TITLE, SUBSECTION_TITLE } from '@/components/ui/control';
 import { useView } from '@/features/access/use-view';
 import { schoolDateText } from '@/lib/dates';
 import { ruleText } from './rule-text';
@@ -313,7 +313,7 @@ export function PatternImportPage(): React.JSX.Element {
             />
             {preview.warnings.length > 0 && (
               <div className="grid gap-2">
-                <h3 className="text-sm font-semibold">{t('timetable.patternImport.warnings')}</h3>
+                <h4 className={SUBSECTION_TITLE}>{t('timetable.patternImport.warnings')}</h4>
                 <ul className="grid gap-1 text-sm text-muted-foreground">
                   {preview.warnings.map((warning, index) => (
                     <li key={`${warning.rule}-${String(index)}`}>
