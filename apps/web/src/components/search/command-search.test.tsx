@@ -224,6 +224,8 @@ describe('the search of pages', () => {
     // A hyphen starts a word too (review of #334).
     expect(titles('onalar')).toEqual(['Ota-onalar']);
     expect(titles('ota')).toEqual(['Ota-onalar']);
+    expect(titles('Ota-onalar')).toEqual(['Ota-onalar']);
+    expect(titles('ota-')).toEqual(['Ota-onalar']);
   });
 
   it('keeps the line the arrows reach in sight', async () => {

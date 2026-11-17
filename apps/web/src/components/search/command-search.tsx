@@ -77,9 +77,12 @@ export function matchingPages(pages: readonly TitledPage[], typed: string): Titl
   if (words === null) {
     return [...pages];
   }
+  // A hyphen splits the typed words as it splits the title: "Ota-onalar" and "ota-" find the
+  // page. `searchWords` stays as the lists and the API share it.
+  const parts = words.flatMap((word) => word.split('-')).filter((part) => part !== '');
   return pages.filter((page) => {
     const titleWords = searchKey(page.title).split(/[\s-]+/);
-    return words.every((word) => titleWords.some((one) => one.startsWith(word)));
+    return parts.every((word) => titleWords.some((one) => one.startsWith(word)));
   });
 }
 
