@@ -2,6 +2,30 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 17 November 2026: step 1 of the design review, small fixes
+
+Not a task of the build plan: asked for by the owner on 17 November 2026 ("go ahead with step 1"). Each fix is its own pull request from a `claude/` branch, merged by the owner; the decisions are in `docs/decisions.md`, "17 November 2026: the design review".
+
+| Pull request | Fix |
+| --- | --- |
+| #330 | The Tutor's lessons today name the group, teacher and room ("Ingliz tili" three times before). |
+| #331 | Bug: "based on n of N lessons" had its numbers the wrong way round on the support page and in the exported journal (PDF, Excel). |
+| #332 | Dialog footers wrap, so the lesson card's Close is visible; the card writes its date once. |
+| #333 | The top bar's role switch shows the role alone; branch, year and quarter are never cut from 1024 px. |
+| #334 | Ctrl+K matches a page by the start of a word ("Ali" no longer opens "Dars jadvali"); the active line stays in sight. |
+| #335 | Escape in a field of a side panel leaves the field; a second Escape closes the panel. |
+| #336 | Three wide dialogs are wide on a laptop; two get a Close button (`app.close`). |
+| #337 | The journal's cells of lessons still to come are empty, without the closed sign. |
+| #338 | Wording: a carried homework is "koʻchirilgan"; both roles named in the "present earlier" hint; two buttons named by their action. |
+| #339 | Bug: the demo time is written in the branch's time zone for every role (the period's answer names it). |
+
+The next sessions must know:
+
+- **Look first, spec text:** `07`, line 12 prescribes the journal header "Sinf jurnali"; the review proposes the class and subject as the page title. Proposed `/spec-change` wording: "Header, in this order: Class · Subject as the page title, then Quarter · Month, then 'Teacher: name'; 'Sinf jurnali' in the breadcrumbs."
+- **Approved, waiting for a `/spec-change`:** per-language journal labels in place of "CW", "HW", "A", "AVG", "Soni" (`07`, Lessons row).
+- **Step 2** (building blocks, with the four rules the owner approved) and **step 3** (the five main screens as clickable mockups first) are described on the review page; nothing of them is built yet.
+- The Uzbek wording of #332 and #338 should be checked by a native speaker.
+
 ## 17 November 2026: an emergency override of the production release window
 
 Not a task of the build plan: asked for by the owner on 17 November 2026, who approved the change to the deploy workflow (a file of the loop) in chat.

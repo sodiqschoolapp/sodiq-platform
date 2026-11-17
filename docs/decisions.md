@@ -65,6 +65,18 @@ The owner's answers to the decided-ahead questions for Phase 10, given in chat o
 19. Production deploys only after 18:00 or at the weekend, Tashkent time.
 20. The test environment stays after go-live; every change is tried there first.
 
+## 17 November 2026: the design review, the brand palette stays (owner)
+
+The owner asked for the interface to look and feel like the products of big companies, not generated. A design review (the shareable page "Sodiq Design Review", in the owner's artifacts) measured every finding on the demo school and ranked them by how often people see the screen. The owner's answers:
+
+| Decision | Reason |
+| --- | --- |
+| The brand palette stays: navy and orange, as `docs/design-system.md` has them. The procurement app is out of this work | Owner: still better than the other options (six palettes were shown on the real screens, all passing the contrast test). |
+| The look to come close to: Stripe's dashboard and Linear for the frame, the lists and the records; Google Calendar for the timetable | Owner's choice from the candidates of the review. |
+| Approved, to be written into `docs/design-system.md` with the building blocks (step 2 of the review): a filled danger button in confirmation dialogs; a record's actions in the side panel's header and a pinned Save at the foot of its forms; a pending state on buttons ("Saving…") and short confirmations (toasts) | Each changes a rule of the design system; the owner approved all four on 17 November 2026. |
+| Approved for a `/spec-change` (the owner runs it): the journal's column labels in each language instead of "CW", "HW", "A", "AVG" and "Soni" for every language (`07`, Lessons row) | The fourth of the owner's approvals; `07` prescribes the labels word for word, so the code waits for the spec. |
+| Step 1 of the review, small fixes that change no rule, each its own pull request (#330 to #339) | Real people use the pilot: one change at a time. |
+
 ## 15 November 2026: the timetable import (task 5.14)
 
 Plan approved on pull request #324 with its two corrections (no `deferPatternClashes` in the confirm; decision 2 marked Look first). Flagged on issue #42.
