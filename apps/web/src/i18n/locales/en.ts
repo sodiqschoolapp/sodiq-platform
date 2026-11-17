@@ -5838,7 +5838,7 @@ export const en = {
         day_choice_not_offered:
           'A choice was sent that this item does not offer. Check again and choose one of the choices shown.',
         version_start_too_early:
-          'The start date is tomorrow at the earliest. A change for today is a one-day change.',
+          'The start date is tomorrow at the earliest, or today in a branch with no lesson today before its first lesson. Any other change for today is a one-day change.',
         version_start_outside_year: 'The start date is outside the academic year.',
         version_later_published:
           'Version {{number}} is already published from this date or a later one. Choose below what happens to the later versions.',

@@ -466,6 +466,16 @@ Not built yet: the substitute in the journal and the plan (tasks 6.3, 7.1b, 8.4,
 | No journal is linked | The exam saves; the list says no journal is linked. |
 | The tick is taken off in a change | The journals are no longer linked. |
 
+## Starting a timetable today
+
+<!-- Sources: spec 06 (How surprises are prevented: The past is closed, Start date, Withdraw), spec 04 (Availability), as changed by the owner on 18 November 2026 (pull request #346); task 5.17 -->
+
+A new timetable version normally starts tomorrow at the earliest. It may start **today** when the branch has no lesson dated today and the first lesson of today has not begun yet by the branch's clock. For example, a new branch whose first timetable is ready at 07:30 can start it today, before lesson 1 at 09:00.
+
+- Type today's date in the publish dialog; the default stays next Monday. The system checks both conditions again at the moment you press **Publish**.
+- Once a version that starts today is published, it cannot be withdrawn, and no second version can start today. Any other change for today is a one-day change with a reason.
+- A teacher's hours may also start today, even while hours already apply today, when the teacher has no lesson dated today in that branch (as teacher or substitute) and the branch's first lesson has not begun.
+
 ## Version history
 
 <!-- Sources: spec 06 (Protection, "Version history shows every version in the order of their start dates, names the version in force on the first day of each quarter, compares two versions, and can reopen an old one as a new draft"), edge/timetable (Versions and drafts, "A published version must be taken back"), edge/academic-year ("An old timetable version with an archived teacher and a closed room is copied as a draft"); task 5.8a, decisions 1 to 10 and plan review corrections 1 and 2 -->
