@@ -76,6 +76,7 @@ The owner asked for the interface to look and feel like the products of big comp
 | Approved, to be written into `docs/design-system.md` with the building blocks (step 2 of the review): a filled danger button in confirmation dialogs; a record's actions in the side panel's header and a pinned Save at the foot of its forms; a pending state on buttons ("Saving…") and short confirmations (toasts) | Each changes a rule of the design system; the owner approved all four on 17 November 2026. |
 | Approved for a `/spec-change` (the owner runs it): the journal's column labels in each language instead of "CW", "HW", "A", "AVG" and "Soni" for every language (`07`, Lessons row) | The fourth of the owner's approvals; `07` prescribes the labels word for word, so the code waits for the spec. |
 | Step 1 of the review, small fixes that change no rule, each its own pull request (#330 to #339) | Real people use the pilot: one change at a time. |
+| The side panel's Escape (#335) changes the 0.8b row "Escape and its button close it": Escape in a field inside the panel first moves the focus to the panel's heading, and a second Escape closes the panel (asking about unsent changes as before) | A first Escape that closed the panel took a half-typed form away; the heading already takes the focus when a record opens, so the focus goes nowhere new. |
 
 ## 15 November 2026: the timetable import (task 5.14)
 
