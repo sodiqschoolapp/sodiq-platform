@@ -14,6 +14,17 @@ The next sessions must know:
 
 - Tests that assumed an empty branch's today is closed now see it open on the kit's Saturday (no lesson slot); they use yesterday for "before the earliest" and `publish.test.ts`, "a start today (task 5.17)", for the closed cases.
 
+## 17 November 2026: task 5.16, a slot of one-sex mixed halves counts once
+
+- **Built**: `classWeekLessons` (`packages/timetable-rules/src/totals.ts`) counts the one-sex mixed halves of each split (a class, or a pair of classes) by the larger of the boys' and the girls' lessons and of the lessons one teacher has there, so a sport slot counts once; every other row as before. `totalsOf` passes the mixed mark and the groups' sex; the load page, readiness step 2 and publish agree. No migration.
+- Fixes the production refusal of Labzak grades 1 to 4 (42 lessons for 40 slots; really 40).
+- **Left out**: nothing.
+
+The next sessions must know:
+
+- Mixed halves for everyone still count per subject, and a group outside a split linked to its rows counts beside the split (an over-count by intent, `totals.test.ts`); a future change of either is a reading of `06` step 2 and needs the students of the groups.
+- The fix reaches production only with the owner's deploy.
+
 ## 17 November 2026: task 5.15, parallel groups linked by a shared class
 
 - **Built**: groups of one subject are one block only when they share a class, directly or through other groups of the subject (`groupsLinked` in `packages/timetable-rules`; `load_block_rows` replaced in `0172_block_link_shared_class.sql`, no row changed). Two pairs of one grade (the Labzak grade 3 English) now take the same two teachers and their own slots, typed by hand, imported, placed in the grid and imported as a timetable.

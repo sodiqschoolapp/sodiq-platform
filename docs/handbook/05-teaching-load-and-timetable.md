@@ -88,6 +88,7 @@ In a sport lesson the boys and the girls of a class have two lessons at the same
 **Rules.**
 
 - In every sport slot every student of the class, or of both classes of the pair, has exactly one lesson: a boys' lesson alone, or two boys' lessons together, is refused.
+- In the load's totals and in step 2 of the timetable builder, a sport slot counts once for the class: the class needs as many slots as the larger of the boys' lessons and the girls' lessons (boys 5 and girls 5 need 5 slots), so "Lessons in the load" can be lower than the sum of the rows. A boys' lesson with no girls' lesson to pair still counts.
 - A pairing is made of halves drawn from the same class, or the same pair of classes. A half of 7 Sydney + 8 Columbia never pairs with a half of 7 Sydney alone.
 - A student's sex cannot be corrected while they are in a group for one sex from today on: move them to another group first. A group cannot be set to one sex while a student of the other sex is in it from today on.
 
