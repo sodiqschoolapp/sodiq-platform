@@ -3881,7 +3881,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
     },
   },
   switcher: {
-    rolePrefix: 'Меню и главная:',
+    menuTitle: 'Меню и главная',
     roleButton: 'Меню и главная: {{role}}',
     roleHint: 'Права остаются по всем вашим ролям.',
     branch: 'Филиал',

@@ -27,7 +27,7 @@ import {
 import { BRANCH_STORAGE_KEY, ROLE_STORAGE_KEY } from './view-store';
 
 const roleButton = (role: Role) => en.switcher.roleButton.replace('{{role}}', en.roles[role]);
-const ROLE_BUTTON = new RegExp(`^${en.switcher.rolePrefix}`);
+const ROLE_BUTTON = new RegExp(`^${en.switcher.menuTitle}:`);
 
 // The items a principal finds under "More" (the fifth to the eighth of its row).
 const { MORE_OF_PRINCIPAL } = vi.hoisted(() => ({
@@ -198,9 +198,13 @@ describe('the role switcher', () => {
 
     // Issue #105, H11b: the button says what the choice changes; its menu says the rights stay.
     const button = screen.getByRole('button', { name: roleButton('tutor') });
-    expect(button.textContent).toBe(`${en.switcher.rolePrefix}${en.roles.tutor}`);
+    // Design review of 17 November 2026 (T1; owner, 17 November): the button shows the role
+    // alone, its whole name in the tooltip and as the heading of its menu.
+    expect(button.textContent).toBe(en.roles.tutor);
+    expect(button.getAttribute('title')).toBe(button.getAttribute('aria-label'));
     fireEvent.click(button);
     expect(await screen.findByText(en.switcher.roleHint)).toBeDefined();
+    expect(await screen.findByText(en.switcher.menuTitle)).toBeDefined();
     expect(
       screen
         .getAllByRole('menuitemradio')

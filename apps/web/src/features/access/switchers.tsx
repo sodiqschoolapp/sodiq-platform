@@ -20,10 +20,12 @@ import { useView } from './use-view';
  * The role switcher of the top bar (`02`: "a role switcher in the top bar
  * changes the menu and home page"). Shown with more than one role. It changes
  * what is displayed only: the server allows an action when any current
- * assignment permits it. So the button says what it changes ("Menu and home
+ * assignment permits it. So the button's name says what it changes ("Menu and home
  * page: Tutor") and its menu says that the rights stay (issue #105, H11b): a
- * menu button like the person menu, since a select can carry neither. Below
- * 640 px the button shows the role alone; its name keeps the whole text.
+ * menu button like the person menu, since a select can carry neither. The button
+ * shows the role alone at every width, its whole name in the tooltip and as the
+ * menu's heading: the long prefix cut the role to "Tyu…" and pushed the bar past
+ * the window (design review of 17 November 2026, T1; owner, 17 November 2026).
  */
 export function RoleSwitcher() {
   const { t } = useTranslation();
@@ -39,22 +41,23 @@ export function RoleSwitcher() {
           <button
             type="button"
             aria-label={t('switcher.roleButton', { role: roleName })}
+            title={t('switcher.roleButton', { role: roleName })}
+            // A quiet button: only a field has a border (docs/design-system.md, Buttons).
             className={cn(
-              'flex h-10 max-w-96 min-w-0 items-center gap-1.5 rounded-lg border border-input bg-card pr-2.5 pl-3 text-left text-sm text-foreground max-sm:h-11',
+              'flex h-10 max-w-60 min-w-0 shrink-0 items-center gap-1 rounded-lg pr-2 pl-3 text-left text-sm font-semibold whitespace-nowrap text-foreground hover:bg-accent aria-expanded:bg-accent max-sm:h-11',
               QUICK,
               FOCUS_RING,
             )}
           />
         }
       >
-        {/* The prefix never shortens; the role does when the bar has no room. */}
-        <span className="shrink-0 max-sm:hidden">{t('switcher.rolePrefix')}</span>
-        <span className="min-w-0 truncate font-semibold">{roleName}</span>
+        <span className="min-w-0 truncate">{roleName}</span>
         <ExpandMoreIcon className="shrink-0 text-muted-foreground" />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-72">
         <DropdownMenuGroup>
           <DropdownMenuLabel className="whitespace-normal">
+            <span className="block font-semibold text-foreground">{t('switcher.menuTitle')}</span>
             {t('switcher.roleHint')}
           </DropdownMenuLabel>
           <DropdownMenuRadioGroup
@@ -94,14 +97,17 @@ export function BranchSwitcher() {
   if (branches.length < 2) {
     const branch = branches.find((option) => option.id === branchId);
     return branch === undefined ? null : (
-      <span title={t('switcher.branch')} className="min-w-0 truncate text-sm font-semibold">
+      <span
+        title={t('switcher.branch')}
+        className="max-w-full shrink-0 truncate text-sm font-semibold"
+      >
         <span className="sr-only">{t('switcher.branch')} </span>
         {branch.name}
       </span>
     );
   }
   return (
-    <label className="flex min-w-0 items-center gap-1.5 text-sm">
+    <label className="flex max-w-full shrink-0 items-center gap-1.5 text-sm">
       <span className="sr-only">{t('switcher.branch')}</span>
       <Select
         className="max-w-48 min-w-0"

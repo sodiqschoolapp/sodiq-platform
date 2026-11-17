@@ -3688,7 +3688,7 @@ export const en = {
     },
   },
   switcher: {
-    rolePrefix: 'Menu and home page:',
+    menuTitle: 'Menu and home page',
     roleButton: 'Menu and home page: {{role}}',
     roleHint: 'Your rights stay those of all your roles.',
     branch: 'Branch',

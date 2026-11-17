@@ -59,18 +59,22 @@ function DemoTime({ demoNow }: { demoNow: string }) {
   const { t, i18n } = useTranslation();
   const { branchId } = useView();
   const branch = useQuery(branchQuery(branchId));
+  const text = t('period.demoTime', {
+    moment: weekdayMomentText(
+      i18n.language,
+      demoNow,
+      branch.data === undefined ? {} : { timeZone: branch.data.timeZone },
+    ),
+  });
+  // The first part of the bar to shorten when it runs out of room, its whole text in the
+  // tooltip (design review of 17 November 2026, T1).
   return (
     <span
       role="status"
-      className="shrink-0 rounded-md bg-info-bg px-2 py-0.5 text-sm font-semibold text-info"
+      title={text}
+      className="min-w-0 truncate rounded-md bg-info-bg px-2 py-0.5 text-sm font-semibold text-info"
     >
-      {t('period.demoTime', {
-        moment: weekdayMomentText(
-          i18n.language,
-          demoNow,
-          branch.data === undefined ? {} : { timeZone: branch.data.timeZone },
-        ),
-      })}
+      {text}
     </span>
   );
 }
@@ -97,7 +101,7 @@ export function CurrentPeriod() {
     <span
       aria-label={t('period.label')}
       title={t('period.label')}
-      className="min-w-0 truncate text-sm text-muted-foreground"
+      className="max-w-full shrink-0 truncate text-sm text-muted-foreground"
     >
       {parts.join(' · ')}
     </span>
