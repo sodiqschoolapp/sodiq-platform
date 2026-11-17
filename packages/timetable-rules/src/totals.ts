@@ -10,6 +10,7 @@
  * Every comparison of slots uses clock minutes, never slot numbers
  * (docs/spec/edge-cases/timetable.md, Structure). Ranges are half-open.
  */
+import { isSplit, splitKeyOf, type BlockGroup, type GroupSex } from './blocks.js';
 import type { Day } from './day.js';
 import { firstOn, templateFor, type TemplateSettings } from './templates.js';
 
@@ -94,6 +95,17 @@ export interface TotalsRow {
   readonly subjectId: string;
   readonly teacherId: string;
   readonly lessonsPerWeek: number;
+  /** "For a group whether it is part of a mixed block" (05, Teaching load). */
+  readonly mixedBlock: boolean;
+}
+
+/** A group as the totals read it: the classes it draws from and the sex it is for. */
+export type TotalsGroup = Pick<BlockGroup, 'classIds' | 'sex'>;
+
+/** The rows marked mixed of one split whose groups are all for one sex (task 5.16). */
+interface OneSexSplit {
+  readonly classIds: readonly string[];
+  readonly rows: { readonly row: TotalsRow; readonly sex: GroupSex }[];
 }
 
 /**
@@ -101,31 +113,72 @@ export interface TotalsRow {
  * the group rows of a subject that draw from the class count once, the most
  * lessons of them (the parts of one block run at the same time). A group of
  * two grades counts for each of its classes.
+ *
+ * Task 5.16: the rows marked mixed of one split (one class or a pair of
+ * classes, `splitKeyOf`) whose groups are all for one sex pair a boys' lesson
+ * with a girls' lesson of another subject in one slot (edge/timetable,
+ * Structure: "A mixed block is allowed: boys have physical education while
+ * girls have technology, and the reverse in another slot"; 06, Rules: "a
+ * mixed block pairs parts of two subjects instead"). Every student of the
+ * split has exactly one lesson in such a slot, so the split needs the larger
+ * of the boys' and the girls' lessons (decision 2), each side summed by
+ * subject, the most lessons of its rows of the subject (each student is in
+ * one group of a subject, 05, Group). An unpaired extra half still counts
+ * (decision 3). A split with a mixed row for everyone counts all its rows per
+ * subject, as every other group row does (decision 4): without the students
+ * the total cannot tell which halves are complementary, and counting more
+ * only holds a named step. A class counts its own split and its pair's split
+ * once each (decision 5).
  */
 export function classWeekLessons(
   rows: readonly TotalsRow[],
-  groupClasses: ReadonlyMap<string, readonly string[]>,
+  groups: ReadonlyMap<string, TotalsGroup>,
 ): Map<string, number> {
-  const whole = new Map<string, number>();
+  const splits = new Map<string, OneSexSplit>();
+  const forEveryone = new Set<string>();
+  for (const row of rows) {
+    const group = row.groupId === null ? undefined : groups.get(row.groupId);
+    if (!row.mixedBlock || group === undefined || !isSplit(group)) continue;
+    const key = splitKeyOf(group);
+    if (group.sex === null) {
+      forEveryone.add(key);
+      continue;
+    }
+    const split = splits.get(key) ?? { classIds: [...new Set(group.classIds)], rows: [] };
+    split.rows.push({ row, sex: group.sex });
+    splits.set(key, split);
+  }
+  for (const key of forEveryone) splits.delete(key);
+  const sided = new Set([...splits.values()].flatMap((split) => split.rows.map((one) => one.row)));
+
+  const totals = new Map<string, number>();
+  const add = (classId: string, lessons: number) =>
+    totals.set(classId, (totals.get(classId) ?? 0) + lessons);
   const grouped = new Map<string, Map<string, number>>();
   for (const row of rows) {
     if (row.classId !== null) {
-      whole.set(row.classId, (whole.get(row.classId) ?? 0) + row.lessonsPerWeek);
-    } else if (row.groupId !== null) {
-      for (const classId of groupClasses.get(row.groupId) ?? []) {
+      add(row.classId, row.lessonsPerWeek);
+    } else if (row.groupId !== null && !sided.has(row)) {
+      for (const classId of groups.get(row.groupId)?.classIds ?? []) {
         const subjects = grouped.get(classId) ?? new Map<string, number>();
         subjects.set(row.subjectId, Math.max(subjects.get(row.subjectId) ?? 0, row.lessonsPerWeek));
         grouped.set(classId, subjects);
       }
     }
   }
-  const totals = new Map(whole);
   for (const [classId, subjects] of grouped) {
-    let sum = totals.get(classId) ?? 0;
-    for (const lessons of subjects.values()) {
-      sum += lessons;
-    }
-    totals.set(classId, sum);
+    for (const lessons of subjects.values()) add(classId, lessons);
+  }
+  for (const split of splits.values()) {
+    const side = (sex: GroupSex): number => {
+      const subjects = new Map<string, number>();
+      for (const { row } of split.rows.filter((one) => one.sex === sex)) {
+        subjects.set(row.subjectId, Math.max(subjects.get(row.subjectId) ?? 0, row.lessonsPerWeek));
+      }
+      return [...subjects.values()].reduce((sum, lessons) => sum + lessons, 0);
+    };
+    const lessons = Math.max(side('male'), side('female'));
+    for (const classId of split.classIds) add(classId, lessons);
   }
   return totals;
 }

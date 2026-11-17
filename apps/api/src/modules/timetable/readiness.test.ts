@@ -380,6 +380,62 @@ describe('the readiness of a draft, steps 1 to 5', () => {
     });
   });
 
+  /**
+   * Task 5.16: one-sex mixed halves of the class pair a boys' lesson with a girls' lesson of another
+   * subject in one slot (edge/timetable, Structure; 06, Rules: "a mixed block pairs parts of two
+   * subjects instead"), so step 2 ("The weekly lessons of every class fit into the week's lesson
+   * slots") counts the larger of the boys' and the girls' lessons: boys PE 2 and Taekwondo
+   * `boysTaekwondo`, girls PE 2 and Gymnastics 2, beside a class row of 11, in a week of 15 slots.
+   * The class has no students, so no group has a gap.
+   */
+  async function sportScene(boysTaekwondo: number) {
+    const s = await scene({ lessons: 11 });
+    const half = async (sex: 'male' | 'female', subject: string, lessons: number) => {
+      const group = await load.classes.group(s.branch, s.year, subject, [s.classId], { sex });
+      const teacher = (await load.teacher(s.branch, { subjects: [{ subject, grades: [7] }] }))
+        .staffId;
+      await hours(s.branch, teacher, '2026-09-01', [1, 2, 3, 4, 5]);
+      return load.row({
+        branch_id: s.branch,
+        version_id: s.version,
+        group_id: group,
+        subject_id: subject,
+        teacher_id: teacher,
+        lessons_per_week: lessons,
+        mixed_block: true,
+      });
+    };
+    const pe = await load.classes.subject({ grades: [7] });
+    const taekwondo = await load.classes.subject({ grades: [7] });
+    const gymnastics = await load.classes.subject({ grades: [7] });
+    await half('male', pe, 2);
+    await half('male', taekwondo, boysTaekwondo);
+    await half('female', pe, 2);
+    await half('female', gymnastics, 2);
+    return s;
+  }
+
+  it('counts a slot of one-sex mixed halves once: 11 + 4 fits 15 slots', async () => {
+    const s = await sportScene(2);
+    const found = await readiness(s.branch, s.version);
+    // Counted per subject (2 + 2 + 2 = 6) the class would hold 17 lessons for 15 slots.
+    expect(found.load).toMatchObject({ ready: true, problemRows: [], classesOver: [] });
+    const totals = loadTotalsSchema.parse(
+      (await get(`/api/timetable/versions/${s.version}/totals`, s.branch).expect(200)).body,
+    );
+    expect(totals.classes).toEqual([
+      expect.objectContaining({ id: s.classId, lessons: 15, lessonSlots: 15 }),
+    ]);
+  });
+
+  it('still holds step 2 when the larger side is over the week: 11 + 5 for 15 slots', async () => {
+    const s = await sportScene(3);
+    expect((await readiness(s.branch, s.version)).load).toMatchObject({
+      ready: false,
+      classesOver: [{ id: s.classId, lessons: 16, lessonSlots: 15 }],
+    });
+  });
+
   it('holds step 4 for a room type with no room that is not closed, and a closed room named', async () => {
     const s = await scene();
     await t.database.migrator
