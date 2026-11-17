@@ -211,6 +211,7 @@ describe('the search of pages', () => {
       { titleKey: 'menu.timetable', to: '/timetable', title: 'Dars jadvali' },
       { titleKey: 'menu.journal', to: '/journal', title: 'Jurnallar' },
       { titleKey: 'people.students.title', to: '/people/students', title: 'Oʻquvchilar' },
+      { titleKey: 'people.relatives.title', to: '/people/parents', title: 'Ota-onalar' },
     ] as const;
     const titles = (typed: string) => matchingPages(pages, typed).map((page) => page.title);
     expect(titles('ali')).toEqual([]);
@@ -220,6 +221,9 @@ describe('the search of pages', () => {
     // The folding of the lists: an ASCII apostrophe and Cyrillic find the same page.
     expect(titles("o'quv")).toEqual(['Oʻquvchilar']);
     expect(titles('Ўқув')).toEqual(['Oʻquvchilar']);
+    // A hyphen starts a word too (review of #334).
+    expect(titles('onalar')).toEqual(['Ota-onalar']);
+    expect(titles('ota')).toEqual(['Ota-onalar']);
   });
 
   it('keeps the line the arrows reach in sight', async () => {

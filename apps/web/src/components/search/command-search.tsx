@@ -69,7 +69,8 @@ interface TitledPage extends IndexedPage {
  * The pages whose title has a word that starts with each typed word, as the lists compare text:
  * no difference of case, of apostrophes, of composed letters or of script. A word inside a word
  * is no match: "Ali" put the page "Dars jadvali" above the students Aliyev, and Enter opened the
- * timetable (design review of 17 November 2026, T3).
+ * timetable (design review of 17 November 2026, T3). A hyphen also starts a word: "onalar"
+ * finds "Ota-onalar" and "время" finds "Демо-время".
  */
 export function matchingPages(pages: readonly TitledPage[], typed: string): TitledPage[] {
   const words = searchWords(typed);
@@ -77,7 +78,7 @@ export function matchingPages(pages: readonly TitledPage[], typed: string): Titl
     return [...pages];
   }
   return pages.filter((page) => {
-    const titleWords = searchKey(page.title).split(/\s+/);
+    const titleWords = searchKey(page.title).split(/[\s-]+/);
     return words.every((word) => titleWords.some((one) => one.startsWith(word)));
   });
 }
