@@ -738,3 +738,61 @@ test('an Academic Vice Principal places a mixed split with both pairings', async
     'pattern_mixed_partner',
   );
 });
+
+// The owner's spec change of 17 November 2026 (edge/timetable, Structure): "Its
+// two lessons are parts of two subjects drawn from the same class, or from the
+// same pair of classes that do these subjects together (the boys of 7 Sydney
+// and 8 Columbia in one part, the girls in the other)". The scene of the mixed
+// test, its four halves drawn from 7 Oxford and 7 Princeton together, the boys'
+// for boys only and the girls' for girls only.
+test('an Academic Vice Principal places the mixed halves of a pair of classes', async ({
+  page,
+}) => {
+  const account = accountOf('draftGridPair');
+  await page.goto('/sign-in');
+  await languageChooser(page).selectOption('en');
+  await signIn(page, en, account.login, account.password);
+  await changeFirstPassword(page, en, account);
+  await expect(heading(page, en.setUp.title)).toBeVisible();
+  await page.getByRole('button', { name: en.setUp.start, exact: true }).click();
+  const key = await page.locator('dd').innerText();
+  await page.getByLabel(en.setUp.code, { exact: true }).fill(codeNow(key));
+  await page.getByRole('button', { name: en.setUp.confirm, exact: true }).click();
+  await page.getByRole('checkbox', { name: en.setUp.saved }).check();
+  await page.getByRole('button', { name: en.setUp.continue, exact: true }).click();
+  await expect(heading(page, en.home.title)).toBeVisible();
+
+  await page.goto('/timetable/builder');
+  await expect(heading(page, en.timetable.builder.title)).toBeVisible();
+  await page.locator('[data-step="grid"] button').click();
+  await expect(page.locator('[data-board]')).toBeVisible();
+  const cell = (weekday: number, position: number) =>
+    page.locator(`[data-cell="${String(weekday)}:${String(position)}"]`);
+  const entries = page.locator('[aria-labelledby="grid-to-place"] [data-to-place]');
+  const entryOf = (group: string) => entries.filter({ hasText: new RegExp(`^[^,]+, ${group}:`) });
+  const pair = async (group: string, partner: string, at: string) => {
+    const entry = entryOf(group);
+    const select = entry.getByLabel(en.timetable.grid.pairedWith);
+    const value = await select.locator('option', { hasText: partner }).getAttribute('value');
+    await select.selectOption(value ?? '');
+    await entry.getByRole('button', { name: en.timetable.grid.place, exact: true }).click();
+    await page.getByRole('dialog').locator(`[data-move-cell="${at}"] button`).click();
+  };
+
+  // Tuesday 08:00: the boys of both classes at physical education, the girls at technology.
+  await pair('7-PE-B', '7-T-G', '2:1');
+  const first = cell(2, 1).locator('[data-block]');
+  await expect(first).toHaveCount(1);
+  await expect(first).toContainText('Physical education');
+  await expect(first).toContainText('Technology');
+  // Tuesday 08:45: the reverse.
+  await pair('7-T-B', '7-PE-G', '2:2');
+  const second = cell(2, 2).locator('[data-block]');
+  await expect(second).toHaveCount(1);
+  await expect(second).toContainText('Physical education');
+  await expect(second).toContainText('Technology');
+  for (const group of ['7-PE-B', '7-PE-G', '7-T-B', '7-T-G']) {
+    await expect(entryOf(group)).toHaveCount(0);
+  }
+  await screenshot(page, 'grid-pair');
+});
