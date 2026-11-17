@@ -9,6 +9,7 @@ export const uz: Texts<'one' | 'other'> = {
   app: {
     name: 'Sodiq School',
     loading: 'Yuklanmoqda…',
+    close: 'Yopish',
   },
   brand: {
     slogan: 'Taʼlim tarbiyadan boshlanadi',

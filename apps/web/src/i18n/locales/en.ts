@@ -12,6 +12,8 @@ export const en = {
   app: {
     name: 'Sodiq School',
     loading: 'Loading…',
+    /** The Close of a dialog that changes nothing. */
+    close: 'Close',
   },
   brand: {
     slogan: 'Education begins with upbringing',
