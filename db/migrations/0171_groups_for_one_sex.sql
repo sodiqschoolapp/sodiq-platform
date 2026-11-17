@@ -158,6 +158,37 @@ create trigger groups_sex_members
   before update of sex on groups
   for each row execute function groups_sex_members();
 
+-- The rows of a student in other branches than those of the transaction, a
+-- yes or no: whether one that still counts holds the student in a group for
+-- the other sex than `sex`. Count-only and SECURITY DEFINER (allow-list of
+-- catalog.test.ts), as `subject_groups_elsewhere` (0047): a correction of the
+-- sex runs under the filter of the student's branch, which hides the rows the
+-- old branch keeps up to the date of an accepted move (`.claude/rules/
+-- database.md`, a guard of one record by rows of branch tables; the review of
+-- pull request #341, correction 1).
+create function student_sex_rows_elsewhere(student uuid, sex text)
+returns boolean
+language sql
+stable
+security definer
+set search_path = pg_catalog, public
+as $$
+  select exists (
+    select 1
+    from public.group_memberships gm
+    join public.groups g on g.id = gm.group_id
+    where gm.student_id = student_sex_rows_elsewhere.student
+      and not (gm.branch_id = any (public.app_branch_ids()))
+      and g.sex is not null
+      and g.sex <> student_sex_rows_elsewhere.sex
+      and gm.valid_from < gm.valid_until
+      and gm.valid_until > coalesce(public.branch_today(gm.branch_id), '-infinity'::date)
+  )
+$$;
+
+revoke execute on function student_sex_rows_elsewhere(uuid, text) from public;
+grant execute on function student_sex_rows_elsewhere(uuid, text) to sodiq_app;
+
 -- A student's sex is corrected only while no row that still counts holds
 -- them in a group of the other sex. The student row is locked by the update;
 -- a group row insert locks it FOR SHARE first (`group_memberships_guard`), so
@@ -165,8 +196,9 @@ create trigger groups_sex_members
 -- rows are locked FOR SHARE in the order of their id, then read in a
 -- statement of their own: a group's sex change either committed before and is
 -- read, or waits for this change. Student, then group, as every path.
--- The rows are read through the branch filter: a student's rows are rows of
--- their branch, except before the date of an accepted move to another branch.
+-- The rows of the branches of the transaction are read through the filter;
+-- those of other branches (the old branch's, up to the date of an accepted
+-- move) through `student_sex_rows_elsewhere`.
 create function students_sex_groups() returns trigger
 language plpgsql
 set search_path = pg_catalog, public
@@ -191,7 +223,7 @@ begin
       and g.sex is not null
       and g.sex <> new.sex
       and group_sex_row_counts(gm.branch_id, gm.valid_from, gm.valid_until)
-  ) then
+  ) or student_sex_rows_elsewhere(new.id, new.sex) then
     raise exception 'students_sex_groups'
       using errcode = 'check_violation', constraint = 'students_sex_groups';
   end if;

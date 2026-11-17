@@ -10,6 +10,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { ClassesKit } from '../../testing/classes-kit.js';
 import { dayTemplatesKit, type DayTemplatesKit } from '../../testing/day-templates-kit.js';
 import { relativesInput } from '../../testing/relatives-kit.js';
+import { moveStudentBranch } from '../../testing/members-kit.js';
 import { errorCode } from '../../testing/sign-in-kit.js';
 
 const refusedWith = (response: Response, status: number, code: string) => {
@@ -387,6 +388,34 @@ describe('groups for one sex through the routes', () => {
         409,
         'student_sex_groups',
       );
+      expect(await t.auditCount()).toBe(audit);
+    });
+
+    // Review of pull request #341, correction 1: the old branch keeps the rows up to the date of
+    // an accepted move, and the filter of the new branch hides them; the guard counts them
+    // through \`student_sex_rows_elsewhere\` (0171).
+    it('is refused in the new branch while the old branch holds her in a group for girls from today', async () => {
+      const oxford = await classes.schoolClass(t.north, year);
+      const girls = await groupOf([oxford], gymnastics, 'female');
+      const girl = await pupil(oxford, 'female');
+      expect(await rowsOfStudent(girl.id)).toEqual([
+        { group_id: girls, cause: 'automatic', review: false },
+      ]);
+      // Accepted into the South today, her North rows left as they were (they end at a later date).
+      await moveStudentBranch(t.database.migrator, girl.id, t.north, t.south);
+      const south = await t.kit.completeSession('Gulnora', 'Tursunova');
+      await t.kit.giveRole(south.account.id, {
+        role: 'academic_vice_principal',
+        branchId: t.south,
+      });
+      const audit = await t.auditCount();
+      const refused = await t.put(
+        `/api/people/students/${girl.id}`,
+        t.south,
+        { ...girl.typed, sex: 'male' },
+        south.cookie,
+      );
+      refusedWith(refused, 409, 'student_sex_groups');
       expect(await t.auditCount()).toBe(audit);
     });
   });
