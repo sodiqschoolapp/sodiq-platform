@@ -58,7 +58,8 @@ export function RoleSwitcher() {
         <DropdownMenuGroup>
           <DropdownMenuLabel className="whitespace-normal">
             <span className="block font-semibold text-foreground">{t('switcher.menuTitle')}</span>
-            {t('switcher.roleHint')}
+            {/* Its own element: the note is found and read out by its words alone. */}
+            <span className="block">{t('switcher.roleHint')}</span>
           </DropdownMenuLabel>
           <DropdownMenuRadioGroup
             value={role}
