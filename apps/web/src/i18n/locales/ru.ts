@@ -7092,7 +7092,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       titleLoading: 'Урок',
       title: 'Урок {{number}} · {{date}}',
       titleNoNumber: 'Урок {{date}}',
-      dateSlot: '{{date}} · {{slot}}-й урок',
+      slotOfDay: '{{slot}}-й урок дня',
       topic: 'Тема',
       notDelivered: 'Тема не пройдена',
       markNotDelivered: 'Тема не пройдена',
