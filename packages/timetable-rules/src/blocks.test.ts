@@ -227,7 +227,9 @@ describe('blockProblems', () => {
     );
     const boys = row('a', 'tk', { subjectId: 'taekwondo' });
     expect(blockProblems(boys, [boys], groups)).toEqual(['load_one_sex_not_mixed']);
-    expect(blockProblems({ ...boys, mixedBlock: true }, [{ ...boys, mixedBlock: true }], groups)).toEqual([]);
+    expect(
+      blockProblems({ ...boys, mixedBlock: true }, [{ ...boys, mixedBlock: true }], groups),
+    ).toEqual([]);
     const girls = [
       row('b', 'gy', { subjectId: 'gymnastics' }),
       row('c', 'gy2', { subjectId: 'gymnastics' }),

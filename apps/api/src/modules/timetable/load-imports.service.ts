@@ -488,7 +488,10 @@ export class LoadImports {
         // Listed by hand, where the halves are marked one write after another; a file brings
         // the rows of a block together, so an unmarked one-sex block is a problem of its row.
         if (found.includes('load_one_sex_not_mixed')) {
-          add(rowNumber, { column: PROBLEM_COLUMNS.load_one_sex_not_mixed, code: 'load_one_sex_not_mixed' });
+          add(rowNumber, {
+            column: PROBLEM_COLUMNS.load_one_sex_not_mixed,
+            code: 'load_one_sex_not_mixed',
+          });
         }
         const unplaced = facts.blockFactsOf(row).unplaced;
         if (found.includes('load_group_gaps') && unplaced > 0) {

@@ -4564,7 +4564,11 @@ export const uz: Texts<'one' | 'other'> = {
     maxSize: 'Sigʻim',
     maxSizeNote: '{{min}} dan {{max}} gacha oʻquvchi',
     sex: 'Kimlar uchun',
-    sexes: { everyone: 'Qizlar va oʻgʻil bolalar', female: 'Faqat qizlar', male: 'Faqat oʻgʻil bolalar' },
+    sexes: {
+      everyone: 'Qizlar va oʻgʻil bolalar',
+      female: 'Faqat qizlar',
+      male: 'Faqat oʻgʻil bolalar',
+    },
     status: 'Holati',
     active: 'Faol',
     archived: 'Arxivda',

@@ -987,7 +987,8 @@ export class BranchMoves {
     // 0171: a group for one sex takes only students of that sex. The list of
     // groups is read before the join and shows every group; the choice is
     // checked here, after the student is readable in the request's transaction.
-    const sex = (await sexesOf(transaction, [row.studentId])).get(row.studentId.toLowerCase()) ?? null;
+    const sex =
+      (await sexesOf(transaction, [row.studentId])).get(row.studentId.toLowerCase()) ?? null;
     const written = [];
     for (const [index, choice] of input.groups.entries()) {
       const group = groups.get(choice.groupId.toLowerCase());

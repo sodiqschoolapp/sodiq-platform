@@ -108,8 +108,7 @@ export function LoadRowForm({
   const schema: FormSchema<LoadRowRecord | LoadRowEdit> =
     row === null ? loadRowRecordSchema : loadRowEditSchema;
   /** Whether the group is a split: it draws from one class or a pair. */
-  const isSplit = (groupId: string | null) =>
-    isSplitOf(groups.find((one) => one.id === groupId));
+  const isSplit = (groupId: string | null) => isSplitOf(groups.find((one) => one.id === groupId));
 
   const form = useRecordForm({
     schema,

@@ -59,7 +59,10 @@ export const TEACHER_PROBLEMS: readonly LoadProblem[] = [
  * The problems a write is never refused for (task 3.4b, decision 4): students
  * not placed are listed; readiness (5.3) and publish (5.5a) block on them.
  */
-export const LISTED_PROBLEMS: readonly LoadProblem[] = ['load_group_gaps', 'load_one_sex_not_mixed'];
+export const LISTED_PROBLEMS: readonly LoadProblem[] = [
+  'load_group_gaps',
+  'load_one_sex_not_mixed',
+];
 
 /** The problems of `problems` that refuse a write, in their order. */
 export const refusingProblems = (problems: readonly LoadProblem[]): LoadProblem[] =>

@@ -1,4 +1,10 @@
-import { sexSchema, type ErrorCode, type ErrorDetail, type SchoolDate, type Sex } from '@sodiq/shared';
+import {
+  sexSchema,
+  type ErrorCode,
+  type ErrorDetail,
+  type SchoolDate,
+  type Sex,
+} from '@sodiq/shared';
 import { sql } from 'kysely';
 import type { Transaction } from '../../database/transactions.js';
 import { ApiException } from '../../http/api-exception.js';

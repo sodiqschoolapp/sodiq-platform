@@ -455,16 +455,21 @@ describe('a pairing of the halves of a pair of classes', () => {
     });
     const teacher = data.teachers.find((one) => one.id === 't7');
     if (teacher === undefined) throw new Error('The fixture has t7.');
-    const sports = { ...teacher, subjects: ['pe', 'tk', 'gy'].map((subjectId) => ({ subjectId, grades: [7] })) };
+    const sports = {
+      ...teacher,
+      subjects: ['pe', 'tk', 'gy'].map((subjectId) => ({ subjectId, grades: [7] })),
+    };
     return {
       ...data,
-      teachers: [
-        ...data.teachers,
-        ...['p1', 'p2', 'k1', 'g1'].map((id) => ({ ...sports, id })),
-      ],
+      teachers: [...data.teachers, ...['p1', 'p2', 'k1', 'g1'].map((id) => ({ ...sports, id }))],
       subjects: [
         ...data.subjects,
-        ...['tk', 'gy'].map((id) => ({ id, active: true, languageRule: false, tutorSubject: false })),
+        ...['tk', 'gy'].map((id) => ({
+          id,
+          active: true,
+          languageRule: false,
+          tutorSubject: false,
+        })),
       ],
       units: [
         ...data.units,
