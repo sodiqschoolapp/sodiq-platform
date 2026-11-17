@@ -269,6 +269,11 @@ export function TutorClassCard({
                       to: timeText(lesson.end),
                     }),
                     lesson.subject.names[language],
+                    // Lessons in parallel (the groups of English, the halves of physical
+                    // education) differ by their group, teacher and room, never by subject alone.
+                    ...(lesson.unit.id === one.class.id ? [] : [lesson.unit.name]),
+                    ...(lesson.teacher === null ? [] : [lesson.teacher.name]),
+                    ...(lesson.room === null ? [] : [lesson.room.name]),
                     ...(lesson.cancelCause === null ? [] : [t('home.tutorClass.cancelled')]),
                   ].join(' · ')}
                 </li>
