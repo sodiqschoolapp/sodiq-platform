@@ -2,6 +2,14 @@
 
 The spec in `docs/spec/` was taken from the full spec document on 3 October 2026 (revision 88). Every later change to a spec file is listed here, newest first, with the date, what changed, why, and the files touched. Changes are made only with the `/spec-change` skill and the owner's approval.
 
+## 17 November 2026: parallel groups form one block only through a shared class
+
+- What changed: **parallel group lessons are linked by a shared class, not by their grade.** The groups of one subject that share a class, directly or through other groups of that subject, are one block, placed and moved together. Groups that share no class are separate blocks, even in one grade or pair of grades: each block has its own slots, its own teachers and its own lessons per week. Before, every group across classes of one grade or pair of grades was in one block with the others.
+- Why: the owner, 17 November 2026, in chat, from the load import of the Labzak branch (timetable version 10). The school teaches grade 3 English in two blocks at different times, the groups of one pair of classes in one block and the groups of the other pair in another, and two teachers each teach one group of each pair. The platform joined both pairs into one block and refused the rows (one teacher twice in a block). The link by a shared class is the smallest that keeps "every student of its classes is in exactly one of its lessons" (`edge/timetable`, Structure): every group a student can be in draws from the student's own class.
+- Not changed: `edge/timetable` (Structure; the two-grade group; the excursion and the exam with a shared block), `05` (Group; the bulk screen), `edge/lesson-plans` (shared plans of groups): none of them states the grade link, and each stays true.
+- Code: task 5.15 (`task/5.15-block-link-shared-class`): `groupsLinked` in `packages/timetable-rules` and a new migration replacing `load_block_rows`.
+- Files: `docs/spec/06-timetable.md` (Model, Parallel group lessons).
+
 ## 17 November 2026: groups for one sex, and mixed blocks of a pair of classes
 
 - What changed:
