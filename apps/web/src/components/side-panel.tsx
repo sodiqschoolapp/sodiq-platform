@@ -22,7 +22,8 @@ const isField = (target: EventTarget | null): boolean =>
  * A record opened beside its list, without leaving the list
  * (docs/spec/12-ux-standards.md, Lists). Beside the list on a wide screen; on
  * a narrow one the list makes room for it (the list hides itself, so nothing
- * that cannot be seen takes the focus). Escape closes it; the heading takes
+ * that cannot be seen takes the focus). Escape closes it, and in one of its
+ * fields first leaves the field for the heading; the heading takes
  * the focus when it opens, so a keyboard and a screen reader are where the
  * record is.
  */
@@ -52,7 +53,13 @@ export function SidePanel({ title, recordKey, onClose, children }: SidePanelProp
       }
       const outside =
         event.target instanceof Node && panel.current?.contains(event.target) !== true;
-      if (outside && isField(event.target)) {
+      if (isField(event.target)) {
+        // Escape in a field of the panel leaves the field for the panel's heading, and a second
+        // Escape closes the panel: one Escape while typing closed the whole record (design
+        // review of 17 November 2026, R3; owner, 17 November 2026).
+        if (!outside) {
+          heading.current?.focus();
+        }
         return;
       }
       close.current();

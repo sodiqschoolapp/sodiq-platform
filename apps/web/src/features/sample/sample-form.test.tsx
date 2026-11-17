@@ -287,7 +287,13 @@ describe('leaving a record form with typed changes', () => {
     await noDialog();
     expect(screen.getByRole('complementary', { name: BEKZOD })).toBeDefined();
 
+    // Design review of 17 November 2026 (R3; owner, 17 November): Escape in a field of the panel
+    // leaves the field for the heading and keeps the panel; a second Escape closes it.
     fireEvent.keyDown(field(panel, en.sample.score), { key: 'Escape' });
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    const heading = within(panel).getByRole('heading', { name: BEKZOD });
+    expect(document.activeElement).toBe(heading);
+    fireEvent.keyDown(heading, { key: 'Escape' });
     fireEvent.click(within(await leaveDialog()).getByRole('button', { name: en.unsent.leave }));
 
     await waitFor(() => {
