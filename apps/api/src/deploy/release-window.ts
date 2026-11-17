@@ -37,3 +37,47 @@ export function tashkentTime(now: Date): string {
   const pad = (value: number) => String(value).padStart(2, '0');
   return `${WEEKDAYS[day] ?? ''} ${pad(hour)}:${pad(minute)}`;
 }
+
+/**
+ * The owner's emergency override of the release window (owner, 17 November
+ * 2026): a deploy run may go outside the window only when the owner ticks
+ * "outside the window" and types why. The override lifts the window alone:
+ * the approval of the environment `production`, the release check, the
+ * migrations and the smoke test still run. The reason is written to the run's
+ * log, so it holds no person's name or data.
+ */
+export const OVERRIDE_REASON_MIN = 10;
+
+export type WindowDecision =
+  | { readonly allowed: true; readonly override: boolean; readonly message: string }
+  | { readonly allowed: false; readonly message: string };
+
+/** Whether a deploy may start at `now`, with or without the owner's override. */
+export function windowDecision(
+  now: Date,
+  override: { readonly outside: boolean; readonly reason: string },
+): WindowDecision {
+  const time = tashkentTime(now);
+  if (releaseWindowOpen(now)) {
+    return { allowed: true, override: false, message: `Release window open: ${time} in Tashkent.` };
+  }
+  const closed = `It is ${time} in Tashkent: production is deployed only from 18:00 to 06:00 and at the weekend (docs/deploy.md, Production).`;
+  if (!override.outside) {
+    return {
+      allowed: false,
+      message: `${closed} To deploy now anyway, run again with "Deploy outside the release window" ticked and a reason.`,
+    };
+  }
+  const reason = override.reason.replace(/\s+/g, ' ').trim();
+  if (reason.length < OVERRIDE_REASON_MIN) {
+    return {
+      allowed: false,
+      message: `${closed} "Deploy outside the release window" is ticked, but the reason has fewer than ${String(OVERRIDE_REASON_MIN)} characters. Run again with a reason.`,
+    };
+  }
+  return {
+    allowed: true,
+    override: true,
+    message: `Deploying outside the release window at ${time} in Tashkent, by the owner's override. Reason: ${reason}`,
+  };
+}

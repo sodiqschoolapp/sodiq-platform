@@ -6,7 +6,8 @@ name: Deploy production
 # The job `image` proves the Docker image of production (answer 15: Print and
 # PDF work); with `check_only` the run ends there and may run at any time.
 # The job `deploy` waits for the owner's approval (the environment
-# `production`), refuses outside the release window and for a commit that did
+# `production`), refuses outside the release window (unless the owner ticks the
+# emergency override with a reason) and for a commit that did
 # not pass CI and the test deploy, then migrates, deploys and smoke-tests.
 # Its log prints file names, service ids, states and check names only, never
 # a row of production (answer 3: sessions can read workflow logs).
@@ -17,6 +18,14 @@ on:
         description: Only build the image and make a PDF in it; deploy nothing
         type: boolean
         default: false
+      outside_window:
+        description: Deploy outside the release window (emergency; needs a reason)
+        type: boolean
+        default: false
+      outside_window_reason:
+        description: Why the deploy cannot wait for the window (at least 10 characters; no names)
+        type: string
+        default: ''
 
 permissions:
   contents: read
@@ -82,6 +91,12 @@ jobs:
         # The checkout holds no dist; the window and the release check run it.
         run: pnpm turbo run build --filter=@sodiq/api
       - name: Inside the release window
+        # The owner's emergency override (17 November 2026): ticked with a reason, the
+        # window alone is lifted. The inputs reach the command as environment
+        # variables, never pasted into the script.
+        env:
+          OUTSIDE_WINDOW: ${{ inputs.outside_window }}
+          OUTSIDE_WINDOW_REASON: ${{ inputs.outside_window_reason }}
         run: node apps/api/dist/deploy/cli.js window
       - name: The commit passed CI and the test deploy
         env:

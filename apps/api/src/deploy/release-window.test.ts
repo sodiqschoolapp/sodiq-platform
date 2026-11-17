@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { releaseWindowOpen, tashkentTime } from './release-window.js';
+import { releaseWindowOpen, tashkentTime, windowDecision } from './release-window.js';
 
 // Owner's answer 19 (docs/decisions.md, Decided ahead for Phase 10): production
 // deploys only after 18:00 or at the weekend, Tashkent time; decision 1 of pull
@@ -31,5 +31,48 @@ describe('the release window of production', () => {
     expect(releaseWindowOpen(new Date('2026-10-26T13:00:00Z'))).toBe(true);
     expect(releaseWindowOpen(new Date('2026-10-26T12:59:59Z'))).toBe(false);
     expect(tashkentTime(new Date('2026-10-26T12:59:59Z'))).toBe('Monday 17:59');
+  });
+});
+
+// The owner's emergency override (17 November 2026): ticked with a reason of at
+// least 10 characters, it lifts the window alone.
+describe('the emergency override of the release window', () => {
+  const closed = at('2026-10-26T15:24:00'); // Monday 15:24
+  const open = at('2026-10-26T18:30:00'); // Monday 18:30
+  const reason = 'Fix for the journal before tomorrow';
+
+  it('refuses outside the window without the override, and says how to use it', () => {
+    const decision = windowDecision(closed, { outside: false, reason });
+    expect(decision.allowed).toBe(false);
+    expect(decision.message).toContain('Monday 15:24');
+    expect(decision.message).toContain('Deploy outside the release window');
+  });
+
+  it.each(['', '   ', 'urgent', ' a  b  c  d '])(
+    'refuses the override with a reason too short: %j',
+    (short) => {
+      const decision = windowDecision(closed, { outside: true, reason: short });
+      expect(decision.allowed).toBe(false);
+      expect(decision.message).toContain('fewer than 10 characters');
+    },
+  );
+
+  it('allows the override with a reason, and names the time and the reason', () => {
+    const decision = windowDecision(closed, { outside: true, reason: `  ${reason}\n` });
+    expect(decision).toEqual({
+      allowed: true,
+      override: true,
+      message: `Deploying outside the release window at Monday 15:24 in Tashkent, by the owner's override. Reason: ${reason}`,
+    });
+  });
+
+  it('inside the window, the override changes nothing', () => {
+    for (const outside of [false, true]) {
+      expect(windowDecision(open, { outside, reason: '' })).toEqual({
+        allowed: true,
+        override: false,
+        message: 'Release window open: Monday 18:30 in Tashkent.',
+      });
+    }
   });
 });
