@@ -97,8 +97,12 @@ describe('sameDayOpen (task 5.17)', () => {
   });
 
   it('is closed from the start minute of the first lesson slot', () => {
-    expect(sameDayOpen({ lessonsToday: false, nowMinutes: 540, firstLessonStart: 540 })).toBe(false);
-    expect(sameDayOpen({ lessonsToday: false, nowMinutes: 600, firstLessonStart: 540 })).toBe(false);
+    expect(sameDayOpen({ lessonsToday: false, nowMinutes: 540, firstLessonStart: 540 })).toBe(
+      false,
+    );
+    expect(sameDayOpen({ lessonsToday: false, nowMinutes: 600, firstLessonStart: 540 })).toBe(
+      false,
+    );
   });
 
   it('is open one minute before the first lesson slot', () => {
@@ -106,7 +110,9 @@ describe('sameDayOpen (task 5.17)', () => {
   });
 
   it('is open all day when no lesson slot falls today', () => {
-    expect(sameDayOpen({ lessonsToday: false, nowMinutes: 1439, firstLessonStart: null })).toBe(true);
+    expect(sameDayOpen({ lessonsToday: false, nowMinutes: 1439, firstLessonStart: null })).toBe(
+      true,
+    );
   });
 });
 

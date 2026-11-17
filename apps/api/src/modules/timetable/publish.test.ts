@@ -7054,7 +7054,12 @@ describe('publish', () => {
       const lesson = await t.createSlotType(s.branch, 'Early lesson', 'lesson', 40);
       // Grade 7 on Monday: a break at 07:30, lesson 1 at 07:40.
       const early = await t.createTemplate(s.branch, 'Early', [pause, lesson], '07:30');
-      await t.assign(s.branch, early, { level: 'weekday_grades', weekday: 1, gradeFrom: 7, gradeTo: 7 });
+      await t.assign(s.branch, early, {
+        level: 'weekday_grades',
+        weekday: 1,
+        gradeFrom: 7,
+        gradeTo: 7,
+      });
       // Grade 9 has no class in the branch: its lesson at 06:00 does not count.
       const dawn = await t.createTemplate(s.branch, 'Dawn', [lesson], '06:00');
       await t.assign(s.branch, dawn, { level: 'grades', gradeFrom: 9, gradeTo: 9 });
@@ -7161,7 +7166,10 @@ describe('publish', () => {
     const entriesOfPerson = (branch: string, staffId: string) =>
       t.database.migrator
         .selectFrom('staff_availability')
-        .select([sql<string>`valid_from::text`.as('from'), sql<string | null>`valid_until::text`.as('until')])
+        .select([
+          sql<string>`valid_from::text`.as('from'),
+          sql<string | null>`valid_until::text`.as('until'),
+        ])
         .where('branch_id', '=', branch)
         .where('staff_id', '=', staffId)
         .orderBy('valid_from')
@@ -7276,7 +7284,9 @@ describe('publish', () => {
         .transaction()
         .execute(async (transaction) => {
           await lock(transaction);
-          const own = await sql<{ pid: number }>`select pg_backend_pid() as pid`.execute(transaction);
+          const own = await sql<{ pid: number }>`select pg_backend_pid() as pid`.execute(
+            transaction,
+          );
           found(own.rows[0]?.pid ?? 0);
           await released;
         })
