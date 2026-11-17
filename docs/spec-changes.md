@@ -2,6 +2,16 @@
 
 The spec in `docs/spec/` was taken from the full spec document on 3 October 2026 (revision 88). Every later change to a spec file is listed here, newest first, with the date, what changed, why, and the files touched. Changes are made only with the `/spec-change` skill and the owner's approval.
 
+## 18 November 2026: a version may start today in a branch with no lesson today
+
+- What changed:
+  1. **A timetable version may start today**, not only tomorrow, when the branch has no lesson dated today and the first lesson of today has not begun: the earliest lesson slot of the day templates that apply today to the branch's classes, by the branch's clock. Both are checked again at the moment of saving. Such a publish only adds lessons, so "the past is closed" still holds for every lesson that exists. A version that starts today cannot be withdrawn. In every other case the start stays tomorrow at the earliest, and a change for today is a one-day change with a reason.
+  2. **A teacher's availability entry may start today** also when an entry of that branch is in force today, if the person has no lesson dated today in that branch (as teacher or substitute) and the branch's first lesson of today has not begun. Before, an entry started tomorrow at the earliest while one was in force today (task 5.5a-3b-1, decision 4, written in the spec now).
+- Why: the owner, 18 November 2026, about 02:15 Tashkent time, in chat. The Labzak branch has no published version and no dated lessons; the school wants its timetable to start on 18 November from lesson 1 at 09:00. The rule "tomorrow at the earliest" protects lessons that already exist, and a branch with none today has nothing to protect. One teacher's entry with no hours began today, so her new hours could only start tomorrow and her lessons of the day would have been blocked.
+- Not changed: filling a vacancy, a template change and a calendar change stay tomorrow at the earliest; withdraw stays "only before its start date"; the database guards of past lessons (0079, 0105) are unchanged, since a same-day start inserts lessons and deletes or re-points none.
+- Code: task 5.17 (pull request #345, `task/5.17-start-today-empty-branch`): `startChoices` in `packages/timetable-rules`, the start check of the publish, `earliestFrom` of availability.
+- Files: `docs/spec/06-timetable.md` (How surprises are prevented: The past is closed, Start date), `docs/spec/04-people.md` (Teacher and staff record, Availability), `docs/spec/16-open-questions.md` (row 21).
+
 ## 17 November 2026: parallel groups form one block only through a shared class
 
 - What changed: **parallel group lessons are linked by a shared class, not by their grade.** The groups of one subject that share a class, directly or through other groups of that subject, are one block, placed and moved together. Groups that share no class are separate blocks, even in one grade or pair of grades: each block has its own slots, its own teachers and its own lessons per week. Before, every group across classes of one grade or pair of grades was in one block with the others.
