@@ -2,6 +2,18 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 17 November 2026: task 5.15, parallel groups linked by a shared class
+
+- **Built**: groups of one subject are one block only when they share a class, directly or through other groups of the subject (`groupsLinked` in `packages/timetable-rules`; `load_block_rows` replaced in `0172_block_link_shared_class.sql`, no row changed). Two pairs of one grade (the Labzak grade 3 English) now take the same two teachers and their own slots, typed by hand, imported, placed in the grid and imported as a timetable.
+- A pattern block placed before that holds several whole blocks of one subject in one slot stays valid (`rowsTogether`, pattern mode only).
+- The spec text is pull request #343, the owner's to merge.
+- **Left out**: splitting an old pattern block that holds two pairs (handbook: remove it and place each pair again).
+
+The next sessions must know:
+
+- The note of the entry below, "Two groups across classes of the same grade set link into one block", is answered: they no longer do.
+- `real-size.ts` keys each pair of a grade as its own block; the small run has one pair per grade, so its times did not change beyond noise.
+
 ## 17 November 2026: groups for one sex, and mixed blocks of a pair of classes
 
 Not a task of the build plan: asked for by the owner on 17 November 2026 for the go-live of the Labzak branch with its timetable version 10, whose sport lessons pair a boys' lesson with a girls' lesson of another subject in every sport slot, three pairs of classes together. Spec change approved by the owner in the session.
