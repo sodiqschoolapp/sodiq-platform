@@ -14,7 +14,7 @@ import {
 import { mergeReviewed } from './merge-reviewed.js';
 import { pdfCheck, PdfCheckError } from './pdf-check.js';
 import { checkRelease, ReleaseCheckError } from './release-check.js';
-import { releaseWindowOpen, tashkentTime } from './release-window.js';
+import { windowDecision } from './release-window.js';
 import { deployServices, DeployError } from './render.js';
 import { smokeTest, SmokeError } from './smoke.js';
 
@@ -26,7 +26,8 @@ import { smokeTest, SmokeError } from './smoke.js';
 //   node dist/deploy/cli.js smoke <url>
 //     The checks against the address of the environment.
 //   node dist/deploy/cli.js window
-//     Fails outside the release window of production (release-window.ts).
+//     Fails outside the release window of production (release-window.ts),
+//     unless OUTSIDE_WINDOW is 'true' with a reason in OUTSIDE_WINDOW_REASON.
 //   node dist/deploy/cli.js release-check <sha>
 //     GITHUB_TOKEN and GITHUB_REPOSITORY in the environment. Fails unless the
 //     commit passed checks, e2e and deploy-test on main (release-check.ts).
@@ -114,13 +115,22 @@ try {
   } else if (command === 'window') {
     // The moment the owner's run starts, from the server's clock.
     const now = new SystemClock().now();
-    if (!releaseWindowOpen(now)) {
-      console.error(
-        `It is ${tashkentTime(now)} in Tashkent: production is deployed only from 18:00 to 06:00 and at the weekend (docs/deploy.md, Production).`,
-      );
+    // The owner's emergency override (owner, 17 November 2026): the inputs of the run,
+    // passed as environment variables, never pasted into the script.
+    const decision = windowDecision(now, {
+      outside: process.env.OUTSIDE_WINDOW === 'true',
+      reason: process.env.OUTSIDE_WINDOW_REASON ?? '',
+    });
+    if (!decision.allowed) {
+      console.error(decision.message);
       process.exit(1);
     }
-    console.log(`Release window open: ${tashkentTime(now)} in Tashkent.`);
+    if (decision.override) {
+      // A warning annotation, so the run's summary shows the override.
+      console.log(`::warning title=Outside the release window::${decision.message}`);
+    } else {
+      console.log(decision.message);
+    }
   } else if (command === 'release-check') {
     const [commitId] = rest;
     const token = process.env.GITHUB_TOKEN;

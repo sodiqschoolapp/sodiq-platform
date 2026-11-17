@@ -2,6 +2,16 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 17 November 2026: an emergency override of the production release window
+
+Not a task of the build plan: asked for by the owner on 17 November 2026, who approved the change to the deploy workflow (a file of the loop) in chat.
+
+- **Workflow** (`.github/workflows/deploy-production.yml`): two inputs, `outside_window` (a tick box, off by default) and `outside_window_reason` (text). The window step receives them as environment variables only; no `run` line names an input (`deploy-workflow.test.ts`).
+- **Code** (`apps/api/src/deploy/release-window.ts`): `windowDecision(now, { outside, reason })`. Inside the window the override changes nothing; outside it, a deploy goes ahead only when the box is ticked and the reason, spaces folded, has at least 10 characters. The run logs a warning annotation with the Tashkent time and the reason. The approval of the environment `production`, the release check, the migrations and the smoke test are unchanged and still run after it.
+- **Docs**: `docs/deploy.md`, Production, "The emergency override".
+
+Look first: `13`, Quality targets, "Releases are made without stopping the service and outside lesson hours" now has an owner-only exception. Proposed `/spec-change` wording: "Releases are made without stopping the service and outside lesson hours, except a deploy the owner starts outside the release window with a reason, in an emergency."
+
 ## 15 November 2026: task 5.14, the timetable import
 
 - **Built**: the system's Excel template of a draft's weekly pattern (`GET versions/:id/pattern/import-template`, logged), the upload (`PUT versions/:id/pattern/imports`, file route `PATTERN_IMPORT_ROUTE`), the preview and the confirm (`POST …/imports/:importId/preview|confirm`, the confirm with the ids of the draft's lessons the person agreed to remove), all under `timetable` edit; table `pattern_imports` (0170). Each row is matched to the draft's load row by class or group and subject, its teacher checked; `importedBlocks` (new in `packages/timetable-rules`) groups the lessons into the grid's blocks, pairings and doubles at their lesson numbers; `checkTimetable` checks the whole file; one `pattern.import` audit entry with every block removed and written.

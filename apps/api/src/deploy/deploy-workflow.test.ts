@@ -83,6 +83,31 @@ describe('the production deploy workflow', () => {
     expect(deploy).toContain("SECOND_STEP_KEY: ''");
   });
 
+  it('passes the emergency override of the window as environment variables only (owner, 17 November 2026)', () => {
+    const triggers = workflow.slice(
+      workflow.indexOf('\non:\n'),
+      workflow.indexOf('\npermissions:'),
+    );
+    expect(triggers).toMatch(
+      /outside_window:\n\s+description: .+\n\s+type: boolean\n\s+default: false/,
+    );
+    expect(triggers).toMatch(/outside_window_reason:\n\s+description: .+\n\s+type: string/);
+
+    const deploy = jobOf(workflow, 'deploy');
+    const step = deploy.slice(deploy.indexOf('- name: Inside the release window'));
+    const window = step.slice(0, step.indexOf('\n      - name:', 1));
+    expect(window).toContain('OUTSIDE_WINDOW: ${{ inputs.outside_window }}');
+    expect(window).toContain('OUTSIDE_WINDOW_REASON: ${{ inputs.outside_window_reason }}');
+    // A typed reason never reaches a script as text: no run line names an input.
+    for (const line of workflow.split('\n').filter((one) => /^\s+run:/.test(one))) {
+      expect(line).not.toContain('inputs.');
+    }
+    // The override lifts the window alone: the other checks stay after it.
+    for (const later of ['cli.js release-check', 'pnpm db:migrate', 'cli.js smoke']) {
+      expect(deploy.indexOf(later)).toBeGreaterThan(deploy.indexOf('cli.js window'));
+    }
+  });
+
   it('is the only workflow that names the production environment', () => {
     expect(ci).not.toMatch(/name: production/);
     expect(ci).not.toContain('PRODUCTION_URL');
