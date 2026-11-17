@@ -5,7 +5,7 @@ import { ru } from '@/i18n/locales/ru';
 import { uz } from '@/i18n/locales/uz';
 import { schoolDateText } from '@/lib/dates';
 import { fakeApi, json, NORTH, refusal, renderApp, sessionOf } from '@/testing/render-app';
-import { isSearchShortcut } from './command-search';
+import { isSearchShortcut, matchingPages } from './command-search';
 import { recordSearchQuery } from './search-api';
 
 type Language = 'en' | 'ru' | 'uz';
@@ -202,6 +202,47 @@ describe('the search of pages', () => {
     // Enter with nothing to open does nothing.
     fireEvent.keyDown(box(), { key: 'Enter' });
     await dialog();
+  });
+
+  // Design review of 17 November 2026 (T3): "Ali" matched "Dars jadvali" inside the word
+  // "jadvali", put the timetable first, and Enter opened it instead of the student Aliyev.
+  it('matches a page by the start of a word of its title, never inside a word', () => {
+    const pages = [
+      { to: '/timetable', title: 'Dars jadvali' },
+      { to: '/journal', title: 'Jurnallar' },
+      { to: '/people/students', title: 'Oʻquvchilar' },
+    ] as const;
+    const titles = (typed: string) => matchingPages(pages, typed).map((page) => page.title);
+    expect(titles('ali')).toEqual([]);
+    expect(titles('jadval')).toEqual(['Dars jadvali']);
+    expect(titles('dars jad')).toEqual(['Dars jadvali']);
+    expect(titles('JURNAL')).toEqual(['Jurnallar']);
+    // The folding of the lists: an ASCII apostrophe and Cyrillic find the same page.
+    expect(titles("o'quv")).toEqual(['Oʻquvchilar']);
+    expect(titles('Ўқув')).toEqual(['Oʻquvchilar']);
+  });
+
+  it('keeps the line the arrows reach in sight', async () => {
+    // jsdom draws nothing and has no scrollIntoView: the test gives one for its duration.
+    const scrolled: string[] = [];
+    Object.defineProperty(Element.prototype, 'scrollIntoView', {
+      configurable: true,
+      value(this: Element) {
+        scrolled.push(this.id);
+      },
+    });
+    try {
+      await openHome();
+      pressShortcut();
+      await dialog();
+      fireEvent.keyDown(box(), { key: 'ArrowDown' });
+      const second = screen.getByRole('option', { name: en.menu.timetable });
+      await waitFor(() => {
+        expect(scrolled.at(-1)).toBe(second.id);
+      });
+    } finally {
+      Reflect.deleteProperty(Element.prototype, 'scrollIntoView');
+    }
   });
 
   it('moves with the arrows and opens the page with Enter', async () => {

@@ -66,8 +66,10 @@ interface TitledPage extends IndexedPage {
 }
 
 /**
- * The pages whose title holds every typed word, as the lists compare text: no
- * difference of case, of apostrophes, of composed letters or of script.
+ * The pages whose title has a word that starts with each typed word, as the lists compare text:
+ * no difference of case, of apostrophes, of composed letters or of script. A word inside a word
+ * is no match: "Ali" put the page "Dars jadvali" above the students Aliyev, and Enter opened the
+ * timetable (design review of 17 November 2026, T3).
  */
 export function matchingPages(pages: readonly TitledPage[], typed: string): TitledPage[] {
   const words = searchWords(typed);
@@ -75,8 +77,8 @@ export function matchingPages(pages: readonly TitledPage[], typed: string): Titl
     return [...pages];
   }
   return pages.filter((page) => {
-    const title = searchKey(page.title);
-    return words.every((word) => title.includes(word));
+    const titleWords = searchKey(page.title).split(/\s+/);
+    return words.every((word) => titleWords.some((one) => one.startsWith(word)));
   });
 }
 
@@ -313,6 +315,13 @@ export function CommandSearch() {
   const activeIndex = Math.min(active, Math.max(0, options.length - 1));
   const activeOption = options[activeIndex];
   const optionId = (index: number): string => `${listId}-${String(index)}`;
+  // The line the arrows reach stays in sight in the scrolled list (design review, T3).
+  useEffect(() => {
+    if (!open) return;
+    document
+      .getElementById(`${listId}-${String(activeIndex)}`)
+      ?.scrollIntoView?.({ block: 'nearest' });
+  }, [open, activeIndex, listId]);
 
   const failed = shown ? answers.filter((answer) => answer.isError) : [];
   // Every kind answered for the text typed now: not during the pause, not
