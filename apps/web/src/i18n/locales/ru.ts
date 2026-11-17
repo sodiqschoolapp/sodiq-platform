@@ -7762,7 +7762,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       changes: {
         entry: 'Введено',
         not_held: '«Не проводилась»',
-        carry: 'Перенесено',
+        carry: 'Перенесено на следующий урок',
         move: 'Перенесено на урок проверки',
         takeover: 'Взято планом',
         separation: 'План разделён',
