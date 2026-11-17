@@ -434,6 +434,12 @@ describe('the readiness of a draft, steps 1 to 5', () => {
       ready: false,
       classesOver: [{ id: s.classId, lessons: 16, lessonSlots: 15 }],
     });
+    const totals = loadTotalsSchema.parse(
+      (await get(`/api/timetable/versions/${s.version}/totals`, s.branch).expect(200)).body,
+    );
+    expect(totals.classes).toEqual([
+      expect.objectContaining({ id: s.classId, lessons: 16, lessonSlots: 15 }),
+    ]);
   });
 
   it('holds step 4 for a room type with no room that is not closed, and a closed room named', async () => {

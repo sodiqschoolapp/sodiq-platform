@@ -2,6 +2,17 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 17 November 2026: task 5.16, a slot of one-sex mixed halves counts once
+
+- **Built**: `classWeekLessons` (`packages/timetable-rules/src/totals.ts`) counts the one-sex mixed halves of each split (a class, or a pair of classes) by the larger of the boys' and the girls' lessons, so a sport slot counts once; every other row as before. `totalsOf` passes the mixed mark and the groups' sex; the load page, readiness step 2 and publish agree. No migration.
+- Fixes the production refusal of Labzak grades 1 to 4 (42 lessons for 40 slots; really 40).
+- **Left out**: nothing.
+
+The next sessions must know:
+
+- Mixed halves for everyone still count per subject, and a group outside a split linked to its rows counts beside the split (an over-count by intent, `totals.test.ts`); a future change of either is a reading of `06` step 2 and needs the students of the groups.
+- The fix reaches production only with the owner's deploy.
+
 ## 17 November 2026: task 5.15, parallel groups linked by a shared class
 
 - **Built**: groups of one subject are one block only when they share a class, directly or through other groups of the subject (`groupsLinked` in `packages/timetable-rules`; `load_block_rows` replaced in `0172_block_link_shared_class.sql`, no row changed). Two pairs of one grade (the Labzak grade 3 English) now take the same two teachers and their own slots, typed by hand, imported, placed in the grid and imported as a timetable.

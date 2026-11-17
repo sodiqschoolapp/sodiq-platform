@@ -65,6 +65,20 @@ The owner's answers to the decided-ahead questions for Phase 10, given in chat o
 19. Production deploys only after 18:00 or at the weekend, Tashkent time.
 20. The test environment stays after go-live; every change is tried there first.
 
+## 17 November 2026: a slot of one-sex mixed halves counts once in a class's weekly total (task 5.16)
+
+Bug on production reported by the owner (Labzak, quarter 2: grade 1 to 4 classes shown with 42 lessons for 40 slots). Plan approved on pull request #344 with corrections 1 to 3. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first** (a spec text that should be clearer). A reading, not a rule change: `06` step 2, "the weekly lessons of every class fit into the week's lesson slots", counts the slots a class needs, so a slot holding a boys' and a girls' lesson of a mixed block is one. Proposed `/spec-change` wording for `06`, step 2, "Ready when": "The weekly lessons of every class fit into the week's lesson slots, a slot of a mixed block counted once for the class (the larger of the boys' and the girls' lessons of the split), and every load has a teacher or a vacancy." | `edge/timetable`, Structure (the mixed block); `06`, Rules |
+| The rows marked mixed of one split whose groups are all for one sex count `max(boys, girls)`, each side summed by subject (the most lessons of the side's rows of a subject) | Every sport slot holds the boys once and the girls once (`checkBlocks`, `rowsTogether`); each student is in one group of a subject (`05`, Group) |
+| An unpaired extra half counts (boys 6, girls 5 gives 6) | It still needs a slot; whether it can be placed is the grid's and the solver's to refuse |
+| Mixed halves for everyone, and every mixed row of a split with one such half, count per subject as before; so does a group outside the split, also one linked to the split's rows by a shared class (an over-count by intent) | Without the students the total cannot tell complementary halves; counting more holds a named step, counting less lets through a draft that cannot be built |
+| A class counts its pair's split once and its own split once more | `isSplit`, `splitKeyOf` (spec change of 17 November 2026) |
+| The load page's label "Lessons in the load" stays; the handbook says a sport slot counts once | The number is the one step 2 compares with the slots |
+| Task id 5.16, ticked after 5.15 before the owner gate line, which stays as it is | The owner asked for a `task/<id>-…` branch |
+
 ## 17 November 2026: parallel groups linked by a shared class (task 5.15)
 
 Spec change approved by the owner in the session (`docs/spec-changes.md`, 17 November 2026, pull request #343). Plan approved on pull request #342 with corrections 1 to 3; decisions 1 to 3 marked Look first and confirmed there. Replaces decision 2 of 3.4b (15 October 2026) for the link of groups. Flagged on issue #42.

@@ -90,7 +90,6 @@ export {
   weekDaysOf,
   weekLessonSlots,
   type Interval,
-  type TotalsGroup,
   type TotalsRow,
   type WeekDay,
 } from './totals.js';

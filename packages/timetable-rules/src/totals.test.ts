@@ -332,6 +332,7 @@ describe('classWeekLessons with mixed halves for one sex', () => {
     expect(totals.get('sydney')).toBe(35 + 5 + 2);
     expect(totals.get('columbia')).toBe(5);
     expect(totals.get('harvard')).toBe(2);
+    expect(totals.get('yale')).toBe(2);
   });
 
   it("takes the larger of two boys' groups of one subject, not their sum", () => {
