@@ -1226,6 +1226,67 @@ describe('the timetable import', () => {
     });
   });
 
+  // Task 5.15: 06, Model, Parallel group lessons (changed 17 November 2026): "Groups that share no
+  // class are separate blocks, even in one grade". The Labzak shape with invented names.
+  describe('two pairs of one grade that share no class (task 5.15)', () => {
+    it('imports the two pairs at different hours, the same two teachers in each, with no blocked rule', async () => {
+      const reading = await load.classes.subject({ grades: [7], name: 'Reading Plum' });
+      const cambridge = await load.classes.schoolClass(t.north, year, {
+        grade: 7,
+        name: 'Cambridge',
+      });
+      const durham = await load.classes.schoolClass(t.north, year, { grade: 7, name: 'Durham' });
+      const [first, second] = [(await teacher(reading)).staffId, (await teacher(reading)).staffId];
+      const version = await load.version(t.north, year, { startsOn: '2026-10-19' });
+      const rowIds = new Map<string, string>();
+      for (const [groupName, classes, teacherId] of [
+        ['RD-OP-1', [oxford, princeton], first],
+        ['RD-OP-2', [oxford, princeton], second],
+        ['RD-CD-1', [cambridge, durham], first],
+        ['RD-CD-2', [cambridge, durham], second],
+      ] as const) {
+        const groupId = await load.classes.group(t.north, year, reading, [...classes], {
+          name: groupName,
+        });
+        rowIds.set(
+          groupName,
+          await load.row({
+            branch_id: t.north,
+            version_id: version,
+            group_id: groupId,
+            subject_id: reading,
+            teacher_id: teacherId,
+            lessons_per_week: 1,
+          }),
+        );
+      }
+      const preview = await uploaded(version, [
+        at('Monday', 3, 'RD-OP-1', 'Reading Plum', name(first)),
+        at('Monday', 3, 'RD-OP-2', 'Reading Plum', name(second)),
+        at('Wednesday', 2, 'RD-CD-1', 'Reading Plum', name(first)),
+        at('Wednesday', 2, 'RD-CD-2', 'Reading Plum', name(second)),
+      ]);
+      expect(
+        preview.clean,
+        JSON.stringify(preview.rows.filter((row) => row.problems.length > 0)),
+      ).toBe(true);
+      expect(await confirmed(version, preview)).toEqual({
+        outcome: 'saved',
+        removed: 0,
+        placed: 4,
+      });
+      const grid = await gridOf(version);
+      expect(grid.results.filter((one) => one.severity === 'blocked')).toEqual([]);
+      // Each pair is one block of its own.
+      const entries = await entriesOf(version);
+      const blockOfRow = (groupName: string) =>
+        entries.find((entry) => entry.load_row_id === rowIds.get(groupName))?.block_id;
+      expect(blockOfRow('RD-OP-1')).toBe(blockOfRow('RD-OP-2'));
+      expect(blockOfRow('RD-CD-1')).toBe(blockOfRow('RD-CD-2'));
+      expect(blockOfRow('RD-OP-1')).not.toBe(blockOfRow('RD-CD-1'));
+    });
+  });
+
   describe('records out of service, other branches and the date the slots are read on', () => {
     it('matches a live vacancy beside a closed namesake, never ambiguous', async () => {
       const { version } = await draft();

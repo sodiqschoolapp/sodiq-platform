@@ -522,14 +522,11 @@ export async function buildSchool(t: DayTemplatesKit, size: RunSize, seed = 512)
             const unit = ofGrade.slice(index, index + 2);
             const students = unit.flatMap((one) => one.students);
             const parts = unit.length === 2 ? 3 : 2;
-            // The database makes one block of every group of a grade and
-            // subject that spans more than one class (`load_block_rows`, 0056),
-            // so the pairs of a grade share one block and need different
-            // teachers; a class left alone is a block of its own.
-            const key =
-              unit.length === 2
-                ? `groups:${String(grade)}:${lessonOf.subject}`
-                : `groups:${unit.map((one) => one.id).join('+')}:${lessonOf.subject}`;
+            // Each pair, and a class left alone, is a block of its own: groups
+            // of one subject are linked by a shared class only (task 5.15,
+            // `load_block_rows` of 0172), so two pairs of a grade may share
+            // teachers and take other slots.
+            const key = `groups:${unit.map((one) => one.id).join('+')}:${lessonOf.subject}`;
             for (let part = 0; part < parts; part += 1) {
               const groupId = await group(
                 lessonOf.subject,

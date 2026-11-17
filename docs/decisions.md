@@ -65,6 +65,18 @@ The owner's answers to the decided-ahead questions for Phase 10, given in chat o
 19. Production deploys only after 18:00 or at the weekend, Tashkent time.
 20. The test environment stays after go-live; every change is tried there first.
 
+## 17 November 2026: parallel groups linked by a shared class (task 5.15)
+
+Spec change approved by the owner in the session (`docs/spec-changes.md`, 17 November 2026, pull request #343). Plan approved on pull request #342 with corrections 1 to 3; decisions 1 to 3 marked Look first and confirmed there. Replaces decision 2 of 3.4b (15 October 2026) for the link of groups. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first** (a database rule and three tests changed by a requirement). `load_block_rows` (0172) links groups of one subject by a shared class only, so `load_block_lessons` and `load_block_teacher` bind fewer rows; the tests "makes two groups across classes of one grade one block with no class in common", "links two-grade groups of the same pair of grades" (`blocks.test.ts`) and "binds parallel groups of one grade with no class in common" (`load-blocks.database.test.ts`) became their opposites. The lesson constraints against double booking are untouched | `06`, Model, Parallel group lessons (17 November 2026) |
+| **Look first** (a blocked rule relaxed). In pattern mode a pattern block may be the union of several whole load blocks of one subject in one slot (`rowsTogether`); part of a block, two subjects or two slots stay `split_apart`. `student_double` and the students-not-placed check still run | Placements stored under the old rule stay valid with no row rewritten |
+| **Look first.** The link is a shared class, followed through other groups of the subject; a split of a class beside a group of that class and another stays one block | `06`, as changed; `edge/timetable`, Structure: "every student of its classes is in exactly one of its lessons" |
+| A pattern block stored under the old rule that holds two pairs is carried as it is by a copy and a publish; not split automatically. Remedy in the handbook: remove it in the grid and place each pair again | Splitting would divide doubles and locks of the old block |
+| Task id 5.15, ticked after 5.14 before the owner gate line, which stays as it is | The owner asked for a `task/<id>-…` branch |
+
 ## 17 November 2026: groups for one sex, and mixed blocks of a pair of classes (owner's request, not a build-plan task)
 
 Spec change approved by the owner in the session (`docs/spec-changes.md`, 17 November 2026). Plan checked by the `spec-reviewer` agent; its must-fix 1 to 6 and should-fix 1 to 9 are answered below; the code review's must-fix 1 to 3 and should-fix 1 to 10 too. Flagged on issue #42.

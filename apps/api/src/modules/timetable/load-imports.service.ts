@@ -118,7 +118,7 @@ const placeholderOf = (rowNumber: number): string =>
  * the branch's records of the draft (never creating one), and every rule of a load row typed by
  * hand is checked through the one engine (`LoadFacts`, `loadRowProblems`) with the draft's rows
  * and every row of the file as the version's rows, so the block rules see the load as it will be;
- * a block given in part (`missingBlockGroups`, decision 2) and a repeat are problems too. The
+ * a block given in part (`missingBlockGroups`, 5.13 decision 2; the groups linked by a shared class, task 5.15) and a repeat are problems too. The
  * confirm writes every row or none, under the draft's edit lock, with one audit entry.
  */
 @Injectable()

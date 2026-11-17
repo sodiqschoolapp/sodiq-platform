@@ -488,6 +488,87 @@ describe('one place at a time', () => {
     });
   });
 
+  // Task 5.15, decision 2: a pattern block placed under the old rule may hold several whole blocks
+  // of the load of one subject in one slot (06, Model, Parallel group lessons, changed 17 November
+  // 2026); part of a block, two subjects or two slots stay split_apart.
+  describe('a pattern block of several whole blocks of the load (task 5.15)', () => {
+    const OXFORD = ['ox-1', 'ox-2'];
+    const PRINCETON = ['pr-1', 'pr-2'];
+    const loadRows = [...OXFORD, ...PRINCETON].map((id) => ({
+      id,
+      lessonsPerWeek: 3,
+      deliberatelyShort: false,
+      doubleLessons: false,
+      block: OXFORD.includes(id) ? OXFORD : PRINCETON,
+    }));
+    const units = new Map([
+      ...facts().units,
+      ...['g-ox-1', 'g-ox-2', 'g-pr-1', 'g-pr-2'].map(
+        (id) => [id, unit(id, 'group', [7])] as const,
+      ),
+    ]);
+    const rooms = new Map([...facts().rooms, ['r3', room('r3')], ['r4', room('r4')]]);
+    const teachers = new Map([...facts().teachers, ['t4', teacher('t4')]]);
+    const the = (extra: Partial<Facts> = {}) =>
+      facts({ loadRows, units, rooms, teachers, ...extra });
+    // 7a's English halves (s1, s2 | s3, s4) and 7b's (s5 | s6): two blocks of the load.
+    const part = (rowId: string, extra: Partial<Placement> = {}): Placement => {
+      const n = ['ox-1', 'ox-2', 'pr-1', 'pr-2'].indexOf(rowId) + 1;
+      const classId = rowId.startsWith('ox') ? '7a' : '7b';
+      const students: Record<string, string[]> = {
+        'ox-1': ['s1', 's2'],
+        'ox-2': ['s3', 's4'],
+        'pr-1': ['s5'],
+        'pr-2': ['s6'],
+      };
+      return place({
+        id: rowId,
+        loadRowId: rowId,
+        subjectId: 'english',
+        classId: null,
+        groupId: `g-${rowId}`,
+        classIds: [classId],
+        studentIds: students[rowId] ?? [],
+        blockId: 'blk',
+        teacherIds: [`t${n}`],
+        roomId: `r${n}`,
+        ...extra,
+      });
+    };
+    const apart = (placements: Placement[], extra: Partial<Facts> = {}) =>
+      only(checkTimetable(placements, the(extra)), 'split_apart').map((one) => one.detail);
+
+    it('passes two whole blocks of one subject in one slot', () => {
+      expect(apart(['ox-1', 'ox-2', 'pr-1', 'pr-2'].map((id) => part(id)))).toEqual([]);
+    });
+
+    it('refuses one whole block with part of another', () => {
+      // 7b's s6 is missing too, so the students count comes as well; the rows count is the rule.
+      expect(apart(['ox-1', 'ox-2', 'pr-1'].map((id) => part(id)))).toContainEqual({ rows: 3 });
+    });
+
+    it('refuses two whole blocks of two subjects in one pattern block', () => {
+      const placements = ['ox-1', 'ox-2', 'pr-1', 'pr-2'].map((id) =>
+        part(id, id.startsWith('pr') ? { subjectId: 'math' } : {}),
+      );
+      expect(apart(placements)).toEqual([{ rows: 4 }]);
+    });
+
+    it('refuses two whole blocks of one pattern block at different times', () => {
+      const placements = ['ox-1', 'ox-2', 'pr-1', 'pr-2'].map((id) =>
+        part(id, id.startsWith('pr') ? L3 : {}),
+      );
+      expect(apart(placements)).toEqual([{ slots: 2 }]);
+    });
+
+    it('passes each pair alone in its own pattern block at different times', () => {
+      const placements = ['ox-1', 'ox-2', 'pr-1', 'pr-2'].map((id) =>
+        part(id, id.startsWith('pr') ? { ...L3, blockId: 'blk-2' } : {}),
+      );
+      expect(apart(placements)).toEqual([]);
+    });
+  });
+
   it('leaves out cancelled lessons and exempt students (plan finding 2)', () => {
     // The sitting class's lesson was cancelled with the cause "exam": the caller
     // passes no placement for it, so the exam meets no class lesson.

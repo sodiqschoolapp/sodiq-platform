@@ -22,6 +22,7 @@ Not written yet for most of the teaching load and the timetable: task 3.7 descri
 
 - Every rule of a row typed by hand applies: the teacher has the subject, the grade and the language of the class or group; the parts of a split or of a set of groups have the same lessons per week and different teachers; a class and a group of it never both have the subject.
 - Every group of a block needs a row: a split given to one half only is a problem. By hand, such a block is only listed until its other part is added.
+- Which groups make one block: the groups of one subject that share a class, directly or through other groups of that subject. Groups that share no class are blocks of their own, even in one grade: English for 3 Oxford and 3 Princeton can be at another time than English for 3 Cambridge and 3 Durham, with the same two teachers in both. A timetable placed before 17 November 2026 may hold two such blocks together in one slot; it stays valid, and to place them apart, remove that block in the grid and place each pair again.
 - A row that the draft already has, or that the file has twice, is a problem.
 - Nothing is added until every row is ready; then every row is added at once. Rows already in the draft stay.
 - The same file is not imported twice into a draft, and a template made for another draft is refused.

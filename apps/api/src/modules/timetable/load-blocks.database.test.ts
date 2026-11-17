@@ -194,15 +194,28 @@ describe('the blocks of a teaching load in the database', () => {
       ]);
     });
 
-    it('binds parallel groups of one grade with no class in common', async () => {
+    // Task 5.15 (0172): "Groups that share no class are separate blocks, even in one grade" (06,
+    // Model, Parallel group lessons, changed 17 November 2026). This test stated the grade link
+    // before; it is its opposite now (Look first 1).
+    it('lets parallel groups of one grade with no class in common have other lessons, on insert and on update', async () => {
       const cambridge = await schoolClass();
-      const yale = await schoolClass();
+      const durham = await schoolClass();
       const m1 = await kit.classes.group(north, northYear, subject, [oxford, princeton]);
-      const m2 = await kit.classes.group(north, northYear, subject, [cambridge, yale]);
+      const m2 = await kit.classes.group(north, northYear, subject, [cambridge, durham]);
       await insertRow(part(m1));
+      const rowM2 = await insertRow(part(m2, { teacher_id: second, lessons_per_week: 2 }));
+      await updateRows([[rowM2, { lessons_per_week: 4 }]]);
+    });
+
+    it('still binds a group of a pair and a split of one of its classes, on insert and on update', async () => {
+      const pair = await kit.classes.group(north, northYear, subject, [oxford, princeton]);
+      const alone = await kit.classes.group(north, northYear, subject, [oxford]);
+      await insertRow(part(pair));
       expect(
-        await refusal(insertRow(part(m2, { teacher_id: second, lessons_per_week: 2 }))),
-      ).toMatchObject({
+        await refusal(insertRow(part(alone, { teacher_id: second, lessons_per_week: 2 }))),
+      ).toMatchObject({ constraint: 'load_block_lessons' });
+      const rowAlone = await insertRow(part(alone, { teacher_id: second }));
+      expect(await refusal(updateRows([[rowAlone, { lessons_per_week: 2 }]]))).toMatchObject({
         constraint: 'load_block_lessons',
       });
     });
@@ -227,6 +240,56 @@ describe('the blocks of a teaching load in the database', () => {
       expect(await refusal(updateRows([[rowB, { teacher_id: first }]]))).toMatchObject({
         constraint: 'load_block_teacher',
       });
+    });
+  });
+
+  // Task 5.15 (0172): two pairs of one grade that share no class are two blocks, so one teacher
+  // may teach a group of each (the Labzak shape, invented names).
+  describe('different teachers across two pairs of one grade (task 5.15)', () => {
+    it('lets one teacher take a group of each pair, on insert and on update', async () => {
+      const cambridge = await schoolClass();
+      const durham = await schoolClass();
+      const op1 = await kit.classes.group(north, northYear, subject, [oxford, princeton]);
+      const op2 = await kit.classes.group(north, northYear, subject, [oxford, princeton]);
+      const cd1 = await kit.classes.group(north, northYear, subject, [cambridge, durham]);
+      const cd2 = await kit.classes.group(north, northYear, subject, [cambridge, durham]);
+      await insertRow(part(op1, { teacher_id: first }));
+      await insertRow(part(op2, { teacher_id: second }));
+      await insertRow(part(cd1, { teacher_id: first }));
+      const rowCd2 = await insertRow(part(cd2, { teacher_id: third }));
+      await updateRows([[rowCd2, { teacher_id: second }]]);
+    });
+
+    it('refuses one teacher on two groups that share a class, on insert and on update', async () => {
+      const cambridge = await schoolClass();
+      const ab = await kit.classes.group(north, northYear, subject, [oxford, princeton]);
+      const ac = await kit.classes.group(north, northYear, subject, [oxford, cambridge]);
+      await insertRow(part(ab));
+      expect(await refusal(insertRow(part(ac)))).toMatchObject({
+        constraint: 'load_block_teacher',
+      });
+      const rowAc = await insertRow(part(ac, { teacher_id: second }));
+      expect(await refusal(updateRows([[rowAc, { teacher_id: first }]]))).toMatchObject({
+        constraint: 'load_block_teacher',
+      });
+    });
+
+    it('answers the shared-class block only from load_block_rows, as the application role', async () => {
+      const cambridge = await schoolClass();
+      const durham = await schoolClass();
+      const op1 = await kit.classes.group(north, northYear, subject, [oxford, princeton]);
+      const op2 = await kit.classes.group(north, northYear, subject, [oxford, princeton]);
+      const cd1 = await kit.classes.group(north, northYear, subject, [cambridge, durham]);
+      const a = await insertRow(part(op1));
+      const b = await insertRow(part(op2, { teacher_id: second }));
+      await insertRow(part(cd1, { teacher_id: third }));
+      const ids = await inBranch(north, async (transaction) => {
+        const found = await sql<{ id: string }>`select id from load_block_rows(${a})`.execute(
+          transaction,
+        );
+        return found.rows.map((one) => one.id).sort();
+      });
+      expect(ids).toEqual([a, b].sort());
     });
   });
 

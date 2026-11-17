@@ -425,6 +425,94 @@ describe('splits, groups and weekly totals of the teaching load', () => {
     });
   });
 
+  // Task 5.15: 06, Model, Parallel group lessons (changed 17 November 2026): "Groups that share no
+  // class are separate blocks, even in one grade". The Labzak shape: two pairs of one grade, two
+  // teachers each teaching one group of each pair. Invented names.
+  describe('two pairs of one grade that share no class (task 5.15)', () => {
+    async function twoPairs() {
+      const version = await draft();
+      const [oxford, princeton, cambridge, durham] = [
+        await schoolClass(),
+        await schoolClass(),
+        await schoolClass(),
+        await schoolClass(),
+      ];
+      const groups = {
+        op1: await group([oxford, princeton]),
+        op2: await group([oxford, princeton]),
+        cd1: await group([cambridge, durham]),
+        cd2: await group([cambridge, durham]),
+      };
+      return { version, oxford, cambridge, groups };
+    }
+
+    it('takes one teacher on a group of each pair, typed by hand, and gives each pair its own block', async () => {
+      const { version, groups } = await twoPairs();
+      const [first, second] = [await teacher(), await teacher()];
+      const op1 = rowOf(await createRow(version.id, { groupId: groups.op1, teacherId: first }));
+      rowOf(await createRow(version.id, { groupId: groups.op2, teacherId: second }));
+      const cd1 = rowOf(await createRow(version.id, { groupId: groups.cd1, teacherId: first }));
+      const cd2 = rowOf(await createRow(version.id, { groupId: groups.cd2, teacherId: second }));
+      expect(cd2.problems).toEqual([]);
+      const rows = (await loadOf(version.id)).rows;
+      const blockOf = (id: string) =>
+        (rows.find((one) => one.id === id)?.block ?? []).map((part) => part.id).sort();
+      expect(blockOf(op1.id)).toHaveLength(2);
+      expect(blockOf(op1.id)).not.toContain(cd1.id);
+      expect(blockOf(cd1.id)).toEqual([cd1.id, cd2.id].sort());
+      expect(rows.every((one) => one.problems.length === 0)).toBe(true);
+    });
+
+    it('writes a lessons edit to its own pair only, and lets the pairs differ', async () => {
+      const { version, groups } = await twoPairs();
+      const op1 = rowOf(
+        await createRow(version.id, { groupId: groups.op1, teacherId: await teacher() }),
+      );
+      const op2 = rowOf(
+        await createRow(version.id, { groupId: groups.op2, teacherId: await teacher() }),
+      );
+      const cd1 = rowOf(
+        await createRow(version.id, { groupId: groups.cd1, teacherId: await teacher() }),
+      );
+      const cd2 = rowOf(
+        await createRow(version.id, { groupId: groups.cd2, teacherId: await teacher() }),
+      );
+      const response = await editRow(version.id, op1, { lessonsPerWeek: 5 });
+      expect(rowOf(response).lessonsPerWeek).toBe(5);
+      const lessons = new Map(
+        (await loadOf(version.id)).rows.map((one) => [one.id, one.lessonsPerWeek]),
+      );
+      expect([op1, op2, cd1, cd2].map((one) => lessons.get(one.id))).toEqual([5, 5, 3, 3]);
+      const [entry] = await t.entries('teaching_load.edit', op1.id);
+      expect(entry).toMatchObject({
+        new_value: { lessonsPerWeek: 5, parts: [{ rowId: op2.id, lessonsPerWeek: 5 }] },
+      });
+    });
+
+    it("offers the other pair's teacher, and still leaves out a teacher of a group that shares a class", async () => {
+      const { version, oxford, cambridge, groups } = await twoPairs();
+      const taken = await teacher();
+      rowOf(await createRow(version.id, { groupId: groups.op1, teacherId: taken }));
+      const offered = (groupId: string) =>
+        get(
+          `/api/timetable/versions/${version.id}/load/teachers?groupId=${groupId}&subjectId=${subject}`,
+        )
+          .expect(200)
+          .then((response) => loadTeachersSchema.parse(response.body));
+      expect((await offered(groups.cd1)).teachers.map((one) => one.id)).toContain(taken);
+      // A group of Oxford and Cambridge shares Oxford with the first pair: one block with it.
+      const across = await group([oxford, cambridge]);
+      const answer = await offered(across);
+      expect(answer.teachers.map((one) => one.id)).not.toContain(taken);
+      expect(answer.excluded.find((one) => one.id === taken)).toMatchObject({ reason: 'block' });
+      refusedWith(
+        await createRow(version.id, { groupId: across, teacherId: taken }),
+        409,
+        'load_block_teacher',
+      );
+    });
+  });
+
   describe('students not placed (decision 4)', () => {
     it('counts the students with a gap and those of a group without a row, and never refuses', async () => {
       const version = await draft();

@@ -17,7 +17,8 @@ export const blockRowOf = (row: StoredLoadRow): BlockRow => ({
 
 /**
  * The groups named, with their subject, classes and the grades of those
- * classes, as `loadBlocks` reads them (task 3.4b, decision 2). Only the groups
+ * classes, as `loadBlocks` reads them: groups of one subject are linked by a
+ * shared class (task 5.15; the grades are no longer a link). Only the groups
  * the transaction sees: the rows of a version name the groups of its branch.
  */
 export async function readBlockGroups(
