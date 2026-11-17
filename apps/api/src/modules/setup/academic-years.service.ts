@@ -657,6 +657,7 @@ export class AcademicYears {
         // Task 10.5 (decision 9): the demo time for the top bar, none where the clock is real:
         // everywhere the demo clock is off, and on the test environment before the first jump.
         demoNow: this.config.demoClock && this.demoClock.moved() ? now.toISOString() : null,
+        timeZone: branch.time_zone,
       };
     });
   }
