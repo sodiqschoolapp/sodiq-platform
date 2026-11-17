@@ -176,7 +176,8 @@ export class ClassesKit {
           name: input.name ?? `G-${String(count)}`,
           language: input.language ?? 'uz',
           max_size: input.size ?? 20,
-          sex: input.sex ?? null,
+          // Only when asked: a migration test builds the database before 0171 added the column.
+          ...(input.sex === undefined ? {} : { sex: input.sex }),
         })
         .returning('id')
         .executeTakeFirstOrThrow();
