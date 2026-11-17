@@ -641,7 +641,7 @@ describe('class transfers', () => {
           group_id: ofYale,
           valid_from: '2026-10-19',
           cause: 'automatic',
-          review: true,
+          review: false,
         }),
       ]);
       const automatic = await t.database.migrator

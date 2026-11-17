@@ -3394,6 +3394,12 @@ try {
      */
     mixed?: { readonly staffId: string; readonly phone: string };
     /**
+     * The owner's spec change of 17 November 2026: the mixed groups draw from
+     * 7 Oxford and 7 Princeton together (a pair of classes), the boys' halves
+     * for boys only and the girls' for girls only.
+     */
+    pair?: boolean;
+    /**
      * Task 5.5a-1: a draft that can be published: four dated quarters, one
      * lesson a week per row (each placed), and Geometry's distributions in
      * the branch.
@@ -4022,9 +4028,10 @@ try {
             transaction
               .insertInto('subjects')
               .values({
-                name_uz: uz,
-                name_ru: ru,
-                name_en: enName,
+                // Subjects are school-wide: the pair scene's have names of their own.
+                name_uz: scene.pair === true ? `${uz} 2` : uz,
+                name_ru: scene.pair === true ? `${ru} 2` : ru,
+                name_en: scene.pair === true ? `${enName} 2` : enName,
                 department_id: steam.id,
                 grades: [7],
                 colour,
@@ -4102,8 +4109,9 @@ try {
             })),
           )
           .execute();
-        const [oxford] = classes;
-        if (oxford === undefined) throw new Error('No Oxford.');
+        const [oxford, princeton] = classes;
+        if (oxford === undefined || princeton === undefined) throw new Error('No Oxford.');
+        const pairOf = scene.pair === true ? [oxford, princeton] : [oxford];
         // The boys' halves are Aliyeva's, the girls' Tojiyeva's: neither a
         // split nor a pairing of a boys' and a girls' half has one teacher twice.
         for (const [name, subjectId, teacherId] of [
@@ -4121,13 +4129,16 @@ try {
               name,
               language: 'uz',
               max_size: 20,
+              ...(scene.pair === true ? { sex: name.endsWith('B') ? 'male' : 'female' } : {}),
             })
             .returning('id')
             .executeTakeFirstOrThrow();
-          await transaction
-            .insertInto('group_classes')
-            .values({ group_id: group.id, class_id: oxford.id, branch_id: gridBranch })
-            .execute();
+          for (const one of pairOf) {
+            await transaction
+              .insertInto('group_classes')
+              .values({ group_id: group.id, class_id: one.id, branch_id: gridBranch })
+              .execute();
+          }
           await transaction
             .insertInto('teaching_load_rows')
             .values({
@@ -4283,6 +4294,20 @@ try {
     mixed: { staffId: 'S-269338', phone: '+998935557338' },
   });
   seeded.draftGridMixed = { login: mixedVice.login, password: mixedVice.firstPassword };
+
+  // Mixed pairings of a pair of classes (the owner's spec change of 17 November
+  // 2026): the same scene, its halves drawn from 7 Oxford and 7 Princeton, the
+  // boys' for boys only and the girls' for girls only.
+  const pairVice = await gridScene({
+    branch: 'Grid pair browser test branch',
+    vice: ['Shoira', 'Valiyeva'],
+    staffId: 'S-269391',
+    phone: '+998935557391',
+    rooms: [],
+    mixed: { staffId: 'S-269392', phone: '+998935557392' },
+    pair: true,
+  });
+  seeded.draftGridPair = { login: pairVice.login, password: pairVice.firstPassword };
 
   // Publish (task 5.5a-1): the same scene in a branch of its own, one lesson a
   // week per row, with four dated quarters and Geometry's distributions.

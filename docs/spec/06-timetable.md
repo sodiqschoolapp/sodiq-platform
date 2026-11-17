@@ -13,7 +13,7 @@ The timetable is generated automatically and then edited by hand in a grid, all 
 | Version | One weekly pattern for a branch. It is valid from a start date until the next version starts. States: draft, published, archived. |
 | Pattern entry | Weekday, slot, class or group, subject, teacher, room. Repeats every week. |
 | Dated lesson | A real lesson on a real date, generated from the published pattern using the academic calendar and that day's template. On publishing, dated lessons are created up to the end of the academic year, so every future lesson has a date from the first day. Days off produce no lessons. A dated lesson is one column in the journal. |
-| Parallel group lessons | All groups of one subject and one grade or pair of grades (7-M-1, 7-M-2 and so on) placed in the same period, each with its own teacher and room. Placed and moved as one block. |
+| Parallel group lessons | All groups of one subject that share a class, directly or through other groups of that subject (7-M-1, 7-M-2 and so on), placed in the same period, each with its own teacher and room. Placed and moved as one block. Groups that share no class are separate blocks, even in one grade: English for 3 Oxford and 3 Princeton can be at another time than English for 3 Cambridge and 3 Durham. |
 | Slot | A lesson slot of the day template. A lesson always fills exactly one lesson slot. Break and lunch slots cannot hold lessons, and no lesson can have a time typed by hand. |
 
 A version is not bound to a month or a quarter: it stays in force until a new version replaces it, and never runs past the end of the academic year. In practice the school publishes one version per quarter, often all four before the year starts, and another when something changes: a new teacher, a changed load, a vacancy filled.
@@ -100,7 +100,7 @@ Later and optional (Release 2): an assistant that takes a request in plain words
 | Blocked | An exam counts as a lesson for its invigilators, its rooms and its classes in the rules on one place at a time and rooms. It is not a lesson for the one-slot rule, for the warnings on load, or for any journal, plan or report. |
 | Blocked | Between a teacher's lesson in one branch and their next lesson in another branch there is at least the travel time set for those two branches. |
 | Blocked | A lesson fills exactly one lesson slot of the day template. It cannot be placed in a break or lunch slot, across two slots, or at a time typed by hand. |
-| Blocked | All groups or parts of one split are in the same slot, so that every student of the class has a lesson at that time. |
+| Blocked | All groups or parts of one split are in the same slot, so that every student of the class has a lesson at that time; a mixed block pairs parts of two subjects instead (Edge cases: timetable, Structure). |
 | Warning | Room capacity is smaller than the class or group. |
 | Warning | Teacher's weekly lessons exceed the contract load. |
 | Warning | A teacher has more lessons in a day than the teacher's most lessons per day. |

@@ -896,7 +896,7 @@ describe('the move of a student to another branch', () => {
             ended_by: 'branch_move',
           }),
           expect.objectContaining({ group_id: chosen, cause: 'branch_move', review: false }),
-          expect.objectContaining({ group_id: mathsGroup, cause: 'automatic', review: true }),
+          expect.objectContaining({ group_id: mathsGroup, cause: 'automatic', review: false }),
         ]),
       );
       expect(groups).toHaveLength(3);
@@ -1158,6 +1158,32 @@ describe('the move of a student to another branch', () => {
       accepted(await accept(moveId, { classId: yale }));
     });
 
+    // The owner's spec change of 17 November 2026 (05, Group): a group for one sex takes only
+    // students of that sex. The pupil is a girl.
+    it('refuses a chosen group for the boys (group_member_sex), all or none, and places her in the girls’ group', async () => {
+      const { student, moveId } = await released();
+      expect(student.sex).toBe('female');
+      const yale = await southClass();
+      const sport = await classes.subject({ grades: [7] });
+      const boys = await classes.group(t.south, southYear, sport, [yale], { sex: 'male' });
+      const girls = await classes.group(t.south, southYear, sport, [yale], { sex: 'female' });
+      const before = await rowsOf();
+      refusedWith(
+        await accept(moveId, { classId: yale, groups: [{ subjectId: sport, groupId: boys }] }),
+        409,
+        'group_member_sex',
+      );
+      expect(await rowsOf()).toEqual(before);
+      accepted(await accept(moveId, { classId: yale }));
+      const rows = await t.database.migrator
+        .selectFrom('group_memberships')
+        .select(['group_id', 'review'])
+        .where('student_id', '=', student.id)
+        .where('branch_id', '=', t.south)
+        .execute();
+      expect(rows).toEqual([{ group_id: girls, review: false }]);
+    });
+
     it('refuses a class of a year that does not hold the date, all or none', async () => {
       const { moveId } = await released();
       const later = await classes.schoolClass(t.south, nextSouthYear, { grade: 7 });
@@ -1259,7 +1285,7 @@ describe('the move of a student to another branch', () => {
           valid_from: '2026-12-07',
           valid_until: '2027-06-01',
           cause: 'automatic',
-          review: true,
+          review: false,
         }),
       ]);
     });

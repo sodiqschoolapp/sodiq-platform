@@ -26,6 +26,22 @@ The next sessions must know:
 - **Step 2** (building blocks, with the four rules the owner approved) and **step 3** (the five main screens as clickable mockups first) are described on the review page; nothing of them is built yet.
 - The Uzbek wording of #332 and #338 should be checked by a native speaker.
 
+## 17 November 2026: groups for one sex, and mixed blocks of a pair of classes
+
+Not a task of the build plan: asked for by the owner on 17 November 2026 for the go-live of the Labzak branch with its timetable version 10, whose sport lessons pair a boys' lesson with a girls' lesson of another subject in every sport slot, three pairs of classes together. Spec change approved by the owner in the session.
+
+- **Database** (`0171_groups_for_one_sex.sql`): `groups.sex`; the guards `group_memberships_sex` (insert, carry), `group_memberships_sex_regained` (days taken back), `groups_sex_members`, `students_sex_groups`; `class_row_needs_groups` and `teaching_load_rows_blocks` replaced. No existing row changes.
+- **Rule engine**: a split is one class or a pair (`isSplit`, `sameSplit`); `partnersIn` pairs halves of the same classes; `load_one_sex_not_mixed`. The block rule (every student of the block's classes in exactly one lesson) is unchanged.
+- **API**: the group's "For" field; every class path, "Place automatically", the placement screen, a leaving taken back and a branch-move accept choose groups by the student's sex; the load's "students not placed" follows it; five new error codes.
+- **Web**: the field in the group form and panel, the mixed mark offered on a pair's groups, texts in three languages; handbook section "Sport lessons of the boys and the girls".
+
+Left undone: the group export has no "For" column; the web pickers of a group transfer and the placement board's drop target are not filtered by sex (the server refuses).
+
+The next sessions must know:
+
+- In production, per class or pair: one group per sport subject and sex with "For" set, "Place automatically", one load row per group marked mixed (handbook, "Sport lessons of the boys and the girls").
+- Two groups across classes of the same grade set link into one block (`groupsLinked`); two pairs of one grade set doing one sport subject would be one block. The three pairs of Labzak are of different grades.
+
 ## 17 November 2026: an emergency override of the production release window
 
 Not a task of the build plan: asked for by the owner on 17 November 2026, who approved the change to the deploy workflow (a file of the loop) in chat.

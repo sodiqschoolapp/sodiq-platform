@@ -65,6 +65,8 @@ const GROUP_REFUSALS: ReadonlySet<string> = new Set([
   'class_group_required',
   'class_group_not_offered',
   'class_group_chosen_full',
+  // 0171: a named group for the other sex (spec review of the code, must-fix 1).
+  'group_member_sex',
 ]);
 
 /** The groups a row names, by subject id in small letters, and the column that named each. */

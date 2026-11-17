@@ -178,9 +178,12 @@ describe('splits, groups and weekly totals of the teaching load', () => {
       );
     });
 
-    it('refuses the mixed mark on a group across classes, and lets one teacher take both mixed halves', async () => {
+    // The owner's spec change of 17 November 2026 (Look first, the requirement changed): a split
+    // divides one class or a pair of classes, so the refusal needs a group of three classes; this
+    // test named "a group across classes" of two before.
+    it('refuses the mixed mark on a group of three classes, and lets one teacher take both mixed halves', async () => {
       const version = await draft();
-      const across = await group([await schoolClass(), await schoolClass()]);
+      const across = await group([await schoolClass(), await schoolClass(), await schoolClass()]);
       refusedWith(
         await createRow(version.id, {
           groupId: across,
@@ -265,7 +268,8 @@ describe('splits, groups and weekly totals of the teaching load', () => {
         'load_block_teacher',
       );
       expect(await rowsOf()).toEqual(before);
-      const across = await group([await schoolClass(), await schoolClass()]);
+      // Three classes: a group of a pair of classes is a split (the owner's change of 17 November 2026).
+      const across = await group([await schoolClass(), await schoolClass(), await schoolClass()]);
       const acrossRow = rowOf(
         await createRow(version.id, { groupId: across, teacherId: await teacher() }),
       );
@@ -465,6 +469,28 @@ describe('splits, groups and weekly totals of the teaching load', () => {
       const row = rowOf(await createRow(version.id, { groupId: b, teacherId: await teacher() }));
       expect(row).toMatchObject({ unplaced: 2, problems: ['load_group_gaps'] });
       expect((await loadOf(version.id)).rows.map((one) => one.unplaced)).toEqual([2, 2]);
+    });
+
+    // The owner's spec change of 17 November 2026 (05, Group): "a subject whose groups in a
+    // class are all for one sex binds only the students of that sex"; 05, Teaching load: "A
+    // subject whose groups are all for one sex is always marked as part of a mixed block."
+    it('counts no girl for a subject of the boys, and lists an unmarked one-sex block', async () => {
+      const version = await draft();
+      const oxford = await schoolClass();
+      const girl = await members.student(t.north, { sex: 'female' });
+      const boy = await members.student(t.north, { sex: 'male' });
+      for (const studentId of [girl, boy]) {
+        await members.member({ branch: t.north, classId: oxford, studentId, from: '2026-09-01' });
+      }
+      const boys = await load.classes.group(t.north, year, subject, [oxford], { sex: 'male' });
+      const row = rowOf(await createRow(version.id, { groupId: boys, teacherId: await teacher() }));
+      // The boy is a gap; the girl is not bound. Neither is refused.
+      expect(row).toMatchObject({
+        unplaced: 1,
+        problems: ['load_one_sex_not_mixed', 'load_group_gaps'],
+      });
+      const marked = rowOf(await editRow(version.id, row, { mixedBlock: true }));
+      expect(marked).toMatchObject({ mixedBlock: true, problems: ['load_group_gaps'] });
     });
   });
 

@@ -9,6 +9,7 @@ import {
   type GroupSlots,
   type InstructionLanguage,
   type SchoolGroup,
+  sexSchema,
 } from '@sodiq/shared';
 import { twoGradeSlots } from '@sodiq/timetable-rules';
 import { sql } from 'kysely';
@@ -29,6 +30,8 @@ import { readGroupTeachers } from '../timetable/group-teachers.js';
  */
 export const GROUP_REFUSALS: Readonly<Record<string, ErrorCode>> = {
   group_year_closed: 'group_year_closed',
+  // 0171: a group set to one sex while a student of the other has a row from today.
+  groups_sex_members: 'group_sex_members',
   group_class_year: 'group_class_year',
   group_grades: 'group_grades',
   group_subject_grade: 'group_subject_grade',
@@ -92,6 +95,8 @@ export interface GroupRow {
   name: string;
   language: string;
   max_size: number;
+  /** 0171: `male`, `female` or none. */
+  sex: string | null;
   archived_at: Date | null;
   version: number;
   /** The members today in the branch's time zone (task 3.2b). */
@@ -119,6 +124,7 @@ function groupsIn(transaction: Transaction) {
       'groups.name',
       'groups.language',
       'groups.max_size',
+      'groups.sex',
       'groups.archived_at',
       'groups.version',
       // The members today (task 3.2b, the card's count): rows with days that
@@ -199,6 +205,8 @@ export function toGroup(
     name: row.name,
     language: instructionLanguageSchema.parse(row.language),
     maxSize: row.max_size,
+    // The check of the table keeps it to the two values of the schema.
+    sex: row.sex === null ? null : sexSchema.parse(row.sex),
     grades: gradesOf(classes),
     classes: classes.map((one) => ({
       id: one.id,

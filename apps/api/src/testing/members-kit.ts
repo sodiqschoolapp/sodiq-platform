@@ -97,7 +97,7 @@ export class MembersKit {
   /** A student of the branch, active from `startsOn`, with one relative. */
   async student(
     branch: string,
-    input: { grade?: number; startsOn?: string } = {},
+    input: { grade?: number; startsOn?: string; sex?: 'male' | 'female' } = {},
   ): Promise<string> {
     count += 1;
     const moment = new Date('2026-08-20T09:00:00+05:00');
@@ -115,7 +115,7 @@ export class MembersKit {
           first_name: 'Malika',
           last_name: last,
           name_key: studentNameKey(last, 'Malika'),
-          sex: 'female',
+          sex: input.sex ?? 'female',
           birth_date: '2013-05-06',
           grade: input.grade ?? 7,
           starts_on: input.startsOn ?? '2026-09-01',

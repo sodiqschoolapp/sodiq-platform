@@ -193,6 +193,10 @@ export const MERGE_REFUSALS: Readonly<Record<string, ErrorCode>> = {
   // student into two lessons of one published block (0060).
   lesson_block_student_twice: 'membership_lesson_clash',
   students_grade_class: 'student_merge_grade',
+  // 0171: a carried row in a group for the other sex of the kept record, or the kept
+  // record's sex taken while in a group for the other sex.
+  group_memberships_sex: 'student_merge_sex',
+  students_sex_groups: 'student_merge_sex',
   student_branch_moves_open_idx: 'student_merge_release_open',
   students_merge_archive: 'request_refused',
   // Faults of the service.

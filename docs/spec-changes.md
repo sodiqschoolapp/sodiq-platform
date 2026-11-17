@@ -2,6 +2,24 @@
 
 The spec in `docs/spec/` was taken from the full spec document on 3 October 2026 (revision 88). Every later change to a spec file is listed here, newest first, with the date, what changed, why, and the files touched. Changes are made only with the `/spec-change` skill and the owner's approval.
 
+## 17 November 2026: parallel groups form one block only through a shared class
+
+- What changed: **parallel group lessons are linked by a shared class, not by their grade.** The groups of one subject that share a class, directly or through other groups of that subject, are one block, placed and moved together. Groups that share no class are separate blocks, even in one grade or pair of grades: each block has its own slots, its own teachers and its own lessons per week. Before, every group across classes of one grade or pair of grades was in one block with the others.
+- Why: the owner, 17 November 2026, in chat, from the load import of the Labzak branch (timetable version 10). The school teaches grade 3 English in two blocks at different times, the groups of one pair of classes in one block and the groups of the other pair in another, and two teachers each teach one group of each pair. The platform joined both pairs into one block and refused the rows (one teacher twice in a block). The link by a shared class is the smallest that keeps "every student of its classes is in exactly one of its lessons" (`edge/timetable`, Structure): every group a student can be in draws from the student's own class.
+- Not changed: `edge/timetable` (Structure; the two-grade group; the excursion and the exam with a shared block), `05` (Group; the bulk screen), `edge/lesson-plans` (shared plans of groups): none of them states the grade link, and each stays true.
+- Code: task 5.15 (`task/5.15-block-link-shared-class`): `groupsLinked` in `packages/timetable-rules` and a new migration replacing `load_block_rows`.
+- Files: `docs/spec/06-timetable.md` (Model, Parallel group lessons).
+
+## 17 November 2026: groups for one sex, and mixed blocks of a pair of classes
+
+- What changed:
+  1. **A group may be for girls only or for boys only** (an optional field of the group). It takes only students of that sex.
+  2. **A split or group subject binds the students it is open to.** Every student of the classes involved must be in exactly one group of the subject open to them; a subject whose groups in a class are all for one sex binds only the students of that sex (taekwondo for the boys only). The class membership rule, bulk placement and the student import follow it: bulk placement offers a student only groups open to them, and a student placed in the only group open to them is not tagged "placed automatically, review".
+  3. **A split may divide a pair of classes that do the subject together.** A mixed block's two lessons are parts of two subjects drawn from the same class, or from the same pair of classes (the boys of 7 Sydney and 8 Columbia in one part, the girls in the other); together they hold every student of those classes exactly once. The rule that every student of the class has a lesson in each slot of a split is unchanged.
+  4. **The mixed mark is a field of a load row of a group** (proposed in task 3.4b, written now), and a subject whose groups are all for one sex is always marked mixed.
+- Why: the owner, 17 November 2026, in chat, for the go-live of the Labzak branch with its real timetable (version 10). In every sport slot the boys and the girls of a class have two different subjects with different teachers: the boys physical education, taekwondo and swimming, the girls physical education, gymnastics and swimming, each half with its own teacher of each subject, paired differently slot by slot; three pairs of classes (3 Victory + 3 Indigo, 4 Smile + 4 Smart, 7 Sydney + 8 Columbia) do these lessons together. A subject taken by one sex only left the other sex as students not placed, and a mixed block could pair halves of one class only, so these lessons could not be held.
+- Files: `docs/spec/05-classes-groups-subjects.md` (Group, Teaching load), `docs/spec/06-timetable.md` (Rules, the last blocked row), `docs/spec/edge-cases/timetable.md` (Structure, the two halves of a split), `docs/spec/edge-cases/students-classes-groups.md` (first row), `docs/spec/04-people.md` (Excel import of students).
+
 ## 15 November 2026: the load import and the timetable import
 
 - What changed:

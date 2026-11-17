@@ -74,8 +74,11 @@ export {
   groupsLinked,
   loadBlocks,
   splitAndWhole,
-  splitClassOf,
+  isSplit,
+  sameSplit,
+  splitKeyOf,
   type BlockGroup,
+  type GroupSex,
   type BlockProblem,
   type BlockRow,
 } from './blocks.js';

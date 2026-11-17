@@ -86,6 +86,7 @@ const fieldsOf = (row: GroupRow, classes: readonly GroupClassRow[]) => ({
   name: row.name,
   language: row.language,
   maxSize: row.max_size,
+  sex: row.sex,
 });
 
 /**
@@ -221,6 +222,7 @@ export class Groups {
             name: input.name,
             language,
             max_size: input.maxSize,
+            sex: input.sex,
           })
           .returning('id')
           .executeTakeFirstOrThrow();
@@ -273,6 +275,7 @@ export class Groups {
           name: input.name,
           language,
           maxSize: input.maxSize,
+          sex: input.sex,
         };
         const changes = changesOf(fieldsOf(before, oldClasses), record);
         if (changes === null) {
@@ -281,7 +284,12 @@ export class Groups {
         // Every edit updates the row, so the version moves also when only the classes change.
         await transaction
           .updateTable('groups')
-          .set({ name: record.name, language: record.language, max_size: record.maxSize })
+          .set({
+            name: record.name,
+            language: record.language,
+            max_size: record.maxSize,
+            sex: record.sex,
+          })
           .where('id', '=', id)
           .execute();
         await this.writeClasses(

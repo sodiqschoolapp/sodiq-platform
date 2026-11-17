@@ -632,7 +632,7 @@ export const uz: Texts<'one' | 'other'> = {
     load_split_and_whole:
       'Bu versiyada shu sinf va fan uchun butun sinf qatori ham, guruh qatori ham bor. Sinf fan boʻyicha yo butun, yo boʻlingan boʻladi: avval qatorlardan birini oʻchiring.',
     load_mixed_not_split:
-      'Aralash blokka faqat bitta sinfning boʻlingan qismlari kira oladi. Bu guruh uchun belgini olib tashlang.',
+      'Aralash blok qismi faqat bitta sinf yoki ikki sinf boʻlinishining yarmlari boʻlishi mumkin. Bu guruhdagi belgini olib tashlang.',
     load_block_mixed:
       'Bitta boʻlinishning qismlari aralash blok belgisida bir xil boʻlishi kerak. Belgini bitta qismda oʻzgartiring: u barcha qismlarga yoziladi.',
     load_block_lessons:
@@ -641,6 +641,16 @@ export const uz: Texts<'one' | 'other'> = {
       'Bu boʻlinish yoki parallel guruhlarning boshqa qismida shu oʻqituvchi bor, qismlar esa bir vaqtda oʻtadi. Boshqa oʻqituvchini tanlang.',
     load_group_gaps:
       'Sinflarning oʻquvchilari bu blokning guruhlariga joylashtirilmagan. Ularni guruhlarga joylashtirish ekranida joylashtiring.',
+    load_one_sex_not_mixed:
+      'Bu fanning barcha guruhlari bir jins uchun, shuning uchun uning darslari doim boshqa jins darsi bilan birga oʻtadi. Qatorlarni aralash blok qismi deb belgilang.',
+    group_member_sex:
+      'Bu guruh boshqa jinsdagi oʻquvchilar uchun. Oʻquvchiga ochiq guruhni tanlang yoki guruhning «Kimlar uchun» maydonini oʻzgartiring.',
+    group_sex_members:
+      'Bugundan boshlab bu guruhda boshqa jinsdagi oʻquvchilar bor. Avval ularni boshqa guruhga oʻtkazing, keyin «Kimlar uchun»ni oʻzgartiring.',
+    student_sex_groups:
+      'Bugundan boshlab oʻquvchi boshqa jins uchun guruhda. Avval oʻquvchini boshqa guruhga oʻtkazing, keyin jinsini tuzating.',
+    student_merge_sex:
+      'Qoladigan yozuv boshqa jins uchun guruhga tushib qoladi. Avval oʻquvchini boshqa guruhga oʻtkazing yoki yozuvda boshqa jinsni qoldiring.',
     fill_vacancy:
       'Bu vakansiya ochiq emas yoki uni yopish allaqachon rejalashtirilgan. Avval uni qayta oching.',
     fill_person:
@@ -4553,6 +4563,12 @@ export const uz: Texts<'one' | 'other'> = {
     languageOfClasses: 'Sinflaridagidek: {{language}}',
     maxSize: 'Sigʻim',
     maxSizeNote: '{{min}} dan {{max}} gacha oʻquvchi',
+    sex: 'Kimlar uchun',
+    sexes: {
+      everyone: 'Qizlar va oʻgʻil bolalar',
+      female: 'Faqat qizlar',
+      male: 'Faqat oʻgʻil bolalar',
+    },
     status: 'Holati',
     active: 'Faol',
     archived: 'Arxivda',
@@ -6182,10 +6198,11 @@ export const uz: Texts<'one' | 'other'> = {
         load_no_tutor: 'Sinfda tyutor yoʻq',
         load_tutor_row_teacher: 'Sinf tyutori emas',
         load_split_and_whole: 'Sinf ham butun, ham boʻlingan',
-        load_mixed_not_split: 'Bir necha sinf guruhida aralash blok',
+        load_mixed_not_split: 'Ikkitadan ortiq sinf guruhida aralash blok',
         load_block_mixed: 'Qismlar aralash blokda mos emas',
         load_block_lessons: 'Qismlarda darslar soni har xil',
         load_block_teacher: 'Ikki qismda bitta oʻqituvchi',
+        load_one_sex_not_mixed: 'Bir jinsli fan aralash blokda emas',
         load_group_gaps: 'Oʻquvchilar joylashtirilmagan',
       },
       blockColumn: 'Blok',

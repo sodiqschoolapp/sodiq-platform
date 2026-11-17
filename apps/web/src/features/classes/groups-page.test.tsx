@@ -88,6 +88,7 @@ const group = (n: number, fields: Partial<SchoolGroup> = {}): SchoolGroup => ({
   name: '7-M-1',
   language: 'uz',
   maxSize: 20,
+  sex: null,
   grades: [7],
   classes: [
     { id: OXFORD.id, grade: 7, name: 'Oxford', language: 'uz', archived: false },
@@ -320,8 +321,40 @@ describe('a new group', () => {
         name: '7-M-2',
         language: null,
         maxSize: 18,
+        sex: null,
         confirmMixedLanguage: false,
       });
+    });
+  });
+
+  // The owner's spec change of 17 November 2026 (05, Group): "for girls only or boys only
+  // (optional)".
+  it('creates a group for girls only, and shows it in the panel', async () => {
+    const calls = await openList({
+      extra: {
+        'POST /api/groups': (body) => json(detailOf(group(9, body as Partial<SchoolGroup>)), 201),
+      },
+    });
+    const form = await openNewGroup();
+    type(field(form, en.groups.subject), MATHS.id);
+    tick(form, '7 Oxford');
+    type(field(form, en.groups.groupName), '7-G-1');
+    type(field(form, en.groups.maxSize), '18');
+    type(field(form, en.groups.sex), 'female');
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+    await waitFor(() => {
+      expect(calls.find((call) => call.route === 'POST /api/groups')?.body).toMatchObject({
+        name: '7-G-1',
+        sex: 'female',
+      });
+    });
+  });
+
+  it('shows for whom a group is in its panel', async () => {
+    await openList({ groups: [group(7, { name: '7-T-1', sex: 'male' }), M1] });
+    fireEvent.click(screen.getByRole('button', { name: '7-T-1' }));
+    await waitFor(() => {
+      expect(document.querySelector('[data-group-sex]')?.textContent).toBe(en.groups.sexes.male);
     });
   });
 

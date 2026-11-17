@@ -48,6 +48,7 @@ export const LOAD_PROBLEMS = [
   'load_block_mixed',
   'load_block_lessons',
   'load_block_teacher',
+  'load_one_sex_not_mixed',
   'load_room_closed',
   'load_group_gaps',
 ] as const;

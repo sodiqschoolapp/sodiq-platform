@@ -455,11 +455,17 @@ const MESSAGE: Record<ErrorCode, string> = {
   load_group_no_shared_slot: 'The two grades share no lesson slot on any school weekday.',
   load_split_and_whole:
     'The version holds a whole-class row and a group row for one class and subject.',
-  load_mixed_not_split: 'Only the halves of a split are part of a mixed block.',
+  load_mixed_not_split:
+    'Only the halves of a split of one class or of a pair of classes are part of a mixed block.',
   load_block_mixed: 'The halves of one split disagree on the mixed block.',
   load_block_lessons: 'Every part of a block has the same lessons per week.',
   load_block_teacher: 'Two parts of one block have the same teacher.',
   load_group_gaps: 'Students of the classes are not placed in a group of the block.',
+  load_one_sex_not_mixed: 'A subject whose groups are all for one sex is part of a mixed block.',
+  group_member_sex: 'The group is for students of the other sex.',
+  group_sex_members: 'The group holds students of the other sex from today on.',
+  student_sex_groups: 'The student is in a group for the other sex from today on.',
+  student_merge_sex: 'The merged record would be in a group for the other sex.',
   fill_vacancy: 'The vacancy is not open.',
   fill_person: 'The person cannot fill the vacancy from the date.',
   fill_start: 'A vacancy is filled from tomorrow at the earliest, inside the year.',

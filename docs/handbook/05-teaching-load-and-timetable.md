@@ -14,7 +14,7 @@ Not written yet for most of the teaching load and the timetable: task 3.7 descri
 
 1. Open Timetable, then Teaching load, and choose the draft. Press **Import from Excel** (**Exceldan import**). Step 2 of the builder has the same link.
 2. Press **Download the template**. The file is made for this draft: its sheet "Lists" holds the branch's classes and groups, the classes each group draws from, the subjects, the teachers (surname, name and staff ID) and vacancies, the rooms and the room types. Each column that names a record is a dropdown of that list.
-3. Fill one row per row of the load: class or group, subject, teacher or vacancy, lessons per week, a room or a room type (optional), double lessons (yes or no), mixed block (yes or no, for a split whose halves share one teacher), and a reason for "deliberately short" (optional). Leave the teacher empty for a Tutor subject on a class: the class's Tutor takes it.
+3. Fill one row per row of the load: class or group, subject, teacher or vacancy, lessons per week, a room or a room type (optional), double lessons (yes or no), mixed block (yes or no, for the halves of a split of one class or of a pair of classes that meet other subjects in their slots), and a reason for "deliberately short" (optional). Leave the teacher empty for a Tutor subject on a class: the class's Tutor takes it.
 4. Press **Upload the filled file**. The page lists every row, the rows with problems first, each problem with its column.
 5. When every row is ready, press **Add all rows**. The page says how many rows were added, with a link back to the load.
 
@@ -72,6 +72,23 @@ Not written yet for most of the teaching load and the timetable: task 3.7 descri
 | The day has no such lesson number | "the day has no lesson with this number on this weekday." |
 | Someone placed or removed a lesson in the grid after the preview | "The lessons of the draft changed after the preview." Nothing is saved; upload the file again to see what is removed now. |
 | Someone else is editing the draft | The import is refused until they leave it, as for any change of the draft. |
+
+## Sport lessons of the boys and the girls
+
+In a sport lesson the boys and the girls of a class have two lessons at the same time, of two subjects with two teachers: for example the boys taekwondo while the girls have physical education, and in another slot the boys physical education while the girls have gymnastics. Some pairs of classes do these lessons together: then the boys of both classes are one half and the girls of both classes the other.
+
+**Setting it up**, for each class, or each pair of classes that do sport together:
+
+1. **Groups.** In Classes, then Groups, create one group per subject and per half: for example "PE boys", "PE girls", "Swimming boys", "Swimming girls", "Gymnastics girls", "Taekwondo boys". Choose the class, or the two classes of the pair, and set **For** to **Girls only** or **Boys only**. A group for one sex takes only students of that sex.
+2. **Students.** On the group placement screen, choose the subject and the grades, then press **Place automatically**: every student goes to the group of their sex. A student who joins the class later is placed in the group of their sex by itself. A subject taken by one sex only (taekwondo for the boys) asks nothing of the other sex.
+3. **Load.** One row per group: the teacher and the lessons per week, with **Mixed block** ticked. Both halves of a subject have the same lessons per week. A subject whose groups are all for one sex shows a problem until its rows are marked mixed. The load import has a "Mixed block" column for the same mark.
+4. **Timetable.** In the grid, place a boys' lesson and a girls' lesson together in one slot ("Paired with"); in the timetable import, give the two rows of a sport slot the same weekday and slot.
+
+**Rules.**
+
+- In every sport slot every student of the class, or of both classes of the pair, has exactly one lesson: a boys' lesson alone, or two boys' lessons together, is refused.
+- A pairing is made of halves drawn from the same class, or the same pair of classes. A half of 7 Sydney + 8 Columbia never pairs with a half of 7 Sydney alone.
+- A student's sex cannot be corrected while they are in a group for one sex from today on: move them to another group first. A group cannot be set to one sex while a student of the other sex is in it from today on.
 
 ## Teacher absences
 

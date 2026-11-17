@@ -19,6 +19,7 @@ import {
   type Subject,
   type TimetableVersion,
 } from '@sodiq/shared';
+import { isSplit as isSplitGroup } from '@sodiq/timetable-rules';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { useEffect } from 'react';
@@ -33,6 +34,14 @@ import { Button } from '@/components/ui/button';
 import { useView } from '@/features/access/use-view';
 import { nameOf } from '@/features/setup/setup-api';
 import { loadTeachersQuery } from './timetable-api';
+
+/**
+ * Whether a group is a part of a split: it draws from one class or from a pair
+ * of classes (`isSplit` of packages/timetable-rules; the owner's spec change of
+ * 17 November 2026).
+ */
+const isSplitOf = (group: { classes: readonly { id: string }[] } | undefined): boolean =>
+  group !== undefined && isSplitGroup({ classIds: group.classes.map((one) => one.id) });
 
 interface LoadRowFormProps {
   version: TimetableVersion;
@@ -98,9 +107,8 @@ export function LoadRowForm({
   const number = new Intl.NumberFormat(i18n.language);
   const schema: FormSchema<LoadRowRecord | LoadRowEdit> =
     row === null ? loadRowRecordSchema : loadRowEditSchema;
-  /** Whether the group is a split: it draws from one class only. */
-  const isSplit = (groupId: string | null) =>
-    groups.find((one) => one.id === groupId)?.classes.length === 1;
+  /** Whether the group is a split: it draws from one class or a pair. */
+  const isSplit = (groupId: string | null) => isSplitOf(groups.find((one) => one.id === groupId));
 
   const form = useRecordForm({
     schema,
@@ -233,7 +241,7 @@ export function LoadRowForm({
   const unitField = form.bind('unit');
   // A row marked wrongly since (a class added to its group) shows the switch
   // too, so that the mark can be cleared (spec review of the build, should-fix 2).
-  const split = (group !== undefined && group.classes.length === 1) || row?.mixedBlock === true;
+  const split = isSplitOf(group) || row?.mixedBlock === true;
   const teacherName = (one: { kind: string; name: string | null; tutor: boolean }) => {
     const name = one.name ?? t('timetable.load.gone');
     return one.tutor

@@ -803,7 +803,7 @@ export const ERROR_CODES = [
   'load_group_no_shared_slot',
   /** The version already holds a whole-class row and a group row for one class and the subject (05, Group; task 3.4b). */
   'load_split_and_whole',
-  /** A group across classes is marked as part of a mixed block: only the halves of a split are (task 3.4b, decision 12). */
+  /** A class row, or a group of three classes or more, is marked as part of a mixed block: only the halves of a split (one class or a pair) are (task 3.4b, decision 12; spec change of 17 November 2026). */
   'load_mixed_not_split',
   /** The halves of one split disagree on the mixed-block mark (task 3.4b, decision 12). */
   'load_block_mixed',
@@ -813,6 +813,16 @@ export const ERROR_CODES = [
   'load_block_teacher',
   /** Students of the classes of a group row are not placed in one of the block's groups; listed, never a refusal (task 3.4b, decision 4). */
   'load_group_gaps',
+  /** Every group of the block is for one sex and the row is not marked as part of a mixed block (05, Teaching load; spec change of 17 November 2026); listed, never a refusal by hand. */
+  'load_one_sex_not_mixed',
+  /** The group is for one sex and the student is of the other (05, Group; spec change of 17 November 2026). */
+  'group_member_sex',
+  /** The group is set to one sex while it holds a student of the other on a day from today (spec change of 17 November 2026). */
+  'group_sex_members',
+  /** The student's sex is changed while they are in a group for the other sex on a day from today (spec change of 17 November 2026). */
+  'student_sex_groups',
+  /** A merge would put the kept record in a group for the other sex (spec change of 17 November 2026). */
+  'student_merge_sex',
   /**
    * A load row of a draft or of a published version that can still run, or a
    * lesson dated after today, names the vacancy: it cannot be closed yet (04,
