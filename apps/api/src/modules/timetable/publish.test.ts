@@ -6989,9 +6989,9 @@ describe('publish', () => {
         .set({ created_at: moment, last_used_at: moment })
         .execute();
 
-    /** Runs `work` with the clock at `time` on DAY, then sets the clock and sessions back. */
-    async function onDay<T>(time: string, work: () => Promise<T>): Promise<T> {
-      const moment = at(DAY, time);
+    /** Runs `work` with the clock at `time` on `date` (DAY), then sets the clock and sessions back. */
+    async function onDay<T>(time: string, work: () => Promise<T>, date = DAY): Promise<T> {
+      const moment = at(date, time);
       t.clock.set(moment.toISOString());
       await freshAt(moment);
       try {
@@ -7119,14 +7119,50 @@ describe('publish', () => {
       const copy = await placedCopy(s.branch, s.year, s.version);
       await load.freeEditLock(copy);
       const first = await versionRow(s.version);
-      await onDay('11:05', async () => {
-        expect(blockedBy(await publish(s.branch, copy, DAY))).toContainEqual({
+      await onDay('11:05', () => secondRefused(s.branch, copy, DAY, NEXT));
+      expect(await versionRow(s.version)).toEqual(first);
+    });
+
+    /**
+     * A second publish from today is refused `version_start_too_early` with no
+     * chain answer and under each one (review of the plan, decision 3): the
+     * started version is never archived or cut.
+     */
+    async function secondRefused(branch: string, copy: string, date: string, next: string) {
+      for (const chain of [undefined, 'run_until', 'replace', 'carry'] as const) {
+        const response = await request(t.kit.server)
+          .post(`/api/timetable/versions/${copy}/publish`)
+          .set('Cookie', t.admin)
+          .set(BRANCH_HEADER, branch)
+          .set(REQUEST_KEY_HEADER, randomUUID())
+          .send(chain === undefined ? { startsOn: date } : { startsOn: date, chain });
+        expect(blockedBy(response), chain ?? 'no chain').toContainEqual({
           code: 'version_start_too_early',
           path: 'startsOn',
         });
-        expect(checkOf(await check(s.branch, copy, DAY)).earliest).toBe(NEXT);
-      });
+      }
+      expect(checkOf(await check(branch, copy, date)).earliest).toBe(next);
+    }
+
+    it('closes today after a first same-day publish that wrote no lesson today, under every chain answer', async () => {
+      // Tuesday 20 October: the scene's lesson is on Monday only, so a version
+      // from Tuesday writes no lesson today, before lesson slot 1 at 08:00.
+      const s = await scene();
+      await load.freeEditLock(s.version);
+      await onDay(
+        '02:15',
+        async () => {
+          expect(versionOf(await publish(s.branch, s.version, NEXT)).startsOn).toBe(NEXT);
+        },
+        NEXT,
+      );
+      expect(await lessonsOn(s.branch, NEXT)).toEqual([]);
+      const copy = await placedCopy(s.branch, s.year, s.version);
+      await load.freeEditLock(copy);
+      const first = await versionRow(s.version);
+      await onDay('02:20', () => secondRefused(s.branch, copy, NEXT, '2026-10-21'), NEXT);
       expect(await versionRow(s.version)).toEqual(first);
+      expect(await lessonsOn(s.branch, NEXT)).toEqual([]);
     });
 
     it('refuses to withdraw a version that starts today (Done when)', async () => {

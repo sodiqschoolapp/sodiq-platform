@@ -2,6 +2,18 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 17 November 2026: task 5.17, a version may start today in a branch with no lesson today
+
+- **Built**: a publish may start today when the branch has no lesson dated today (cancelled ones included), no published version starting today, and its first lesson slot of today has not begun by the branch clock (`sameDayOpen`, `startChoices(today, year, todayOpen)` in `packages/timetable-rules`; `same-day.ts` in the timetable module), read again under the publish lock at saving. A version from today cannot be withdrawn.
+- Availability may start today also while an entry is in force today, when the person has no lesson dated today in the branch (teacher, substitute, or replaced by an open substitution) and the first lesson has not begun. The availability service reads today from the transaction moment now.
+- A keep choice for a shortened day may be made for today on an open day; "up to date" compares against the earliest start of the same rule. Vacancy fills, template and calendar changes keep tomorrow at the earliest. No migration.
+- The spec text is in pull request #346, for the owner to merge.
+- **Left out**: route tests for a vacancy fill from today on an open day (still refused by its route's own `startsOn <= today` check, unchanged) and for "up to date" on an open day; a person whose only lesson today is in another branch (allowed by construction: every query is filtered by the branch).
+
+The next sessions must know:
+
+- Tests that assumed an empty branch's today is closed now see it open on the kit's Saturday (no lesson slot); they use yesterday for "before the earliest" and `publish.test.ts`, "a start today (task 5.17)", for the closed cases.
+
 ## 17 November 2026: task 5.15, parallel groups linked by a shared class
 
 - **Built**: groups of one subject are one block only when they share a class, directly or through other groups of the subject (`groupsLinked` in `packages/timetable-rules`; `load_block_rows` replaced in `0172_block_link_shared_class.sql`, no row changed). Two pairs of one grade (the Labzak grade 3 English) now take the same two teachers and their own slots, typed by hand, imported, placed in the grid and imported as a timetable.
