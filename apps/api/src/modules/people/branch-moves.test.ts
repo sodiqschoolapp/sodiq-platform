@@ -896,7 +896,7 @@ describe('the move of a student to another branch', () => {
             ended_by: 'branch_move',
           }),
           expect.objectContaining({ group_id: chosen, cause: 'branch_move', review: false }),
-          expect.objectContaining({ group_id: mathsGroup, cause: 'automatic', review: true }),
+          expect.objectContaining({ group_id: mathsGroup, cause: 'automatic', review: false }),
         ]),
       );
       expect(groups).toHaveLength(3);
@@ -1285,7 +1285,7 @@ describe('the move of a student to another branch', () => {
           valid_from: '2026-12-07',
           valid_until: '2027-06-01',
           cause: 'automatic',
-          review: true,
+          review: false,
         }),
       ]);
     });
