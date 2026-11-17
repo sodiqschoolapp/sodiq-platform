@@ -595,6 +595,22 @@ describe('the teaching load import', () => {
       expect(codes).toEqual(['load_split_and_whole']);
     });
 
+    // The owner's spec change of 17 November 2026 (05, Teaching load): "A subject whose groups are
+    // all for one sex is always marked as part of a mixed block"; a file brings the rows of a
+    // block together, so an unmarked one is a problem of its row (spec review of the code).
+    it('a one-sex block not marked mixed: load_one_sex_not_mixed', async () => {
+      const dartmouth = await load.classes.schoolClass(t.north, year, {
+        grade: 7,
+        name: 'Dartmouth',
+      });
+      await load.classes.group(t.north, year, pe, [dartmouth], { name: '7D-PE-B', sex: 'male' });
+      const row = { unit: '7D-PE-B', subject: PE, teacher: name(pe1), lessonsPerWeek: '2' };
+      const unmarked = await uploaded(await draft(), [row]);
+      expect(codesOf(unmarked, 3)).toEqual(['load_one_sex_not_mixed']);
+      const marked = await uploaded(await draft(), [{ ...row, mixedBlock: 'Yes' }]);
+      expect(codesOf(marked, 3)).toEqual([]);
+    });
+
     // The owner's spec change of 17 November 2026 (Look first, the requirement changed): the
     // English groups draw from Oxford and Princeton, a pair, so they are halves of one split and a
     // mark on one of them disagrees with the others (this test expected load_mixed_not_split).

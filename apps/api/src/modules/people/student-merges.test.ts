@@ -312,6 +312,37 @@ describe('the merge of two student records', () => {
     await t.close();
   });
 
+  // The owner's spec change of 17 November 2026 (05, Group): a group for one sex takes only
+  // students of that sex. A merge carries the merged record's rows to the record that stays
+  // (\`group_memberships_sex\` on the carry, db/migrations/0171), answered \`student_merge_sex\`.
+  describe('a group for one sex', () => {
+    it('refuses to carry a row of a girls’ group to the record that stays, a boy, with nothing written', async () => {
+      // The older record stays (its UID is kept): a boy. The newer record, a girl, is in the
+      // girls' group of her class from her first day.
+      const old = await pupil({ from: '2026-09-02', fields: { sex: 'male' } });
+      await leave(old.id, '2026-09-19');
+      const subject = await classes.subject({ grades: [7] });
+      const own = await classes.schoolClass(t.north, northYear, { grade: 7 });
+      const girls = await classes.group(t.north, northYear, subject, [own], { sex: 'female' });
+      const again = await pupil({ classId: own, from: '2026-10-05', fields: { sex: 'female' } });
+      expect(
+        await t.database.migrator
+          .selectFrom('group_memberships')
+          .select('group_id')
+          .where('student_id', '=', again.id)
+          .execute(),
+      ).toEqual([{ group_id: girls }]);
+      const seen = await previewOf(again.id, old.uid);
+      const before = await rowsOf();
+      refusedWith(
+        await post(again.id, { uid: old.uid, reason: 'Created twice', digest: seen.digest }),
+        409,
+        'student_merge_sex',
+      );
+      expect(await rowsOf()).toEqual(before);
+    });
+  });
+
   describe('a record created again after leaving (edge: "created again as new")', () => {
     it('keeps the older UID whichever record is in the path, and every row of the other', async () => {
       for (const pathIsOlder of [false, true]) {

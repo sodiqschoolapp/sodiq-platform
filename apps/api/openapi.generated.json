@@ -857012,7 +857012,6 @@
                     "maximum": 60
                   },
                   "sex": {
-                    "default": null,
                     "nullable": true,
                     "type": "string",
                     "enum": [
@@ -857035,6 +857034,7 @@
                   "name",
                   "language",
                   "maxSize",
+                  "sex",
                   "version"
                 ]
               }

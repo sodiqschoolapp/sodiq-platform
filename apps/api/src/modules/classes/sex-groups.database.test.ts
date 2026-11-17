@@ -490,6 +490,42 @@ describe('groups for one sex in the database', () => {
       expect(result).toEqual({ first: 'written', second: 'students_sex_groups' });
     });
 
+    /** A merge's carry of the boy's row in \`group\` to the girl's record, as the service writes it. */
+    const carry = async (transaction: Transaction, row: string, girl: string, boy: string) => {
+      await mergeRow(transaction, girl, boy);
+      await transaction
+        .updateTable('group_memberships')
+        .set({ student_id: girl })
+        .where('id', '=', row)
+        .execute();
+    };
+
+    it('a merge’s carry first: the group’s sex waits and is refused', async () => {
+      const oxford = await classes.schoolClass(north, year);
+      const boy = await pupil(oxford, 'male');
+      const girl = await pupil(oxford, 'female');
+      const group = await classes.group(north, year, pe, [oxford]);
+      const row = await groupRow(group, pe, boy);
+      const result = await sameMoment(
+        (transaction) => carry(transaction, row, girl, boy),
+        () => setGroupSex(group, 'male'),
+      );
+      expect(result).toEqual({ first: 'written', second: 'groups_sex_members' });
+    });
+
+    it('a group’s sex first: a merge’s carry waits at its commit and is refused', async () => {
+      const oxford = await classes.schoolClass(north, year);
+      const boy = await pupil(oxford, 'male');
+      const girl = await pupil(oxford, 'female');
+      const group = await classes.group(north, year, pe, [oxford]);
+      const row = await groupRow(group, pe, boy);
+      const result = await sameMoment(
+        (transaction) => setGroupSex(group, 'male', transaction),
+        () => inBranch((transaction) => carry(transaction, row, girl, boy)),
+      );
+      expect(result).toEqual({ first: 'written', second: 'group_memberships_sex' });
+    });
+
     it('a member’s sex correction first: the group’s sex waits and is refused', async () => {
       const oxford = await classes.schoolClass(north, year);
       const boy = await pupil(oxford, 'male');

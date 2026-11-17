@@ -73,8 +73,14 @@ export const groupCreateSchema = groupRecordSchema.extend({
 
 export type GroupCreate = z.infer<typeof groupCreateSchema>;
 
-/** The edit names the state it was made on ("group changed, reload"). */
-export const groupEditSchema = groupRecordSchema.extend({ version: z.int().min(0) });
+/**
+ * The edit names the state it was made on ("group changed, reload"), and always names the sex:
+ * an edit that left it out would clear it unseen (spec review of the code, should-fix 2).
+ */
+export const groupEditSchema = groupRecordSchema.extend({
+  version: z.int().min(0),
+  sex: sexSchema.nullable(),
+});
 
 export type GroupEdit = z.infer<typeof groupEditSchema>;
 

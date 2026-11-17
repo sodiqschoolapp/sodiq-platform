@@ -8,10 +8,10 @@ Not a task of the build plan: asked for by the owner on 17 November 2026 for the
 
 - **Database** (`0171_groups_for_one_sex.sql`): `groups.sex`; the guards `group_memberships_sex` (insert, carry), `group_memberships_sex_regained` (days taken back), `groups_sex_members`, `students_sex_groups`; `class_row_needs_groups` and `teaching_load_rows_blocks` replaced. No existing row changes.
 - **Rule engine**: a split is one class or a pair (`isSplit`, `sameSplit`); `partnersIn` pairs halves of the same classes; `load_one_sex_not_mixed`. The block rule (every student of the block's classes in exactly one lesson) is unchanged.
-- **API**: the group's "For" field; every class path, "Place automatically", the placement screen, a leaving taken back and a branch-move accept choose groups by the student's sex; the load's "students not placed" follows it; four new error codes.
+- **API**: the group's "For" field; every class path, "Place automatically", the placement screen, a leaving taken back and a branch-move accept choose groups by the student's sex; the load's "students not placed" follows it; five new error codes.
 - **Web**: the field in the group form and panel, the mixed mark offered on a pair's groups, texts in three languages; handbook section "Sport lessons of the boys and the girls".
 
-Left undone: a route test of the merge's `student_merge_sex` and of a branch-move accept naming a group of the other sex (the database tests cover the guards, the codes are mapped); the group export has no "For" column; the web pickers of a group transfer are not filtered by sex.
+Left undone: the group export has no "For" column; the web pickers of a group transfer and the placement board's drop target are not filtered by sex (the server refuses).
 
 The next sessions must know:
 

@@ -315,6 +315,60 @@ describe('groups for one sex through the routes', () => {
         .execute();
       expect(rows).toEqual([{ group_id: group, valid_until: '2026-10-08' }]);
     });
+
+    it('gives the days back to the girls’ group when the group she was in was set to the boys', async () => {
+      const oxford = await classes.schoolClass(t.north, year);
+      const group = await groupOf([oxford], pe, null);
+      const girl = await pupil(oxford, 'female');
+      const versionOf = async () =>
+        studentDetailSchema.parse((await get(`/api/people/students/${girl.id}`)).body).version;
+      const left = await post(`/api/people/students/${girl.id}/leaving`, {
+        lastDay: '2026-10-07',
+        reason: 'Moved to another city',
+        version: await versionOf(),
+      });
+      expect(left.status, JSON.stringify(left.body)).toBe(200);
+      const girls = await groupOf([oxford], pe, 'female');
+      const detail = groupDetailSchema.parse((await get(`/api/groups/${group}`)).body);
+      const edited = await put(`/api/groups/${group}`, {
+        classIds: [oxford],
+        name: detail.name,
+        language: null,
+        maxSize: detail.maxSize,
+        sex: 'male',
+        version: detail.version,
+      });
+      expect(edited.status, JSON.stringify(edited.body)).toBe(200);
+      const undone = await post(`/api/people/students/${girl.id}/leaving/undo`, {
+        version: await versionOf(),
+        reason: 'Entered by mistake.',
+      });
+      expect(undone.status, JSON.stringify(undone.body)).toBe(200);
+      const rows = await t.database.migrator
+        .selectFrom('group_memberships')
+        .select(['group_id', 'valid_from', 'valid_until', 'cause', 'review'])
+        .where('student_id', '=', girl.id)
+        .orderBy('valid_from')
+        .execute();
+      // Her row in the boys' group stays cut; the girls' group, the only one open to her, takes
+      // the days from the first day taken back, untagged.
+      expect(rows).toEqual([
+        {
+          group_id: group,
+          valid_from: '2026-09-02',
+          valid_until: '2026-10-08',
+          cause: 'automatic',
+          review: false,
+        },
+        {
+          group_id: girls,
+          valid_from: '2026-10-08',
+          valid_until: '2027-06-01',
+          cause: 'automatic',
+          review: false,
+        },
+      ]);
+    });
   });
 
   describe('a student’s sex', () => {

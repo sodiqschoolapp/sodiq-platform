@@ -156810,11 +156810,8 @@ export interface operations {
                     /** @enum {string|null} */
                     language: "uz" | "ru" | null;
                     maxSize: number;
-                    /**
-                     * @default null
-                     * @enum {string|null}
-                     */
-                    sex?: "male" | "female" | null;
+                    /** @enum {string|null} */
+                    sex: "male" | "female" | null;
                     /** @default false */
                     confirmMixedLanguage?: boolean;
                     version: number;

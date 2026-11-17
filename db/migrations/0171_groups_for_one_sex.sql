@@ -81,10 +81,18 @@ create trigger group_memberships_sex
   for each row execute function group_memberships_sex();
 
 -- A row that takes back days (the cancel or undo of a leaving, a merge's
--- join; `group_memberships_regained`, 0062) passes the sex rule again at the
--- commit, as it passes every check of an insert there: a sex corrected, or a
--- group's sex set, while the row was cut (it did not count then) must not come
--- back with it (.claude/rules/database.md, the re-check of a waived rule).
+-- join; `group_memberships_regained`, 0062), or that a merge carries to
+-- another student, passes the sex rule again at the commit, under a lock of
+-- its group: a sex corrected, or a group's sex set, while the row was cut (it
+-- did not count then) must not come back with it (.claude/rules/database.md,
+-- the re-check of a waived rule), and a group's sex set while a carry is under
+-- way waits for it or is read by it (the before trigger above holds no lock of
+-- the group on an update). The group only is locked here, FOR SHARE: a sex
+-- correction locks the groups of the student's rows FOR SHARE too, so it
+-- waits for this commit (and then sees the row) or committed before (and is
+-- read here). No student lock: a commit check that holds the group
+-- (`group_memberships_regained` locks it FOR UPDATE first) never waits for a
+-- student, so it never meets a correction in the other order.
 create function group_memberships_sex_regained() returns trigger
 language plpgsql
 set search_path = pg_catalog, public
@@ -93,10 +101,10 @@ declare
   now_row record;
 begin
   select m.* into now_row from group_memberships m where m.id = new.id;
-  if not found or now_row.valid_until <= old.valid_until then
+  if not found
+    or (now_row.valid_until <= old.valid_until and now_row.student_id = old.student_id) then
     return null;
   end if;
-  perform 1 from students s where s.id = now_row.student_id for share;
   perform 1 from groups g where g.id = now_row.group_id for share;
   if not group_row_sex_fits(
     now_row.student_id, now_row.group_id, now_row.valid_from, now_row.valid_until
@@ -112,7 +120,7 @@ create constraint trigger group_memberships_sex_regained
   after update on group_memberships
   deferrable initially deferred
   for each row
-  when (new.valid_until > old.valid_until)
+  when (new.valid_until > old.valid_until or new.student_id <> old.student_id)
   execute function group_memberships_sex_regained();
 
 -- A group set to one sex holds no row that still counts of a student of the

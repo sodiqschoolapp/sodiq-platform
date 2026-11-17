@@ -630,6 +630,24 @@ export async function planClassGroups(
         const group = groups.get(id);
         return group === undefined || openTo(group, sex);
       });
+      const named = preferredOf(row.studentId, subjectId)?.toLowerCase();
+      const namedGroup = named === undefined ? undefined : groups.get(named);
+      // A group the person named for the student (the student import) that is
+      // for the other sex is refused, also where the subject does not bind the
+      // student (spec review of the code, must-fix 1): "an unsuitable group is a
+      // problem of the row" (04, Excel import).
+      if (required && namedGroup !== undefined && !openTo(namedGroup, sex)) {
+        refused.push({
+          path: pathOf(index),
+          code: 'group_member_sex',
+          message: 'The named group is for students of the other sex.',
+          recordId: namedGroup.id,
+          subjectId,
+          day: stretch.from,
+        });
+        refusedSubjects.add(subjectId);
+        continue;
+      }
       if (!binds) {
         continue;
       }
@@ -766,7 +784,8 @@ export function refuseNoSeat(refused: readonly ErrorDetail[]): void {
     const code: ErrorCode =
       first === 'class_group_required' ||
       first === 'class_group_not_offered' ||
-      first === 'class_group_chosen_full'
+      first === 'class_group_chosen_full' ||
+      first === 'group_member_sex'
         ? first
         : 'class_group_no_seat';
     throw new ApiException(code, 409, undefined, [...refused]);
