@@ -622,7 +622,7 @@ describe('publish', () => {
       expect(rest).toEqual({
         startsOn: MONDAY,
         // Task 5.17: the scene has no lesson dated today and no lesson slot on
-        // Saturday, so today is open; the closed cases are in publish-same-day.test.ts.
+        // Saturday, so today is open; the closed cases are in the describe "a start today (task 5.17)" below.
         earliest: TODAY,
         defaultStart: MONDAY,
         quarterStarts: ['2026-11-09', '2027-01-11', '2027-03-30'],
@@ -697,7 +697,7 @@ describe('publish', () => {
   describe('the start date', () => {
     // Task 5.17: today is open in this scene (no lesson dated today, no lesson
     // slot on Saturday), so yesterday stands for a date before the earliest;
-    // today refused on a closed day is in publish-same-day.test.ts.
+    // today refused on a closed day is in the describe "a start today (task 5.17)" below.
     it('refuses a date before the earliest and a date outside the year, and changes nothing', async () => {
       const s = await scene();
       const before = await written([s.version]);
@@ -4616,7 +4616,7 @@ describe('publish', () => {
     });
 
     // Task 5.17 (decision 10): today is open in this scene, so yesterday is
-    // the passed date here; today on a closed day is in publish-same-day.test.ts.
+    // the passed date here; today on a closed day is in the describe "a start today (task 5.17)" below.
     it('refuses a choice for a passed day, a day that is not shortened, a slot that is no lesson, and too many lessons, changing nothing', async () => {
       const s = await shortScene();
       const choose = (date: string, slotPositions: number[]) =>
@@ -7042,10 +7042,52 @@ describe('publish', () => {
         expect(checkOf(await check(s.branch, s.version, DAY)).earliest).toBe(NEXT);
       });
       expect(await written([s.version])).toEqual(before);
-      // Tomorrow is unaffected at any hour.
+      // One minute before the first lesson slot a publish from today goes through.
+      await onDay('07:59', async () => {
+        expect(versionOf(await publish(s.branch, s.version, DAY)).startsOn).toBe(DAY);
+      });
+      expect((await lessonsOn(s.branch, DAY)).map((one) => one.starts_at)).toEqual([
+        at(DAY, '08:00'),
+      ]);
+    });
+
+    it('starts tomorrow at any hour of a closed today', async () => {
+      const s = await scene();
+      await load.freeEditLock(s.version);
       await onDay('23:30', async () => {
+        expect(checkOf(await check(s.branch, s.version, DAY)).earliest).toBe(NEXT);
         expect(versionOf(await publish(s.branch, s.version, NEXT)).startsOn).toBe(NEXT);
       });
+    });
+
+    it('reads a calendar special day of one grade today: its first lesson slot closes today', async () => {
+      const s = await scene();
+      const lesson = await t.createSlotType(s.branch, 'Exam lesson', 'lesson', 40);
+      // Grade 7 has a special day today with lesson 1 at 07:30; grade 9, with no class, at 06:00.
+      const special = await t.createTemplate(s.branch, 'Special', [lesson], '07:30');
+      const dawn = await t.createTemplate(s.branch, 'Dawn special', [lesson], '06:00');
+      for (const [template, grade] of [
+        [special, 7],
+        [dawn, 9],
+      ] as const) {
+        await t.database.migrator
+          .insertInto('calendar_entries')
+          .values({
+            branch_id: s.branch,
+            kind: 'special_day',
+            name: 'Special day',
+            first_date: DAY,
+            last_date: DAY,
+            day_template_id: template,
+            grade_from: grade,
+            grade_to: grade,
+          })
+          .execute();
+      }
+      const earliestAt = (time: string) =>
+        onDay(time, async () => checkOf(await check(s.branch, s.version, DAY)).earliest);
+      expect(await earliestAt('07:29')).toBe(DAY);
+      expect(await earliestAt('07:30')).toBe(NEXT);
     });
 
     it('reads the first lesson slot of the day templates applying today: a break before it and a grade with no class do not count', async () => {
@@ -7426,6 +7468,75 @@ describe('publish', () => {
       ]);
     });
 
+    // Plan test 12, second half (decision 11): a substitution that puts the
+    // person on a lesson today takes `lockPublishChain` (the branch's staff FOR
+    // KEY SHARE) before it reads availability, so it waits for the availability
+    // write that holds the person FOR UPDATE, and then reads the new hours.
+    it('orders hours from today against a substitution today: the substitution waits and reads the new hours', async () => {
+      const s = await scene();
+      await load.freeEditLock(s.version);
+      versionOf(await publish(s.branch, s.version, MONDAY));
+      const substitute = (await load.teacher(s.branch)).staffId;
+      await hours(s.branch, substitute);
+      const [lesson] = await lessonsOn(s.branch, DAY);
+      if (lesson === undefined) throw new Error('No lesson today.');
+      await onDay('02:15', async () => {
+        const gate = await holding(async (transaction) => {
+          await transaction
+            .selectFrom('staff_branches')
+            .select('staff_id')
+            .where('staff_id', '=', substitute)
+            .where('branch_id', '=', s.branch)
+            .forUpdate()
+            .execute();
+        });
+        // Hours from 10:00 on Monday: the lesson of today at 08:00 falls outside them.
+        const set = started(() => setHours(s.branch, substitute, DAY, '10:00'));
+        const setPid = await blockedBehind(gate.pid);
+        const substituted = started(() =>
+          request(t.kit.server)
+            .post(`/api/timetable/lessons/${lesson.id}/substitute`)
+            .set('Cookie', t.admin)
+            .set(BRANCH_HEADER, s.branch)
+            .set(REQUEST_KEY_HEADER, randomUUID())
+            .send({ teacherId: substitute, reason: 'The teacher is ill' }),
+        );
+        await blockedBehind(setPid);
+        gate.release();
+        expect(await gate.done).toBeUndefined();
+        expect((await set).status).toBe(200);
+        // The substitution read the hours from 10:00: the substitute is now
+        // unavailable at 08:00 (the old hours covered the whole day).
+        const answer = await substituted;
+        refusedWith(answer, 409, 'substitution_needs_confirm');
+        const details = (answer.body as { error: { details: { path: string }[] } }).error.details;
+        expect(details.map((one) => one.path)).toContain('rules.teacher_unavailable');
+      });
+      expect((await lessonsOn(s.branch, DAY)).map((one) => one.teacher_id)).toEqual([s.teacherId]);
+    });
+
+    it('allows hours from today in a branch where the person has no lesson today, while a lesson today in another branch refuses them there', async () => {
+      const s = await scene({ hoursRange: [0, 540] });
+      await load.freeEditLock(s.version);
+      versionOf(await publish(s.branch, s.version, MONDAY));
+      const other = await t.newBranch();
+      await t.database.migrator
+        .insertInto('staff_branches')
+        .values({ staff_id: s.teacherId, branch_id: other, is_main: false })
+        .execute();
+      await hours(other, s.teacherId, [600, 1440]);
+      await onDay('02:15', async () => {
+        refusedWith(await setHours(s.branch, s.teacherId, DAY), 409, 'date_not_in_future');
+        expect(await earliestFromOf(other, s.teacherId)).toBe(DAY);
+        const set = await setHours(other, s.teacherId, DAY, '10:00');
+        expect(set.status, JSON.stringify(set.body)).toBe(200);
+      });
+      expect(await entriesOfPerson(other, s.teacherId)).toEqual([
+        { from: '2026-09-01', until: DAY },
+        { from: DAY, until: 'infinity' },
+      ]);
+    });
+
     it('takes a keep choice for a shortened today on an open day and uses it in a publish from today; refuses it once today closed', async () => {
       const s = await scene({ lessons: 2 });
       const second = await post(`/api/timetable/versions/${s.version}/pattern`, s.branch, {
@@ -7473,6 +7584,76 @@ describe('publish', () => {
       expect(today.map((one) => [one.pattern_entry_id, one.starts_at])).toEqual([
         [third?.id, at(DAY, '08:00')],
       ]);
+    });
+
+    it('gives an absence stored for today the lesson a publish from today writes (plan test 7)', async () => {
+      const s = await scene();
+      await load.freeEditLock(s.version);
+      const author = await t.database.migrator
+        .selectFrom('accounts')
+        .select('id')
+        .orderBy('id')
+        .executeTakeFirstOrThrow();
+      const absence = await t.database.migrator
+        .insertInto('absences')
+        .values({
+          staff_id: s.teacherId,
+          starts_on: DAY,
+          ends_on: DAY,
+          applies_from: at(DAY, '00:00'),
+          applies_until: at(NEXT, '00:00'),
+          reason: 'Ill',
+          created_by: author.id,
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      await onDay('02:15', async () => {
+        versionOf(await publish(s.branch, s.version, DAY));
+        const [lesson] = await lessonsOn(s.branch, DAY);
+        expect(lesson?.teacher_id).toBe(s.teacherId);
+        // The lesson of today is one of the absence's lessons to cover.
+        const read = await get(`/api/timetable/absences/${absence.id}/lessons`, s.branch);
+        expect(read.status, JSON.stringify(read.body)).toBe(200);
+        expect(JSON.stringify(read.body)).toContain(lesson?.id ?? 'no lesson');
+      });
+    });
+
+    it('gives a grade with a day off today no lesson today, and the other grade its lesson (plan test 7)', async () => {
+      const s = await scene();
+      const subject = await load.classes.subject({ grades: [8], journalType: 'attendance_only' });
+      const room = await load.classes.room(s.branch);
+      const classId = await load.classes.schoolClass(s.branch, s.year, { grade: 8, room });
+      const teacher = (await load.teacher(s.branch, { subjects: [{ subject, grades: [8] }] }))
+        .staffId;
+      await hours(s.branch, teacher);
+      const rowId = await load.row({
+        branch_id: s.branch,
+        version_id: s.version,
+        class_id: classId,
+        subject_id: subject,
+        teacher_id: teacher,
+        lessons_per_week: 1,
+      });
+      await placeAt(s.branch, s.version, rowId, 1);
+      await t.database.migrator
+        .insertInto('calendar_entries')
+        .values({
+          branch_id: s.branch,
+          kind: 'day_off',
+          name: 'Holiday',
+          first_date: DAY,
+          last_date: DAY,
+          grade_from: 7,
+          grade_to: 7,
+        })
+        .execute();
+      await confirmTemplates(s.branch, s.version);
+      await load.freeEditLock(s.version);
+      await onDay('02:15', async () => {
+        versionOf(await publish(s.branch, s.version, DAY));
+      });
+      const today = (await lessonsOn(s.branch, DAY)).filter((one) => one.cancel_cause === null);
+      expect(today.map((one) => one.class_id)).toEqual([classId]);
     });
 
     it('shapes the lessons of today with the records stored for today, as for a later date', async () => {

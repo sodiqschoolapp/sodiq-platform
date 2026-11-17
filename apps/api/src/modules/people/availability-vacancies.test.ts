@@ -219,7 +219,7 @@ describe('availability and vacancies', () => {
     it('takes the first hours of a branch from today, then changes from tomorrow', async () => {
       // Task 5.17: the person has no lesson dated today and the branch no lesson
       // slot on Saturday, so today stays open after the first entry; the closed
-      // cases are in availability-same-day.test.ts.
+      // cases are in publish.test.ts, describe "a start today (task 5.17)".
       const id = await person();
       const first = await setHours(id, t.north, TODAY, [monday('08:00', '13:00')]);
       expect(first.status, JSON.stringify(first.body)).toBe(200);

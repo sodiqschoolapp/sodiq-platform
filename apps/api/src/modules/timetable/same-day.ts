@@ -99,8 +99,10 @@ export async function sameDayMoment(
  * (decisions 2 and 3): closed by any lesson of the branch dated today,
  * cancelled ones included, and by a published version of the branch that
  * starts today (it has started, and a second publish could otherwise archive
- * it). The caller holds the branch's publish lock (`lockPublishChain`) when
- * the answer decides a write.
+ * it). A publish reads it under the branch's publish lock (`lockPublishChain`),
+ * so the answer holds until its commit. A keep choice of a shortened day
+ * (`setDayKeep`) reads it without that lock: the choice only shapes lessons a
+ * later publish from today writes, and that publish checks again under the lock.
  */
 export async function branchTodayOpen(
   transaction: Transaction,

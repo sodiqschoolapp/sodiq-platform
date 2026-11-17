@@ -8,7 +8,7 @@ Newest entry first. Each finished task adds an entry: what was built, what was l
 - Availability may start today also while an entry is in force today, when the person has no lesson dated today in the branch (teacher, substitute, or replaced by an open substitution) and the first lesson has not begun. The availability service reads today from the transaction moment now.
 - A keep choice for a shortened day may be made for today on an open day; "up to date" compares against the earliest start of the same rule. Vacancy fills, template and calendar changes keep tomorrow at the earliest. No migration.
 - The spec text is in pull request #346, for the owner to merge.
-- **Left out**: route tests for a vacancy fill from today on an open day (still refused by its route's own `startsOn <= today` check, unchanged) and for "up to date" on an open day; a person whose only lesson today is in another branch (allowed by construction: every query is filtered by the branch).
+- **Left out**: nothing of the plan. A vacancy fill from today is refused by its route (`fill_start`) before the publish code; the `fill` flag of `publishLocked` keeps tomorrow for a fill by its own rule as a second guard, and no route reaches it.
 
 The next sessions must know:
 
