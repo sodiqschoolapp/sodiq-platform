@@ -595,7 +595,10 @@ describe('the teaching load import', () => {
       expect(codes).toEqual(['load_split_and_whole']);
     });
 
-    it('a mixed mark on a group across classes: load_mixed_not_split', async () => {
+    // The owner's spec change of 17 November 2026 (Look first, the requirement changed): the
+    // English groups draw from Oxford and Princeton, a pair, so they are halves of one split and a
+    // mark on one of them disagrees with the others (this test expected load_mixed_not_split).
+    it('a mixed mark on one half of a split of a pair of classes: load_block_mixed', async () => {
       const preview = await uploaded(await draft(), [
         {
           unit: '7-E-1',
@@ -607,7 +610,7 @@ describe('the teaching load import', () => {
         { unit: '7-E-2', subject: ENGLISH, teacher: name(e2), lessonsPerWeek: '3' },
         { unit: '7-E-3', subject: ENGLISH, teacher: name(e3), lessonsPerWeek: '3' },
       ]);
-      expect(codesOf(preview, 3)).toEqual(['load_mixed_not_split']);
+      expect(codesOf(preview, 3)).toEqual(['load_block_mixed']);
     });
 
     it('halves that disagree on the mixed mark: load_block_mixed', async () => {

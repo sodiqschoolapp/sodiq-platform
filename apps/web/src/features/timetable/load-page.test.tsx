@@ -1354,6 +1354,7 @@ describe('the teaching load page: splits, groups and weekly totals', () => {
     name,
     language: 'uz',
     maxSize: 15,
+    sex: null,
     grades: [7],
     classes: [{ id: OXFORD.id, grade: 7, name: 'Oxford', language: 'uz', archived: false }],
     kind: 'split',

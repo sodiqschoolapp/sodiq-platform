@@ -272,6 +272,51 @@ describe('groups for one sex through the routes', () => {
     });
   });
 
+  describe('a row given back', () => {
+    // .claude/rules/database.md: a rule waived for a row out of service is
+    // checked again when it comes back. The girl's row was cut by a leaving, so
+    // the group could be set to the boys; the undo of the leaving does not give
+    // the row back there, and the subject no longer binds her.
+    it('is not given back into a group set to the other sex while it was cut', async () => {
+      const oxford = await classes.schoolClass(t.north, year);
+      const group = await groupOf([oxford], pe, null);
+      const girl = await pupil(oxford, 'female');
+      expect(await rowsOfStudent(girl.id)).toEqual([
+        { group_id: group, cause: 'automatic', review: false },
+      ]);
+      const versionOf = async () =>
+        studentDetailSchema.parse((await get(`/api/people/students/${girl.id}`)).body).version;
+      const left = await post(`/api/people/students/${girl.id}/leaving`, {
+        lastDay: '2026-10-07',
+        reason: 'Moved to another city',
+        version: await versionOf(),
+      });
+      expect(left.status, JSON.stringify(left.body)).toBe(200);
+      const detail = groupDetailSchema.parse((await get(`/api/groups/${group}`)).body);
+      const edited = await put(`/api/groups/${group}`, {
+        classIds: [oxford],
+        name: detail.name,
+        language: null,
+        maxSize: detail.maxSize,
+        sex: 'male',
+        version: detail.version,
+      });
+      expect(edited.status, JSON.stringify(edited.body)).toBe(200);
+      const undone = await post(`/api/people/students/${girl.id}/leaving/undo`, {
+        version: await versionOf(),
+        reason: 'Entered by mistake.',
+      });
+      expect(undone.status, JSON.stringify(undone.body)).toBe(200);
+      const rows = await t.database.migrator
+        .selectFrom('group_memberships')
+        .select(['group_id', 'valid_until'])
+        .where('student_id', '=', girl.id)
+        .orderBy('valid_from')
+        .execute();
+      expect(rows).toEqual([{ group_id: group, valid_until: '2026-10-08' }]);
+    });
+  });
+
   describe('a student’s sex', () => {
     it('is refused while the student is in a group for that sex from today (student_sex_groups)', async () => {
       const oxford = await classes.schoolClass(t.north, year);
