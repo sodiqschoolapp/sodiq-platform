@@ -1135,7 +1135,7 @@ export const en = {
     text: 'Enter the 6-digit code from your authenticator app, or one of your recovery codes.',
     label: 'Code',
     missing: 'Enter the code.',
-    submit: 'Continue',
+    submit: 'Sign in',
   },
   password: {
     titleForced: 'Choose a new password',
@@ -6919,7 +6919,7 @@ export const en = {
       voidReason: 'Why it is voided',
       check: 'Check',
       save: 'Save',
-      confirm: 'Confirm',
+      confirm: 'Grant the exemption',
       drop: 'Drop',
       back: 'Back',
       close: 'Close',
@@ -7196,7 +7196,7 @@ export const en = {
       allPresentSkipped_other: '{{count}} already marked, left as typed.',
       saved: 'Saved',
       presentEarlier:
-        'Was at school at an earlier lesson today: {{names}}. The Tutor sees this day.',
+        'Was at school at an earlier lesson today: {{names}}. The Tutor or Class teacher sees this day.',
       typedBy: 'Typed by {{name}}',
       history: 'History',
       historyTitle: 'History: {{student}}',
@@ -7322,7 +7322,7 @@ export const en = {
       changes: {
         entry: 'Entered',
         not_held: '"Not held"',
-        carry: 'Carried',
+        carry: 'Moved to the next lesson',
         move: 'Moved to its check lesson',
         takeover: 'Taken over by the plan',
         separation: 'Plan separated',
