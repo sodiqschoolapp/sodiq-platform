@@ -16,7 +16,8 @@ const group = (
   classIds: string[],
   grades: number[],
   subjectId = 'english',
-): BlockGroup => ({ id, subjectId, classIds, grades });
+  sex: BlockGroup['sex'] = null,
+): BlockGroup => ({ id, subjectId, classIds, grades, sex });
 
 const row = (id: string, groupId: string, changes: Partial<BlockRow> = {}): BlockRow => ({
   id,
@@ -159,19 +160,76 @@ describe('blockProblems', () => {
     expect(blockProblems(classRow('d', 'oxford'), [], split)).toEqual([]);
   });
 
-  it('finds a mixed mark on a group across classes, and one teacher there still refused', () => {
+  // Spec change of 17 November 2026 (edge/timetable, Structure): a split may
+  // divide a pair of classes; the halves of one split are the groups that draw
+  // from the same set of classes. This test replaced "finds a mixed mark on a
+  // group across classes, and one teacher there still refused".
+  it('lets the halves of a split of a pair of classes be marked and share a teacher', () => {
     const groups = groupsOf(
       group('m1', ['oxford', 'princeton'], [7]),
-      group('m2', ['oxford', 'princeton'], [7]),
+      group('m2', ['princeton', 'oxford'], [7]),
     );
     const rows = [
       row('a', 'm1', { teacherId: 't', mixedBlock: true }),
       row('b', 'm2', { teacherId: 't', mixedBlock: true }),
     ];
-    expect(blockProblems(rows[0] as BlockRow, rows, groups)).toEqual([
-      'load_mixed_not_split',
-      'load_block_teacher',
-    ]);
+    expect(blockProblems(rows[0] as BlockRow, rows, groups)).toEqual([]);
+    expect(blockProblems(rows[1] as BlockRow, rows, groups)).toEqual([]);
+  });
+
+  it('finds the halves of a split of a pair that disagree on the mark', () => {
+    const groups = groupsOf(
+      group('m1', ['oxford', 'princeton'], [7]),
+      group('m2', ['oxford', 'princeton'], [7]),
+    );
+    const rows = [row('a', 'm1', { mixedBlock: true }), row('b', 'm2')];
+    expect(blockProblems(rows[1] as BlockRow, rows, groups)).toEqual(['load_block_mixed']);
+  });
+
+  it('keeps groups of one block over other sets of classes as parts, not halves', () => {
+    // A chain: m1 (oxford) and m2 (oxford and princeton) share a class but are
+    // not halves of one split, so the mark need not agree and a shared teacher
+    // is refused.
+    const groups = groupsOf(
+      group('m1', ['oxford'], [7]),
+      group('m2', ['oxford', 'princeton'], [7]),
+    );
+    const rows = [
+      row('a', 'm1', { teacherId: 't', mixedBlock: true }),
+      row('b', 'm2', { teacherId: 't' }),
+    ];
+    expect(blockProblems(rows[0] as BlockRow, rows, groups)).toEqual(['load_block_teacher']);
+    expect(blockProblems(rows[1] as BlockRow, rows, groups)).toEqual(['load_block_teacher']);
+  });
+
+  // 05, Teaching load: "A subject whose groups are all for one sex is always
+  // marked as part of a mixed block."
+  it('finds a block whose groups are all for one sex not marked mixed', () => {
+    const groups = groupsOf(
+      group('tk', ['sydney', 'columbia'], [7, 8], 'taekwondo', 'male'),
+      group('gy', ['sydney'], [7], 'gymnastics', 'female'),
+      group('gy2', ['sydney'], [7], 'gymnastics', 'female'),
+    );
+    const boys = row('a', 'tk', { subjectId: 'taekwondo' });
+    expect(blockProblems(boys, [boys], groups)).toEqual(['load_one_sex_not_mixed']);
+    expect(blockProblems({ ...boys, mixedBlock: true }, [{ ...boys, mixedBlock: true }], groups)).toEqual([]);
+    const girls = [
+      row('b', 'gy', { subjectId: 'gymnastics' }),
+      row('c', 'gy2', { subjectId: 'gymnastics' }),
+    ];
+    expect(blockProblems(girls[0] as BlockRow, girls, groups)).toEqual(['load_one_sex_not_mixed']);
+  });
+
+  it('finds nothing for an unmarked block with groups of both sexes or for everyone', () => {
+    const groups = groupsOf(
+      group('pb', ['sydney'], [7], 'pe', 'male'),
+      group('pg', ['sydney'], [7], 'pe', 'female'),
+      group('all', ['oxford'], [7], 'pe'),
+    );
+    const rows = [row('a', 'pb', { subjectId: 'pe' }), row('b', 'pg', { subjectId: 'pe' })];
+    expect(blockProblems(rows[0] as BlockRow, rows, groups)).toEqual([]);
+    const all = row('c', 'all', { subjectId: 'pe' });
+    expect(blockProblems(all, [all], groups)).toEqual([]);
   });
 
   it('lets PE and technology splits of one class have other lessons and one teacher', () => {

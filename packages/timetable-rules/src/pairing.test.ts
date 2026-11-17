@@ -430,3 +430,92 @@ describe('subject_twice per student', () => {
     ).toEqual(['pe', 'tech']);
   });
 });
+
+// Spec change of 17 November 2026 (edge/timetable, Structure): "Its two
+// lessons are parts of two subjects drawn from the same class, or from the
+// same pair of classes that do these subjects together (the boys of 7 Sydney
+// and 8 Columbia in one part, the girls in the other), and together they hold
+// every student of those classes exactly once."
+describe('a pairing of the halves of a pair of classes', () => {
+  // 7a (s1, s2 boys; s3, s4 girls) and 7b (s5 boy; s6 girl) do sport
+  // together: PE for both halves, taekwondo for the boys only, gymnastics for
+  // the girls only; 7a also keeps its own technology split.
+  const PAIR = ['7a', '7b'];
+  function pairData(): PatternFactsData {
+    const data = mixedData();
+    const pairGroup = (id: string, studentIds: string[]) => ({
+      id,
+      kind: 'group' as const,
+      grades: [7],
+      language: 'uz',
+      tutorOnStart: null,
+      classIds: id.endsWith('b-b') ? ['7b', '7a'] : PAIR,
+      studentIds,
+      mainRoomId: null,
+    });
+    const teacher = data.teachers.find((one) => one.id === 't7');
+    if (teacher === undefined) throw new Error('The fixture has t7.');
+    const sports = { ...teacher, subjects: ['pe', 'tk', 'gy'].map((subjectId) => ({ subjectId, grades: [7] })) };
+    return {
+      ...data,
+      teachers: [
+        ...data.teachers,
+        ...['p1', 'p2', 'k1', 'g1'].map((id) => ({ ...sports, id })),
+      ],
+      subjects: [
+        ...data.subjects,
+        ...['tk', 'gy'].map((id) => ({ id, active: true, languageRule: false, tutorSubject: false })),
+      ],
+      units: [
+        ...data.units,
+        pairGroup('pair-pe-b-b', ['s1', 's2', 's5']),
+        pairGroup('pair-pe-g', ['s3', 's4', 's6']),
+        pairGroup('pair-tk-b', ['s1', 's2', 's5']),
+        pairGroup('pair-gy-g', ['s3', 's4', 's6']),
+      ],
+      rows: [
+        ...data.rows.filter((one) => !['pe-b', 'pe-g', 'pe-7b', 'pe-7b-g'].includes(one.id)),
+        half('pp-b', 'pair-pe-b-b', 'pe', 'p1', ['pp-b', 'pp-g']),
+        half('pp-g', 'pair-pe-g', 'pe', 'p2', ['pp-b', 'pp-g']),
+        half('tk-b', 'pair-tk-b', 'tk', 'k1', ['tk-b']),
+        half('gy-g', 'pair-gy-g', 'gy', 'g1', ['gy-g']),
+      ],
+    };
+  }
+  const pair = patternModel(pairData());
+
+  it('gives the other subjects’ halves drawn from the same two classes, in any order of the classes', () => {
+    // pair-pe-b-b lists its classes as 7b, 7a: the same set.
+    expect(mixedPartners(pair, 'tk-b')).toEqual(['gy-g', 'pp-g', 'pp-b']);
+    expect(mixedPartners(pair, 'pp-b')).toEqual(['gy-g', 'tk-b']);
+    // 7a's own technology halves draw from 7a alone: not partners of the pair.
+    expect(mixedPartners(pair, 'tech-b')).toEqual([]);
+    expect(pairingProblem(pair, 'tk-b', 'tech-g')).toBe('pattern_mixed_partner');
+  });
+
+  it('places boys taekwondo with girls PE, and boys PE with girls gymnastics, with no result', () => {
+    expect(
+      results(
+        [block('x', ['tk-b', 'pp-g'], 1, 1, pair), block('y', ['pp-b', 'gy-g'], 1, 3, pair)],
+        pair,
+      ),
+    ).toEqual([]);
+  });
+
+  it('gives split_apart for a one-sex half alone: the girls of both classes are missing', () => {
+    const found = results([block('x', ['tk-b'], 1, 1, pair)], pair);
+    expect(found.map((one) => [one.rule, one.detail])).toEqual([['split_apart', { students: 3 }]]);
+  });
+
+  it('gives student_double and split_apart for two boys’ halves together', () => {
+    const found = rules([block('x', ['tk-b', 'pp-b'], 1, 1, pair)], pair);
+    expect(found).toContain('student_double');
+    expect(found).toContain('split_apart');
+  });
+
+  it('gives class_double for a pairing of the pair beside a lesson of one of its classes', () => {
+    expect(
+      rules([block('x', ['tk-b', 'pp-g'], 1, 1, pair), block('m', ['math-7b'], 1, 1, pair)], pair),
+    ).toContain('class_double');
+  });
+});

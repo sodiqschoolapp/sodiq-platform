@@ -13,10 +13,19 @@
  * Decision 2: in one version, the group rows of one subject are one block when
  * they are linked by a shared class, or by being groups across classes of the
  * same grade or pair of grades, taken as a connected set. Decision 12: the
- * rows of a split (a group of one class) marked `mixedBlock` meet in different
- * slots, so one teacher may take both halves; equal lessons still bind. The
- * database keeps the same rules (db/migrations/0056).
+ * rows of a split marked `mixedBlock` meet in different slots, so one teacher
+ * may take both halves; equal lessons still bind. The database keeps the same
+ * rules (db/migrations/0056, 0171).
+ *
+ * Spec change of 17 November 2026: a split divides one class, or a pair of
+ * classes that do the subject together; the halves of one split are the
+ * groups that draw from the same set of classes (`splitKeyOf`). A group may
+ * be for one sex, and a subject whose groups are all for one sex is always
+ * marked mixed (`load_one_sex_not_mixed`).
  */
+
+/** The sex a group is for (`groups.sex`); `null` for everyone. */
+export type GroupSex = 'male' | 'female';
 
 /** A group as the blocks read it: its subject, its classes and their grades. */
 export interface BlockGroup {
@@ -24,6 +33,8 @@ export interface BlockGroup {
   readonly subjectId: string;
   readonly classIds: readonly string[];
   readonly grades: readonly number[];
+  /** "For girls only or boys only" (05, Group); `null` for everyone. */
+  readonly sex: GroupSex | null;
 }
 
 /** A row of a version as the blocks read it: a class row or a group row. */
@@ -43,6 +54,7 @@ export const BLOCK_PROBLEM_ORDER = [
   'load_block_mixed',
   'load_block_lessons',
   'load_block_teacher',
+  'load_one_sex_not_mixed',
 ] as const;
 
 export type BlockProblem = (typeof BLOCK_PROBLEM_ORDER)[number];
@@ -63,9 +75,19 @@ export function groupsLinked(a: BlockGroup, b: BlockGroup): boolean {
   return a.classIds.length > 1 && b.classIds.length > 1 && sameSet(a.grades, b.grades);
 }
 
-/** The only class of a split, or `null` for a group across classes. */
-export const splitClassOf = (group: BlockGroup): string | null =>
-  group.classIds.length === 1 ? (group.classIds[0] ?? null) : null;
+/**
+ * The split a group is a part of: its set of classes, as one key (one class,
+ * or a pair of classes that do the subject together). Two groups with the
+ * same key are halves of one split.
+ */
+export const splitKeyOf = (group: Pick<BlockGroup, 'classIds'>): string =>
+  [...new Set(group.classIds.map((id) => id.toLowerCase()))].sort().join('|');
+
+/** Whether two groups are parts of one split: they draw from the same classes, at least one. */
+export const sameSplit = (
+  a: Pick<BlockGroup, 'classIds'>,
+  b: Pick<BlockGroup, 'classIds'>,
+): boolean => a.classIds.length > 0 && splitKeyOf(a) === splitKeyOf(b);
 
 /**
  * The blocks of the version's group rows: each the ids of its rows, sorted;
@@ -137,8 +159,7 @@ function mixedHalves(a: BlockRow, b: BlockRow, groups: ReadonlyMap<string, Block
   const groupA = a.groupId === null ? undefined : groups.get(a.groupId);
   const groupB = b.groupId === null ? undefined : groups.get(b.groupId);
   if (groupA === undefined || groupB === undefined) return false;
-  const classA = splitClassOf(groupA);
-  return a.mixedBlock && b.mixedBlock && classA !== null && classA === splitClassOf(groupB);
+  return a.mixedBlock && b.mixedBlock && sameSplit(groupA, groupB);
 }
 
 /**
@@ -160,17 +181,12 @@ export function blockProblems(
   }
   const others = block.filter((other) => other.id !== row.id);
   const problems: BlockProblem[] = [];
-  const splitClass = splitClassOf(group);
-  if (row.mixedBlock && splitClass === null) {
-    problems.push('load_mixed_not_split');
-  }
   if (
-    splitClass !== null &&
     others.some((other) => {
       const otherGroup = other.groupId === null ? undefined : groups.get(other.groupId);
       return (
         otherGroup !== undefined &&
-        splitClassOf(otherGroup) === splitClass &&
+        sameSplit(group, otherGroup) &&
         other.mixedBlock !== row.mixedBlock
       );
     })
@@ -185,7 +201,25 @@ export function blockProblems(
   ) {
     problems.push('load_block_teacher');
   }
+  if (!row.mixedBlock && oneSex([row, ...others], groups)) {
+    problems.push('load_one_sex_not_mixed');
+  }
   return problems;
+}
+
+/**
+ * Whether every group of the rows is for one and the same sex (05, Teaching
+ * load: "A subject whose groups are all for one sex is always marked as part
+ * of a mixed block"); `false` when a group is not given.
+ */
+function oneSex(rows: readonly BlockRow[], groups: ReadonlyMap<string, BlockGroup>): boolean {
+  const sexes = new Set<GroupSex | null>();
+  for (const one of rows) {
+    const group = one.groupId === null ? undefined : groups.get(one.groupId);
+    if (group === undefined) return false;
+    sexes.add(group.sex);
+  }
+  return sexes.size === 1 && !sexes.has(null);
 }
 
 /**
