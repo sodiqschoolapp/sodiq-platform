@@ -6686,7 +6686,7 @@ export const en = {
       },
       resultNumber: '{{shown}}, grade {{grade}}',
       provisional: 'provisional',
-      basedOn: 'based on {{held}} of {{expected}} lessons',
+      basedOn: 'based on {{expected}} of {{held}} lessons',
       results: {
         exempt: 'Exempt',
         no_result: 'No result',

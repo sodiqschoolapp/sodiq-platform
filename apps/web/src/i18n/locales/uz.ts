@@ -6748,7 +6748,7 @@ export const uz: Texts<'one' | 'other'> = {
       },
       resultNumber: '{{shown}}, baho {{grade}}',
       provisional: 'dastlabki',
-      basedOn: '{{expected}} ta darsdan {{held}} tasi asosida',
+      basedOn: '{{held}} ta darsdan {{expected}} tasi asosida',
       results: {
         exempt: 'Ozod',
         no_result: 'Natija yoʻq',
