@@ -208,9 +208,9 @@ describe('the search of pages', () => {
   // "jadvali", put the timetable first, and Enter opened it instead of the student Aliyev.
   it('matches a page by the start of a word of its title, never inside a word', () => {
     const pages = [
-      { to: '/timetable', title: 'Dars jadvali' },
-      { to: '/journal', title: 'Jurnallar' },
-      { to: '/people/students', title: 'Oʻquvchilar' },
+      { titleKey: 'menu.timetable', to: '/timetable', title: 'Dars jadvali' },
+      { titleKey: 'menu.journal', to: '/journal', title: 'Jurnallar' },
+      { titleKey: 'people.students.title', to: '/people/students', title: 'Oʻquvchilar' },
     ] as const;
     const titles = (typed: string) => matchingPages(pages, typed).map((page) => page.title);
     expect(titles('ali')).toEqual([]);
