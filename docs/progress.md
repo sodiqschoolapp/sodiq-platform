@@ -6,7 +6,7 @@ Newest entry first. Each finished task adds an entry: what was built, what was l
 
 - **Built**: groups of one subject are one block only when they share a class, directly or through other groups of the subject (`groupsLinked` in `packages/timetable-rules`; `load_block_rows` replaced in `0172_block_link_shared_class.sql`, no row changed). Two pairs of one grade (the Labzak grade 3 English) now take the same two teachers and their own slots, typed by hand, imported, placed in the grid and imported as a timetable.
 - A pattern block placed before that holds several whole blocks of one subject in one slot stays valid (`rowsTogether`, pattern mode only).
-- The spec text is pull request #343, the owner's to merge.
+- The spec text came in by pull request #343, merged by the owner.
 - **Left out**: splitting an old pattern block that holds two pairs (handbook: remove it and place each pair again).
 
 The next sessions must know:
