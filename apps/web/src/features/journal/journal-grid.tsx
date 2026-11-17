@@ -831,6 +831,12 @@ export function JournalGridView({
           ? t('journal.grid.cancelled')
           : t('journal.grid.cancelledReason', { reason: lesson.cancelled.reason })
         : null;
+      // A lesson still to come: its cells wait empty, as on paper. The sign stays for a cell
+      // closed to the student (outside their class or group then). 72 future cells of a quarter
+      // showed a dot each (design review of 17 November 2026, J6). The date is the server's.
+      const ahead =
+        lesson.date > grid.today ||
+        (lesson.date === grid.today && !lesson.held && lesson.cancelled === null);
       const closedSign = (
         <span
           className="text-muted-foreground"
@@ -933,7 +939,7 @@ export function JournalGridView({
               );
             }
             if (cell.mark === null) {
-              if (cell.closed) return closedSign;
+              if (cell.closed) return ahead ? null : closedSign;
               // Task 8.6: an empty optional cell shows its sign (a week late: "open as optional").
               if (cell.marker?.kind === 'optional') {
                 return (
