@@ -712,6 +712,7 @@ export interface Groups {
   max_size: number;
   name: string;
   name_key: Generated<string | null>;
+  sex: string | null;
   subject_id: string;
   version: Generated<number>;
 }

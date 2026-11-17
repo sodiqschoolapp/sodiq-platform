@@ -186,6 +186,21 @@ describe('blockProblems', () => {
     expect(blockProblems(rows[1] as BlockRow, rows, groups)).toEqual(['load_block_mixed']);
   });
 
+  it('finds a mixed mark on a group of three classes: a split is one class or a pair', () => {
+    const groups = groupsOf(
+      group('m1', ['oxford', 'princeton', 'yale'], [7]),
+      group('m2', ['oxford', 'princeton', 'yale'], [7]),
+    );
+    const rows = [
+      row('a', 'm1', { teacherId: 't', mixedBlock: true }),
+      row('b', 'm2', { teacherId: 't', mixedBlock: true }),
+    ];
+    expect(blockProblems(rows[0] as BlockRow, rows, groups)).toEqual([
+      'load_mixed_not_split',
+      'load_block_teacher',
+    ]);
+  });
+
   it('keeps groups of one block over other sets of classes as parts, not halves', () => {
     // A chain: m1 (oxford) and m2 (oxford and princeton) share a class but are
     // not halves of one split, so the mark need not agree and a shared teacher

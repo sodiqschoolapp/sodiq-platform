@@ -83,11 +83,17 @@ export function groupsLinked(a: BlockGroup, b: BlockGroup): boolean {
 export const splitKeyOf = (group: Pick<BlockGroup, 'classIds'>): string =>
   [...new Set(group.classIds.map((id) => id.toLowerCase()))].sort().join('|');
 
-/** Whether two groups are parts of one split: they draw from the same classes, at least one. */
+/** Whether a group is a part of a split: it draws from one class or from a pair of classes. */
+export const isSplit = (group: Pick<BlockGroup, 'classIds'>): boolean => {
+  const count = new Set(group.classIds.map((id) => id.toLowerCase())).size;
+  return count === 1 || count === 2;
+};
+
+/** Whether two groups are parts of one split: each a split, drawing from the same classes. */
 export const sameSplit = (
   a: Pick<BlockGroup, 'classIds'>,
   b: Pick<BlockGroup, 'classIds'>,
-): boolean => a.classIds.length > 0 && splitKeyOf(a) === splitKeyOf(b);
+): boolean => isSplit(a) && splitKeyOf(a) === splitKeyOf(b);
 
 /**
  * The blocks of the version's group rows: each the ids of its rows, sorted;
@@ -181,6 +187,9 @@ export function blockProblems(
   }
   const others = block.filter((other) => other.id !== row.id);
   const problems: BlockProblem[] = [];
+  if (row.mixedBlock && !isSplit(group)) {
+    problems.push('load_mixed_not_split');
+  }
   if (
     others.some((other) => {
       const otherGroup = other.groupId === null ? undefined : groups.get(other.groupId);

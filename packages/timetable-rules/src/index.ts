@@ -74,6 +74,7 @@ export {
   groupsLinked,
   loadBlocks,
   splitAndWhole,
+  isSplit,
   sameSplit,
   splitKeyOf,
   type BlockGroup,

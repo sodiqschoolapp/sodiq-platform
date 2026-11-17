@@ -163,7 +163,7 @@ export class ClassesKit {
     year: string,
     subject: string,
     classIds: readonly string[],
-    input: { name?: string; language?: 'uz' | 'ru'; size?: number } = {},
+    input: { name?: string; language?: 'uz' | 'ru'; size?: number; sex?: 'male' | 'female' } = {},
   ): Promise<string> {
     count += 1;
     return this.migrator.transaction().execute(async (transaction) => {
@@ -176,6 +176,7 @@ export class ClassesKit {
           name: input.name ?? `G-${String(count)}`,
           language: input.language ?? 'uz',
           max_size: input.size ?? 20,
+          sex: input.sex ?? null,
         })
         .returning('id')
         .executeTakeFirstOrThrow();
