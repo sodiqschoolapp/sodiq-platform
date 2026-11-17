@@ -14,6 +14,8 @@ import type { MembershipPlan, StoredMembership } from './membership-plan.js';
  */
 export const MEMBERSHIP_REFUSALS: Readonly<Record<string, ErrorCode>> = {
   class_memberships_no_overlap: 'student_has_class',
+  // 0171: a student's sex corrected while in a group for the other sex from today.
+  students_sex_groups: 'student_sex_groups',
   class_memberships_full: 'class_full',
   class_memberships_active: 'student_not_active_on',
   class_memberships_grade: 'class_grade_differs',

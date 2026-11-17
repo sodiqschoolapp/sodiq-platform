@@ -100,7 +100,7 @@ Later and optional (Release 2): an assistant that takes a request in plain words
 | Blocked | An exam counts as a lesson for its invigilators, its rooms and its classes in the rules on one place at a time and rooms. It is not a lesson for the one-slot rule, for the warnings on load, or for any journal, plan or report. |
 | Blocked | Between a teacher's lesson in one branch and their next lesson in another branch there is at least the travel time set for those two branches. |
 | Blocked | A lesson fills exactly one lesson slot of the day template. It cannot be placed in a break or lunch slot, across two slots, or at a time typed by hand. |
-| Blocked | All groups or parts of one split are in the same slot, so that every student of the class has a lesson at that time. |
+| Blocked | All groups or parts of one split are in the same slot, so that every student of the class has a lesson at that time; a mixed block pairs parts of two subjects instead (Edge cases: timetable, Structure). |
 | Warning | Room capacity is smaller than the class or group. |
 | Warning | Teacher's weekly lessons exceed the contract load. |
 | Warning | A teacher has more lessons in a day than the teacher's most lessons per day. |

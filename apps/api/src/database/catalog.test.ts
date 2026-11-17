@@ -231,6 +231,8 @@ function auditSchoolPartitions(): Record<string, string> {
  * Look first).
  */
 const SECURITY_DEFINER_FUNCTIONS: Record<string, string> = {
+  'student_sex_rows_elsewhere(uuid,text)':
+    "Whether a student's rows in other branches than the request's hold them, from today on, in a group for the other sex, a yes or no asked by the guard of a sex correction, whose row filter hides the old branch's rows up to an accepted move (05, Group: a group for one sex takes only students of that sex; review of pull request #341, correction 1).",
   'is_parent_account(uuid)':
     'Whether an account is linked to a relative (a Parent account), a yes or no asked by the guards that keep parent and staff accounts apart, whatever branch the relative is linked in (10, Signing in: "A parent session never carries staff rights"; task 11.1, plan of pull request #292).',
   'relative_accounts_not_staff()':

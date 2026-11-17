@@ -37,6 +37,7 @@ export const LOAD_PROBLEM_ORDER = [
   'load_block_mixed',
   'load_block_lessons',
   'load_block_teacher',
+  'load_one_sex_not_mixed',
   'load_room_closed',
   'load_group_gaps',
 ] as const;
@@ -58,7 +59,10 @@ export const TEACHER_PROBLEMS: readonly LoadProblem[] = [
  * The problems a write is never refused for (task 3.4b, decision 4): students
  * not placed are listed; readiness (5.3) and publish (5.5a) block on them.
  */
-export const LISTED_PROBLEMS: readonly LoadProblem[] = ['load_group_gaps'];
+export const LISTED_PROBLEMS: readonly LoadProblem[] = [
+  'load_group_gaps',
+  'load_one_sex_not_mixed',
+];
 
 /** The problems of `problems` that refuse a write, in their order. */
 export const refusingProblems = (problems: readonly LoadProblem[]): LoadProblem[] =>
@@ -215,7 +219,12 @@ export function loadRowProblems(facts: LoadRowFacts): LoadProblem[] {
     }
   }
   problems.push(...teacherProblems(unit, subject, facts.teacher));
-  for (const problem of ['load_block_mixed', 'load_block_lessons', 'load_block_teacher'] as const) {
+  for (const problem of [
+    'load_block_mixed',
+    'load_block_lessons',
+    'load_block_teacher',
+    'load_one_sex_not_mixed',
+  ] as const) {
     if (facts.blockProblems.includes(problem)) {
       problems.push(problem);
     }

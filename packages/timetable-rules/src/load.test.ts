@@ -233,6 +233,21 @@ describe('the problems of a block', () => {
     expect(refusingProblems(problems)).toEqual(['load_room_closed']);
     expect(refusingProblems(loadRowProblems(facts({ unit: group, unplaced: 1 })))).toEqual([]);
   });
+
+  // 05, Teaching load (17 November 2026): "A subject whose groups are all for
+  // one sex is always marked as part of a mixed block." Listed, never a
+  // refusal: the halves are marked one write after another.
+  it('lists a one-sex block not marked mixed after the block rules, and never as a refusal', () => {
+    const problems = loadRowProblems(
+      facts({
+        unit: group,
+        unplaced: 2,
+        blockProblems: ['load_one_sex_not_mixed', 'load_block_lessons'],
+      }),
+    );
+    expect(problems).toEqual(['load_block_lessons', 'load_one_sex_not_mixed', 'load_group_gaps']);
+    expect(refusingProblems(problems)).toEqual(['load_block_lessons']);
+  });
 });
 
 // 3.4a decision 2 as narrowed by task 3.6c-2 (decision 1, review correction

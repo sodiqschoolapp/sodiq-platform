@@ -476,6 +476,33 @@ describe('the student import', () => {
       });
     });
 
+    // The owner's spec change of 17 November 2026 (05, Group; 04, Excel import): a group for one
+    // sex takes only students of that sex, and "an unsuitable group is a problem of the row"
+    // (spec review of the code, must-fix 1).
+    it('refuses a girl named in the boys’ group, whether or not a girls’ group exists', async () => {
+      const subject = await classes.subject({ grades: [7] });
+      const made = await newClass();
+      count += 1;
+      const boys = `7-B-${letters(count + 300)}`;
+      await classes.group(t.north, year, subject, [made.id], { name: boys, sex: 'male' });
+      const alone = await uploaded([studentRow(made.name, { sex: 'Female', group1: boys })]);
+      expect(rowAt(alone, 3).problems.map((one) => [one.column, one.code])).toEqual([
+        ['group1', 'group_member_sex'],
+      ]);
+      count += 1;
+      await classes.group(t.north, year, subject, [made.id], {
+        name: `7-W-${letters(count + 300)}`,
+        sex: 'female',
+      });
+      const both = await uploaded([studentRow(made.name, { sex: 'Female', group1: boys })]);
+      expect(rowAt(both, 3).problems.map((one) => [one.column, one.code])).toEqual([
+        ['group1', 'group_member_sex'],
+      ]);
+      // A boy named there is clean.
+      const boy = await uploaded([studentRow(made.name, { group1: boys })]);
+      expect(rowAt(boy, 3).problems).toEqual([]);
+    });
+
     it('refuses a row that names no group for each subject the class is split for, naming the subjects', async () => {
       const { made, subject } = await splitClass([20]);
       const other = await classes.subject({ grades: [7] });

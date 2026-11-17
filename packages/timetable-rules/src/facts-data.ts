@@ -10,6 +10,7 @@
  * builds a lesson of a load row (`placementOf`); both sides call it. The dates
  * each fact is read on are those of `placement.ts` for a pattern.
  */
+import { sameSplit } from './blocks.js';
 import type { Day } from './day.js';
 import type {
   EngineDay,
@@ -195,23 +196,24 @@ function need<T>(map: ReadonlyMap<string, T>, id: string, kind: string): T {
  * The rows a half of a mixed split may be paired with in one block (task
  * 5.4c-3b, decision 5; edge/timetable, Structure: "A mixed block is allowed:
  * boys have physical education while girls have technology, and the reverse
- * in another slot"): rows marked mixed whose group is a split (a group of one
- * class) of the same class, of another subject; sorted by id. Empty for a row
- * that is not a mixed half.
+ * in another slot"): rows marked mixed whose group draws from the same class,
+ * or the same pair of classes (spec change of 17 November 2026: "Its two
+ * lessons are parts of two subjects drawn from the same class, or from the
+ * same pair of classes that do these subjects together"), of another subject;
+ * sorted by id. Empty for a row that is not a mixed half.
  */
 export function partnersIn(data: PatternFactsData, row: PatternRowData): string[] {
   const units = new Map(data.units.map((unit) => [unit.id, unit]));
-  const splitClass = (one: PatternRowData): string | null => {
-    if (!one.mixedBlock || one.groupId === null) return null;
-    const classIds = units.get(one.groupId)?.classIds ?? [];
-    return classIds.length === 1 ? (classIds[0] ?? null) : null;
-  };
-  const own = splitClass(row);
-  if (own === null) return [];
+  const mixedGroup = (one: PatternRowData) =>
+    !one.mixedBlock || one.groupId === null ? undefined : units.get(one.groupId);
+  const own = mixedGroup(row);
+  if (own === undefined) return [];
   return data.rows
-    .filter(
-      (one) => one.id !== row.id && one.subjectId !== row.subjectId && splitClass(one) === own,
-    )
+    .filter((one) => {
+      if (one.id === row.id || one.subjectId === row.subjectId) return false;
+      const other = mixedGroup(one);
+      return other !== undefined && sameSplit(own, other);
+    })
     .map((one) => one.id)
     .sort();
 }

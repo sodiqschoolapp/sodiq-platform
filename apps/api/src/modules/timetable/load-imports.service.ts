@@ -82,6 +82,7 @@ const PROBLEM_COLUMNS: Readonly<Record<LoadProblem, LoadImportColumn>> = {
   load_block_mixed: 'mixedBlock',
   load_block_lessons: 'lessonsPerWeek',
   load_block_teacher: 'teacher',
+  load_one_sex_not_mixed: 'mixedBlock',
   load_room_closed: 'room',
   load_group_gaps: 'unit',
 };
@@ -483,6 +484,14 @@ export class LoadImports {
         const found = facts.problemsOf(row);
         for (const code of refusingProblems(found)) {
           add(rowNumber, { column: PROBLEM_COLUMNS[code], code });
+        }
+        // Listed by hand, where the halves are marked one write after another; a file brings
+        // the rows of a block together, so an unmarked one-sex block is a problem of its row.
+        if (found.includes('load_one_sex_not_mixed')) {
+          add(rowNumber, {
+            column: PROBLEM_COLUMNS.load_one_sex_not_mixed,
+            code: 'load_one_sex_not_mixed',
+          });
         }
         const unplaced = facts.blockFactsOf(row).unplaced;
         if (found.includes('load_group_gaps') && unplaced > 0) {

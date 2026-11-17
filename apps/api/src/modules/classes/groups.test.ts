@@ -95,6 +95,7 @@ describe('groups', () => {
     name: group.name,
     language: null,
     maxSize: group.maxSize,
+    sex: group.sex,
     version: group.version,
     ...fields,
   });
@@ -337,6 +338,7 @@ describe('groups', () => {
             name: 'Moved',
             language: null,
             maxSize: 20,
+            sex: null,
             version: 0,
           }),
           404,

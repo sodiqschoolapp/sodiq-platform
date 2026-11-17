@@ -179,6 +179,10 @@ export function GroupPanel({
               <dd>{t(`groups.kinds.${group.kind}`)}</dd>
             </div>
             <div className="grid gap-0.5">
+              <dt className="text-sm text-muted-foreground">{t('groups.sex')}</dt>
+              <dd data-group-sex="">{t(`groups.sexes.${group.sex ?? 'everyone'}`)}</dd>
+            </div>
+            <div className="grid gap-0.5">
               <dt className="text-sm text-muted-foreground">{t('groups.teacher')}</dt>
               <dd data-group-teacher="">{groupTeacherText(t, group)}</dd>
             </div>
