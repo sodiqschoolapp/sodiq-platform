@@ -36,6 +36,7 @@ import {
 import { sql } from 'kysely';
 import { RequestKeys } from '../../database/request-keys.js';
 import { Transactions, transactionMoment, type Transaction } from '../../database/transactions.js';
+import { branchTodayOpen, sameDayMoment } from './same-day.js';
 import type { JsonValue } from '../../database/types.generated.js';
 import { ApiException } from '../../http/api-exception.js';
 import type { Access } from '../access/permission.guard.js';
@@ -546,9 +547,14 @@ export class TimetablePublish {
     const branchId = branchOf(access);
     return this.transactions.run(access.branchIds, async (transaction) => {
       const version = await this.timetable.findVersion(transaction, branchId, id);
-      const today = await this.timetable.todayIn(transaction, branchId);
+      const at = await sameDayMoment(transaction, branchId);
       const quarters = await this.quartersOf(transaction, version);
-      const choices = startChoices(today, engineYearOf(version, quarters));
+      // Task 5.17: today is the earliest on a day open for a same-day start.
+      const choices = startChoices(
+        at.today,
+        engineYearOf(version, quarters),
+        await branchTodayOpen(transaction, branchId, at),
+      );
       const findings = await this.findingsOn(
         transaction,
         version,
@@ -672,7 +678,13 @@ export class TimetablePublish {
       const version = await this.timetable.lockDraft(transaction, access, id, requestId);
       const positions = [...input.slotPositions].sort((a, b) => a - b);
       if (positions.length > 0) {
-        if (input.date <= (await this.timetable.todayIn(transaction, branchId))) {
+        // Task 5.17 (decision 10): before the earliest start of a publish,
+        // today on a day open for a same-day start, else tomorrow.
+        const at = await sameDayMoment(transaction, branchId);
+        if (
+          input.date < at.today ||
+          (input.date === at.today && !(await branchTodayOpen(transaction, branchId, at)))
+        ) {
           throw new ApiException('day_keep_date_passed', 409);
         }
         const state = await this.pattern.stateOf(transaction, version, access.accountId);
@@ -809,15 +821,21 @@ export class TimetablePublish {
     input: PublishBody,
     requestId: string,
     options: FillOptions = {},
+    fill = false,
   ): Promise<TimetableVersion> {
     const { startsOn } = input;
     const branchId = branchOf(access);
     const named = await this.timetable.findVersion(transaction, branchId, id);
     await lockPublishChain(transaction, branchId, named.academic_year_id);
     let version = await this.timetable.lockDraft(transaction, access, id, requestId);
-    const today = await this.timetable.todayIn(transaction, branchId);
+    const at = await sameDayMoment(transaction, branchId);
     const quarters = await this.quartersOf(transaction, version);
-    const { earliest } = startChoices(today, engineYearOf(version, quarters));
+    // Task 5.17 (decision 9, "checked again at the moment of saving"): read
+    // under the branch's publish lock taken above, which every writer of a
+    // lesson dated today takes, at the transaction moment. A fill keeps
+    // tomorrow at the earliest (`06`, Filling a vacancy; decision 6).
+    const todayOpen = !fill && (await branchTodayOpen(transaction, branchId, at));
+    const { earliest } = startChoices(at.today, engineYearOf(version, quarters), todayOpen);
     const rows = await this.timetable.rowsOf(transaction, id);
     // The weights read below stay as read until the commit (a weights edit
     // locks its subject FOR UPDATE).
@@ -882,7 +900,9 @@ export class TimetablePublish {
   ): Promise<{ readonly check: PublishCheck; readonly findings: Findings }> {
     const today = await this.timetable.todayIn(transaction, version.branch_id);
     const quarters = await this.quartersOf(transaction, version);
-    const choices = startChoices(today, engineYearOf(version, quarters));
+    // Task 5.17 (decision 6): a fill keeps tomorrow at the earliest by its
+    // own rule (`06`, Filling a vacancy), today never open for it.
+    const choices = startChoices(today, engineYearOf(version, quarters), false);
     const findings = await this.findingsOn(
       transaction,
       version,
@@ -929,7 +949,7 @@ export class TimetablePublish {
     options: FillOptions,
     requestId: string,
   ): Promise<TimetableVersion> {
-    return this.publishLocked(transaction, access, id, input, requestId, options);
+    return this.publishLocked(transaction, access, id, input, requestId, options, true);
   }
 
   /**
@@ -1438,7 +1458,7 @@ export class TimetablePublish {
       code,
     }));
     if (refusals.length > 0) {
-      // Outside the year or before tomorrow, nothing else is read on that date.
+      // Outside the year or before the earliest start, nothing else is read on that date.
       return {
         refusals,
         warnings: [],
@@ -2190,7 +2210,7 @@ export function datedAuditOf(write: DatedWrite) {
   };
 }
 
-/** Decision 6: tomorrow at the earliest, and inside the year. */
+/** Decision 6: the earliest start (tomorrow, or today on an open day, task 5.17), and inside the year. */
 function startProblems(
   version: VersionRow,
   startsOn: string,

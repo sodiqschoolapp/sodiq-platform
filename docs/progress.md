@@ -2,6 +2,18 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 17 November 2026: task 5.17, a version may start today in a branch with no lesson today
+
+- **Built**: a publish may start today when the branch has no lesson dated today (cancelled ones included), no published version starting today, and its first lesson slot of today has not begun by the branch clock (`sameDayOpen`, `startChoices(today, year, todayOpen)` in `packages/timetable-rules`; `same-day.ts` in the timetable module), read again under the publish lock at saving. A version from today cannot be withdrawn.
+- Availability may start today also while an entry is in force today, when the person has no lesson dated today in the branch (teacher, substitute, or replaced by an open substitution) and the first lesson has not begun. The availability service reads today from the transaction moment now.
+- A keep choice for a shortened day may be made for today on an open day; "up to date" compares against the earliest start of the same rule. Vacancy fills, template and calendar changes keep tomorrow at the earliest. No migration.
+- The spec text is in pull request #346, for the owner to merge.
+- **Left out**: nothing of the plan. A vacancy fill from today is refused by its route (`fill_start`) before the publish code; the `fill` flag of `publishLocked` keeps tomorrow for a fill by its own rule as a second guard, and no route reaches it.
+
+The next sessions must know:
+
+- Tests that assumed an empty branch's today is closed now see it open on the kit's Saturday (no lesson slot); they use yesterday for "before the earliest" and `publish.test.ts`, "a start today (task 5.17)", for the closed cases.
+
 ## 17 November 2026: task 5.16, a slot of one-sex mixed halves counts once
 
 - **Built**: `classWeekLessons` (`packages/timetable-rules/src/totals.ts`) counts the one-sex mixed halves of each split (a class, or a pair of classes) by the larger of the boys' and the girls' lessons and of the lessons one teacher has there, so a sport slot counts once; every other row as before. `totalsOf` passes the mixed mark and the groups' sex; the load page, readiness step 2 and publish agree. No migration.

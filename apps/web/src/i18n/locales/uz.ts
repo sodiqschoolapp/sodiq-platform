@@ -5903,7 +5903,7 @@ export const uz: Texts<'one' | 'other'> = {
         day_choice_not_offered:
           'Bu band uchun mavjud boʻlmagan tanlov yuborildi. Qayta tekshiring va koʻrsatilganlardan birini tanlang.',
         version_start_too_early:
-          'Boshlanish sanasi eng erta ertaga. Bugungi oʻzgarish — bir kunlik oʻzgarish.',
+          'Boshlanish sanasi eng erta ertaga yoki filialda bugun dars boʻlmasa va birinchi dars hali boshlanmagan boʻlsa, bugun. Bugungi boshqa oʻzgarish — bir kunlik oʻzgarish.',
         version_start_outside_year: 'Boshlanish sanasi oʻquv yilidan tashqarida.',
         version_later_published:
           '{{number}}-versiya shu yoki keyingi sanadan allaqachon eʼlon qilingan. Keyingi versiyalar bilan nima boʻlishini quyida tanlang.',
