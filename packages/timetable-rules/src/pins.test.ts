@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { blocksOfRows, type BlockGroup, type BlockRow } from './blocks.js';
 import { checkTimetable } from './check.js';
 import { dayTimes, type Day, type DaySlotInput } from './day.js';
 import type { EngineDay, EngineTeacher, EngineUnit, Facts, Placement } from './placement.js';
@@ -231,6 +232,61 @@ describe('pinnedPlacements', () => {
     expect(new Set(placements.map((one) => one.blockId)).size).toBe(1);
     expect(placements.every((one) => one.start === 530 && one.end === 575)).toBe(true);
     expect(blocked(checkTimetable(placements, facts()))).toEqual([]);
+  });
+
+  it('places only the pair of the pinned row when two pairs of one grade share no class (task 5.15)', () => {
+    // 3 Oxford + 3 Princeton and 3 Cambridge + 3 Durham, English: two blocks of the load; two
+    // teachers each teach one group of each pair (06, Model, Parallel group lessons).
+    const pairOf = (id: string, classIds: string[]): BlockGroup => ({
+      id,
+      subjectId: 'english',
+      classIds,
+      grades: [3],
+      sex: null,
+    });
+    const groups = new Map(
+      [
+        pairOf('op1', ['3o', '3p']),
+        pairOf('op2', ['3o', '3p']),
+        pairOf('cd1', ['3c', '3d']),
+        pairOf('cd2', ['3c', '3d']),
+      ].map((one) => [one.id, one]),
+    );
+    const loadRows: BlockRow[] = ['op1', 'op2', 'cd1', 'cd2'].map((groupId) => ({
+      id: `row-${groupId}`,
+      classId: null,
+      groupId,
+      subjectId: 'english',
+      teacherId: groupId.endsWith('1') ? 't3' : 't4',
+      lessonsPerWeek: 1,
+      mixedBlock: false,
+    }));
+    const blocks = blocksOfRows(loadRows, groups);
+    const rows = new Map(
+      loadRows.map((one) => [
+        one.id,
+        {
+          id: one.id,
+          lessonsPerWeek: 1,
+          mixedBlock: false,
+          block: (blocks.get(one.id) ?? []).map((r) => r.id),
+        },
+      ]),
+    );
+    const { placements, problems } = pinnedPlacements({
+      pins: [pin('p1', 'row-op1', 1, 1), pin('p2', 'row-cd2', 1, 3)],
+      rows,
+      day: () => SENIOR,
+      placement: (rowId, slot) => ({ ...placementOf('eng-e1', slot), loadRowId: rowId }),
+    });
+    expect(problems).toEqual([]);
+    const at = (start: number) =>
+      placements
+        .filter((one) => one.start === start)
+        .map((one) => one.loadRowId)
+        .sort();
+    expect(at(480)).toEqual(['row-op1', 'row-op2']);
+    expect(at(530)).toEqual(['row-cd1', 'row-cd2']);
   });
 
   it('places a block once when two of its rows are pinned to one slot', () => {

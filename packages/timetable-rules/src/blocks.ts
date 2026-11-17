@@ -7,15 +7,18 @@
  * lessons." "All parts have equal lessons per week and different teachers. A
  * mixed block is allowed: boys have physical education while girls have
  * technology, and the reverse in another slot." Parallel groups are "All
- * groups of one subject and one grade or pair of grades … placed in the same
- * period, each with its own teacher and room".
+ * groups of one subject that share a class, directly or through other groups
+ * of that subject … placed in the same period, each with its own teacher and
+ * room. … Groups that share no class are separate blocks, even in one grade"
+ * (spec change of 17 November 2026).
  *
- * Decision 2: in one version, the group rows of one subject are one block when
- * they are linked by a shared class, or by being groups across classes of the
- * same grade or pair of grades, taken as a connected set. Decision 12: the
- * rows of a split marked `mixedBlock` meet in different slots, so one teacher
- * may take both halves; equal lessons still bind. The database keeps the same
- * rules (db/migrations/0056, 0171).
+ * Task 5.15 (replacing decision 2 of 3.4b, which also linked groups across
+ * classes of the same grade or pair of grades): in one version, the group rows
+ * of one subject are one block when they are linked by a shared class, taken
+ * as a connected set. Decision 12: the rows of a split marked `mixedBlock`
+ * meet in different slots, so one teacher may take both halves; equal lessons
+ * still bind. The database keeps the same rules (db/migrations/0056, 0171,
+ * and 0172, which links by a shared class only).
  *
  * Spec change of 17 November 2026: a split divides one class, or a pair of
  * classes that do the subject together; the halves of one split are the
@@ -59,20 +62,9 @@ export const BLOCK_PROBLEM_ORDER = [
 
 export type BlockProblem = (typeof BLOCK_PROBLEM_ORDER)[number];
 
-const gradeKey = (grades: readonly number[]) =>
-  [...new Set(grades)].sort((x, y) => x - y).join(',');
-
-const sameSet = (a: readonly number[], b: readonly number[]) => gradeKey(a) === gradeKey(b);
-
-/** Whether two groups of one subject are linked (decision 2). */
+/** Whether two groups are linked: one subject and a shared class (task 5.15). */
 export function groupsLinked(a: BlockGroup, b: BlockGroup): boolean {
-  if (a.subjectId !== b.subjectId) {
-    return false;
-  }
-  if (a.classIds.some((id) => b.classIds.includes(id))) {
-    return true;
-  }
-  return a.classIds.length > 1 && b.classIds.length > 1 && sameSet(a.grades, b.grades);
+  return a.subjectId === b.subjectId && a.classIds.some((id) => b.classIds.includes(id));
 }
 
 /**
