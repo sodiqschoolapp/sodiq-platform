@@ -1470,6 +1470,11 @@ The pause of new tasks of 7 November 2026 (an owner gate after 11.8) was lifted 
   - Build: groups of one subject are one block only when they share a class, directly or through other groups of that subject, in the rule engine (`groupsLinked`) and the database (`load_block_rows`, 0172); a pattern block placed before that holds several whole blocks of one subject in one slot stays valid.
   - Done when: two pairs of one grade with the same two teachers in each are typed by hand and imported with no problem, placed in the grid at two times with no blocked rule, and imported as a timetable the same way.
 
+- [x] **5.16 A slot of one-sex mixed halves counts once in a class's weekly total** (bug on production reported by the owner on 17 November 2026; not planned before)
+  - Read: `06` (Building a timetable, step 2; Rules, the mixed block line), `edge/timetable` (Structure, the mixed block), `05` (Group; Teaching load), `docs/spec-changes.md` (17 November 2026); `packages/timetable-rules` (`totals.ts`, `blocks.ts`, `check.ts`), `totalsOf` of the timetable service, the publish check.
+  - Build: `classWeekLessons` counts the rows marked mixed of one split (one class or a pair of classes) whose groups are all for one sex by the larger of the boys' and the girls' lessons; every other row as before. The load page's totals, step 2 of the readiness and publish read the same count.
+  - Done when: a class with 35 whole-class lessons and the sport of its pair (boys PE 2, Swimming 1, Taekwondo 2; girls PE 2, Swimming 1, Gymnastics 2) counts 40 and fits 40 slots; one more boys' lesson counts 41 and holds step 2 and publish.
+
 > **Owner gate.** The start routine stops here: the owner paused new tasks on 15 November 2026, after 5.14, and stopped the plan of 11.9 (pull request #325, closed). The owner deletes this line to start building again.
 
 - [ ] **11.9 Quarterly stipend and scholarship history** — Read `08` (Quarterly stipend), `04` (Student record: contract and scholarship), `edge/people-roles-accounts` (Financial group). The stipend list prepared from `packages/calc`, awarded by the Super Admin, written to the student's history; the history in the portal. A change of `packages/calc` stops the task (item 4).

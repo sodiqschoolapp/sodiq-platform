@@ -771,6 +771,46 @@ describe('publish', () => {
       });
     });
 
+    // Task 5.16: step 2 counts a slot of one-sex mixed halves once (the larger of the boys' and
+    // the girls' lessons), and publish reads the same count: a class row of 11 beside boys PE 2 and
+    // Taekwondo `boysTaekwondo`, girls PE 2 and Gymnastics 2, in a week of 15 slots.
+    it('refuses step 2 by the slots one-sex mixed halves need, not the sum of their subjects', async () => {
+      const sport = async (boysTaekwondo: number) => {
+        const s = await scene();
+        await t.database.migrator
+          .updateTable('teaching_load_rows')
+          .set({ lessons_per_week: 11 })
+          .where('id', '=', s.rowId)
+          .execute();
+        const half = async (sex: 'male' | 'female', subject: string, lessons: number) => {
+          const group = await load.classes.group(s.branch, s.year, subject, [s.classId], { sex });
+          const teacher = (await load.teacher(s.branch, { subjects: [{ subject, grades: [7] }] }))
+            .staffId;
+          await hours(s.branch, teacher);
+          await load.row({
+            branch_id: s.branch,
+            version_id: s.version,
+            group_id: group,
+            subject_id: subject,
+            teacher_id: teacher,
+            lessons_per_week: lessons,
+            mixed_block: true,
+          });
+        };
+        const pe = await load.classes.subject({ grades: [7] });
+        await half('male', pe, 2);
+        await half('male', await load.classes.subject({ grades: [7] }), boysTaekwondo);
+        await half('female', pe, 2);
+        await half('female', await load.classes.subject({ grades: [7] }), 2);
+        return blockedBy(await publish(s.branch, s.version, MONDAY));
+      };
+      const notReady = { code: 'draft_not_ready', path: 'steps.load' };
+      // 11 + 4 = 15: the rows not placed are refused, step 2 is not.
+      expect(await sport(2)).not.toContainEqual(notReady);
+      // 11 + 5 = 16 for 15 slots.
+      expect(await sport(3)).toContainEqual(notReady);
+    });
+
     it('refuses a problem of a load row', async () => {
       const s = await scene();
       await load.status(s.teacherId, 'left', MONDAY);

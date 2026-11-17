@@ -1090,11 +1090,10 @@ export class Timetable {
       subjectId: row.subject_id,
       teacherId: row.teacher_id,
       lessonsPerWeek: row.lessons_per_week,
+      mixedBlock: row.mixed_block,
     }));
-    const classLessons = classWeekLessons(
-      totalsRows,
-      new Map([...groups].map(([groupId, group]) => [groupId, group.classIds])),
-    );
+    // Task 5.16: the groups with their sex, so one-sex mixed halves count by their slots.
+    const classLessons = classWeekLessons(totalsRows, groups);
     const classIds = [...classLessons.keys()].sort();
     const classes =
       classIds.length === 0

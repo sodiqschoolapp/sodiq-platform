@@ -9,6 +9,7 @@ import {
   weekDaysOf,
   weekLessonSlots,
   type Interval,
+  type TotalsGroup,
   type TotalsRow,
 } from './totals.js';
 
@@ -124,15 +125,43 @@ describe('freeSlots (decision 7)', () => {
 
 describe('classWeekLessons and teacherWeekLessons', () => {
   const rows: TotalsRow[] = [
-    { classId: 'oxford', groupId: null, subjectId: 'algebra', teacherId: 'a', lessonsPerWeek: 5 },
-    { classId: null, groupId: 'en1', subjectId: 'english', teacherId: 'b', lessonsPerWeek: 3 },
-    { classId: null, groupId: 'en2', subjectId: 'english', teacherId: 'c', lessonsPerWeek: 3 },
-    { classId: null, groupId: 'pe', subjectId: 'pe', teacherId: 'a', lessonsPerWeek: 2 },
+    {
+      classId: 'oxford',
+      groupId: null,
+      subjectId: 'algebra',
+      teacherId: 'a',
+      lessonsPerWeek: 5,
+      mixedBlock: false,
+    },
+    {
+      classId: null,
+      groupId: 'en1',
+      subjectId: 'english',
+      teacherId: 'b',
+      lessonsPerWeek: 3,
+      mixedBlock: false,
+    },
+    {
+      classId: null,
+      groupId: 'en2',
+      subjectId: 'english',
+      teacherId: 'c',
+      lessonsPerWeek: 3,
+      mixedBlock: false,
+    },
+    {
+      classId: null,
+      groupId: 'pe',
+      subjectId: 'pe',
+      teacherId: 'a',
+      lessonsPerWeek: 2,
+      mixedBlock: false,
+    },
   ];
-  const groupClasses = new Map([
-    ['en1', ['oxford', 'princeton']],
-    ['en2', ['oxford', 'princeton']],
-    ['pe', ['oxford', 'edinburgh']],
+  const groupClasses = new Map<string, TotalsGroup>([
+    ['en1', { classIds: ['oxford', 'princeton'], sex: null }],
+    ['en2', { classIds: ['oxford', 'princeton'], sex: null }],
+    ['pe', { classIds: ['oxford', 'edinburgh'], sex: null }],
   ]);
 
   it('counts a block once per class and a two-grade group for each of its classes', () => {
@@ -153,5 +182,199 @@ describe('classWeekLessons and teacherWeekLessons', () => {
         ['c', 3],
       ]),
     );
+  });
+});
+
+/**
+ * Task 5.16: one-sex mixed halves of a split pair across subjects (edge/timetable, Structure: "A
+ * mixed block is allowed: boys have physical education while girls have technology, and the reverse
+ * in another slot"; 06, Rules: "a mixed block pairs parts of two subjects instead"), so a sport slot
+ * holds one boys' lesson and one girls' lesson and counts once for the class: the split needs the
+ * larger of the boys' and the girls' lessons (decisions 2 to 5).
+ */
+describe('classWeekLessons with mixed halves for one sex', () => {
+  const whole = (classId: string, lessonsPerWeek: number): TotalsRow => ({
+    classId,
+    groupId: null,
+    subjectId: `core-${classId}`,
+    teacherId: 't-core',
+    lessonsPerWeek,
+    mixedBlock: false,
+  });
+  const half = (
+    groupId: string,
+    subjectId: string,
+    lessonsPerWeek: number,
+    mixedBlock = true,
+  ): TotalsRow => ({
+    classId: null,
+    groupId,
+    subjectId,
+    teacherId: `t-${groupId}`,
+    lessonsPerWeek,
+    mixedBlock,
+  });
+  /** The sport of one split: boys PE 2, Swimming 1, Taekwondo 2; girls PE 2, Swimming 1, Gymnastics 2. */
+  const sport = (prefix: string, boysTaekwondo = 2, mixedBlock = true): TotalsRow[] => [
+    half(`${prefix}-pe-b`, 'pe', 2, mixedBlock),
+    half(`${prefix}-swim-b`, 'swimming', 1, mixedBlock),
+    half(`${prefix}-tkd-b`, 'taekwondo', boysTaekwondo, mixedBlock),
+    half(`${prefix}-pe-g`, 'pe', 2, mixedBlock),
+    half(`${prefix}-swim-g`, 'swimming', 1, mixedBlock),
+    half(`${prefix}-gym-g`, 'gymnastics', 2, mixedBlock),
+  ];
+  const sportGroups = (
+    prefix: string,
+    classIds: readonly string[],
+    sexes: { boys: TotalsGroup['sex']; girls: TotalsGroup['sex'] } = {
+      boys: 'male',
+      girls: 'female',
+    },
+  ): [string, TotalsGroup][] => [
+    [`${prefix}-pe-b`, { classIds, sex: sexes.boys }],
+    [`${prefix}-swim-b`, { classIds, sex: sexes.boys }],
+    [`${prefix}-tkd-b`, { classIds, sex: sexes.boys }],
+    [`${prefix}-pe-g`, { classIds, sex: sexes.girls }],
+    [`${prefix}-swim-g`, { classIds, sex: sexes.girls }],
+    [`${prefix}-gym-g`, { classIds, sex: sexes.girls }],
+  ];
+
+  it('counts the sport of a pair of classes by its slots: 35 + 5 = 40 for each class', () => {
+    const rows = [whole('sydney', 35), whole('columbia', 35), ...sport('pair')];
+    const groups = new Map(sportGroups('pair', ['sydney', 'columbia']));
+    expect(classWeekLessons(rows, groups)).toEqual(
+      new Map([
+        ['sydney', 40],
+        ['columbia', 40],
+      ]),
+    );
+  });
+
+  it('counts the sport of one class by its slots', () => {
+    const rows = [whole('sydney', 35), ...sport('own')];
+    const groups = new Map(sportGroups('own', ['sydney']));
+    expect(classWeekLessons(rows, groups)).toEqual(new Map([['sydney', 40]]));
+  });
+
+  it('still counts an unpaired extra half: boys 6, girls 5 gives 35 + 6', () => {
+    const rows = [whole('sydney', 35), whole('columbia', 35), ...sport('pair', 3)];
+    const groups = new Map(sportGroups('pair', ['sydney', 'columbia']));
+    expect(classWeekLessons(rows, groups)).toEqual(
+      new Map([
+        ['sydney', 41],
+        ['columbia', 41],
+      ]),
+    );
+  });
+
+  it('counts mixed halves for everyone per subject, as before', () => {
+    const rows = [whole('sydney', 35), ...sport('own')];
+    const groups = new Map(sportGroups('own', ['sydney'], { boys: null, girls: null }));
+    expect(classWeekLessons(rows, groups)).toEqual(new Map([['sydney', 35 + 2 + 1 + 2 + 2]]));
+  });
+
+  it('counts one-sex halves not marked mixed per subject, as before', () => {
+    const rows = [whole('sydney', 35), ...sport('own', 2, false)];
+    const groups = new Map(sportGroups('own', ['sydney']));
+    expect(classWeekLessons(rows, groups)).toEqual(new Map([['sydney', 35 + 7]]));
+  });
+
+  it('counts every mixed row of a split per subject when one mixed half is for everyone', () => {
+    const rows = [whole('sydney', 35), ...sport('own')];
+    const groups = new Map(sportGroups('own', ['sydney']));
+    groups.set('own-gym-g', { classIds: ['sydney'], sex: null });
+    expect(classWeekLessons(rows, groups)).toEqual(new Map([['sydney', 35 + 7]]));
+  });
+
+  it('counts groups of more than two classes per subject, as before', () => {
+    const rows = sport('three');
+    const groups = new Map(sportGroups('three', ['sydney', 'columbia', 'harvard']));
+    const totals = classWeekLessons(rows, groups);
+    expect([...totals.values()]).toEqual([7, 7, 7]);
+  });
+
+  it("counts a class's own split and its pair's split once each", () => {
+    const rows = [
+      whole('sydney', 30),
+      whole('columbia', 30),
+      ...sport('pair'),
+      half('own-art-b', 'woodwork', 1),
+      half('own-art-g', 'needlework', 2),
+    ];
+    const groups = new Map([
+      ...sportGroups('pair', ['sydney', 'columbia']),
+      ['own-art-b', { classIds: ['sydney'], sex: 'male' }] as [string, TotalsGroup],
+      ['own-art-g', { classIds: ['sydney'], sex: 'female' }] as [string, TotalsGroup],
+    ]);
+    expect(classWeekLessons(rows, groups)).toEqual(
+      new Map([
+        ['sydney', 30 + 5 + 2],
+        ['columbia', 30 + 5],
+      ]),
+    );
+  });
+
+  // Review correction 2: a taekwondo group of three classes that holds a class of the pair is
+  // linked to the pair's boys' taekwondo by a shared class (groupsLinked, task 5.15) and runs in
+  // the same slot, so counting it beside the sides counts that subject twice. This over-count is
+  // the intended side (decision 4): counting more holds step 2 and names the class; counting less
+  // lets through a draft that cannot be built. Do not "fix" it into an under-count.
+  it("counts a group outside the split per subject beside the split's sides (over, by intent)", () => {
+    const rows = [whole('sydney', 35), ...sport('pair'), half('tkd-three', 'taekwondo', 2, false)];
+    const groups = new Map([
+      ...sportGroups('pair', ['sydney', 'columbia']),
+      ['tkd-three', { classIds: ['sydney', 'harvard', 'yale'], sex: null }] as [
+        string,
+        TotalsGroup,
+      ],
+    ]);
+    const totals = classWeekLessons(rows, groups);
+    expect(totals.get('sydney')).toBe(35 + 5 + 2);
+    expect(totals.get('columbia')).toBe(5);
+    expect(totals.get('harvard')).toBe(2);
+    expect(totals.get('yale')).toBe(2);
+  });
+
+  it("takes the larger of two boys' groups of one subject, not their sum", () => {
+    const rows = [half('pe-b1', 'pe', 2), half('pe-b2', 'pe', 2), half('pe-g', 'pe', 2)];
+    const groups = new Map<string, TotalsGroup>([
+      ['pe-b1', { classIds: ['sydney'], sex: 'male' }],
+      ['pe-b2', { classIds: ['sydney'], sex: 'male' }],
+      ['pe-g', { classIds: ['sydney'], sex: 'female' }],
+    ]);
+    expect(classWeekLessons(rows, groups)).toEqual(new Map([['sydney', 2]]));
+  });
+
+  // Code round 1, must-fix 1: one teacher may take both halves of a mixed split (3.4b, decision
+  // 12), and two lessons of one teacher never share a slot (teacher_double), so the split needs at
+  // least that teacher's lessons in it: never fewer slots than a valid placement needs.
+  it("counts one teacher's lessons on both sides of a split, which cannot pair", () => {
+    const rows = [
+      whole('sydney', 37),
+      { ...half('pe-b', 'pe', 2), teacherId: 't-both' },
+      { ...half('gym-g', 'gymnastics', 2), teacherId: 't-both' },
+    ];
+    const groups = new Map<string, TotalsGroup>([
+      ['pe-b', { classIds: ['sydney'], sex: 'male' }],
+      ['gym-g', { classIds: ['sydney'], sex: 'female' }],
+    ]);
+    expect(classWeekLessons(rows, groups)).toEqual(new Map([['sydney', 37 + 4]]));
+  });
+
+  it('counts one teacher of both halves of one subject: the whole block cannot share a slot', () => {
+    const rows = [
+      { ...half('pe-b', 'pe', 2), teacherId: 't-both' },
+      { ...half('pe-g', 'pe', 2), teacherId: 't-both' },
+      half('tkd-b', 'taekwondo', 1),
+      half('gym-g', 'gymnastics', 1),
+    ];
+    const groups = new Map<string, TotalsGroup>([
+      ['pe-b', { classIds: ['sydney'], sex: 'male' }],
+      ['pe-g', { classIds: ['sydney'], sex: 'female' }],
+      ['tkd-b', { classIds: ['sydney'], sex: 'male' }],
+      ['gym-g', { classIds: ['sydney'], sex: 'female' }],
+    ]);
+    // Sides 3 and 3; the teacher of both PE halves has 4 lessons in the split.
+    expect(classWeekLessons(rows, groups)).toEqual(new Map([['sydney', 4]]));
   });
 });
