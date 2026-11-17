@@ -4,7 +4,7 @@ Newest entry first. Each finished task adds an entry: what was built, what was l
 
 ## 17 November 2026: task 5.16, a slot of one-sex mixed halves counts once
 
-- **Built**: `classWeekLessons` (`packages/timetable-rules/src/totals.ts`) counts the one-sex mixed halves of each split (a class, or a pair of classes) by the larger of the boys' and the girls' lessons, so a sport slot counts once; every other row as before. `totalsOf` passes the mixed mark and the groups' sex; the load page, readiness step 2 and publish agree. No migration.
+- **Built**: `classWeekLessons` (`packages/timetable-rules/src/totals.ts`) counts the one-sex mixed halves of each split (a class, or a pair of classes) by the larger of the boys' and the girls' lessons and of the lessons one teacher has there, so a sport slot counts once; every other row as before. `totalsOf` passes the mixed mark and the groups' sex; the load page, readiness step 2 and publish agree. No migration.
 - Fixes the production refusal of Labzak grades 1 to 4 (42 lessons for 40 slots; really 40).
 - **Left out**: nothing.
 

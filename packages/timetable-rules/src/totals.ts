@@ -128,7 +128,8 @@ interface OneSexSplit {
  * subject, as every other group row does (decision 4): without the students
  * the total cannot tell which halves are complementary, and counting more
  * only holds a named step. A class counts its own split and its pair's split
- * once each (decision 5).
+ * once each (decision 5). Code round 1: never fewer than the lessons one
+ * teacher or vacancy has in the split, which cannot share a slot.
  */
 export function classWeekLessons(
   rows: readonly TotalsRow[],
@@ -177,7 +178,15 @@ export function classWeekLessons(
       }
       return [...subjects.values()].reduce((sum, lessons) => sum + lessons, 0);
     };
-    const lessons = Math.max(side('male'), side('female'));
+    // Code round 1: one teacher or vacancy may take both sides (3.4b, decision 12), and two of its
+    // lessons never share a slot (teacher_double), so the split needs at least its lessons there.
+    // With the sides this is the fewest slots a pairing of boys' and girls' lessons of different
+    // teachers can take (Hall's condition on the teachers), so it never counts too few.
+    const ofTeacher = new Map<string, number>();
+    for (const { row } of split.rows) {
+      ofTeacher.set(row.teacherId, (ofTeacher.get(row.teacherId) ?? 0) + row.lessonsPerWeek);
+    }
+    const lessons = Math.max(side('male'), side('female'), ...ofTeacher.values());
     for (const classId of split.classIds) add(classId, lessons);
   }
   return totals;

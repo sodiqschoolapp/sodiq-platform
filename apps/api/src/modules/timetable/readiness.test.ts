@@ -388,13 +388,27 @@ describe('the readiness of a draft, steps 1 to 5', () => {
    * `boysTaekwondo`, girls PE 2 and Gymnastics 2, beside a class row of 11, in a week of 15 slots.
    * The class has no students, so no group has a gap.
    */
-  async function sportScene(boysTaekwondo: number) {
+  async function sportScene(boysTaekwondo: number, oneTeacher = false) {
     const s = await scene({ lessons: 11 });
+    const pe = await load.classes.subject({ grades: [7] });
+    const taekwondo = await load.classes.subject({ grades: [7] });
+    const gymnastics = await load.classes.subject({ grades: [7] });
+    // Code round 1: one teacher of every half, as 3.4b decision 12 allows on a mixed split.
+    const shared = oneTeacher
+      ? (
+          await load.teacher(s.branch, {
+            subjects: [pe, taekwondo, gymnastics].map((subject) => ({ subject, grades: [7] })),
+          })
+        ).staffId
+      : null;
+    if (shared !== null) await hours(s.branch, shared, '2026-09-01', [1, 2, 3, 4, 5]);
     const half = async (sex: 'male' | 'female', subject: string, lessons: number) => {
       const group = await load.classes.group(s.branch, s.year, subject, [s.classId], { sex });
-      const teacher = (await load.teacher(s.branch, { subjects: [{ subject, grades: [7] }] }))
-        .staffId;
-      await hours(s.branch, teacher, '2026-09-01', [1, 2, 3, 4, 5]);
+      let teacher = shared;
+      if (teacher === null) {
+        teacher = (await load.teacher(s.branch, { subjects: [{ subject, grades: [7] }] })).staffId;
+        await hours(s.branch, teacher, '2026-09-01', [1, 2, 3, 4, 5]);
+      }
       return load.row({
         branch_id: s.branch,
         version_id: s.version,
@@ -405,9 +419,6 @@ describe('the readiness of a draft, steps 1 to 5', () => {
         mixed_block: true,
       });
     };
-    const pe = await load.classes.subject({ grades: [7] });
-    const taekwondo = await load.classes.subject({ grades: [7] });
-    const gymnastics = await load.classes.subject({ grades: [7] });
     await half('male', pe, 2);
     await half('male', taekwondo, boysTaekwondo);
     await half('female', pe, 2);
@@ -426,6 +437,15 @@ describe('the readiness of a draft, steps 1 to 5', () => {
     expect(totals.classes).toEqual([
       expect.objectContaining({ id: s.classId, lessons: 15, lessonSlots: 15 }),
     ]);
+  });
+
+  // Code round 1, must-fix 1: one teacher on both sides; the halves cannot pair, 11 + 8 for 15.
+  it('holds step 2 when one teacher takes both sides of the split', async () => {
+    const s = await sportScene(2, true);
+    expect((await readiness(s.branch, s.version)).load).toMatchObject({
+      ready: false,
+      classesOver: [{ id: s.classId, lessons: 19, lessonSlots: 15 }],
+    });
   });
 
   it('still holds step 2 when the larger side is over the week: 11 + 5 for 15 slots', async () => {

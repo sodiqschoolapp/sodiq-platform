@@ -344,4 +344,37 @@ describe('classWeekLessons with mixed halves for one sex', () => {
     ]);
     expect(classWeekLessons(rows, groups)).toEqual(new Map([['sydney', 2]]));
   });
+
+  // Code round 1, must-fix 1: one teacher may take both halves of a mixed split (3.4b, decision
+  // 12), and two lessons of one teacher never share a slot (teacher_double), so the split needs at
+  // least that teacher's lessons in it: never fewer slots than a valid placement needs.
+  it("counts one teacher's lessons on both sides of a split, which cannot pair", () => {
+    const rows = [
+      whole('sydney', 37),
+      { ...half('pe-b', 'pe', 2), teacherId: 't-both' },
+      { ...half('gym-g', 'gymnastics', 2), teacherId: 't-both' },
+    ];
+    const groups = new Map<string, TotalsGroup>([
+      ['pe-b', { classIds: ['sydney'], sex: 'male' }],
+      ['gym-g', { classIds: ['sydney'], sex: 'female' }],
+    ]);
+    expect(classWeekLessons(rows, groups)).toEqual(new Map([['sydney', 37 + 4]]));
+  });
+
+  it('counts one teacher of both halves of one subject: the whole block cannot share a slot', () => {
+    const rows = [
+      { ...half('pe-b', 'pe', 2), teacherId: 't-both' },
+      { ...half('pe-g', 'pe', 2), teacherId: 't-both' },
+      half('tkd-b', 'taekwondo', 1),
+      half('gym-g', 'gymnastics', 1),
+    ];
+    const groups = new Map<string, TotalsGroup>([
+      ['pe-b', { classIds: ['sydney'], sex: 'male' }],
+      ['pe-g', { classIds: ['sydney'], sex: 'female' }],
+      ['tkd-b', { classIds: ['sydney'], sex: 'male' }],
+      ['gym-g', { classIds: ['sydney'], sex: 'female' }],
+    ]);
+    // Sides 3 and 3; the teacher of both PE halves has 4 lessons in the split.
+    expect(classWeekLessons(rows, groups)).toEqual(new Map([['sydney', 4]]));
+  });
 });
