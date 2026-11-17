@@ -4028,9 +4028,10 @@ try {
             transaction
               .insertInto('subjects')
               .values({
-                name_uz: uz,
-                name_ru: ru,
-                name_en: enName,
+                // Subjects are school-wide: the pair scene's have names of their own.
+                name_uz: scene.pair === true ? `${uz} 2` : uz,
+                name_ru: scene.pair === true ? `${ru} 2` : ru,
+                name_en: scene.pair === true ? `${enName} 2` : enName,
                 department_id: steam.id,
                 grades: [7],
                 colour,
