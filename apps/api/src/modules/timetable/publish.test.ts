@@ -46,6 +46,8 @@ const versionOf = (response: Response): TimetableVersion => {
   return timetableVersionSchema.parse(response.body);
 };
 
+const YESTERDAY = '2026-10-09';
+
 /** A moment before the clock, for a mark of an earlier change. */
 const EARLIER = new Date('2026-10-08T10:00:00Z');
 
@@ -619,7 +621,9 @@ describe('publish', () => {
       const { impact, ...rest } = answer;
       expect(rest).toEqual({
         startsOn: MONDAY,
-        earliest: TOMORROW,
+        // Task 5.17: the scene has no lesson dated today and no lesson slot on
+        // Saturday, so today is open; the closed cases are in publish-same-day.test.ts.
+        earliest: TODAY,
         defaultStart: MONDAY,
         quarterStarts: ['2026-11-09', '2027-01-11', '2027-03-30'],
         refusals: [],
@@ -691,17 +695,20 @@ describe('publish', () => {
   });
 
   describe('the start date', () => {
-    it('refuses today and a date outside the year, and changes nothing', async () => {
+    // Task 5.17: today is open in this scene (no lesson dated today, no lesson
+    // slot on Saturday), so yesterday stands for a date before the earliest;
+    // today refused on a closed day is in publish-same-day.test.ts.
+    it('refuses a date before the earliest and a date outside the year, and changes nothing', async () => {
       const s = await scene();
       const before = await written([s.version]);
-      expect(blockedBy(await publish(s.branch, s.version, TODAY))).toEqual([
+      expect(blockedBy(await publish(s.branch, s.version, YESTERDAY))).toEqual([
         { code: 'version_start_too_early', path: 'startsOn' },
       ]);
       expect(blockedBy(await publish(s.branch, s.version, '2027-06-01'))).toEqual([
         { code: 'version_start_outside_year', path: 'startsOn' },
       ]);
       expect(await written([s.version])).toEqual(before);
-      expect(checkOf(await check(s.branch, s.version, TODAY)).refusals).toEqual([
+      expect(checkOf(await check(s.branch, s.version, YESTERDAY)).refusals).toEqual([
         { code: 'version_start_too_early' },
       ]);
     });
@@ -729,7 +736,8 @@ describe('publish', () => {
       const answer = checkOf(
         await check(branch, (version.body as { id: string }).id, '2026-11-02'),
       );
-      expect([answer.earliest, answer.defaultStart]).toEqual([TOMORROW, '2026-11-02']);
+      // Task 5.17: a planned year's branch has no class today, so today is open.
+      expect([answer.earliest, answer.defaultStart]).toEqual([TODAY, '2026-11-02']);
     });
   });
 
@@ -2295,7 +2303,7 @@ describe('publish', () => {
       // The Super Admin's key, refused, rolls back with the refusal: it is
       // used for a refused publish, then sent again by another account.
       const used = randomUUID();
-      blockedBy(await publish(s.branch, s.version, TODAY, t.admin, used));
+      blockedBy(await publish(s.branch, s.version, YESTERDAY, t.admin, used));
       const before = await written([s.version]);
       versionOf(await publish(s.branch, s.version, MONDAY, t.admin, key));
       const after = await written([s.version]);
@@ -4607,13 +4615,15 @@ describe('publish', () => {
       );
     });
 
-    it('refuses a choice for today, a day that is not shortened, a slot that is no lesson, and too many lessons, changing nothing', async () => {
+    // Task 5.17 (decision 10): today is open in this scene, so yesterday is
+    // the passed date here; today on a closed day is in publish-same-day.test.ts.
+    it('refuses a choice for a passed day, a day that is not shortened, a slot that is no lesson, and too many lessons, changing nothing', async () => {
       const s = await shortScene();
       const choose = (date: string, slotPositions: number[]) =>
         keep(s.branch, s.version, { classId: s.classId, date, slotPositions });
       const unchanged = async () => [await allKeeps([s.branch]), await t.auditCount()];
       const start = await unchanged();
-      refusedWith(await choose(TODAY, [1]), 409, 'day_keep_date_passed');
+      refusedWith(await choose(YESTERDAY, [1]), 409, 'day_keep_date_passed');
       // Not shortened: every lesson fits; a vacation date; a day with no lessons of the class.
       refusedWith(await choose('2026-11-23', [1]), 409, 'day_keep_not_short');
       refusedWith(await choose('2026-11-03', [1]), 409, 'day_keep_not_short');
@@ -6960,6 +6970,196 @@ describe('publish', () => {
         .execute();
       expect(substitutions).toEqual([{ ended_at: null }]);
       expect(after.find((row) => row.date === '2026-10-26')?.teacher_id).toBe(substitute.staffId);
+    });
+  });
+
+  // Task 5.17 (the owner's spec change of 18 November 2026; `06`, How surprises
+  // are prevented: The past is closed, Start date, Withdraw): a version may start
+  // today in a branch with no lesson dated today, before the first lesson slot
+  // of today begins by the branch clock, checked again at saving. The day is
+  // Monday 19 October 2026 in Tashkent; the scene's lesson slot 1 is at 08:00.
+  describe('a start today (task 5.17)', () => {
+    const DAY = '2026-10-19';
+    const NEXT = '2026-10-20';
+
+    /** Every session as fresh at `moment`. */
+    const freshAt = (moment: Date) =>
+      t.database.migrator
+        .updateTable('sessions')
+        .set({ created_at: moment, last_used_at: moment })
+        .execute();
+
+    /** Runs `work` with the clock at `time` on DAY, then sets the clock and sessions back. */
+    async function onDay<T>(time: string, work: () => Promise<T>): Promise<T> {
+      const moment = at(DAY, time);
+      t.clock.set(moment.toISOString());
+      await freshAt(moment);
+      try {
+        return await work();
+      } finally {
+        t.clock.set(START);
+        await freshAt(new Date(START));
+      }
+    }
+
+    const lessonsOn = async (branch: string, date: string) =>
+      (await lessonsOf(branch)).filter((one) => one.date === date);
+
+    it('publishes an empty branch from today at 02:15 and writes the lessons of today (Done when)', async () => {
+      const s = await scene();
+      const assignment = await viceIn(s.branch);
+      await load.freeEditLock(s.version);
+      await onDay('02:15', async () => {
+        const answer = checkOf(await check(s.branch, s.version, DAY));
+        expect([answer.earliest, answer.refusals, answer.canPublish]).toEqual([DAY, [], true]);
+        // Decision 5: the default stays next Monday counted from tomorrow.
+        expect(answer.defaultStart).toBe('2026-10-26');
+        const published = versionOf(await publish(s.branch, s.version, DAY, t.vicePrincipal));
+        expect([published.status, published.startsOn]).toEqual(['published', DAY]);
+      });
+      const today = await lessonsOn(s.branch, DAY);
+      expect(today.map((one) => [one.starts_at, one.teacher_id, one.cancel_cause])).toEqual([
+        [at(DAY, '08:00'), s.teacherId, null],
+      ]);
+      const [entry] = await t.entries('timetable_version.publish', s.version);
+      expect(entry).toMatchObject({
+        assignment_id: assignment,
+        new_value: { status: 'published', startsOn: DAY },
+      });
+    });
+
+    it('refuses a version from today once the first lesson slot has begun, and changes nothing (Done when)', async () => {
+      const s = await scene();
+      await load.freeEditLock(s.version);
+      expect(
+        await onDay('07:59', async () => checkOf(await check(s.branch, s.version, DAY)).earliest),
+      ).toBe(DAY);
+      const before = await written([s.version]);
+      await onDay('08:00', async () => {
+        expect(blockedBy(await publish(s.branch, s.version, DAY))).toEqual([
+          { code: 'version_start_too_early', path: 'startsOn' },
+        ]);
+        expect(checkOf(await check(s.branch, s.version, DAY)).earliest).toBe(NEXT);
+      });
+      expect(await written([s.version])).toEqual(before);
+      // Tomorrow is unaffected at any hour.
+      await onDay('23:30', async () => {
+        expect(versionOf(await publish(s.branch, s.version, NEXT)).startsOn).toBe(NEXT);
+      });
+    });
+
+    it('reads the first lesson slot of the day templates applying today: a break before it and a grade with no class do not count', async () => {
+      const s = await scene();
+      const pause = await t.createSlotType(s.branch, 'Morning break', 'break', 10);
+      const lesson = await t.createSlotType(s.branch, 'Early lesson', 'lesson', 40);
+      // Grade 7 on Monday: a break at 07:30, lesson 1 at 07:40.
+      const early = await t.createTemplate(s.branch, 'Early', [pause, lesson], '07:30');
+      await t.assign(s.branch, early, { level: 'weekday_grades', weekday: 1, gradeFrom: 7, gradeTo: 7 });
+      // Grade 9 has no class in the branch: its lesson at 06:00 does not count.
+      const dawn = await t.createTemplate(s.branch, 'Dawn', [lesson], '06:00');
+      await t.assign(s.branch, dawn, { level: 'grades', gradeFrom: 9, gradeTo: 9 });
+      const earliestAt = (time: string) =>
+        onDay(time, async () => checkOf(await check(s.branch, s.version, DAY)).earliest);
+      expect(await earliestAt('07:35')).toBe(DAY);
+      expect(await earliestAt('07:39')).toBe(DAY);
+      expect(await earliestAt('07:40')).toBe(NEXT);
+    });
+
+    it('refuses today when the branch has a lesson dated today, also a cancelled one (Done when)', async () => {
+      const s = await scene();
+      await load.freeEditLock(s.version);
+      // Published from Monday 12 October: a lesson on every Monday, DAY too.
+      versionOf(await publish(s.branch, s.version, MONDAY));
+      const copy = await placedCopy(s.branch, s.year, s.version);
+      await load.freeEditLock(copy);
+      expect((await lessonsOn(s.branch, DAY)).length).toBe(1);
+      const refused = async () =>
+        onDay('02:15', async () => {
+          expect(blockedBy(await publish(s.branch, copy, DAY))).toContainEqual({
+            code: 'version_start_too_early',
+            path: 'startsOn',
+          });
+          expect(checkOf(await check(s.branch, copy, DAY)).earliest).toBe(NEXT);
+        });
+      await refused();
+      // Only a cancelled lesson today: still closed (decision 2).
+      await t.database.migrator
+        .updateTable('lessons')
+        .set({ cancel_cause: 'reason', cancel_reason: 'Trip' })
+        .where('branch_id', '=', s.branch)
+        .where('lesson_date', '=', DAY)
+        .execute();
+      expect((await lessonsOn(s.branch, DAY)).map((one) => one.cancel_cause)).toEqual(['reason']);
+      await refused();
+    });
+
+    it('closes today after a first same-day publish on a day off, and leaves the first version as it was', async () => {
+      const s = await scene();
+      await load.freeEditLock(s.version);
+      await t.database.migrator
+        .insertInto('calendar_entries')
+        .values({
+          branch_id: s.branch,
+          kind: 'day_off',
+          name: 'Holiday',
+          first_date: DAY,
+          last_date: DAY,
+        })
+        .execute();
+      // A day off: no lesson slot today, so today is open all day (decision 4).
+      await onDay('11:00', async () => {
+        expect(versionOf(await publish(s.branch, s.version, DAY)).startsOn).toBe(DAY);
+      });
+      expect(await lessonsOn(s.branch, DAY)).toEqual([]);
+      const copy = await placedCopy(s.branch, s.year, s.version);
+      await load.freeEditLock(copy);
+      const first = await versionRow(s.version);
+      await onDay('11:05', async () => {
+        expect(blockedBy(await publish(s.branch, copy, DAY))).toContainEqual({
+          code: 'version_start_too_early',
+          path: 'startsOn',
+        });
+        expect(checkOf(await check(s.branch, copy, DAY)).earliest).toBe(NEXT);
+      });
+      expect(await versionRow(s.version)).toEqual(first);
+    });
+
+    it('refuses to withdraw a version that starts today (Done when)', async () => {
+      const s = await scene();
+      await load.freeEditLock(s.version);
+      await onDay('02:15', async () => {
+        versionOf(await publish(s.branch, s.version, DAY));
+        refusedWith(
+          await request(t.kit.server)
+            .post(`/api/timetable/versions/${s.version}/withdraw`)
+            .set('Cookie', t.admin)
+            .set(BRANCH_HEADER, s.branch)
+            .set(REQUEST_KEY_HEADER, randomUUID())
+            .send(),
+          409,
+          'withdraw_started',
+        );
+      });
+      expect((await versionRow(s.version)).status).toBe('published');
+    });
+
+    it('shapes the lessons of today with the records stored for today, as for a later date', async () => {
+      const s = await scene();
+      await load.freeEditLock(s.version);
+      // The teacher leaves from today: as on a later start, the status on the
+      // start refuses the publish (task 5.5a-1), and the check says so today.
+      await load.status(s.teacherId, 'left', DAY);
+      const before = await written([s.version]);
+      await onDay('02:15', async () => {
+        const answer = checkOf(await check(s.branch, s.version, DAY));
+        expect(answer.earliest).toBe(DAY);
+        expect(answer.refusals.map((one) => one.code)).toContain('pattern_blocked');
+        expect(answer.refusals.map((one) => one.code)).not.toContain('version_start_too_early');
+        expect(blockedBy(await publish(s.branch, s.version, DAY)).map((one) => one.code)).toContain(
+          'pattern_blocked',
+        );
+      });
+      expect(await written([s.version])).toEqual(before);
     });
   });
 });
