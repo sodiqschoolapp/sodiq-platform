@@ -27,7 +27,7 @@ No question is open. The decided ones are kept as a record.
 | 18 | Can the number typed for a work have a decimal? | No. Whole numbers only. | Decided |
 | 19 | Do branches and grades use different day templates? | Each branch has its own slot types and templates. Inside a branch, a range of grades can have its own template. | Decided |
 | 20 | Which preferences should the timetable generator follow? | The eight listed under Auto-generation, with weights set by the Academic Vice Principal. | Decided |
-| 21 | How early can a permanent timetable change start? | Tomorrow at the earliest; next Monday is offered by default. Today only in a branch with no lesson dated today, before today's first lesson begins (owner, 18 November 2026). Any other change for today is a one-day change with a reason. | Decided |
+| 21 | How early can a permanent timetable change start? | Tomorrow at the earliest; next Monday is offered by default. A change for today is a one-day change with a reason. | Decided |
 | 22 | What happens when an exemption leaves a student with few lessons in a quarter? | Under one third of the quarter's lessons, the result is flagged and the Academic Vice Principal keeps the number or sets "Exempt". With no lessons the result is "Exempt". | Decided |
 | 23 | What does the student status "inactive" mean? | Inactive and archived are the same: the student left the school, data is kept, and the student can be brought back. An exempt student is active. | Decided |
 | 24 | Can an exemption cover only some lesson slots of one day, and can a Tutor request one? | Chosen lesson slots of one day are allowed. Exemptions are entered by the Academic Vice Principal, and by the Super Admin, who can do everything. There are no requests from Tutors. | Decided |
