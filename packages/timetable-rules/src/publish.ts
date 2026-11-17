@@ -16,7 +16,7 @@ import { firstOn, weekdayOf } from './templates.js';
 import type { EngineYear } from './placement.js';
 
 export interface StartChoices {
-  /** Tomorrow in branch time. */
+  /** Tomorrow in branch time, or today on a day open for a same-day start (task 5.17). */
   readonly earliest: string;
   /** The later of next Monday and the year's first day (decision 15). */
   readonly defaultStart: string;
@@ -30,10 +30,18 @@ const nextDay = (date: string): string => {
   return moved.toISOString().slice(0, 10);
 };
 
-/** The start dates a publish offers on `today` (branch time) in a year. */
-export function startChoices(today: string, year: EngineYear): StartChoices {
-  const earliest = nextDay(today);
-  const monday = firstOn(earliest, 1);
+/**
+ * The start dates a publish offers on `today` (branch time) in a year.
+ *
+ * `todayOpen` (task 5.17; 06, Start date, owner 18 November 2026): the branch
+ * has no lesson dated today and its first lesson slot of today has not begun
+ * (`sameDayOpen`); then today is the earliest. The default stays next Monday
+ * counted from tomorrow (decision 5).
+ */
+export function startChoices(today: string, year: EngineYear, todayOpen = false): StartChoices {
+  const tomorrow = nextDay(today);
+  const earliest = todayOpen ? today : tomorrow;
+  const monday = firstOn(tomorrow, 1);
   return {
     earliest,
     defaultStart: monday < year.firstDate ? year.firstDate : monday,
@@ -42,6 +50,27 @@ export function startChoices(today: string, year: EngineYear): StartChoices {
       .filter((date) => date >= earliest)
       .sort(),
   };
+}
+
+export interface SameDayInput {
+  /** Whether the branch (or the person, for availability) has a lesson dated today, cancelled ones included. */
+  readonly lessonsToday: boolean;
+  /** Minutes since midnight now, in branch time. */
+  readonly nowMinutes: number;
+  /** Start minute of the earliest lesson slot today in the branch, or null when no lesson slot falls today. */
+  readonly firstLessonStart: number | null;
+}
+
+/**
+ * Whether today is open for a start today (task 5.17; 06, The past is closed
+ * and Start date, owner 18 November 2026): no lesson dated today and the
+ * first lesson of today has not begun. A lesson has begun from its start
+ * minute (decision 4); with no lesson slot today nothing begins.
+ */
+export function sameDayOpen(input: SameDayInput): boolean {
+  if (input.lessonsToday) return false;
+  if (input.firstLessonStart === null) return true;
+  return input.nowMinutes < input.firstLessonStart;
 }
 
 export interface PublishResults {

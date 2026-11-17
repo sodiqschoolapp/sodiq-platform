@@ -715,6 +715,9 @@ describe('vacancy fill', () => {
   describe('refusals', () => {
     it("refuses a date today or earlier, a person who is not active on it or is a vacancy, a vacancy that is not open, and rows that are not the vacancy's", async () => {
       const s = await scene({ second: true });
+      // Task 5.17 (decision 6): today stays refused for a fill although the
+      // kit's Saturday has no lesson slot and no lesson today, so a publish
+      // could start today; a fill keeps tomorrow at the earliest by its own rule.
       refusedWith(await checkFill(s.branch, bodyOf(s, '2026-10-10')), 409, 'fill_start');
       const other = await load.vacancy(s.branch, {
         subjects: [{ subject: s.subject, grades: [7] }],

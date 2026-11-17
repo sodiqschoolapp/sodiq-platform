@@ -442,6 +442,44 @@ describe('the grid of a draft', () => {
       ]);
     });
 
+    // Task 5.15: 06, Model, Parallel group lessons (changed 17 November 2026): "Groups that share
+    // no class are separate blocks, even in one grade". Two pairs of grade 7, two teachers each
+    // teaching one group of each pair.
+    it('places one pair of a grade as its own block, the other pair at another time with the same teachers', async () => {
+      const s = await scene();
+      const english = await load.classes.subject({ grades: [7] });
+      const classC = await load.classes.schoolClass(s.branch, s.year, { grade: 7 });
+      const classD = await load.classes.schoolClass(s.branch, s.year, { grade: 7 });
+      const [first, second] = [await teacher(s.branch, english), await teacher(s.branch, english)];
+      const rowOf = async (classIds: string[], teacherId: string) =>
+        load.row({
+          branch_id: s.branch,
+          version_id: s.version,
+          group_id: await load.classes.group(s.branch, s.year, english, classIds),
+          subject_id: english,
+          teacher_id: teacherId,
+          lessons_per_week: 1,
+        });
+      const op1 = await rowOf([s.classA, s.classB], first);
+      const op2 = await rowOf([s.classA, s.classB], second);
+      const cd1 = await rowOf([classC, classD], first);
+      const cd2 = await rowOf([classC, classD], second);
+      const pair = await placed(s.branch, s.version, op1, 2, 1);
+      const lessonsOf = (answer: GridAnswer, id: string) =>
+        answer.blocks
+          .find((one) => one.id === id)
+          ?.lessons.map((one) => one.loadRowId)
+          .sort();
+      expect(lessonsOf(pair.answer, pair.id)).toEqual([op1, op2].sort());
+      // The other pair in the same slot: its teachers are busy there.
+      expect(new Set(blockedRules(await place(s.branch, s.version, cd2, 2, 1)))).toEqual(
+        new Set(['teacher_double']),
+      );
+      const other = await placed(s.branch, s.version, cd2, 2, 3);
+      expect(lessonsOf(other.answer, other.id)).toEqual([cd1, cd2].sort());
+      expect(other.answer.results.filter((one) => one.severity === 'blocked')).toEqual([]);
+    });
+
     it('places a half of a mixed split with no partner as its whole split (task 5.4c-3b, decision 4)', async () => {
       const s = await scene();
       const pe = await load.classes.subject({ grades: [7] });

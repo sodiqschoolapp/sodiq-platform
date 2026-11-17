@@ -46,6 +46,7 @@ import { writeBlock } from './pattern-queries.js';
 import { readPins } from './pins-check.js';
 import { PUBLISH_LOCK } from './publish.service.js';
 import { resultAnswerOf } from './rule-answers.js';
+import { branchTodayOpen, sameDayMoment } from './same-day.js';
 import { Timetable, type VersionRow } from './timetable.service.js';
 
 /**
@@ -309,8 +310,9 @@ export class TimetableUpToDate {
 
   /**
    * Decision 3: with a publish cause, the draft is compared with the
-   * published version in force on the later of its start and tomorrow in
-   * branch time; with none in force then, the year's earliest published
+   * published version in force on the later of its start and the earliest
+   * start of a publish (tomorrow in branch time, or today on a day open for a
+   * same-day start, task 5.17 decision 7); with none in force then, the year's earliest published
    * version; with none at all, nothing is compared.
    */
   private async comparisonOf(
@@ -320,8 +322,11 @@ export class TimetableUpToDate {
     accountId: string,
   ): Promise<Comparison> {
     if (!causes.some(isPublishCause)) return NO_COMPARISON;
-    const tomorrow = addDays(await this.timetable.todayIn(transaction, version.branch_id), 1);
-    const on = version.starts_on > tomorrow ? version.starts_on : tomorrow;
+    const at = await sameDayMoment(transaction, version.branch_id);
+    const earliest = (await branchTodayOpen(transaction, version.branch_id, at))
+      ? at.today
+      : addDays(at.today, 1);
+    const on = version.starts_on > earliest ? version.starts_on : earliest;
     const published = await transaction
       .selectFrom('timetable_versions')
       .select(['id', 'number', 'starts_on'])

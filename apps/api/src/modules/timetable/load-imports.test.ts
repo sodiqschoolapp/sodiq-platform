@@ -800,6 +800,51 @@ describe('the teaching load import', () => {
       ]);
     });
 
+    // Task 5.15: 06, Model, Parallel group lessons (changed 17 November 2026): "Groups that share
+    // no class are separate blocks, even in one grade". The Labzak shape with invented names: two
+    // pairs of one grade, two teachers each teaching one group of each pair.
+    it('takes two pairs of one grade that share no class, one teacher in each pair, and asks for no other pair', async () => {
+      const reading = await load.classes.subject({ grades: [7], name: 'Reading Lime' });
+      const cambridge = await load.classes.schoolClass(t.north, year, {
+        grade: 7,
+        name: 'Cambridge',
+      });
+      const durham = await load.classes.schoolClass(t.north, year, { grade: 7, name: 'Durham' });
+      for (const [one, classes] of [
+        ['RD-OP-1', [oxford, princeton]],
+        ['RD-OP-2', [oxford, princeton]],
+        ['RD-CD-1', [cambridge, durham]],
+        ['RD-CD-2', [cambridge, durham]],
+      ] as const) {
+        await load.classes.group(t.north, year, reading, [...classes], { name: one });
+      }
+      const first = await teacher([{ subject: reading, grades: [7] }]);
+      const second = await teacher([{ subject: reading, grades: [7] }]);
+      const row = (unit: string, who: string, lessonsPerWeek: string): LoadTemplateRow => ({
+        unit,
+        subject: 'Reading Lime',
+        teacher: name(who),
+        lessonsPerWeek,
+      });
+      const version = await draft();
+      // One pair alone asks for nothing of the other pair.
+      const alone = await uploaded(version, [
+        row('RD-OP-1', first, '3'),
+        row('RD-OP-2', second, '3'),
+      ]);
+      expect(alone.clean, JSON.stringify(alone.rows)).toBe(true);
+      // Both pairs, the same two teachers, other lessons per week in each pair.
+      const preview = await uploaded(version, [
+        row('RD-OP-1', first, '3'),
+        row('RD-OP-2', second, '3'),
+        row('RD-CD-1', first, '2'),
+        row('RD-CD-2', second, '2'),
+      ]);
+      expect(preview.clean, JSON.stringify(preview.rows)).toBe(true);
+      expect((await confirmed(version, preview.importId)).outcome).toBe('saved');
+      expect(await rowsOfDraft(version)).toHaveLength(4);
+    });
+
     it('never tells a part missing that the file names on a row with another problem', async () => {
       const preview = await uploaded(await draft(), [
         { unit: '7O-PE-1', subject: PE, teacher: name(pe1), lessonsPerWeek: '2' },

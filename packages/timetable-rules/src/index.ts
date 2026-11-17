@@ -219,8 +219,10 @@ export {
 export {
   datedPublishResults,
   publishRefusals,
+  sameDayOpen,
   startChoices,
   type DatedPublishInput,
+  type SameDayInput,
   type DatedPublishResults,
   type NeedsTeacher,
   type NeedsTeacherReason,

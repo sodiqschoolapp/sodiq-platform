@@ -26,6 +26,41 @@ The next sessions must know:
 - **Step 2** (building blocks, with the four rules the owner approved) and **step 3** (the five main screens as clickable mockups first) are described on the review page; nothing of them is built yet.
 - The Uzbek wording of #332 and #338 should be checked by a native speaker.
 
+## 17 November 2026: task 5.17, a version may start today in a branch with no lesson today
+
+- **Built**: a publish may start today when the branch has no lesson dated today (cancelled ones included), no published version starting today, and its first lesson slot of today has not begun by the branch clock (`sameDayOpen`, `startChoices(today, year, todayOpen)` in `packages/timetable-rules`; `same-day.ts` in the timetable module), read again under the publish lock at saving. A version from today cannot be withdrawn.
+- Availability may start today also while an entry is in force today, when the person has no lesson dated today in the branch (teacher, substitute, or replaced by an open substitution) and the first lesson has not begun. The availability service reads today from the transaction moment now.
+- A keep choice for a shortened day may be made for today on an open day; "up to date" compares against the earliest start of the same rule. Vacancy fills, template and calendar changes keep tomorrow at the earliest. No migration.
+- The spec text is in pull request #346, for the owner to merge.
+- **Left out**: nothing of the plan. A vacancy fill from today is refused by its route (`fill_start`) before the publish code; the `fill` flag of `publishLocked` keeps tomorrow for a fill by its own rule as a second guard, and no route reaches it.
+
+The next sessions must know:
+
+- Tests that assumed an empty branch's today is closed now see it open on the kit's Saturday (no lesson slot); they use yesterday for "before the earliest" and `publish.test.ts`, "a start today (task 5.17)", for the closed cases.
+
+## 17 November 2026: task 5.16, a slot of one-sex mixed halves counts once
+
+- **Built**: `classWeekLessons` (`packages/timetable-rules/src/totals.ts`) counts the one-sex mixed halves of each split (a class, or a pair of classes) by the larger of the boys' and the girls' lessons and of the lessons one teacher has there, so a sport slot counts once; every other row as before. `totalsOf` passes the mixed mark and the groups' sex; the load page, readiness step 2 and publish agree. No migration.
+- Fixes the production refusal of Labzak grades 1 to 4 (42 lessons for 40 slots; really 40).
+- **Left out**: nothing.
+
+The next sessions must know:
+
+- Mixed halves for everyone still count per subject, and a group outside a split linked to its rows counts beside the split (an over-count by intent, `totals.test.ts`); a future change of either is a reading of `06` step 2 and needs the students of the groups.
+- The fix reaches production only with the owner's deploy.
+
+## 17 November 2026: task 5.15, parallel groups linked by a shared class
+
+- **Built**: groups of one subject are one block only when they share a class, directly or through other groups of the subject (`groupsLinked` in `packages/timetable-rules`; `load_block_rows` replaced in `0172_block_link_shared_class.sql`, no row changed). Two pairs of one grade (the Labzak grade 3 English) now take the same two teachers and their own slots, typed by hand, imported, placed in the grid and imported as a timetable.
+- A pattern block placed before that holds several whole blocks of one subject in one slot stays valid (`rowsTogether`, pattern mode only).
+- The spec text came in by pull request #343, merged by the owner.
+- **Left out**: splitting an old pattern block that holds two pairs (handbook: remove it and place each pair again).
+
+The next sessions must know:
+
+- The note of the entry below, "Two groups across classes of the same grade set link into one block", is answered: they no longer do.
+- `real-size.ts` keys each pair of a grade as its own block; the small run has one pair per grade, so its times did not change beyond noise.
+
 ## 17 November 2026: groups for one sex, and mixed blocks of a pair of classes
 
 Not a task of the build plan: asked for by the owner on 17 November 2026 for the go-live of the Labzak branch with its timetable version 10, whose sport lessons pair a boys' lesson with a girls' lesson of another subject in every sport slot, three pairs of classes together. Spec change approved by the owner in the session.
