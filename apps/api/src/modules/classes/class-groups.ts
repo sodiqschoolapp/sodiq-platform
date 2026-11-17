@@ -1,4 +1,4 @@
-import type { ErrorCode, ErrorDetail, SchoolDate } from '@sodiq/shared';
+import { sexSchema, type ErrorCode, type ErrorDetail, type SchoolDate, type Sex } from '@sodiq/shared';
 import { sql } from 'kysely';
 import type { Transaction } from '../../database/transactions.js';
 import { ApiException } from '../../http/api-exception.js';
@@ -39,6 +39,9 @@ import { continuesStay, writtenByCancelledMove } from './membership-plan.js';
 /** The refusal of the database from the class side, answered only as a fault (decision 1). */
 export const CLASS_GROUP_REFUSALS: Readonly<Record<string, ErrorCode>> = {
   class_memberships_need_groups: 'class_group_missing',
+  // 0171: a row written or given back in a group for the other sex; the paths choose
+  // only groups open to the student, so a fault only.
+  group_memberships_sex: 'group_member_sex',
 };
 
 /** A group as a class path reads it, after its lock. */
@@ -51,6 +54,34 @@ export interface CoverGroup {
   /** Not archived, in a year that is not closed. */
   inService: boolean;
   classIds: ReadonlySet<string>;
+  /** "For girls only or boys only" (05, Group; 0171); `null` for everyone. */
+  sex: Sex | null;
+}
+
+/**
+ * Whether a group is open to a student of `sex` (05, Group, the owner's spec
+ * change of 17 November 2026: "A group may be for girls only or for boys only;
+ * it takes only students of that sex"). `null` for the student: not read, every
+ * group open (the database still refuses).
+ */
+export const openTo = (group: { sex: Sex | null }, sex: Sex | null): boolean =>
+  group.sex === null || sex === null || group.sex === sex;
+
+/** The sex of each student, by id in small letters. */
+export async function sexesOf(
+  transaction: Transaction,
+  studentIds: readonly string[],
+): Promise<Map<string, Sex>> {
+  if (studentIds.length === 0) {
+    return new Map();
+  }
+  const rows = await transaction
+    .selectFrom('students')
+    .select(['id', 'sex'])
+    .where('id', 'in', [...new Set(studentIds)])
+    .execute();
+  // The check of the table keeps it to the two values of the schema.
+  return new Map(rows.map((row) => [row.id.toLowerCase(), sexSchema.parse(row.sex)]));
 }
 
 /** A class row the change writes, whose days need groups. */
@@ -152,6 +183,7 @@ export async function lockClassGroups(
       'groups.name',
       'groups.name_key',
       'groups.max_size',
+      'groups.sex',
       'groups.archived_at',
       'academic_years.status',
     ])
@@ -171,6 +203,7 @@ export async function lockClassGroups(
       maxSize: row.max_size,
       inService: row.archived_at === null && row.status !== 'closed',
       classIds: new Set((classes.get(row.id) ?? []).map((one) => one.id.toLowerCase())),
+      sex: row.sex === null ? null : sexSchema.parse(row.sex),
     });
   }
   return found;
@@ -355,6 +388,8 @@ export async function planGiveBack(
   cause: 'cancel' | 'undo',
   reviewOf: ReadonlyMap<string, boolean>,
   cancelledMoves: ReadonlySet<string> = new Set(),
+  /** The student's sex (0171): a row of a group for the other sex is not given back. */
+  sex: Sex | null = null,
 ): Promise<CoverRow[]> {
   const cut = rows
     // Task 3.3a, decision 8: a row a cancelled move wrote never comes back.
@@ -383,7 +418,9 @@ export async function planGiveBack(
       continue;
     }
     const group = groups.get(row.groupId.toLowerCase());
-    if (group === undefined || !group.inService) {
+    // A group set to the other sex while the row was cut (the row did not count
+    // then): its days go to a group open to the student (`planClassGroups`).
+    if (group === undefined || !group.inService || !openTo(group, sex)) {
       continue;
     }
     const inGroup = (one: ClassRowToCover): boolean =>
@@ -554,6 +591,13 @@ export async function planClassGroups(
    * touching stretches of one group are one row (`group_memberships_one_stay`).
    */
   required = false,
+  /**
+   * The student's sex (0171, the owner's spec change of 17 November 2026): a
+   * stretch binds the student only when one of its groups is open to them, as
+   * `class_row_needs_groups` decides it; only those groups are offered; a row
+   * in the only group open to the student is not tagged for review.
+   */
+  sexOf: (studentId: string) => Sex | null = () => null,
 ): Promise<{ rows: CoverRow[]; refused: ErrorDetail[] }> {
   const rows: CoverRow[] = [];
   const refused: ErrorDetail[] = [];
@@ -573,12 +617,26 @@ export async function planClassGroups(
       ]
         .filter((one) => one.from < one.until)
         .sort((a, b) => (a.from < b.from ? -1 : a.from > b.from ? 1 : 0));
+      const sex = sexOf(row.studentId);
+      // Decided from every group of the stretch, as the database does (a group
+      // not locked here counts as open), then offered from those in service.
+      const binds = [...stretch.groupIds].some((id) => {
+        const group = groups.get(id);
+        return group === undefined || openTo(group, sex);
+      });
+      if (!binds) {
+        continue;
+      }
       const offered = [...groups.values()].filter(
         (group) =>
           group.inService &&
           group.subjectId === subjectId &&
-          stretch.groupIds.has(group.id.toLowerCase()),
+          stretch.groupIds.has(group.id.toLowerCase()) &&
+          openTo(group, sex),
       );
+      // `edge/students-classes-groups`, first row: "a student placed in the only
+      // group open to them is not tagged".
+      const onlyOne = offered.length === 1;
       const preferredId = preferredOf(row.studentId, subjectId)?.toLowerCase();
       const preferred =
         preferredId === undefined
@@ -680,7 +738,7 @@ export async function planClassGroups(
           ownUntil: ownEnd,
           leavingId: atEnd && row.until < row.ownUntil ? row.leavingId : null,
           cause: required ? 'placement' : 'automatic',
-          review: !required,
+          review: !required && !onlyOne,
           writtenByMoveId: moveId,
           endedByMoveId:
             atEnd && row.until < row.ownUntil && row.leavingId === null
@@ -977,6 +1035,7 @@ export async function coverClassRows(
       [...own.values()].flat().map((row) => row.groupId),
     ));
   const { subjectOf, reviewOf } = await rowFacts(transaction, studentIds);
+  const sexes = await sexesOf(transaction, studentIds);
   const book = new SeatBook(transaction);
   const given =
     input.giveBack === null
@@ -992,6 +1051,7 @@ export async function coverClassRows(
           input.giveBack.cause,
           reviewOf,
           input.cancelledMoves,
+          sexes.get(input.giveBack.studentId.toLowerCase()) ?? null,
         );
   const order = await inNameOrder(transaction, studentIds);
   const sorted = [...input.classRows].sort(
@@ -1016,6 +1076,7 @@ export async function coverClassRows(
     input.moveId ?? null,
     (studentId, subjectId) => input.preferred?.get(studentId)?.get(subjectId),
     input.required ?? false,
+    (studentId) => sexes.get(studentId.toLowerCase()) ?? null,
   );
   refuseNoSeat(
     [...planned.refused].sort(

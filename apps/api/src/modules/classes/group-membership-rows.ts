@@ -15,6 +15,8 @@ import type { Transaction } from '../../database/transactions.js';
  */
 export const GROUP_MEMBERSHIP_REFUSALS: Readonly<Record<string, ErrorCode>> = {
   group_memberships_no_overlap: 'student_has_group',
+  // The owner's spec change of 17 November 2026 (0171): a group for one sex.
+  group_memberships_sex: 'group_member_sex',
   group_memberships_full: 'group_full',
   group_memberships_group_archived: 'group_archived',
   group_memberships_outside_year: 'group_membership_outside_year',

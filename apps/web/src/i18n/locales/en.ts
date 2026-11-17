@@ -619,7 +619,7 @@ export const en = {
     load_split_and_whole:
       'This version already has a whole-class row and a group row for that class and subject. A class is either whole or split for a subject: delete one of the rows first.',
     load_mixed_not_split:
-      'Only the halves of a split of one class can be part of a mixed block. Clear the mark for this group.',
+      'Only the halves of a split of one class, or of a pair of classes, can be part of a mixed block. Clear the mark for this group.',
     load_block_mixed:
       'The halves of one split must agree on the mixed block. Change the mark on one half: it is written to every half.',
     load_block_lessons:
@@ -628,6 +628,16 @@ export const en = {
       'Another part of this split or of these parallel groups has that teacher, and the parts meet at the same time. Choose another teacher.',
     load_group_gaps:
       'Students of the classes are not placed in a group of this block. Place them on the group placement screen.',
+    load_one_sex_not_mixed:
+      'Every group of this subject is for one sex, so its lessons always meet a lesson of the other sex. Mark the rows as part of a mixed block.',
+    group_member_sex:
+      'This group is for students of the other sex. Choose a group open to the student, or change the group’s “For”.',
+    group_sex_members:
+      'Students of the other sex are in this group from today on. Move them to another group first, then change “For”.',
+    student_sex_groups:
+      'The student is in a group for the other sex from today on. Move the student to another group first, then correct the sex.',
+    student_merge_sex:
+      'The record that stays would be in a group for the other sex. Move the student to another group first, or keep the other sex in the record.',
     fill_vacancy: 'This vacancy is not open, or its close is already planned. Reopen it first.',
     fill_person:
       'This person cannot take the vacancy from that date. Choose a staff member who is active on it.',
@@ -4507,6 +4517,8 @@ export const en = {
     languageOfClasses: 'As its classes: {{language}}',
     maxSize: 'Max. students',
     maxSizeNote: 'From {{min}} to {{max}} students',
+    sex: 'For',
+    sexes: { everyone: 'Girls and boys', female: 'Girls only', male: 'Boys only' },
     status: 'Status',
     active: 'Active',
     archived: 'Archived',
@@ -6122,10 +6134,11 @@ export const en = {
         load_no_tutor: 'Class without a Tutor',
         load_tutor_row_teacher: 'Not the class Tutor',
         load_split_and_whole: 'Class both whole and split',
-        load_mixed_not_split: 'Mixed block on a group across classes',
+        load_mixed_not_split: 'Mixed block on a group of more than two classes',
         load_block_mixed: 'Halves disagree on the mixed block',
         load_block_lessons: 'Parts with other lessons per week',
         load_block_teacher: 'One teacher on two parts',
+        load_one_sex_not_mixed: 'One-sex subject not in a mixed block',
         load_group_gaps: 'Students not placed',
       },
       blockColumn: 'Block',

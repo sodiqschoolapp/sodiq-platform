@@ -27,8 +27,10 @@ import {
   coverClassRows,
   groupSubjectRuns,
   lockClassGroups,
+  openTo,
   runsWithin,
   SeatBook,
+  sexesOf,
   smallestGroup,
   type CoverGroup,
 } from '../classes/class-groups.js';
@@ -897,6 +899,7 @@ export class BranchMoves {
         'groups.name',
         'groups.name_key',
         'groups.max_size',
+        'groups.sex',
         'groups.archived_at',
         'academic_years.status',
       ])
@@ -915,6 +918,7 @@ export class BranchMoves {
           maxSize: row.max_size,
           inService: row.archived_at === null && row.status !== 'closed',
           classIds: new Set([classId.toLowerCase()]),
+          sex: row.sex === 'male' || row.sex === 'female' ? row.sex : null,
         },
       ]),
     );
@@ -980,6 +984,10 @@ export class BranchMoves {
   > {
     const subjects = await this.stretchesOf(transaction, target.id, row);
     const book = new SeatBook(transaction);
+    // 0171: a group for one sex takes only students of that sex. The list of
+    // groups is read before the join and shows every group; the choice is
+    // checked here, after the student is readable in the request's transaction.
+    const sex = (await sexesOf(transaction, [row.studentId])).get(row.studentId.toLowerCase()) ?? null;
     const written = [];
     for (const [index, choice] of input.groups.entries()) {
       const group = groups.get(choice.groupId.toLowerCase());
@@ -995,6 +1003,15 @@ export class BranchMoves {
             path: `groups.${String(index)}.groupId`,
             code: 'branch_move_group',
             message: 'The group is not offered to the class for that subject.',
+          },
+        ]);
+      }
+      if (!openTo(group, sex)) {
+        throw new ApiException('group_member_sex', 409, undefined, [
+          {
+            path: `groups.${String(index)}.groupId`,
+            code: 'group_member_sex',
+            message: 'The group is for students of the other sex.',
           },
         ]);
       }

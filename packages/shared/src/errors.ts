@@ -821,6 +821,8 @@ export const ERROR_CODES = [
   'group_sex_members',
   /** The student's sex is changed while they are in a group for the other sex on a day from today (spec change of 17 November 2026). */
   'student_sex_groups',
+  /** A merge would put the kept record in a group for the other sex (spec change of 17 November 2026). */
+  'student_merge_sex',
   /**
    * A load row of a draft or of a published version that can still run, or a
    * lesson dated after today, names the vacancy: it cannot be closed yet (04,
