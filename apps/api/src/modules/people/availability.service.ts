@@ -1,22 +1,19 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import {
   minutesOf,
   nextDay,
   previousDay,
   rangesOverlap,
-  schoolDateOf,
   timeText,
   type Availability,
   type AvailabilityEntry,
   type AvailabilityRange,
   type AvailabilitySet,
-  type Clock,
   type ErrorCode,
   type ErrorDetail,
   type SchoolDate,
 } from '@sodiq/shared';
 import { sql } from 'kysely';
-import { CLOCK } from '../../clock/clock.module.js';
 import { Transactions, type Transaction } from '../../database/transactions.js';
 import { ApiException } from '../../http/api-exception.js';
 import type { Access } from '../access/permission.guard.js';
@@ -24,6 +21,7 @@ import { Audit } from '../audit/audit.service.js';
 import { endFrom, isWithdrawn, scheduleFrom } from '../setup/dated-rows.js';
 import { notFound, refusingConstraints } from '../setup/setup-refusals.js';
 import { markDraftsOutOfDate } from '../timetable/out-of-date.js';
+import { personTodayOpen, sameDayMoment } from '../timetable/same-day.js';
 
 /** The refusals of the database for availability (db/migrations/0025), by the name of the constraint. */
 const AVAILABILITY_REFUSALS: Readonly<Record<string, ErrorCode>> = {
@@ -168,7 +166,6 @@ export class StaffAvailability {
   constructor(
     private readonly transactions: Transactions,
     private readonly audit: Audit,
-    @Inject(CLOCK) private readonly clock: Clock,
   ) {}
 
   read(access: Access, id: string): Promise<Availability> {
@@ -184,7 +181,8 @@ export class StaffAvailability {
    * there (one planned from that very date is withdrawn), and the new one
    * runs to where that one ran or to the next later entry (`scheduleFrom`).
    * Tomorrow at the earliest while an entry is in force today, else today
-   * (decision 4). Hours that overlap another branch's on a date are refused
+   * (decision 4); today also when the person has no lesson dated today in
+   * the branch and its first lesson of today has not begun (task 5.17). Hours that overlap another branch's on a date are refused
    * with the weekdays (decision 6).
    */
   set(
@@ -225,12 +223,19 @@ export class StaffAvailability {
     const branchId = branchOf(access);
     const kind = await this.linked(transaction, id, branchId, true);
     const entries = await entriesOf(transaction, id, branchId, true);
-    const today = await this.todayIn(transaction, branchId);
+    const at = await sameDayMoment(transaction, branchId);
+    const today = at.today;
     if (importId !== undefined) {
       if (entries.length > 0) {
         throw new Error('The import sets the hours of a record it has just created.');
       }
-    } else if (input.from < earliestFrom(entries, today)) {
+    } else if (
+      input.from <
+      // Task 5.17: read after `linked` holds the record FOR UPDATE, so a
+      // publish or a substitution that puts the person on a lesson today
+      // (each takes the branch staff FOR KEY SHARE first) is ordered against it.
+      earliestFrom(entries, today, await personTodayOpen(transaction, branchId, id, at))
+    ) {
       throw new ApiException('date_not_in_future', 409);
     }
     const schedule = scheduleFrom(entries, input.from);
@@ -363,15 +368,6 @@ export class StaffAvailability {
     return row.kind;
   }
 
-  private async todayIn(transaction: Transaction, branchId: string): Promise<SchoolDate> {
-    const branch = await transaction
-      .selectFrom('branches')
-      .select('time_zone')
-      .where('id', '=', branchId)
-      .executeTakeFirstOrThrow();
-    return schoolDateOf(this.clock.now(), branch.time_zone);
-  }
-
   /** The other branches' entries, read only, grouped by branch with its name. */
   private async elsewhere(
     transaction: Transaction,
@@ -470,7 +466,9 @@ export class StaffAvailability {
     branchId: string,
   ): Promise<Availability> {
     const entries = await entriesOf(transaction, id, branchId, false);
-    const today = await this.todayIn(transaction, branchId);
+    const at = await sameDayMoment(transaction, branchId);
+    const today = at.today;
+    const personOpen = await personTodayOpen(transaction, branchId, id, at);
     return {
       entries: entries.map(entryAnswer),
       elsewhere: (await this.elsewhere(transaction, id)).map((branch) => ({
@@ -479,7 +477,7 @@ export class StaffAvailability {
         entries: branch.entries.map(entryAnswer),
       })),
       today,
-      earliestFrom: earliestFrom(entries, today),
+      earliestFrom: earliestFrom(entries, today, personOpen),
     };
   }
 }
@@ -492,8 +490,17 @@ export function refusingAvailability<T>(work: () => Promise<T>): Promise<T> {
 /**
  * Decision 4: tomorrow at the earliest while an entry of the branch is in
  * force today, so that today's hours stay as they applied; today when none is.
+ * Task 5.17 (`04`, Availability, owner 18 November 2026): today also when
+ * `personOpen`: the person has no lesson dated today in the branch (as
+ * teacher or substitute, or replaced by an open substitution) and the
+ * branch's first lesson of today has not begun.
  */
-function earliestFrom(entries: readonly StoredEntry[], today: SchoolDate): SchoolDate {
+function earliestFrom(
+  entries: readonly StoredEntry[],
+  today: SchoolDate,
+  personOpen: boolean,
+): SchoolDate {
+  if (personOpen) return today;
   const inForceToday = entries.some((entry) =>
     datesOverlap(entry, { validFrom: today, validUntil: nextDay(today) }),
   );

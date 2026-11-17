@@ -3,6 +3,7 @@ import type { DatedLesson } from './dated.js';
 import {
   datedPublishResults,
   publishRefusals,
+  sameDayOpen,
   startChoices,
   type DatedPublishInput,
 } from './publish.js';
@@ -55,6 +56,57 @@ describe('startChoices', () => {
       defaultStart: '2026-09-02',
       quarterStarts: ['2026-09-02', '2026-11-09', '2027-01-11', '2027-03-30'],
     });
+  });
+});
+
+describe('startChoices on a day open for a same-day start (task 5.17)', () => {
+  // 06, Start date (owner, 18 November 2026): "Today is allowed only when the
+  // branch has no lesson dated today and the first lesson of today has not
+  // begun"; next Monday stays the default (decision 5).
+  it('offers today as the earliest and keeps the default Monday', () => {
+    expect(startChoices('2026-10-14', year, true)).toEqual({
+      earliest: '2026-10-14',
+      defaultStart: '2026-10-19',
+      quarterStarts: ['2026-11-09', '2027-01-11', '2027-03-30'],
+    });
+  });
+
+  it('offers a quarter that starts today only when today is open', () => {
+    expect(startChoices('2026-11-09', year, true).quarterStarts).toEqual([
+      '2026-11-09',
+      '2027-01-11',
+      '2027-03-30',
+    ]);
+    expect(startChoices('2026-11-09', year, false).quarterStarts).toEqual([
+      '2027-01-11',
+      '2027-03-30',
+    ]);
+  });
+
+  it('stays tomorrow when today is closed', () => {
+    expect(startChoices('2026-10-14', year, false).earliest).toBe('2026-10-15');
+  });
+});
+
+describe('sameDayOpen (task 5.17)', () => {
+  // 06, The past is closed / Start date: no lesson dated today, and the first
+  // lesson slot has not begun by the branch clock (decision 4).
+  it('is closed by any lesson dated today', () => {
+    expect(sameDayOpen({ lessonsToday: true, nowMinutes: 0, firstLessonStart: 540 })).toBe(false);
+    expect(sameDayOpen({ lessonsToday: true, nowMinutes: 0, firstLessonStart: null })).toBe(false);
+  });
+
+  it('is closed from the start minute of the first lesson slot', () => {
+    expect(sameDayOpen({ lessonsToday: false, nowMinutes: 540, firstLessonStart: 540 })).toBe(false);
+    expect(sameDayOpen({ lessonsToday: false, nowMinutes: 600, firstLessonStart: 540 })).toBe(false);
+  });
+
+  it('is open one minute before the first lesson slot', () => {
+    expect(sameDayOpen({ lessonsToday: false, nowMinutes: 539, firstLessonStart: 540 })).toBe(true);
+  });
+
+  it('is open all day when no lesson slot falls today', () => {
+    expect(sameDayOpen({ lessonsToday: false, nowMinutes: 1439, firstLessonStart: null })).toBe(true);
   });
 });
 
