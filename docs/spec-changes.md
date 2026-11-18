@@ -2,6 +2,14 @@
 
 The spec in `docs/spec/` was taken from the full spec document on 3 October 2026 (revision 88). Every later change to a spec file is listed here, newest first, with the date, what changed, why, and the files touched. Changes are made only with the `/spec-change` skill and the owner's approval.
 
+## 18 November 2026: a plan window may open from the branch's first timetable version
+
+- What changed: **the plan window of a quarter may open when every school day of the quarter from the start of the branch's first published timetable version of the year is covered**, not only when the quarter is covered from its first day. Days before that first version have no lessons and need no cover; the plans of such a quarter cover the lessons from the version's start, and the days before have no plan rows and count nowhere (completeness, "not covered", lessons held without a plan). A quarter that ends before the first version starts has no lessons and no window. The windows list shows the date the timetable covers the quarter from.
+- Why: the owner, 18 November 2026, in chat. The Labzak branch's first timetable was published from 18 November, the eighth school day of quarter 2 (9 November to 25 December 2026); the window of quarter 2 was refused as "not published" because no version starts on or before 9 November, although 9 to 17 November have no lessons to plan. The owner's request also said "or from today, whichever is later"; it was left out with the owner's approval, because a version never starts before today and the published versions cover every day from the first one's start to the end of the year, so it changes nothing.
+- Not changed: `edge/academic-year` ("The school goes live in the middle of the year": "The plan window is opened before the start date, and plans cover the lessons from the start date") already agrees. The reminder "14 days before a quarter starts", "window not opened", the window's confirmation of lessons held without a plan and the plan's rows (the quarter's dated lessons) are unchanged. The "from" label of quarter results still comes from the branch's start date, not from the timetable.
+- Code: task 5.19 (`task/5.19-plan-window-first-version`): `published` of `plan-windows.service.ts` (the open route and the windows list).
+- Files: `docs/spec/09-lesson-plans.md` (The plan window), `docs/spec/edge-cases/lesson-plans.md` (The window and requests).
+
 ## 18 November 2026: a version may start today in a branch with no lesson today
 
 - What changed:

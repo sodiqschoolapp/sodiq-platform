@@ -23,6 +23,7 @@
 | Case | Rule |
 | --- | --- |
 | The quarter 1 timetable is published two days before lessons start, and the window runs two weeks into the quarter. | There is one window per quarter and branch. It ends no later than the quarter's last day. If it ends after the quarter's first lesson, the system shows how many lessons will be held without a plan and asks for confirmation. |
+| A branch's first timetable is published from the eighth school day of quarter 2. | The quarter 2 window can be opened. The days before the first version have no lessons, so they have no plan rows and count nowhere: not in completeness, "not covered" or the lessons held without a plan. The windows list shows the date the timetable covers the quarter from. |
 | The window is never opened. | If none exists 14 days before a quarter starts, the Academic Vice Principal is reminded daily. Such plans show "window not opened", not "overdue". |
 | The window's end date is changed after it opened; a save arrives at 00:03. | The end can move to any date from today on. A window ends at 23:59 of its last day, branch time. A save arriving later is refused and kept on the device as a draft to attach to a request. |
 | "Extend the window for one teacher" against "nothing opens without a request". | Before the window ends, an extension is simply a later end date for that teacher. After it, it is recorded as a request approved by the Academic Vice Principal. |

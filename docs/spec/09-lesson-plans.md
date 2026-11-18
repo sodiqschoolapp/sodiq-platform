@@ -38,7 +38,7 @@ A Head Teacher can keep a master plan for one of their subjects, a grade, a lang
 
 ## The plan window
 
-- The Academic Vice Principal opens a window for a quarter: a start date and an end date. It can be opened only when the timetable covering that quarter is published, because the lessons need dates.
+- The Academic Vice Principal opens a window for a quarter: a start date and an end date. It can be opened only when every school day of the quarter from the start of the branch's first published timetable version of the year is covered by a published version, because the lessons need dates. Days before that first version have no lessons and need no cover: a quarter in which the first version starts (a branch that starts mid-quarter) can be opened, and its plans cover the lessons from that version's start. A quarter that ends before the first version starts has no lessons and no window.
 - Inside the window teachers create and edit their plans freely.
 - Teachers are reminded when the window opens, three days before it ends, and on the last day if the plan is incomplete.
 - When the window ends, every plan is locked.
