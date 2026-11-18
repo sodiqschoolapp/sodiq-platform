@@ -3741,7 +3741,7 @@ export const uz: Texts<'one' | 'other'> = {
     },
   },
   switcher: {
-    rolePrefix: 'Menyu va bosh sahifa:',
+    menuTitle: 'Menyu va bosh sahifa',
     roleButton: 'Menyu va bosh sahifa: {{role}}',
     roleHint: 'Huquqlaringiz barcha rollaringiz boʻyicha qoladi.',
     branch: 'Filial',

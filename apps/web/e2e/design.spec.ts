@@ -159,7 +159,7 @@ test('the top bar is one row at laptop width, Rooms fits, and More shows Send fe
 
   // The Teacher's two branches: the role and the branch are both selects.
   const bar = page.getByRole('banner', { name: en.layout.topBar });
-  const roleSwitch = bar.getByRole('button', { name: new RegExp(`^${en.switcher.rolePrefix}`) });
+  const roleSwitch = bar.getByRole('button', { name: new RegExp(`^${en.switcher.menuTitle}:`) });
   await roleSwitch.click();
   await page.getByRole('menuitemradio', { name: en.roles.teacher }).click();
   // The closing menu stays where the wide bar put it during its exit animation;

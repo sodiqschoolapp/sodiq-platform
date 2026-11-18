@@ -27,7 +27,7 @@ test('the role switcher changes the home page and the branch switcher the branch
   // Issue #105, H11b: a menu button that says what it changes, its menu the hint.
   const roles = page.getByRole('button', { name: roleButton('tutor'), exact: true });
   await expect(todayOf(page)).toBeVisible();
-  await expect(roles).toHaveText(`${en.switcher.rolePrefix}${en.roles.tutor}`);
+  await expect(roles).toHaveText(en.roles.tutor);
   // The keyboard: Enter opens the menu with its hint, Escape closes it, the
   // arrows move between the roles and Enter chooses one.
   await roles.focus();
