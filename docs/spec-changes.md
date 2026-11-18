@@ -2,6 +2,16 @@
 
 The spec in `docs/spec/` was taken from the full spec document on 3 October 2026 (revision 88). Every later change to a spec file is listed here, newest first, with the date, what changed, why, and the files touched. Changes are made only with the `/spec-change` skill and the owner's approval.
 
+## 18 November 2026: the journal is titled by its class and subject, and its column labels follow the language
+
+- What changed:
+  1. **The journal's page title is the class or group and the subject** (for example "5 Oxford · Ingliz tili"), then Quarter · Month, then "Teacher: name". The name of the page ("Sinf jurnali", "Классный журнал", "Class journal") moves to the breadcrumbs. Before, the header began with "Sinf jurnali", so every journal had the same title.
+  2. **The short labels of the lesson columns follow the person's language**, in the grid and in the exported and printed journal: attendance Dav / Пос / Att, classwork SI / Кл/р / CW, homework UV / Д/з / HW, lesson score Oʻrt / Ср. / Avg, total label "Soni 30" / "из 30" / "of 30", each with its full word on hover. Before, "A", "CW", "HW", "AVG" and "Soni" were shown in every language. The calculation is unchanged; "Lesson score (AVG)" is now "Lesson score".
+- Why: the owner, 18 November 2026, in chat, from the design review of 17 November (approved then as one of four design rules; the wording approved on 18 November). With the same title on every journal, a teacher with several classes could not tell the open journal from the page title; English abbreviations on an Uzbek or Russian screen were the one place the journal did not speak the person's language. The Uzbek labels match the coloured tags of the kinds (S, U); Кл/р and Д/з are what Russian teachers write in paper journals.
+- Not changed: the printed and exported journal keeps "Sinf jurnali" (in its language) as its heading, since a printed document says what it is. The weight examples of `05` ("A 10 · CW 30 · HW 20 · RE 40") are the spec's own notation; the legend on screen already uses full words.
+- Code: a pull request of step 2 of the design review: the locale texts of the journal grid, the export texts of `packages/shared/src/journal-exports.ts` and their tests.
+- Files: `docs/spec/07-journal.md` (Opening a journal; Layout, Lessons row and the new table of short labels; Calculation rules, rule 3), `docs/spec/edge-cases/calculation.md` (the lesson score row).
+
 ## 18 November 2026: a plan window may open from the branch's first timetable version
 
 - What changed: **the plan window of a quarter may open when every school day of the quarter from the start of the branch's first published timetable version of the year is covered**, not only when the quarter is covered from its first day. Days before that first version have no lessons and need no cover; the plans of such a quarter cover the lessons from the version's start, and the days before have no plan rows and count nowhere (completeness, "not covered", lessons held without a plan). A quarter that ends before the first version starts has no lessons and no window. The windows list shows the date the timetable covers the quarter from.
