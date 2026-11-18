@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { academicYearStatusSchema, schoolDateSchema } from './academic-year.js';
 import { classGradeSchema } from './classes.js';
+import { sexSchema } from './staff.js';
 import { instructionLanguageSchema } from './settings.js';
 
 /**
@@ -54,6 +55,11 @@ export const groupRecordSchema = z.object({
   name: groupNameSchema,
   language: instructionLanguageSchema.nullable(),
   maxSize: z.int().min(1).max(GROUP_MAX_SIZE),
+  /**
+   * 'For girls only or boys only (optional)' (05, Group; the owner's spec change of 17
+   * November 2026): the sex of every student the group takes; `null` for everyone.
+   */
+  sex: sexSchema.nullable().default(null),
   confirmMixedLanguage: z.boolean().default(false),
 });
 
@@ -67,8 +73,14 @@ export const groupCreateSchema = groupRecordSchema.extend({
 
 export type GroupCreate = z.infer<typeof groupCreateSchema>;
 
-/** The edit names the state it was made on ("group changed, reload"). */
-export const groupEditSchema = groupRecordSchema.extend({ version: z.int().min(0) });
+/**
+ * The edit names the state it was made on ("group changed, reload"), and always names the sex:
+ * an edit that left it out would clear it unseen (spec review of the code, should-fix 2).
+ */
+export const groupEditSchema = groupRecordSchema.extend({
+  version: z.int().min(0),
+  sex: sexSchema.nullable(),
+});
 
 export type GroupEdit = z.infer<typeof groupEditSchema>;
 
@@ -165,6 +177,8 @@ export const groupSchema = z.object({
   name: z.string(),
   language: instructionLanguageSchema,
   maxSize: z.int().min(1),
+  /** For girls only (`female`), boys only (`male`), or everyone (`null`). */
+  sex: sexSchema.nullable(),
   /** The grades of its classes, ascending: one or two. */
   grades: z.array(classGradeSchema),
   classes: z.array(groupClassSchema),
@@ -313,6 +327,8 @@ export const placementGroupSchema = z.object({
   language: instructionLanguageSchema,
   classes: z.array(z.object({ id: z.uuid(), grade: classGradeSchema, name: z.string() })),
   maxSize: z.int().min(1),
+  /** For girls only, boys only, or everyone (`null`; 0171). */
+  sex: sexSchema.nullable(),
   /** The members on the date. */
   members: z.int().min(0),
   /** The fewest free seats on any date from the date on. */

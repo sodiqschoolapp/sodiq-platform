@@ -100,4 +100,21 @@ test('an Academic Vice Principal creates a group of one language and a confirmed
   const split = page.getByRole('complementary', { name: '7-G-3' });
   await expect(split).toBeVisible();
   await expect(split.getByText(texts.kinds.split)).toBeVisible();
+
+  // The owner's spec change of 17 November 2026 (05, Group): "for girls only or boys only
+  // (optional)". A group of the girls of 7 Oxford and 7 Princeton together.
+  await page.getByRole('button', { name: texts.add, exact: true }).first().click();
+  create = page.getByRole('form', { name: texts.newTitle });
+  await create.getByLabel(texts.subject, { exact: true }).selectOption({ label: 'Geometry' });
+  await create.getByRole('checkbox', { name: '7 Oxford', exact: true }).check();
+  await create.getByRole('checkbox', { name: '7 Princeton', exact: true }).check();
+  await create.getByLabel(texts.groupName, { exact: true }).fill('7-G-4');
+  await create.getByLabel(texts.maxSize, { exact: true }).fill('20');
+  await expect(create.getByLabel(texts.sex, { exact: true })).toHaveValue('');
+  await create.getByLabel(texts.sex, { exact: true }).selectOption('female');
+  await screenshot(page, 'girls-only');
+  await create.getByRole('button', { name: en.form.save, exact: true }).click();
+  const girls = page.getByRole('complementary', { name: '7-G-4' });
+  await expect(girls).toBeVisible();
+  await expect(girls.locator('[data-group-sex]')).toHaveText(texts.sexes.female);
 });

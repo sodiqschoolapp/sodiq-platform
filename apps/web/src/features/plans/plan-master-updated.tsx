@@ -204,7 +204,9 @@ function CompareDialog({ plan, onClose }: { plan: Plan; onClose: () => void }) {
         if (!open) onClose();
       }}
     >
-      <DialogContent className="max-w-3xl">
+      {/* `sm:` so that it wins over the dialog's own 384 px from 640 px up, and the phone keeps
+          its margin (design review of 17 November 2026, D3). */}
+      <DialogContent className="sm:max-w-3xl">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>

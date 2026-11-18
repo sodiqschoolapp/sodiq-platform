@@ -112,6 +112,7 @@ export function GroupForm({
       name: group?.name ?? '',
       language: group?.language ?? '',
       maxSize: group === null ? '' : String(group.maxSize),
+      sex: group?.sex ?? '',
     },
     read: (typed) => {
       const mixed = sharedLanguage(chosenOf(typed)) === null;
@@ -124,6 +125,8 @@ export function GroupForm({
         // Decision 8: the classes' language when they share one.
         language: mixed && typed.language !== '' ? typed.language : null,
         maxSize: wholeNumber(typed.maxSize),
+        // 05, Group: "for girls only or boys only (optional)".
+        sex: typed.sex === 'male' || typed.sex === 'female' ? typed.sex : null,
         confirmMixedLanguage: false,
       };
     },
@@ -251,6 +254,15 @@ export function GroupForm({
           max: number.format(GROUP_MAX_SIZE),
         })}
         {...form.bind('maxSize')}
+      />
+      <SelectField
+        label={t('groups.sex')}
+        options={[
+          { value: '', label: t('groups.sexes.everyone') },
+          { value: 'female', label: t('groups.sexes.female') },
+          { value: 'male', label: t('groups.sexes.male') },
+        ]}
+        {...form.bind('sex')}
       />
     </RecordForm>
   );

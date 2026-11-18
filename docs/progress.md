@@ -2,6 +2,68 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 18 November 2026: task 5.18, the timetable import pairs a one-sex half with its partner
+
+- **Built**: `importedBlocks` (`packages/timetable-rules/src/pattern-import.ts`) groups a slot in three passes decided by the rows present: whole blocks, except a one-row one-sex mixed half (`oneSexHalf`) whose partner is in the slot; then the pairings, in row-id order; then any one-sex half left over, whole, so that the engine names the clash. A slot of boys PE beside girls Gymnastics (or girls PE beside boys Taekwondo) now imports as one block, as the grid builds it.
+- The sex of a group reaches the pattern facts (`PatternUnitData.sex`, optional; `pattern-facts.ts`; `patternFactsDataSchema`, web client regenerated). No migration.
+- Fixes the production refusal of 112 of 798 rows of the Labzak timetable file.
+- **Left out**: nothing of the plan. A one-sex block of two or more rows (two boys' groups of one subject) is still taken whole: a pairing holds two rows (`pairingOf`), so the grid cannot build that slot either.
+
+The next sessions must know:
+
+- The fix reaches production only with the owner's deploy.
+
+## 17 November 2026: task 5.17, a version may start today in a branch with no lesson today
+
+- **Built**: a publish may start today when the branch has no lesson dated today (cancelled ones included), no published version starting today, and its first lesson slot of today has not begun by the branch clock (`sameDayOpen`, `startChoices(today, year, todayOpen)` in `packages/timetable-rules`; `same-day.ts` in the timetable module), read again under the publish lock at saving. A version from today cannot be withdrawn.
+- Availability may start today also while an entry is in force today, when the person has no lesson dated today in the branch (teacher, substitute, or replaced by an open substitution) and the first lesson has not begun. The availability service reads today from the transaction moment now.
+- A keep choice for a shortened day may be made for today on an open day; "up to date" compares against the earliest start of the same rule. Vacancy fills, template and calendar changes keep tomorrow at the earliest. No migration.
+- The spec text is in pull request #346, for the owner to merge.
+- **Left out**: nothing of the plan. A vacancy fill from today is refused by its route (`fill_start`) before the publish code; the `fill` flag of `publishLocked` keeps tomorrow for a fill by its own rule as a second guard, and no route reaches it.
+
+The next sessions must know:
+
+- Tests that assumed an empty branch's today is closed now see it open on the kit's Saturday (no lesson slot); they use yesterday for "before the earliest" and `publish.test.ts`, "a start today (task 5.17)", for the closed cases.
+
+## 17 November 2026: task 5.16, a slot of one-sex mixed halves counts once
+
+- **Built**: `classWeekLessons` (`packages/timetable-rules/src/totals.ts`) counts the one-sex mixed halves of each split (a class, or a pair of classes) by the larger of the boys' and the girls' lessons and of the lessons one teacher has there, so a sport slot counts once; every other row as before. `totalsOf` passes the mixed mark and the groups' sex; the load page, readiness step 2 and publish agree. No migration.
+- Fixes the production refusal of Labzak grades 1 to 4 (42 lessons for 40 slots; really 40).
+- **Left out**: nothing.
+
+The next sessions must know:
+
+- Mixed halves for everyone still count per subject, and a group outside a split linked to its rows counts beside the split (an over-count by intent, `totals.test.ts`); a future change of either is a reading of `06` step 2 and needs the students of the groups.
+- The fix reaches production only with the owner's deploy.
+
+## 17 November 2026: task 5.15, parallel groups linked by a shared class
+
+- **Built**: groups of one subject are one block only when they share a class, directly or through other groups of the subject (`groupsLinked` in `packages/timetable-rules`; `load_block_rows` replaced in `0172_block_link_shared_class.sql`, no row changed). Two pairs of one grade (the Labzak grade 3 English) now take the same two teachers and their own slots, typed by hand, imported, placed in the grid and imported as a timetable.
+- A pattern block placed before that holds several whole blocks of one subject in one slot stays valid (`rowsTogether`, pattern mode only).
+- The spec text came in by pull request #343, merged by the owner.
+- **Left out**: splitting an old pattern block that holds two pairs (handbook: remove it and place each pair again).
+
+The next sessions must know:
+
+- The note of the entry below, "Two groups across classes of the same grade set link into one block", is answered: they no longer do.
+- `real-size.ts` keys each pair of a grade as its own block; the small run has one pair per grade, so its times did not change beyond noise.
+
+## 17 November 2026: groups for one sex, and mixed blocks of a pair of classes
+
+Not a task of the build plan: asked for by the owner on 17 November 2026 for the go-live of the Labzak branch with its timetable version 10, whose sport lessons pair a boys' lesson with a girls' lesson of another subject in every sport slot, three pairs of classes together. Spec change approved by the owner in the session.
+
+- **Database** (`0171_groups_for_one_sex.sql`): `groups.sex`; the guards `group_memberships_sex` (insert, carry), `group_memberships_sex_regained` (days taken back), `groups_sex_members`, `students_sex_groups`; `class_row_needs_groups` and `teaching_load_rows_blocks` replaced. No existing row changes.
+- **Rule engine**: a split is one class or a pair (`isSplit`, `sameSplit`); `partnersIn` pairs halves of the same classes; `load_one_sex_not_mixed`. The block rule (every student of the block's classes in exactly one lesson) is unchanged.
+- **API**: the group's "For" field; every class path, "Place automatically", the placement screen, a leaving taken back and a branch-move accept choose groups by the student's sex; the load's "students not placed" follows it; five new error codes.
+- **Web**: the field in the group form and panel, the mixed mark offered on a pair's groups, texts in three languages; handbook section "Sport lessons of the boys and the girls".
+
+Left undone: the group export has no "For" column; the web pickers of a group transfer and the placement board's drop target are not filtered by sex (the server refuses).
+
+The next sessions must know:
+
+- In production, per class or pair: one group per sport subject and sex with "For" set, "Place automatically", one load row per group marked mixed (handbook, "Sport lessons of the boys and the girls").
+- Two groups across classes of the same grade set link into one block (`groupsLinked`); two pairs of one grade set doing one sport subject would be one block. The three pairs of Labzak are of different grades.
+
 ## 17 November 2026: an emergency override of the production release window
 
 Not a task of the build plan: asked for by the owner on 17 November 2026, who approved the change to the deploy workflow (a file of the loop) in chat.

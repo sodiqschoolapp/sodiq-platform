@@ -12,6 +12,8 @@ export const en = {
   app: {
     name: 'Sodiq School',
     loading: 'Loading…',
+    /** The Close of a dialog that changes nothing. */
+    close: 'Close',
   },
   brand: {
     slogan: 'Education begins with upbringing',
@@ -619,7 +621,7 @@ export const en = {
     load_split_and_whole:
       'This version already has a whole-class row and a group row for that class and subject. A class is either whole or split for a subject: delete one of the rows first.',
     load_mixed_not_split:
-      'Only the halves of a split of one class can be part of a mixed block. Clear the mark for this group.',
+      'Only the halves of a split of one class, or of a pair of classes, can be part of a mixed block. Clear the mark for this group.',
     load_block_mixed:
       'The halves of one split must agree on the mixed block. Change the mark on one half: it is written to every half.',
     load_block_lessons:
@@ -628,6 +630,16 @@ export const en = {
       'Another part of this split or of these parallel groups has that teacher, and the parts meet at the same time. Choose another teacher.',
     load_group_gaps:
       'Students of the classes are not placed in a group of this block. Place them on the group placement screen.',
+    load_one_sex_not_mixed:
+      'Every group of this subject is for one sex, so its lessons always meet a lesson of the other sex. Mark the rows as part of a mixed block.',
+    group_member_sex:
+      'This group is for students of the other sex. Choose a group open to the student, or change the group’s “For”.',
+    group_sex_members:
+      'Students of the other sex are in this group from today on. Move them to another group first, then change “For”.',
+    student_sex_groups:
+      'The student is in a group for the other sex from today on. Move the student to another group first, then correct the sex.',
+    student_merge_sex:
+      'The record that stays would be in a group for the other sex. Move the student to another group first, or keep the other sex in the record.',
     fill_vacancy: 'This vacancy is not open, or its close is already planned. Reopen it first.',
     fill_person:
       'This person cannot take the vacancy from that date. Choose a staff member who is active on it.',
@@ -1135,7 +1147,7 @@ export const en = {
     text: 'Enter the 6-digit code from your authenticator app, or one of your recovery codes.',
     label: 'Code',
     missing: 'Enter the code.',
-    submit: 'Continue',
+    submit: 'Sign in',
   },
   password: {
     titleForced: 'Choose a new password',
@@ -3688,7 +3700,7 @@ export const en = {
     },
   },
   switcher: {
-    rolePrefix: 'Menu and home page:',
+    menuTitle: 'Menu and home page',
     roleButton: 'Menu and home page: {{role}}',
     roleHint: 'Your rights stay those of all your roles.',
     branch: 'Branch',
@@ -4507,6 +4519,8 @@ export const en = {
     languageOfClasses: 'As its classes: {{language}}',
     maxSize: 'Max. students',
     maxSizeNote: 'From {{min}} to {{max}} students',
+    sex: 'For',
+    sexes: { everyone: 'Girls and boys', female: 'Girls only', male: 'Boys only' },
     status: 'Status',
     active: 'Active',
     archived: 'Archived',
@@ -5826,7 +5840,7 @@ export const en = {
         day_choice_not_offered:
           'A choice was sent that this item does not offer. Check again and choose one of the choices shown.',
         version_start_too_early:
-          'The start date is tomorrow at the earliest. A change for today is a one-day change.',
+          'The start date is tomorrow at the earliest, or today in a branch with no lesson today before its first lesson. Any other change for today is a one-day change.',
         version_start_outside_year: 'The start date is outside the academic year.',
         version_later_published:
           'Version {{number}} is already published from this date or a later one. Choose below what happens to the later versions.',
@@ -6122,10 +6136,11 @@ export const en = {
         load_no_tutor: 'Class without a Tutor',
         load_tutor_row_teacher: 'Not the class Tutor',
         load_split_and_whole: 'Class both whole and split',
-        load_mixed_not_split: 'Mixed block on a group across classes',
+        load_mixed_not_split: 'Mixed block on a group of more than two classes',
         load_block_mixed: 'Halves disagree on the mixed block',
         load_block_lessons: 'Parts with other lessons per week',
         load_block_teacher: 'One teacher on two parts',
+        load_one_sex_not_mixed: 'One-sex subject not in a mixed block',
         load_group_gaps: 'Students not placed',
       },
       blockColumn: 'Block',
@@ -6686,7 +6701,7 @@ export const en = {
       },
       resultNumber: '{{shown}}, grade {{grade}}',
       provisional: 'provisional',
-      basedOn: 'based on {{held}} of {{expected}} lessons',
+      basedOn: 'based on {{expected}} of {{held}} lessons',
       results: {
         exempt: 'Exempt',
         no_result: 'No result',
@@ -6707,7 +6722,7 @@ export const en = {
       titleLoading: 'Lesson',
       title: 'Lesson {{number}} · {{date}}',
       titleNoNumber: 'Lesson of {{date}}',
-      dateSlot: '{{date}} · slot {{slot}}',
+      slotOfDay: 'Slot {{slot}} of the day',
       topic: 'Topic',
       notDelivered: 'Topic not delivered',
       markNotDelivered: 'Topic not delivered',
@@ -6919,7 +6934,7 @@ export const en = {
       voidReason: 'Why it is voided',
       check: 'Check',
       save: 'Save',
-      confirm: 'Confirm',
+      confirm: 'Grant the exemption',
       drop: 'Drop',
       back: 'Back',
       close: 'Close',
@@ -7196,7 +7211,7 @@ export const en = {
       allPresentSkipped_other: '{{count}} already marked, left as typed.',
       saved: 'Saved',
       presentEarlier:
-        'Was at school at an earlier lesson today: {{names}}. The Tutor sees this day.',
+        'Was at school at an earlier lesson today: {{names}}. The Tutor or Class teacher sees this day.',
       typedBy: 'Typed by {{name}}',
       history: 'History',
       historyTitle: 'History: {{student}}',
@@ -7322,7 +7337,7 @@ export const en = {
       changes: {
         entry: 'Entered',
         not_held: '"Not held"',
-        carry: 'Carried',
+        carry: 'Moved to the next lesson',
         move: 'Moved to its check lesson',
         takeover: 'Taken over by the plan',
         separation: 'Plan separated',

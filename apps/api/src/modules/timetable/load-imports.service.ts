@@ -82,6 +82,7 @@ const PROBLEM_COLUMNS: Readonly<Record<LoadProblem, LoadImportColumn>> = {
   load_block_mixed: 'mixedBlock',
   load_block_lessons: 'lessonsPerWeek',
   load_block_teacher: 'teacher',
+  load_one_sex_not_mixed: 'mixedBlock',
   load_room_closed: 'room',
   load_group_gaps: 'unit',
 };
@@ -117,7 +118,7 @@ const placeholderOf = (rowNumber: number): string =>
  * the branch's records of the draft (never creating one), and every rule of a load row typed by
  * hand is checked through the one engine (`LoadFacts`, `loadRowProblems`) with the draft's rows
  * and every row of the file as the version's rows, so the block rules see the load as it will be;
- * a block given in part (`missingBlockGroups`, decision 2) and a repeat are problems too. The
+ * a block given in part (`missingBlockGroups`, 5.13 decision 2; the groups linked by a shared class, task 5.15) and a repeat are problems too. The
  * confirm writes every row or none, under the draft's edit lock, with one audit entry.
  */
 @Injectable()
@@ -483,6 +484,14 @@ export class LoadImports {
         const found = facts.problemsOf(row);
         for (const code of refusingProblems(found)) {
           add(rowNumber, { column: PROBLEM_COLUMNS[code], code });
+        }
+        // Listed by hand, where the halves are marked one write after another; a file brings
+        // the rows of a block together, so an unmarked one-sex block is a problem of its row.
+        if (found.includes('load_one_sex_not_mixed')) {
+          add(rowNumber, {
+            column: PROBLEM_COLUMNS.load_one_sex_not_mixed,
+            code: 'load_one_sex_not_mixed',
+          });
         }
         const unplaced = facts.blockFactsOf(row).unplaced;
         if (found.includes('load_group_gaps') && unplaced > 0) {

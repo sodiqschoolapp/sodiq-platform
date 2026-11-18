@@ -93,6 +93,7 @@ const group: CoverGroup = {
   maxSize: 20,
   inService: true,
   classIds: new Set(['oxford']),
+  sex: null,
 };
 
 const stored = (input: Partial<StoredGroupMembership>): StoredGroupMembership => ({

@@ -595,7 +595,26 @@ describe('the teaching load import', () => {
       expect(codes).toEqual(['load_split_and_whole']);
     });
 
-    it('a mixed mark on a group across classes: load_mixed_not_split', async () => {
+    // The owner's spec change of 17 November 2026 (05, Teaching load): "A subject whose groups are
+    // all for one sex is always marked as part of a mixed block"; a file brings the rows of a
+    // block together, so an unmarked one is a problem of its row (spec review of the code).
+    it('a one-sex block not marked mixed: load_one_sex_not_mixed', async () => {
+      const dartmouth = await load.classes.schoolClass(t.north, year, {
+        grade: 7,
+        name: 'Dartmouth',
+      });
+      await load.classes.group(t.north, year, pe, [dartmouth], { name: '7D-PE-B', sex: 'male' });
+      const row = { unit: '7D-PE-B', subject: PE, teacher: name(pe1), lessonsPerWeek: '2' };
+      const unmarked = await uploaded(await draft(), [row]);
+      expect(codesOf(unmarked, 3)).toEqual(['load_one_sex_not_mixed']);
+      const marked = await uploaded(await draft(), [{ ...row, mixedBlock: 'Yes' }]);
+      expect(codesOf(marked, 3)).toEqual([]);
+    });
+
+    // The owner's spec change of 17 November 2026 (Look first, the requirement changed): the
+    // English groups draw from Oxford and Princeton, a pair, so they are halves of one split and a
+    // mark on one of them disagrees with the others (this test expected load_mixed_not_split).
+    it('a mixed mark on one half of a split of a pair of classes: load_block_mixed', async () => {
       const preview = await uploaded(await draft(), [
         {
           unit: '7-E-1',
@@ -607,7 +626,7 @@ describe('the teaching load import', () => {
         { unit: '7-E-2', subject: ENGLISH, teacher: name(e2), lessonsPerWeek: '3' },
         { unit: '7-E-3', subject: ENGLISH, teacher: name(e3), lessonsPerWeek: '3' },
       ]);
-      expect(codesOf(preview, 3)).toEqual(['load_mixed_not_split']);
+      expect(codesOf(preview, 3)).toEqual(['load_block_mixed']);
     });
 
     it('halves that disagree on the mixed mark: load_block_mixed', async () => {
@@ -779,6 +798,51 @@ describe('the teaching load import', () => {
       expect(rowOf(preview, 3).problems).toEqual([
         { column: 'unit', code: 'load_import_block_part', groups: ['CH-B', 'CH-C'] },
       ]);
+    });
+
+    // Task 5.15: 06, Model, Parallel group lessons (changed 17 November 2026): "Groups that share
+    // no class are separate blocks, even in one grade". The Labzak shape with invented names: two
+    // pairs of one grade, two teachers each teaching one group of each pair.
+    it('takes two pairs of one grade that share no class, one teacher in each pair, and asks for no other pair', async () => {
+      const reading = await load.classes.subject({ grades: [7], name: 'Reading Lime' });
+      const cambridge = await load.classes.schoolClass(t.north, year, {
+        grade: 7,
+        name: 'Cambridge',
+      });
+      const durham = await load.classes.schoolClass(t.north, year, { grade: 7, name: 'Durham' });
+      for (const [one, classes] of [
+        ['RD-OP-1', [oxford, princeton]],
+        ['RD-OP-2', [oxford, princeton]],
+        ['RD-CD-1', [cambridge, durham]],
+        ['RD-CD-2', [cambridge, durham]],
+      ] as const) {
+        await load.classes.group(t.north, year, reading, [...classes], { name: one });
+      }
+      const first = await teacher([{ subject: reading, grades: [7] }]);
+      const second = await teacher([{ subject: reading, grades: [7] }]);
+      const row = (unit: string, who: string, lessonsPerWeek: string): LoadTemplateRow => ({
+        unit,
+        subject: 'Reading Lime',
+        teacher: name(who),
+        lessonsPerWeek,
+      });
+      const version = await draft();
+      // One pair alone asks for nothing of the other pair.
+      const alone = await uploaded(version, [
+        row('RD-OP-1', first, '3'),
+        row('RD-OP-2', second, '3'),
+      ]);
+      expect(alone.clean, JSON.stringify(alone.rows)).toBe(true);
+      // Both pairs, the same two teachers, other lessons per week in each pair.
+      const preview = await uploaded(version, [
+        row('RD-OP-1', first, '3'),
+        row('RD-OP-2', second, '3'),
+        row('RD-CD-1', first, '2'),
+        row('RD-CD-2', second, '2'),
+      ]);
+      expect(preview.clean, JSON.stringify(preview.rows)).toBe(true);
+      expect((await confirmed(version, preview.importId)).outcome).toBe('saved');
+      expect(await rowsOfDraft(version)).toHaveLength(4);
     });
 
     it('never tells a part missing that the file names on a row with another problem', async () => {

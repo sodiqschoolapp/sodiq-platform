@@ -15,6 +15,7 @@ import { Transactions, type Transaction } from '../../database/transactions.js';
 import {
   dayTemplatesKit,
   MONDAY,
+  TODAY,
   TOMORROW,
   UNKNOWN,
   type DayTemplatesKit,
@@ -1033,13 +1034,29 @@ describe('bringing a draft up to date after a publish', () => {
       return { branch, year, at, cause };
     }
 
-    it('reads a draft whose start has passed on tomorrow (spec review must-fix 1)', async () => {
+    // Task 5.17, decision 7: on the later of its start and the earliest start of
+    // a publish, tomorrow on a closed day. Today is closed here by a published
+    // version that starts today (decision 3); the branch has no lesson slot.
+    it('reads a draft whose start has passed on tomorrow when today is closed (spec review must-fix 1)', async () => {
       const v = await versions();
       await v.at('2026-09-07', 'published');
+      await v.at(TODAY, 'published');
       const tomorrow = await v.at(TOMORROW, 'published');
       const past = await v.at('2026-10-05', 'draft');
       await v.cause(past, tomorrow);
       expect((await shownOf(v.branch, past)).other?.id).toBe(tomorrow);
+    });
+
+    // Task 5.17, decision 7: on an open day (no lesson dated today, no version
+    // starting today, no lesson slot begun) the earliest start is today, so the
+    // draft is compared with the version in force today.
+    it('reads a draft whose start has passed on today when today is open (task 5.17)', async () => {
+      const v = await versions();
+      const inForce = await v.at('2026-09-07', 'published');
+      const tomorrow = await v.at(TOMORROW, 'published');
+      const past = await v.at('2026-10-05', 'draft');
+      await v.cause(past, tomorrow);
+      expect((await shownOf(v.branch, past)).other?.id).toBe(inForce);
     });
 
     it('compares a draft marked before 0077 (no record) with the version in force, and clears a later version cause', async () => {

@@ -319,6 +319,7 @@ describe('rating exams in grades 2–11 through the routes', () => {
         name: 'Maths 1',
         language: 'uz',
         maxSize: 20,
+        sex: null,
         version: group.version,
       }),
     );

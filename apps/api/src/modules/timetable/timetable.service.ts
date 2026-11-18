@@ -48,7 +48,7 @@ import {
   roomsReadiness,
   rulesReadiness,
   splitAndWhole,
-  splitClassOf,
+  sameSplit,
   TEACHER_PROBLEMS,
   teacherProblems,
   teachersReadiness,
@@ -1090,11 +1090,10 @@ export class Timetable {
       subjectId: row.subject_id,
       teacherId: row.teacher_id,
       lessonsPerWeek: row.lessons_per_week,
+      mixedBlock: row.mixed_block,
     }));
-    const classLessons = classWeekLessons(
-      totalsRows,
-      new Map([...groups].map(([groupId, group]) => [groupId, group.classIds])),
-    );
+    // Task 5.16: the groups with their sex, so one-sex mixed halves count by their slots.
+    const classLessons = classWeekLessons(totalsRows, groups);
     const classIds = [...classLessons.keys()].sort();
     const classes =
       classIds.length === 0
@@ -2021,17 +2020,17 @@ export class Timetable {
     const mixedChange = after.mixed_block !== before.mixed_block;
     const teacherChange = after.teacher_id !== before.teacher_id;
     const ownGroup = facts.groups.get(before.group_id);
-    const splitClass = ownGroup === undefined ? null : splitClassOf(ownGroup);
     const parts: { before: StoredLoadRow; after: StoredLoadRow }[] = [];
     for (const part of facts.blockOf(after)) {
       if (part.id === after.id) continue;
       const partGroup = part.group_id === null ? undefined : facts.groups.get(part.group_id);
-      const sameSplit =
-        splitClass !== null && partGroup !== undefined && splitClassOf(partGroup) === splitClass;
+      // The halves of one split: the same class, or the same pair of classes.
+      const halves =
+        ownGroup !== undefined && partGroup !== undefined && sameSplit(ownGroup, partGroup);
       const changed: StoredLoadRow = {
         ...part,
         lessons_per_week: lessonsChange ? after.lessons_per_week : part.lessons_per_week,
-        mixed_block: mixedChange && sameSplit ? after.mixed_block : part.mixed_block,
+        mixed_block: mixedChange && halves ? after.mixed_block : part.mixed_block,
       };
       if (
         changed.lessons_per_week !== part.lessons_per_week ||
@@ -2096,13 +2095,10 @@ export class Timetable {
     };
     const facts = await LoadFacts.of(transaction, context, [probe], { versionRows });
     const ownGroup = facts.groups.get(group);
-    const splitClass = ownGroup === undefined ? null : splitClassOf(ownGroup);
     const others = facts.blockOf(probe).filter((part) => part.id !== probe.id);
     const halves = others.filter((part) => {
       const partGroup = part.group_id === null ? undefined : facts.groups.get(part.group_id);
-      return (
-        splitClass !== null && partGroup !== undefined && splitClassOf(partGroup) === splitClass
-      );
+      return ownGroup !== undefined && partGroup !== undefined && sameSplit(ownGroup, partGroup);
     });
     const mixed =
       held?.mixed_block ?? (halves.length > 0 && halves.every((part) => part.mixed_block));

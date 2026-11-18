@@ -1,7 +1,7 @@
 import type { BlockGroup, BlockRow } from '@sodiq/timetable-rules';
 import { blocksOfRows } from '@sodiq/timetable-rules';
 import type { Transaction } from '../../database/transactions.js';
-import { groupPlacementGaps } from '../classes/class-groups.js';
+import { groupPlacementGaps, openTo, sexesOf } from '../classes/class-groups.js';
 import type { StoredLoadRow } from './load-facts.js';
 
 /** A stored row as the blocks read it. */
@@ -17,7 +17,8 @@ export const blockRowOf = (row: StoredLoadRow): BlockRow => ({
 
 /**
  * The groups named, with their subject, classes and the grades of those
- * classes, as `loadBlocks` reads them (task 3.4b, decision 2). Only the groups
+ * classes, as `loadBlocks` reads them: groups of one subject are linked by a
+ * shared class (task 5.15; the grades are no longer a link). Only the groups
  * the transaction sees: the rows of a version name the groups of its branch.
  */
 export async function readBlockGroups(
@@ -31,7 +32,7 @@ export async function readBlockGroups(
   const [groups, classes] = await Promise.all([
     transaction
       .selectFrom('groups')
-      .select(['id', 'subject_id'])
+      .select(['id', 'subject_id', 'sex'])
       .where('id', 'in', wanted)
       .execute(),
     transaction
@@ -50,6 +51,7 @@ export async function readBlockGroups(
         {
           id: group.id,
           subjectId: group.subject_id,
+          sex: group.sex === 'male' || group.sex === 'female' ? group.sex : null,
           classIds: own.map((one) => one.class_id),
           grades: [...new Set(own.map((one) => one.grade))].sort((a, b) => a - b),
         },
@@ -64,7 +66,11 @@ export async function readBlockGroups(
  * row of the subject (`group_placement_gaps`, 0049), or whose group of the
  * subject has no row in the version ("A block is valid when every student of
  * its classes is in exactly one of its lessons", edge/timetable, Structure).
- * The same count for every row of a block; nothing for a class row.
+ * A gap counts only for a student to whom a group of the block drawing from
+ * their class is open (0171, the owner's spec change of 17 November 2026: "a
+ * subject whose groups in a class are all for one sex binds only the students
+ * of that sex"). The same count for every row of a block; nothing for a class
+ * row.
  */
 export async function readUnplaced(
   transaction: Transaction,
@@ -90,14 +96,24 @@ export async function readUnplaced(
     const blockGroups = block.map((part) => part.groupId).filter((id): id is string => id !== null);
     const students = new Set<string>();
     if (classIds.length > 0) {
-      for (const gap of await groupPlacementGaps(
+      const gaps = await groupPlacementGaps(transaction, branchId, classIds, row.subjectId, from);
+      const sexes = await sexesOf(
         transaction,
-        branchId,
-        classIds,
-        row.subjectId,
-        from,
-      )) {
-        students.add(gap.studentId);
+        gaps.map((gap) => gap.studentId),
+      );
+      const blockGroupsOf = (classId: string) =>
+        block
+          .map((part) => (part.groupId === null ? undefined : groups.get(part.groupId)))
+          .filter(
+            (group): group is BlockGroup =>
+              group !== undefined &&
+              group.classIds.some((one) => one.toLowerCase() === classId.toLowerCase()),
+          );
+      for (const gap of gaps) {
+        const sex = sexes.get(gap.studentId.toLowerCase()) ?? null;
+        if (blockGroupsOf(gap.classId).some((group) => openTo(group, sex))) {
+          students.add(gap.studentId);
+        }
       }
       const elsewhere = await transaction
         .selectFrom('group_memberships')

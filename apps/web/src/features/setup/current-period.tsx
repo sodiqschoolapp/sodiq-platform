@@ -59,14 +59,18 @@ function DemoTime({ demoNow, timeZone }: { demoNow: string; timeZone: string }) 
   const { t, i18n } = useTranslation();
   // In the branch's time zone from the period's own answer: the branch record is not for every
   // role, and without it the device's zone showed 04:13 for 09:13 (design review, T5).
+  const text = t('period.demoTime', {
+    moment: weekdayMomentText(i18n.language, demoNow, { timeZone }),
+  });
+  // The first part of the bar to shorten when it runs out of room, its whole text in the
+  // tooltip (design review of 17 November 2026, T1).
   return (
     <span
       role="status"
-      className="shrink-0 rounded-md bg-info-bg px-2 py-0.5 text-sm font-semibold text-info"
+      title={text}
+      className="min-w-0 truncate rounded-md bg-info-bg px-2 py-0.5 text-sm font-semibold text-info"
     >
-      {t('period.demoTime', {
-        moment: weekdayMomentText(i18n.language, demoNow, { timeZone }),
-      })}
+      {text}
     </span>
   );
 }
@@ -93,7 +97,7 @@ export function CurrentPeriod() {
     <span
       aria-label={t('period.label')}
       title={t('period.label')}
-      className="min-w-0 truncate text-sm text-muted-foreground"
+      className="max-w-full shrink-0 truncate text-sm text-muted-foreground"
     >
       {parts.join(' · ')}
     </span>

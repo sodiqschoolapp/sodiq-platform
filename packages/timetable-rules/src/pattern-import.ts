@@ -65,6 +65,23 @@ const slotKey = (weekday: number, lessonNumber: number) =>
   `${String(weekday)}|${String(lessonNumber)}`;
 
 /**
+ * Whether a block of the load is the one row of a subject whose groups in its class (or pair of
+ * classes) are all for one sex, marked mixed (task 5.18; `05`: "a subject whose groups in a class
+ * are all for one sex binds only the students of that sex"; edge/timetable, Structure, the mixed
+ * block): it holds the students of one sex only, so beside a partner of the other sex in its slot
+ * it is one half of a pairing, never a block alone. A block of several rows is not one: a pairing
+ * holds two rows (`pairingOf`).
+ */
+function oneSexHalf(model: PatternModel, block: readonly string[]): boolean {
+  const [only] = block;
+  if (only === undefined || block.length !== 1) return false;
+  const row = model.rowOf(only);
+  if (!row.mixedBlock || row.groupId === null) return false;
+  const sex = model.unitOf(row.groupId).sex ?? null;
+  return sex !== null;
+}
+
+/**
  * The blocks of the file's lessons, and the problems of rows that cannot be placed: a block given
  * only in part in a slot (`pattern_import_block_part`, on every lesson of it present there), or a
  * weekday and lesson number the block's day does not have (`pattern_import_no_slot`). Each load
@@ -76,6 +93,7 @@ export function importedBlocks(
   held: readonly ImportHeld[] = [],
 ): { blocks: ImportedBlock[]; problems: ImportPlacementProblem[] } {
   const problems: ImportPlacementProblem[] = [];
+  const partnersOf = new Map(model.facts.loadRows.map((row) => [row.id, row.partners ?? []]));
   const presentIn = new Map<string, Set<string>>();
   const lessonsIn = new Map<string, ImportLesson[]>();
   for (const one of [...lessons, ...held]) {
@@ -96,23 +114,37 @@ export function importedBlocks(
     );
     const taken = new Set<string>();
     const byRow = new Map(inSlot.map((one) => [one.rowId, one]));
-    // Whole blocks first, then the pairings of mixed halves, so the grouping does not depend on
-    // the order of the rows (spec review of the code, should-fix 1): a block one of whose rows a
-    // pairing would take is never grouped as whole after it.
-    for (const one of inSlot) {
-      if (taken.has(one.rowId)) continue;
+    /** Takes the block of `one` whole when every row of it is present and untaken. */
+    const takeWhole = (one: ImportLesson): void => {
       const block = model.rowOf(one.rowId).block;
-      if (!block.every((id) => present.has(id) && !taken.has(id))) continue;
+      if (!block.every((id) => present.has(id) && !taken.has(id))) return;
       for (const id of block) taken.add(id);
       // A part held back for another problem: nothing of the block is placed.
-      if (block.some((id) => heldHere.has(id))) continue;
+      if (block.some((id) => heldHere.has(id))) return;
       grouped.push({
         weekday: one.weekday,
         lessonNumber: one.lessonNumber,
         members: block.map((id) => byRow.get(id)).filter((m): m is ImportLesson => !!m),
       });
-    }
+    };
+    // Whole blocks first, then the pairings of mixed halves, then the one-sex halves left over,
+    // each pass decided by the rows present in the slot, so the grouping does not depend on the
+    // order of the rows (spec review of the code of 5.14, should-fix 1; task 5.18). A one-sex
+    // half with a partner in the slot is not taken whole: it pairs (task 5.18).
+    const pairsFirst = (rowId: string): boolean => {
+      const block = model.rowOf(rowId).block;
+      return (
+        oneSexHalf(model, block) &&
+        block.some((id) => (partnersOf.get(id) ?? []).some((partner) => present.has(partner)))
+      );
+    };
     for (const one of inSlot) {
+      if (taken.has(one.rowId) || pairsFirst(one.rowId)) continue;
+      takeWhole(one);
+    }
+    // In row-id order, so that the pairings are a function of the rows present (task 5.18).
+    const byId = [...inSlot].sort((a, b) => (a.rowId < b.rowId ? -1 : a.rowId > b.rowId ? 1 : 0));
+    for (const one of byId) {
       if (taken.has(one.rowId)) continue;
       // A mixed half with exactly one partner in the slot: their pairing (task 5.4c-3b).
       const partners = [...present].filter(
@@ -129,6 +161,12 @@ export function importedBlocks(
         lessonNumber: one.lessonNumber,
         members: pair.map((id) => byRow.get(id)).filter((m): m is ImportLesson => !!m),
       });
+    }
+    // A one-sex half left without a pairing (its partner in a whole block, or two partners):
+    // whole, as before task 5.18, so the engine names what is wrong (`student_double`,
+    // `split_apart`), never a part of a block that misses no row.
+    for (const one of inSlot) {
+      if (!taken.has(one.rowId)) takeWhole(one);
     }
     for (const one of inSlot) {
       if (taken.has(one.rowId)) continue;

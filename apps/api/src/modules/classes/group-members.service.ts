@@ -13,6 +13,8 @@ import {
   type GroupPlacementQuery,
   type SchoolDate,
   isOwnClassRole,
+  sexSchema,
+  type Sex,
 } from '@sodiq/shared';
 import { Transactions, transactionMoment, type Transaction } from '../../database/transactions.js';
 import { ApiException } from '../../http/api-exception.js';
@@ -30,7 +32,7 @@ import {
   lockGroups,
 } from './group-membership-rows.js';
 import { classesOfGroups, readGroupRow, type GroupRow } from './group-rows.js';
-import { SeatBook, smallestGroup } from './class-groups.js';
+import { openTo, SeatBook, sexesOf, smallestGroup } from './class-groups.js';
 
 /** A group as a placement reads it, after its lock. */
 interface PlacementGroupRow {
@@ -46,6 +48,8 @@ interface PlacementGroupRow {
   /** The day after the year's end. */
   yearUntil: SchoolDate;
   classIds: string[];
+  /** 0171: for girls only, boys only, or everyone (`null`). */
+  sex: Sex | null;
 }
 
 /** A group row a placement writes: inside the class row that holds its first day (decision 7). */
@@ -61,6 +65,11 @@ interface PlannedGroupRow {
    * correction 1): the row is written already cut by it, naming it.
    */
   endedByMoveId: string | null;
+  /**
+   * The review tag of an automatic row (`edge/students-classes-groups`, first
+   * row): set unless the group was the only one open to the student.
+   */
+  review?: boolean;
 }
 
 /** The refusal of one student, named in the details of the answer. */
@@ -364,6 +373,7 @@ export class GroupMembers {
           language: group.language,
           classes: group.classes,
           maxSize: group.maxSize,
+          sex: group.sex,
           members: await this.membersOn(transaction, group.id, query.on),
           free: group.maxSize - (await groupMembersPeak(transaction, group.id, query.on, null)),
         });
@@ -418,7 +428,11 @@ export class GroupMembers {
           ).filter((group) => !group.archived);
           // Read again under the locks: a placement that came first is no
           // longer a candidate (spec review of the plan, must-fix 2).
-          const screen = groups.map((group) => ({ id: group.id, classIds: group.classIds }));
+          const screen = groups.map((group) => ({
+            id: group.id,
+            classIds: group.classIds,
+            sex: group.sex,
+          }));
           const still = new Set(
             (await this.unplacedOf(transaction, input.subjectId, screen, input.from)).map(
               (one) => one.id,
@@ -432,13 +446,20 @@ export class GroupMembers {
           }
           // One rule for the screen and the class paths (task 3.2c, decision 7).
           const book = new SeatBook(transaction);
+          const sexes = await sexesOf(
+            transaction,
+            order.map((one) => one.id),
+          );
           for (const [index, candidate] of order.entries()) {
             const student = students.get(candidate.id);
             if (student === undefined) {
               throw notFound();
             }
+            // 0171: only the groups open to the student by sex are offered.
             const offered = groups.filter(
-              (group) => classRowOn(student, new Set(group.classIds), input.from) !== undefined,
+              (group) =>
+                classRowOn(student, new Set(group.classIds), input.from) !== undefined &&
+                openTo(group, sexes.get(student.id.toLowerCase()) ?? null),
             );
             const held = classRowOn(
               student,
@@ -465,6 +486,8 @@ export class GroupMembers {
               ownUntil: held.ownUntil,
               leavingId: held.endedBy === 'leaving' ? held.leavingId : null,
               endedByMoveId: held.endedBy === 'transfer' ? held.endedByMoveId : null,
+              // "A student placed in the only group open to them is not tagged."
+              review: offered.length > 1,
             });
           }
           const first = details[0];
@@ -536,6 +559,7 @@ export class GroupMembers {
         'groups.name',
         'groups.name_key',
         'groups.max_size',
+        'groups.sex',
         'groups.archived_at',
         'academic_years.status',
         'academic_years.start_date',
@@ -556,6 +580,7 @@ export class GroupMembers {
       nameKey: row.name_key ?? row.name,
       maxSize: row.max_size,
       archived: row.archived_at !== null,
+      sex: row.sex === null ? null : sexSchema.parse(row.sex),
       yearStatus: row.status,
       yearStart: row.start_date,
       yearUntil: nextDay(row.end_date),
@@ -626,7 +651,7 @@ export class GroupMembers {
     requestId: string,
   ): Promise<void> {
     for (const row of rows) {
-      const review = cause === 'automatic';
+      const review = cause === 'automatic' && row.review !== false;
       const written = await transaction
         .insertInto('group_memberships')
         .values({
@@ -701,6 +726,7 @@ export class GroupMembers {
         'groups.name',
         'groups.language',
         'groups.max_size',
+        'groups.sex',
         'academic_years.status as year_status',
       ])
       .where('groups.subject_id', '=', subjectId)
@@ -720,6 +746,7 @@ export class GroupMembers {
         name: row.name,
         language: row.language as 'uz' | 'ru',
         maxSize: row.max_size,
+        sex: row.sex === null ? null : sexSchema.parse(row.sex),
         yearStatus: row.year_status,
         classes: (classes.get(row.id) ?? []).map((one) => ({
           id: one.id,
@@ -734,11 +761,15 @@ export class GroupMembers {
       );
   }
 
-  /** The students of the screen not yet placed (decision 14), by surname, first name and UID. */
+  /**
+   * The students of the screen not yet placed (decision 14), by surname, first
+   * name and UID: each of a class a screen group open to them draws from (0171:
+   * a girl is never listed for a subject whose groups there are all the boys').
+   */
   private async unplacedOf(
     transaction: Transaction,
     subjectId: string,
-    groups: readonly { id: string; classIds: readonly string[] }[],
+    groups: readonly { id: string; classIds: readonly string[]; sex: Sex | null }[],
     day: SchoolDate,
   ): Promise<GroupPlacementBoard['unplaced']> {
     const classIds = [...new Set(groups.flatMap((group) => group.classIds))];
@@ -758,6 +789,7 @@ export class GroupMembers {
         'classes.grade',
         'classes.name',
         'class_memberships.valid_from',
+        'students.sex',
       ])
       .where('class_memberships.class_id', 'in', classIds)
       .whereRef('class_memberships.valid_from', '<', 'class_memberships.valid_until')
@@ -780,7 +812,13 @@ export class GroupMembers {
       .orderBy('students.first_name')
       .orderBy('students.uid')
       .execute();
-    return rows.map((row) => ({
+    const open = (row: { class_id: string; sex: string }) =>
+      groups.some(
+        (group) =>
+          group.classIds.some((one) => one.toLowerCase() === row.class_id.toLowerCase()) &&
+          (group.sex === null || group.sex === row.sex),
+      );
+    return rows.filter(open).map((row) => ({
       id: row.id,
       uid: row.uid,
       firstName: row.first_name,

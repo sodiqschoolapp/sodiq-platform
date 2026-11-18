@@ -835,6 +835,7 @@ describe('the subjects page', () => {
                 name: '5-M-1',
                 language: 'uz',
                 maxSize: 20,
+                sex: null,
                 grades: [5],
                 classes: [
                   { id: uid(93), grade: 5, name: 'Oxford', language: 'uz', archived: false },

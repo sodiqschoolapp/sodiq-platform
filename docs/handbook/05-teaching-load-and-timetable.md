@@ -14,7 +14,7 @@ Not written yet for most of the teaching load and the timetable: task 3.7 descri
 
 1. Open Timetable, then Teaching load, and choose the draft. Press **Import from Excel** (**Exceldan import**). Step 2 of the builder has the same link.
 2. Press **Download the template**. The file is made for this draft: its sheet "Lists" holds the branch's classes and groups, the classes each group draws from, the subjects, the teachers (surname, name and staff ID) and vacancies, the rooms and the room types. Each column that names a record is a dropdown of that list.
-3. Fill one row per row of the load: class or group, subject, teacher or vacancy, lessons per week, a room or a room type (optional), double lessons (yes or no), mixed block (yes or no, for a split whose halves share one teacher), and a reason for "deliberately short" (optional). Leave the teacher empty for a Tutor subject on a class: the class's Tutor takes it.
+3. Fill one row per row of the load: class or group, subject, teacher or vacancy, lessons per week, a room or a room type (optional), double lessons (yes or no), mixed block (yes or no, for the halves of a split of one class or of a pair of classes that meet other subjects in their slots), and a reason for "deliberately short" (optional). Leave the teacher empty for a Tutor subject on a class: the class's Tutor takes it.
 4. Press **Upload the filled file**. The page lists every row, the rows with problems first, each problem with its column.
 5. When every row is ready, press **Add all rows**. The page says how many rows were added, with a link back to the load.
 
@@ -22,6 +22,7 @@ Not written yet for most of the teaching load and the timetable: task 3.7 descri
 
 - Every rule of a row typed by hand applies: the teacher has the subject, the grade and the language of the class or group; the parts of a split or of a set of groups have the same lessons per week and different teachers; a class and a group of it never both have the subject.
 - Every group of a block needs a row: a split given to one half only is a problem. By hand, such a block is only listed until its other part is added.
+- Which groups make one block: the groups of one subject that share a class, directly or through other groups of that subject. Groups that share no class are blocks of their own, even in one grade: English for 3 Oxford and 3 Princeton can be at another time than English for 3 Cambridge and 3 Durham, with the same two teachers in both. A timetable placed before 17 November 2026 may hold two such blocks together in one slot; it stays valid, and to place them apart, remove that block in the grid and place each pair again.
 - A row that the draft already has, or that the file has twice, is a problem.
 - Nothing is added until every row is ready; then every row is added at once. Rows already in the draft stay.
 - The same file is not imported twice into a draft, and a template made for another draft is refused.
@@ -72,6 +73,24 @@ Not written yet for most of the teaching load and the timetable: task 3.7 descri
 | The day has no such lesson number | "the day has no lesson with this number on this weekday." |
 | Someone placed or removed a lesson in the grid after the preview | "The lessons of the draft changed after the preview." Nothing is saved; upload the file again to see what is removed now. |
 | Someone else is editing the draft | The import is refused until they leave it, as for any change of the draft. |
+
+## Sport lessons of the boys and the girls
+
+In a sport lesson the boys and the girls of a class have two lessons at the same time, of two subjects with two teachers: for example the boys taekwondo while the girls have physical education, and in another slot the boys physical education while the girls have gymnastics. Some pairs of classes do these lessons together: then the boys of both classes are one half and the girls of both classes the other.
+
+**Setting it up**, for each class, or each pair of classes that do sport together:
+
+1. **Groups.** In Classes, then Groups, create one group per subject and per half: for example "PE boys", "PE girls", "Swimming boys", "Swimming girls", "Gymnastics girls", "Taekwondo boys". Choose the class, or the two classes of the pair, and set **For** to **Girls only** or **Boys only**. A group for one sex takes only students of that sex.
+2. **Students.** On the group placement screen, choose the subject and the grades, then press **Place automatically**: every student goes to the group of their sex. A student who joins the class later is placed in the group of their sex by itself. A subject taken by one sex only (taekwondo for the boys) asks nothing of the other sex.
+3. **Load.** One row per group: the teacher and the lessons per week, with **Mixed block** ticked. Both halves of a subject have the same lessons per week. A subject whose groups are all for one sex shows a problem until its rows are marked mixed. The load import has a "Mixed block" column for the same mark.
+4. **Timetable.** In the grid, place a boys' lesson and a girls' lesson together in one slot ("Paired with"); in the timetable import, give the two rows of a sport slot the same weekday and slot.
+
+**Rules.**
+
+- In every sport slot every student of the class, or of both classes of the pair, has exactly one lesson: a boys' lesson alone, or two boys' lessons together, is refused.
+- In the load's totals and in step 2 of the timetable builder, a sport slot counts once for the class: the class needs as many slots as the larger of the boys' lessons and the girls' lessons (boys 5 and girls 5 need 5 slots), so "Lessons in the load" can be lower than the sum of the rows. A boys' lesson with no girls' lesson to pair still counts.
+- A pairing is made of halves drawn from the same class, or the same pair of classes. A half of 7 Sydney + 8 Columbia never pairs with a half of 7 Sydney alone.
+- A student's sex cannot be corrected while they are in a group for one sex from today on: move them to another group first. A group cannot be set to one sex while a student of the other sex is in it from today on.
 
 ## Teacher absences
 
@@ -447,6 +466,16 @@ Not built yet: the substitute in the journal and the plan (tasks 6.3, 7.1b, 8.4,
 | The subject has no rating exam | The tick is not offered; a save that sends it is refused. |
 | No journal is linked | The exam saves; the list says no journal is linked. |
 | The tick is taken off in a change | The journals are no longer linked. |
+
+## Starting a timetable today
+
+<!-- Sources: spec 06 (How surprises are prevented: The past is closed, Start date, Withdraw), spec 04 (Availability), as changed by the owner on 18 November 2026 (pull request #346); task 5.17 -->
+
+A new timetable version normally starts tomorrow at the earliest. It may start **today** when the branch has no lesson dated today and the first lesson of today has not begun yet by the branch's clock. For example, a new branch whose first timetable is ready at 07:30 can start it today, before lesson 1 at 09:00.
+
+- Type today's date in the publish dialog; the default stays next Monday. The system checks both conditions again at the moment you press **Publish**.
+- Once a version that starts today is published, it cannot be withdrawn, and no second version can start today. Any other change for today is a one-day change with a reason.
+- A teacher's hours may also start today, even while hours already apply today, when the teacher has no lesson dated today in that branch (as teacher or substitute) and the branch's first lesson has not begun.
 
 ## Version history
 

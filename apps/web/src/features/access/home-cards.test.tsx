@@ -4,6 +4,7 @@ import type {
   EarlyWarningEntry,
   LessonsToday,
   Role,
+  ViewLesson,
 } from '@sodiq/shared';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
@@ -148,6 +149,91 @@ describe('the home pages of each role (08, Home pages by role)', () => {
       (line) => !card.contains(line),
     );
     expect(own).toHaveLength(1);
+  });
+
+  // Design review of 17 November 2026 (H1): three English groups at 08:00 read "08:00 – 08:45 ·
+  // English" three times; each line now names its group, teacher and room.
+  it("tells the Tutor's parallel group lessons apart by group, teacher and room", async () => {
+    const lesson = (n: number, fields: Partial<ViewLesson>): ViewLesson => ({
+      id: uid(300 + n),
+      date: '2026-10-19',
+      start: 480,
+      end: 525,
+      unit: { kind: 'class', id: CLASS_A, name: '7 Cambridge' },
+      subject: { id: uid(200), names: { uz: 'Ingliz tili', ru: 'Английский', en: 'English' } },
+      teacher: null,
+      room: null,
+      cancelCause: null,
+      cancelReason: null,
+      changed: false,
+      state: 'upcoming',
+      away: null,
+      roomOut: null,
+      substitution: null,
+      classIds: [CLASS_A],
+      lessonNumber: 1,
+      replacedHere: false,
+      journalId: null,
+      status: null,
+      ...fields,
+    });
+    fakeApi({
+      'GET /api/auth/session': () => json(sessionAs('tutor')),
+      'GET /api/journal/attendance-today': () =>
+        json({ ...ATTENDANCE, classes: [ATTENDANCE.classes[1]] }),
+      'GET /api/timetable/views/class': () =>
+        json({
+          kind: 'class',
+          span: 'day',
+          today: '2026-10-19',
+          subject: { id: CLASS_A, name: '7 Cambridge' },
+          classes: [{ id: CLASS_A, name: '7 Cambridge' }],
+          days: [],
+          lessons: [
+            lesson(1, {
+              unit: { kind: 'group', id: uid(31), name: '7 English A' },
+              teacher: { id: uid(41), kind: 'person', name: 'Saidova Lola' },
+              room: { id: uid(51), name: '101' },
+            }),
+            lesson(2, {
+              unit: { kind: 'group', id: uid(32), name: '7 English B' },
+              teacher: { id: uid(42), kind: 'person', name: 'Tursunov Bobur' },
+              room: { id: uid(52), name: '102' },
+            }),
+            // A lesson of the whole class: its own name is not repeated.
+            lesson(3, {
+              start: 535,
+              end: 580,
+              subject: {
+                id: uid(201),
+                names: { uz: 'Matematika', ru: 'Математика', en: 'Maths' },
+              },
+              teacher: { id: uid(43), kind: 'person', name: 'Karimov Anvar' },
+              room: { id: uid(53), name: '104' },
+              lessonNumber: 2,
+            }),
+          ],
+          exams: [],
+          busy: [],
+        }),
+      'GET /api/results/early-warning': () => json(earlyWarning([])),
+    });
+    renderApp('/');
+    const card = await screen.findByRole('region', {
+      name: en.home.tutorClass.classTitle.replace('{{name}}', '7 Cambridge'),
+    });
+    const range = (from: string, to: string): string =>
+      en.home.attention.range.replace('{{from}}', from).replace('{{to}}', to);
+    await waitFor(() => {
+      expect(card.querySelectorAll('[data-class-today] li')).toHaveLength(3);
+    });
+    expect(
+      [...card.querySelectorAll('[data-class-today] li')].map((line) => line.textContent),
+    ).toEqual([
+      `${range('08:00', '08:45')} · English · 7 English A · Saidova Lola · 101`,
+      `${range('08:00', '08:45')} · English · 7 English B · Tursunov Bobur · 102`,
+      `${range('08:55', '09:40')} · Maths · Karimov Anvar · 104`,
+    ]);
   });
 
   it('gives the Head Tutor every class today with those below the threshold first and marked, in Russian', async () => {

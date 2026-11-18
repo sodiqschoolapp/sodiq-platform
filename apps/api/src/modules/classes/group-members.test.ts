@@ -862,14 +862,17 @@ describe('group membership', () => {
       expect(of(students[2]?.id ?? '')).toBe(alpha);
       const oxfordGroups = [of(students[0]?.id ?? ''), of(students[1]?.id ?? '')];
       expect(oxfordGroups.sort()).toEqual([alpha, beta].sort());
-      for (const one of students) {
+      // The two of Oxford had two groups to choose from: tagged. The Yale student had one, the only
+      // group open to them: not tagged (edge/students-classes-groups, first row, 17 November 2026).
+      for (const [index, one] of students.entries()) {
+        const review = index < 2;
         expect(await rowsOfStudent(one.id)).toEqual([
-          expect.objectContaining({ cause: 'automatic', review: true }),
+          expect.objectContaining({ cause: 'automatic', review }),
         ]);
         expect((await t.entries('student.group_joined', one.id))[0]).toMatchObject({
           assignment_id: t.viceAssignment,
           request_id: response.headers['x-request-id'],
-          new_value: { cause: 'automatic', review: true },
+          new_value: { cause: 'automatic', review },
         });
       }
       const tab = await membersOf(beta);
@@ -1103,6 +1106,7 @@ describe('group membership', () => {
             name: detail.name,
             language: null,
             maxSize: 5,
+            sex: null,
             version: detail.version,
             ...fields,
           },
@@ -1163,6 +1167,7 @@ describe('group membership', () => {
             name: detail.name,
             language: null,
             maxSize: 1,
+            sex: null,
             version: detail.version,
           },
           t.vicePrincipal,
@@ -1204,6 +1209,7 @@ describe('group membership', () => {
             name: detail.name,
             language: null,
             maxSize: 20,
+            sex: null,
             version: detail.version,
           },
           t.vicePrincipal,

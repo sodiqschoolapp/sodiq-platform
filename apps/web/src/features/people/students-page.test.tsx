@@ -3705,6 +3705,11 @@ describe('the Results and Attendance tabs', () => {
       (call) => call.route === `GET /api/results/students/${OTKIR.id}/lessons`,
     );
     expect(asked?.query).toBe(`?subjectId=${SUBJECT.id}&quarterId=${Q1}`);
+    // Design review of 17 November 2026 (D3): the dialog has a visible Close.
+    fireEvent.click(within(dialog).getByRole('button', { name: en.app.close }));
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).toBeNull();
+    });
   });
 
   // Task 9.2b (spec review of the code, must-fix 3; `edge/academic-year`, "Closing the start

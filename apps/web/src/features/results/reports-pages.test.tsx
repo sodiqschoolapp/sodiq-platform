@@ -7,7 +7,7 @@ import type {
   SessionResponse,
   SubjectMastery,
 } from '@sodiq/shared';
-import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { en } from '@/i18n/locales/en';
 import { fakeApi, json, NORTH, renderApp, sessionOf } from '@/testing/render-app';
@@ -378,7 +378,12 @@ describe('the journal discipline report (task 9.3b-2)', () => {
     expect(
       calls.find((call) => call.route === 'GET /api/journal/discipline/items')?.query,
     ).toContain('column=lateEntries');
-    fireEvent.keyDown(document.activeElement ?? document.body, { key: 'Escape' });
+    // Design review of 17 November 2026 (D3): the dialog has a visible Close.
+    const dialog = screen.getByRole('dialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: en.app.close }));
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).toBeNull();
+    });
     fireEvent.click(await screen.findByRole('button', { name: en.results.reports.excel }));
     await waitFor(() => {
       expect(

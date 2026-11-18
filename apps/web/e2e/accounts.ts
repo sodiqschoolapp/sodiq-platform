@@ -74,6 +74,7 @@ export type AccountKey =
   | 'draftGridUndo'
   | 'draftGridDouble'
   | 'draftGridMixed'
+  | 'draftGridPair'
   | 'draftPublish'
   | 'buildWalk'
   | 'dayChanges'

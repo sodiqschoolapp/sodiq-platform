@@ -74,8 +74,11 @@ export {
   groupsLinked,
   loadBlocks,
   splitAndWhole,
-  splitClassOf,
+  isSplit,
+  sameSplit,
+  splitKeyOf,
   type BlockGroup,
+  type GroupSex,
   type BlockProblem,
   type BlockRow,
 } from './blocks.js';
@@ -216,8 +219,10 @@ export {
 export {
   datedPublishResults,
   publishRefusals,
+  sameDayOpen,
   startChoices,
   type DatedPublishInput,
+  type SameDayInput,
   type DatedPublishResults,
   type NeedsTeacher,
   type NeedsTeacherReason,

@@ -122,12 +122,15 @@ export function AppLayout() {
             <Logo variant="mark" className="h-8 dark:hidden" />
             <Logo variant="mark-on-dark" className="hidden h-8 dark:block" />
           </Link>
-          <div className="flex min-w-0 items-center gap-x-4 gap-y-1 max-sm:order-last max-sm:basis-full">
+          {/* From 1024 px the branch, year and quarter never shorten (`12`, Context: always shown)
+              and the tools at the right keep their size: the demo time beside the period shortens
+              instead (design review of 17 November 2026, T1). */}
+          <div className="flex min-w-0 items-center gap-x-4 gap-y-1 max-sm:order-last max-sm:basis-full max-lg:flex-wrap">
             <BranchSwitcher />
             <CurrentPeriod />
           </div>
           <UnsentBanner />
-          <div className="ml-auto flex min-w-0 items-center gap-2">
+          <div className="ml-auto flex min-w-0 items-center gap-2 lg:shrink-0">
             <CommandSearch />
             <NotificationsButton />
             <div className="max-sm:hidden">

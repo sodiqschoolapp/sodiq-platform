@@ -273,7 +273,10 @@ function checkSharedRooms(placements: readonly Placement[], facts: Facts, result
  * Twice is `student_double`. Task 5.4c-3b (decision 6, review correction 1):
  * a block of the pattern holds the rows of one block of the load, or a
  * pairing of two mixed halves that are each other's partners; any other set
- * of rows (a pairing whose mark was cleared since) leaves a split apart.
+ * of rows (a pairing whose mark was cleared since) leaves a split apart. Task
+ * 5.15, decision 2: or several whole blocks of the load of one subject, as a
+ * pattern block placed before groups that share no class became blocks of
+ * their own holds them (06, Model, Parallel group lessons).
  */
 function checkBlocks(placements: readonly Placement[], facts: Facts, results: Results): void {
   const loadRows = new Map(facts.loadRows.map((row) => [row.id, row]));
@@ -308,9 +311,10 @@ function checkBlocks(placements: readonly Placement[], facts: Facts, results: Re
 }
 
 /**
- * Whether the lessons of a block are the rows of one block of the load, or a
- * pairing of two partners (task 5.4c-3b); `true` when a row is not known so
- * (a lesson of no row, a row without `block`).
+ * Whether the lessons of a block are the rows of one block of the load, a
+ * pairing of two partners (task 5.4c-3b), or the union of several whole blocks
+ * of the load of one subject (task 5.15, decision 2); `true` when a row is not
+ * known so (a lesson of no row, a row without `block`).
  */
 function rowsTogether(
   block: readonly Placement[],
@@ -327,12 +331,24 @@ function rowsTogether(
   if (first?.block === undefined) return true;
   const own = first.block;
   if (rows.length === own.length && rows.every((row) => own.includes(row.id))) return true;
+  if (wholeBlocksOfOneSubject(block, rows)) return true;
   return (
     rows.length === 2 &&
     second !== undefined &&
     first.partners?.includes(second.id) === true &&
     second.partners?.includes(first.id) === true
   );
+}
+
+/** Whether every row's block lies wholly in the rows, and every lesson is of one subject. */
+function wholeBlocksOfOneSubject(
+  block: readonly Placement[],
+  rows: readonly EngineLoadRow[],
+): boolean {
+  const subjects = new Set(block.map((one) => one.subjectId));
+  if (subjects.size !== 1 || subjects.has(null)) return false;
+  const ids = new Set(rows.map((row) => row.id));
+  return rows.every((row) => row.block?.every((id) => ids.has(id)) === true);
 }
 
 // --- The day --------------------------------------------------------------

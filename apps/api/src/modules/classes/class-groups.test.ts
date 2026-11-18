@@ -256,6 +256,9 @@ describe('groups on every class membership path', () => {
       expect(answer.groupsPlaced).toHaveLength(2);
       const rows = await rowsOfStudent(one.id);
       expect(rows).toHaveLength(2);
+      // Maths had two groups to choose from: tagged. English had one, the only group open to the
+      // student: not tagged (edge/students-classes-groups, first row, the owner's change of 17
+      // November 2026).
       for (const row of rows) {
         expect(row).toMatchObject({
           valid_from: '2026-10-12',
@@ -263,7 +266,7 @@ describe('groups on every class membership path', () => {
           own_until: '2027-06-01',
           ended_by: null,
           cause: 'automatic',
-          review: true,
+          review: row.group_id === small,
         });
       }
       expect(rows.map((row) => row.group_id).sort()).toEqual([small, across].sort());
@@ -273,11 +276,14 @@ describe('groups on every class membership path', () => {
         expect(entry).toMatchObject({
           assignment_id: t.viceAssignment,
           request_id: response.headers['x-request-id'],
-          new_value: { from: '2026-10-12', cause: 'automatic', review: true },
+          new_value: { from: '2026-10-12', cause: 'automatic' },
         });
       }
+      expect(
+        entries.map((entry) => (entry.new_value as { review: boolean }).review).sort(),
+      ).toEqual([false, true]);
       // The record shows the groups with the tag.
-      expect((await fresh(one.id)).groups.map((one) => one.review)).toEqual([true, true]);
+      expect((await fresh(one.id)).groups.map((one) => one.review).sort()).toEqual([false, true]);
     });
 
     it('breaks a tie of sizes by the name of the group', async () => {
@@ -366,7 +372,7 @@ describe('groups on every class membership path', () => {
       expect((await putIntoClass(oxford, [one], '2026-10-20')).status).toBe(201);
       const tab = groupMembersSchema.parse((await get(`/api/groups/${maths1}/members`)).body);
       const member = tab.members.find((row) => row.studentId === one.id);
-      expect(member?.review).toBe(true);
+      expect(member?.review).toBe(false);
       const withdrawn = await post(`/api/groups/${maths1}/members/${member?.id ?? ''}/withdraw`);
       expect(withdrawn.status, JSON.stringify(withdrawn.body)).toBe(200);
       const gaps = await t.app
@@ -391,10 +397,10 @@ describe('groups on every class membership path', () => {
           group_id: maths1,
           valid_from: '2026-09-02',
           cause: 'automatic',
-          review: true,
+          review: false,
         }),
       ]);
-      expect(one.groups).toEqual([expect.objectContaining({ id: maths1, review: true })]);
+      expect(one.groups).toEqual([expect.objectContaining({ id: maths1, review: false })]);
       expect(await t.entries('student.group_joined', one.id)).toHaveLength(1);
     });
 
@@ -450,7 +456,7 @@ describe('groups on every class membership path', () => {
           own_until: '2027-06-01',
           ended_by: null,
           cause: 'automatic',
-          review: true,
+          review: false,
         }),
       ]);
       const row = await t.database.migrator
@@ -471,7 +477,7 @@ describe('groups on every class membership path', () => {
                 from: '2026-11-01',
                 until: '2027-06-01',
                 cause: 'cancel',
-                review: true,
+                review: false,
               },
             ],
           },
@@ -519,7 +525,7 @@ describe('groups on every class membership path', () => {
           group_id: other,
           valid_from: '2026-10-06',
           cause: 'automatic',
-          review: true,
+          review: false,
         }),
       ]);
     });
@@ -562,7 +568,7 @@ describe('groups on every class membership path', () => {
           group_id: maths1,
           valid_from: '2026-11-01',
           cause: 'automatic',
-          review: true,
+          review: false,
         }),
       ]);
     });
@@ -588,7 +594,7 @@ describe('groups on every class membership path', () => {
           own_until: '2027-06-01',
           ended_by: null,
           cause: 'automatic',
-          review: true,
+          review: false,
         }),
       ]);
     });
@@ -608,7 +614,7 @@ describe('groups on every class membership path', () => {
           own_until: '2027-06-01',
           ended_by: 'leaving',
           cause: 'automatic',
-          review: true,
+          review: false,
         }),
       ]);
     });
@@ -665,6 +671,7 @@ describe('groups on every class membership path', () => {
           name: detail.name,
           language: null,
           maxSize: 20,
+          sex: null,
           version: detail.version,
         },
         t.vicePrincipal,
@@ -678,7 +685,7 @@ describe('groups on every class membership path', () => {
           valid_from: '2026-11-01',
           valid_until: '2027-06-01',
           cause: 'automatic',
-          review: true,
+          review: false,
         }),
       ]);
     });
@@ -1203,6 +1210,7 @@ describe('groups on every class membership path', () => {
             name: detail.name,
             language: null,
             maxSize: 20,
+            sex: null,
             version: detail.version,
           },
           t.vicePrincipal,
@@ -1328,6 +1336,7 @@ describe('groups on every class membership path', () => {
             name: detail.name,
             language: null,
             maxSize: 1,
+            sex: null,
             version: detail.version,
           },
           t.vicePrincipal,
@@ -1573,6 +1582,7 @@ describe('groups on every class membership path', () => {
               name: detail.name,
               language: null,
               maxSize: 1,
+              sex: null,
               version: detail.version,
             },
             t.vicePrincipal,
@@ -1730,6 +1740,7 @@ describe('groups on every class membership path', () => {
           own_until: '2026-11-02',
           ended_by: null,
           cause: 'automatic',
+          // Two groups open (A and B): tagged; from 2 November B is the only one: not tagged.
           review: true,
         }),
         expect.objectContaining({
@@ -1739,7 +1750,7 @@ describe('groups on every class membership path', () => {
           own_until: '2026-12-07',
           ended_by: null,
           cause: 'automatic',
-          review: true,
+          review: false,
         }),
       ]);
     });

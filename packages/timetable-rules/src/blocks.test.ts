@@ -16,7 +16,8 @@ const group = (
   classIds: string[],
   grades: number[],
   subjectId = 'english',
-): BlockGroup => ({ id, subjectId, classIds, grades });
+  sex: BlockGroup['sex'] = null,
+): BlockGroup => ({ id, subjectId, classIds, grades, sex });
 
 const row = (id: string, groupId: string, changes: Partial<BlockRow> = {}): BlockRow => ({
   id,
@@ -43,7 +44,8 @@ const groupsOf = (...all: BlockGroup[]) => new Map(all.map((one) => [one.id, one
 
 // edge/timetable, Structure: "a split or a set of parallel groups is one block
 // of several lessons"; 06, Model: parallel groups are "All groups of one
-// subject and one grade or pair of grades"; task 3.4b, decision 2.
+// subject that share a class, directly or through other groups of that
+// subject" (spec change of 17 November 2026, task 5.15).
 describe('loadBlocks', () => {
   it('makes the halves of a split of one class one block', () => {
     const groups = groupsOf(group('g1', ['oxford'], [7]), group('g2', ['oxford'], [7]));
@@ -69,12 +71,35 @@ describe('loadBlocks', () => {
     ]);
   });
 
-  it('makes two groups across classes of one grade one block with no class in common', () => {
+  it('keeps two groups across classes of one grade with no class in common apart', () => {
+    // 06, Model: "Groups that share no class are separate blocks, even in one grade".
     const groups = groupsOf(
       group('m1', ['oxford', 'princeton'], [7]),
       group('m2', ['cambridge', 'yale'], [7]),
     );
-    expect(loadBlocks([row('a', 'm1'), row('b', 'm2')], groups)).toEqual([['a', 'b']]);
+    expect(loadBlocks([row('a', 'm1'), row('b', 'm2')], groups)).toEqual([['a'], ['b']]);
+  });
+
+  it('keeps two pairs of one grade apart, each pair one block (the Labzak shape)', () => {
+    const groups = groupsOf(
+      group('op1', ['oxford', 'princeton'], [3]),
+      group('op2', ['oxford', 'princeton'], [3]),
+      group('cd1', ['cambridge', 'durham'], [3]),
+      group('cd2', ['cambridge', 'durham'], [3]),
+    );
+    const rows = [row('a', 'op1'), row('b', 'op2'), row('c', 'cd1'), row('d', 'cd2')];
+    expect(loadBlocks(rows, groups)).toEqual([
+      ['a', 'b'],
+      ['c', 'd'],
+    ]);
+  });
+
+  it('makes a split of a class beside a group of that class and another one block', () => {
+    const groups = groupsOf(
+      group('s1', ['oxford'], [7]),
+      group('m1', ['oxford', 'princeton'], [7]),
+    );
+    expect(loadBlocks([row('a', 's1'), row('b', 'm1')], groups)).toEqual([['a', 'b']]);
   });
 
   it('keeps splits of two classes with no class in common apart', () => {
@@ -90,10 +115,18 @@ describe('loadBlocks', () => {
     expect(loadBlocks([row('a', 'm1'), row('b', 'p1')], groups)).toEqual([['a'], ['b']]);
   });
 
-  it('links two-grade groups of the same pair of grades', () => {
+  it('keeps two-grade groups of the same pair of grades with no class in common apart', () => {
     const groups = groupsOf(
       group('p1', ['edinburgh', 'brown'], [9, 10]),
       group('p2', ['harvard', 'stanford'], [10, 9]),
+    );
+    expect(loadBlocks([row('a', 'p1'), row('b', 'p2')], groups)).toEqual([['a'], ['b']]);
+  });
+
+  it('links two-grade groups that share a class', () => {
+    const groups = groupsOf(
+      group('p1', ['edinburgh', 'brown'], [9, 10]),
+      group('p2', ['edinburgh', 'brown'], [9, 10]),
     );
     expect(loadBlocks([row('a', 'p1'), row('b', 'p2')], groups)).toEqual([['a', 'b']]);
   });
@@ -133,6 +166,32 @@ describe('blockProblems', () => {
     expect(blockProblems(rows[0] as BlockRow, rows, split)).toEqual(['load_block_lessons']);
   });
 
+  it('finds nothing for one teacher, or other lessons, on two pairs that share no class', () => {
+    const groups = groupsOf(
+      group('op', ['oxford', 'princeton'], [3]),
+      group('cd', ['cambridge', 'durham'], [3]),
+    );
+    const rows = [
+      row('a', 'op', { teacherId: 't' }),
+      row('b', 'cd', { teacherId: 't', lessonsPerWeek: 2 }),
+    ];
+    const a = rows[0] as BlockRow;
+    const b = rows[1] as BlockRow;
+    expect(blockProblems(a, blockOf('a', rows, groups), groups)).toEqual([]);
+    expect(blockProblems(b, blockOf('b', rows, groups), groups)).toEqual([]);
+  });
+
+  it('finds one teacher on two groups that share a class', () => {
+    const groups = groupsOf(
+      group('ab', ['oxford', 'princeton'], [3]),
+      group('ac', ['oxford', 'cambridge'], [3]),
+    );
+    const rows = [row('a', 'ab', { teacherId: 't' }), row('b', 'ac', { teacherId: 't' })];
+    expect(blockProblems(rows[1] as BlockRow, blockOf('b', rows, groups), groups)).toEqual([
+      'load_block_teacher',
+    ]);
+  });
+
   it('finds one teacher on two parts', () => {
     const rows = [row('a', 'g1', { teacherId: 't' }), row('b', 'g2', { teacherId: 't' })];
     expect(blockProblems(rows[1] as BlockRow, rows, split)).toEqual(['load_block_teacher']);
@@ -159,10 +218,36 @@ describe('blockProblems', () => {
     expect(blockProblems(classRow('d', 'oxford'), [], split)).toEqual([]);
   });
 
-  it('finds a mixed mark on a group across classes, and one teacher there still refused', () => {
+  // Spec change of 17 November 2026 (edge/timetable, Structure): a split may
+  // divide a pair of classes; the halves of one split are the groups that draw
+  // from the same set of classes. This test replaced "finds a mixed mark on a
+  // group across classes, and one teacher there still refused".
+  it('lets the halves of a split of a pair of classes be marked and share a teacher', () => {
+    const groups = groupsOf(
+      group('m1', ['oxford', 'princeton'], [7]),
+      group('m2', ['princeton', 'oxford'], [7]),
+    );
+    const rows = [
+      row('a', 'm1', { teacherId: 't', mixedBlock: true }),
+      row('b', 'm2', { teacherId: 't', mixedBlock: true }),
+    ];
+    expect(blockProblems(rows[0] as BlockRow, rows, groups)).toEqual([]);
+    expect(blockProblems(rows[1] as BlockRow, rows, groups)).toEqual([]);
+  });
+
+  it('finds the halves of a split of a pair that disagree on the mark', () => {
     const groups = groupsOf(
       group('m1', ['oxford', 'princeton'], [7]),
       group('m2', ['oxford', 'princeton'], [7]),
+    );
+    const rows = [row('a', 'm1', { mixedBlock: true }), row('b', 'm2')];
+    expect(blockProblems(rows[1] as BlockRow, rows, groups)).toEqual(['load_block_mixed']);
+  });
+
+  it('finds a mixed mark on a group of three classes: a split is one class or a pair', () => {
+    const groups = groupsOf(
+      group('m1', ['oxford', 'princeton', 'yale'], [7]),
+      group('m2', ['oxford', 'princeton', 'yale'], [7]),
     );
     const rows = [
       row('a', 'm1', { teacherId: 't', mixedBlock: true }),
@@ -172,6 +257,54 @@ describe('blockProblems', () => {
       'load_mixed_not_split',
       'load_block_teacher',
     ]);
+  });
+
+  it('keeps groups of one block over other sets of classes as parts, not halves', () => {
+    // A chain: m1 (oxford) and m2 (oxford and princeton) share a class but are
+    // not halves of one split, so the mark need not agree and a shared teacher
+    // is refused.
+    const groups = groupsOf(
+      group('m1', ['oxford'], [7]),
+      group('m2', ['oxford', 'princeton'], [7]),
+    );
+    const rows = [
+      row('a', 'm1', { teacherId: 't', mixedBlock: true }),
+      row('b', 'm2', { teacherId: 't' }),
+    ];
+    expect(blockProblems(rows[0] as BlockRow, rows, groups)).toEqual(['load_block_teacher']);
+    expect(blockProblems(rows[1] as BlockRow, rows, groups)).toEqual(['load_block_teacher']);
+  });
+
+  // 05, Teaching load: "A subject whose groups are all for one sex is always
+  // marked as part of a mixed block."
+  it('finds a block whose groups are all for one sex not marked mixed', () => {
+    const groups = groupsOf(
+      group('tk', ['sydney', 'columbia'], [7, 8], 'taekwondo', 'male'),
+      group('gy', ['sydney'], [7], 'gymnastics', 'female'),
+      group('gy2', ['sydney'], [7], 'gymnastics', 'female'),
+    );
+    const boys = row('a', 'tk', { subjectId: 'taekwondo' });
+    expect(blockProblems(boys, [boys], groups)).toEqual(['load_one_sex_not_mixed']);
+    expect(
+      blockProblems({ ...boys, mixedBlock: true }, [{ ...boys, mixedBlock: true }], groups),
+    ).toEqual([]);
+    const girls = [
+      row('b', 'gy', { subjectId: 'gymnastics' }),
+      row('c', 'gy2', { subjectId: 'gymnastics' }),
+    ];
+    expect(blockProblems(girls[0] as BlockRow, girls, groups)).toEqual(['load_one_sex_not_mixed']);
+  });
+
+  it('finds nothing for an unmarked block with groups of both sexes or for everyone', () => {
+    const groups = groupsOf(
+      group('pb', ['sydney'], [7], 'pe', 'male'),
+      group('pg', ['sydney'], [7], 'pe', 'female'),
+      group('all', ['oxford'], [7], 'pe'),
+    );
+    const rows = [row('a', 'pb', { subjectId: 'pe' }), row('b', 'pg', { subjectId: 'pe' })];
+    expect(blockProblems(rows[0] as BlockRow, rows, groups)).toEqual([]);
+    const all = row('c', 'all', { subjectId: 'pe' });
+    expect(blockProblems(all, [all], groups)).toEqual([]);
   });
 
   it('lets PE and technology splits of one class have other lessons and one teacher', () => {
@@ -301,6 +434,19 @@ describe('missingBlockGroups', () => {
     ];
     const found = missingBlockGroups([row('a', 'A')], groups);
     expect(found.get('a')).toEqual(['B', 'C']);
+  });
+
+  it('never names a group of the same grade that shares no class', () => {
+    const groups = [
+      group('op1', ['3o', '3p'], [3]),
+      group('op2', ['3o', '3p'], [3]),
+      group('cd1', ['3c', '3d'], [3]),
+      group('cd2', ['3c', '3d'], [3]),
+    ];
+    const found = missingBlockGroups([row('a', 'op1'), row('b', 'op2')], groups);
+    expect(found.get('a')).toEqual([]);
+    expect(found.get('b')).toEqual([]);
+    expect(missingBlockGroups([row('c', 'cd1')], groups).get('c')).toEqual(['cd2']);
   });
 
   it('never counts a group of another subject', () => {

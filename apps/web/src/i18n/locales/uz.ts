@@ -9,6 +9,7 @@ export const uz: Texts<'one' | 'other'> = {
   app: {
     name: 'Sodiq School',
     loading: 'Yuklanmoqda…',
+    close: 'Yopish',
   },
   brand: {
     slogan: 'Taʼlim tarbiyadan boshlanadi',
@@ -632,7 +633,7 @@ export const uz: Texts<'one' | 'other'> = {
     load_split_and_whole:
       'Bu versiyada shu sinf va fan uchun butun sinf qatori ham, guruh qatori ham bor. Sinf fan boʻyicha yo butun, yo boʻlingan boʻladi: avval qatorlardan birini oʻchiring.',
     load_mixed_not_split:
-      'Aralash blokka faqat bitta sinfning boʻlingan qismlari kira oladi. Bu guruh uchun belgini olib tashlang.',
+      'Aralash blok qismi faqat bitta sinf yoki ikki sinf boʻlinishining yarmlari boʻlishi mumkin. Bu guruhdagi belgini olib tashlang.',
     load_block_mixed:
       'Bitta boʻlinishning qismlari aralash blok belgisida bir xil boʻlishi kerak. Belgini bitta qismda oʻzgartiring: u barcha qismlarga yoziladi.',
     load_block_lessons:
@@ -641,6 +642,16 @@ export const uz: Texts<'one' | 'other'> = {
       'Bu boʻlinish yoki parallel guruhlarning boshqa qismida shu oʻqituvchi bor, qismlar esa bir vaqtda oʻtadi. Boshqa oʻqituvchini tanlang.',
     load_group_gaps:
       'Sinflarning oʻquvchilari bu blokning guruhlariga joylashtirilmagan. Ularni guruhlarga joylashtirish ekranida joylashtiring.',
+    load_one_sex_not_mixed:
+      'Bu fanning barcha guruhlari bir jins uchun, shuning uchun uning darslari doim boshqa jins darsi bilan birga oʻtadi. Qatorlarni aralash blok qismi deb belgilang.',
+    group_member_sex:
+      'Bu guruh boshqa jinsdagi oʻquvchilar uchun. Oʻquvchiga ochiq guruhni tanlang yoki guruhning «Kimlar uchun» maydonini oʻzgartiring.',
+    group_sex_members:
+      'Bugundan boshlab bu guruhda boshqa jinsdagi oʻquvchilar bor. Avval ularni boshqa guruhga oʻtkazing, keyin «Kimlar uchun»ni oʻzgartiring.',
+    student_sex_groups:
+      'Bugundan boshlab oʻquvchi boshqa jins uchun guruhda. Avval oʻquvchini boshqa guruhga oʻtkazing, keyin jinsini tuzating.',
+    student_merge_sex:
+      'Qoladigan yozuv boshqa jins uchun guruhga tushib qoladi. Avval oʻquvchini boshqa guruhga oʻtkazing yoki yozuvda boshqa jinsni qoldiring.',
     fill_vacancy:
       'Bu vakansiya ochiq emas yoki uni yopish allaqachon rejalashtirilgan. Avval uni qayta oching.',
     fill_person:
@@ -868,7 +879,7 @@ export const uz: Texts<'one' | 'other'> = {
     journal_work_title_required: 'Ish nomini kiriting, koʻpi bilan 60 ta belgi.',
     work_holds_numbers:
       'Bu uy vazifasining shu darsda sonlari bor, shuning uchun u shu yerda tekshiriladi.',
-    work_carried: 'Bu uy vazifasi bir marta keyingi darsga oʻtkazilgan.',
+    work_carried: 'Bu uy vazifasi bir marta keyingi darsga koʻchirilgan.',
     no_next_lesson: 'Jurnalda bu uy vazifasini tekshirish uchun keyingi dars yoʻq.',
     work_total_missing: 'Avval ishning jamini belgilang, soʻng sonlarni kiriting.',
     score_above_total: 'Son ishning jamidan katta. 0 dan jamigacha son kiriting.',
@@ -1157,7 +1168,7 @@ export const uz: Texts<'one' | 'other'> = {
     text: 'Autentifikator ilovasidagi 6 xonali kodni yoki zaxira kodlaringizdan birini kiriting.',
     label: 'Kod',
     missing: 'Kodni kiriting.',
-    submit: 'Davom etish',
+    submit: 'Kirish',
   },
   password: {
     titleForced: 'Yangi parol oʻrnating',
@@ -3731,7 +3742,7 @@ export const uz: Texts<'one' | 'other'> = {
     },
   },
   switcher: {
-    rolePrefix: 'Menyu va bosh sahifa:',
+    menuTitle: 'Menyu va bosh sahifa',
     roleButton: 'Menyu va bosh sahifa: {{role}}',
     roleHint: 'Huquqlaringiz barcha rollaringiz boʻyicha qoladi.',
     branch: 'Filial',
@@ -4223,7 +4234,7 @@ export const uz: Texts<'one' | 'other'> = {
         work_delete: 'Qoʻlda qoʻshilgan ish olib tashlandi',
         work_total: 'Ishning jami belgilandi',
         work_not_held: 'Ish oʻtkazilmadi deb belgilandi yoki belgi bekor qilindi',
-        work_carry: 'Uy vazifasi keyingi darsga oʻtkazildi',
+        work_carry: 'Uy vazifasi keyingi darsga koʻchirildi',
         work_move: 'Ish tekshiriladigan darsga koʻchirildi',
         work_takeover: 'Qoʻlda qoʻshilgan ishlarni reja qatori oldi',
         work_rename: 'Qoʻlda qoʻshilgan ish nomi oʻzgartirildi',
@@ -4553,6 +4564,12 @@ export const uz: Texts<'one' | 'other'> = {
     languageOfClasses: 'Sinflaridagidek: {{language}}',
     maxSize: 'Sigʻim',
     maxSizeNote: '{{min}} dan {{max}} gacha oʻquvchi',
+    sex: 'Kimlar uchun',
+    sexes: {
+      everyone: 'Qizlar va oʻgʻil bolalar',
+      female: 'Faqat qizlar',
+      male: 'Faqat oʻgʻil bolalar',
+    },
     status: 'Holati',
     active: 'Faol',
     archived: 'Arxivda',
@@ -5887,7 +5904,7 @@ export const uz: Texts<'one' | 'other'> = {
         day_choice_not_offered:
           'Bu band uchun mavjud boʻlmagan tanlov yuborildi. Qayta tekshiring va koʻrsatilganlardan birini tanlang.',
         version_start_too_early:
-          'Boshlanish sanasi eng erta ertaga. Bugungi oʻzgarish — bir kunlik oʻzgarish.',
+          'Boshlanish sanasi eng erta ertaga yoki filialda bugun dars boʻlmasa va birinchi dars hali boshlanmagan boʻlsa, bugun. Bugungi boshqa oʻzgarish — bir kunlik oʻzgarish.',
         version_start_outside_year: 'Boshlanish sanasi oʻquv yilidan tashqarida.',
         version_later_published:
           '{{number}}-versiya shu yoki keyingi sanadan allaqachon eʼlon qilingan. Keyingi versiyalar bilan nima boʻlishini quyida tanlang.',
@@ -6182,10 +6199,11 @@ export const uz: Texts<'one' | 'other'> = {
         load_no_tutor: 'Sinfda tyutor yoʻq',
         load_tutor_row_teacher: 'Sinf tyutori emas',
         load_split_and_whole: 'Sinf ham butun, ham boʻlingan',
-        load_mixed_not_split: 'Bir necha sinf guruhida aralash blok',
+        load_mixed_not_split: 'Ikkitadan ortiq sinf guruhida aralash blok',
         load_block_mixed: 'Qismlar aralash blokda mos emas',
         load_block_lessons: 'Qismlarda darslar soni har xil',
         load_block_teacher: 'Ikki qismda bitta oʻqituvchi',
+        load_one_sex_not_mixed: 'Bir jinsli fan aralash blokda emas',
         load_group_gaps: 'Oʻquvchilar joylashtirilmagan',
       },
       blockColumn: 'Blok',
@@ -6748,7 +6766,7 @@ export const uz: Texts<'one' | 'other'> = {
       },
       resultNumber: '{{shown}}, baho {{grade}}',
       provisional: 'dastlabki',
-      basedOn: '{{expected}} ta darsdan {{held}} tasi asosida',
+      basedOn: '{{held}} ta darsdan {{expected}} tasi asosida',
       results: {
         exempt: 'Ozod',
         no_result: 'Natija yoʻq',
@@ -6769,7 +6787,7 @@ export const uz: Texts<'one' | 'other'> = {
       titleLoading: 'Dars',
       title: '{{number}}-dars · {{date}}',
       titleNoNumber: '{{date}} darsi',
-      dateSlot: '{{date}} · {{slot}}-dars',
+      slotOfDay: 'Kunning {{slot}}-darsi',
       topic: 'Mavzu',
       notDelivered: 'Mavzu oʻtilmadi',
       markNotDelivered: 'Mavzu oʻtilmadi',
@@ -6981,7 +6999,7 @@ export const uz: Texts<'one' | 'other'> = {
       voidReason: 'Nima uchun bekor qilinadi',
       check: 'Tekshirish',
       save: 'Saqlash',
-      confirm: 'Tasdiqlash',
+      confirm: 'Ozod qilish',
       drop: 'Rad etish',
       back: 'Orqaga',
       close: 'Yopish',
@@ -7260,7 +7278,7 @@ export const uz: Texts<'one' | 'other'> = {
       allPresentSkipped_other: '{{count}} tasi allaqachon belgilangan, oʻzgartirilmadi.',
       saved: 'Saqlandi',
       presentEarlier:
-        'Bugun avvalgi darsda maktabda boʻlgan: {{names}}. Sinf rahbari bu kunni koʻradi.',
+        'Bugun avvalgi darsda maktabda boʻlgan: {{names}}. Tyutor yoki sinf rahbari bu kunni koʻradi.',
       typedBy: 'Kiritgan: {{name}}',
       history: 'Tarix',
       historyTitle: 'Tarix: {{student}}',
@@ -7355,7 +7373,7 @@ export const uz: Texts<'one' | 'other'> = {
       notChecked: 'Tekshirilmadi',
       carry: 'Keyingi darsda tekshirish',
       remove: 'Ishni olib tashlash',
-      carried: 'oʻtkazilgan',
+      carried: 'koʻchirilgan',
       given: 'Berilgan uy vazifasi',
       checkedOn: '{{date}} da tekshiriladi',
       ungraded: {
@@ -7386,7 +7404,7 @@ export const uz: Texts<'one' | 'other'> = {
       changes: {
         entry: 'Kiritildi',
         not_held: '«Oʻtkazilmadi»',
-        carry: 'Oʻtkazildi',
+        carry: 'Keyingi darsga koʻchirildi',
         move: 'Tekshiriladigan darsga koʻchirildi',
         takeover: 'Reja oldi',
         separation: 'Reja ajratildi',

@@ -342,7 +342,7 @@ describe('the class of a return and of a graduate restore', () => {
           valid_from: '2026-10-08',
           valid_until: '2027-06-01',
           cause: 'automatic',
-          review: true,
+          review: false,
         });
       }
       const requestId = response.headers['x-request-id'];

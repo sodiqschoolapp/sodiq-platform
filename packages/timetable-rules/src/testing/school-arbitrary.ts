@@ -49,7 +49,9 @@ const STUDENTS: Record<string, string[]> = {
 };
 const GROUPS: Record<string, readonly string[]> = { g1: ['c1', 'c2'], g2: ['c3'] };
 const SUBJECTS = ['math', 'english', 'old'] as const;
-const ROWS = ['row1', 'row2', 'row3', 'row4'] as const;
+// row1 and row2 are one block of the load, row5 and row6 another (task 5.15: two pairs of one
+// grade that share no class), so a pattern block may hold the union of both.
+const ROWS = ['row1', 'row2', 'row3', 'row4', 'row5', 'row6'] as const;
 const BLOCKS = ['b1', 'b2', 'b3'] as const;
 const PAIRS = ['d1', 'd2'] as const;
 
@@ -318,7 +320,9 @@ export const arbitrarySchool = (mode: Facts['mode']): fc.Arbitrary<SchoolCase> =
         ...(mode === 'pattern'
           ? index < 2
             ? { block: ['row1', 'row2'], partners: [] }
-            : { block: [id], partners: index === 2 ? ['row4'] : ['row3'] }
+            : index >= 4
+              ? { block: ['row5', 'row6'], partners: [] }
+              : { block: [id], partners: index === 2 ? ['row4'] : ['row3'] }
           : {}),
       }));
       const placements = drawn.raws.map((raw, index) =>
