@@ -7084,7 +7084,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       },
       resultNumber: '{{shown}}, оценка {{grade}}',
       provisional: 'предварительно',
-      basedOn: 'по {{held}} из {{expected}} уроков',
+      basedOn: 'по {{expected}} из {{held}} уроков',
       results: {
         exempt: 'Освобождён',
         no_result: 'Нет итога',
