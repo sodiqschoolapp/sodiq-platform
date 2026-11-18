@@ -10,7 +10,7 @@
  * builds a lesson of a load row (`placementOf`); both sides call it. The dates
  * each fact is read on are those of `placement.ts` for a pattern.
  */
-import { sameSplit } from './blocks.js';
+import { sameSplit, type GroupSex } from './blocks.js';
 import type { Day } from './day.js';
 import type {
   EngineDay,
@@ -31,6 +31,11 @@ export interface PatternUnitData extends EngineUnit {
   readonly studentIds: readonly string[];
   /** A class's main classroom (`classes.main_room_id`); `null` for a group. */
   readonly mainRoomId: string | null;
+  /**
+   * The sex a group is for (`groups.sex`, 0171); `null` or absent for a class and a group for both
+   * (task 5.18: the import pairs a one-sex half with its partner, `oneSexHalf`).
+   */
+  readonly sex?: GroupSex | null;
 }
 
 /**
