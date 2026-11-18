@@ -484,7 +484,7 @@ describe('the foot of a record form', () => {
       <I18nextProvider i18n={createI18n('en')}>
         <ConfirmProvider>
           <UnsentProvider>
-            <SampleForm row={ROW} onSave={async () => undefined} onCancel={() => undefined} />
+            <SampleForm row={ROW} onSave={() => Promise.resolve()} onCancel={() => undefined} />
           </UnsentProvider>
         </ConfirmProvider>
       </I18nextProvider>,

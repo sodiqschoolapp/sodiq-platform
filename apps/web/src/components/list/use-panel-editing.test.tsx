@@ -293,7 +293,7 @@ describe('the focus after a form opened from the "More" menu', () => {
         {panel.editing === 'moved' ? (
           <SampleForm
             row={ROW}
-            onSave={async () => undefined}
+            onSave={() => Promise.resolve()}
             onCancel={() => {
               panel.stop();
             }}
