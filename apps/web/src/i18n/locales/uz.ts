@@ -6786,7 +6786,7 @@ export const uz: Texts<'one' | 'other'> = {
       titleLoading: 'Dars',
       title: '{{number}}-dars · {{date}}',
       titleNoNumber: '{{date}} darsi',
-      dateSlot: '{{date}} · {{slot}}-dars',
+      slotOfDay: 'Kunning {{slot}}-darsi',
       topic: 'Mavzu',
       notDelivered: 'Mavzu oʻtilmadi',
       markNotDelivered: 'Mavzu oʻtilmadi',

@@ -166,7 +166,7 @@ export function LessonCardDialog({
         if (!open) void close();
       }}
     >
-      <DialogContent aria-label={title}>
+      <DialogContent aria-label={title} className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
@@ -198,11 +198,13 @@ export function LessonCardDialog({
           />
         ) : (
           <div className="grid gap-4 text-sm" data-lesson-card={found.lessonId}>
-            <p className="text-muted-foreground">
-              {found.slot === null
-                ? dateOf(found.date)
-                : t('journal.card.dateSlot', { date: dateOf(found.date), slot: found.slot })}
-            </p>
+            {/* The title gives the number and the date; this line adds the lesson's place in the
+                day, without the date again (design review of 17 November 2026, J3). */}
+            {found.slot !== null && (
+              <p className="text-muted-foreground" data-card-slot="true">
+                {t('journal.card.slotOfDay', { slot: found.slot })}
+              </p>
+            )}
             <div className="grid gap-1">
               <p className="font-semibold">{t('journal.card.topic')}</p>
               <p data-card-topic="true">

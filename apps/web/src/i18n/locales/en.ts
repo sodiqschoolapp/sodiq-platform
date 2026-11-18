@@ -6720,7 +6720,7 @@ export const en = {
       titleLoading: 'Lesson',
       title: 'Lesson {{number}} · {{date}}',
       titleNoNumber: 'Lesson of {{date}}',
-      dateSlot: '{{date}} · slot {{slot}}',
+      slotOfDay: 'Slot {{slot}} of the day',
       topic: 'Topic',
       notDelivered: 'Topic not delivered',
       markNotDelivered: 'Topic not delivered',
