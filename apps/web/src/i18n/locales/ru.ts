@@ -1144,7 +1144,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
     text: 'Введите 6-значный код из приложения-аутентификатора или один из резервных кодов.',
     label: 'Код',
     missing: 'Введите код.',
-    submit: 'Продолжить',
+    submit: 'Войти',
   },
   password: {
     titleForced: 'Задайте новый пароль',
@@ -7336,7 +7336,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       voidReason: 'Почему аннулируется',
       check: 'Проверить',
       save: 'Сохранить',
-      confirm: 'Подтвердить',
+      confirm: 'Освободить',
       drop: 'Отклонить',
       back: 'Назад',
       close: 'Закрыть',
@@ -7645,7 +7645,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       allPresentSkipped_other: 'Уже отмечены {{count}}, оставлены как есть.',
       saved: 'Сохранено',
       presentEarlier:
-        'Был в школе на более раннем уроке сегодня: {{names}}. Классный руководитель видит этот день.',
+        'Был в школе на более раннем уроке сегодня: {{names}}. Тьютор или классный руководитель видит этот день.',
       typedBy: 'Внёс: {{name}}',
       history: 'История',
       historyTitle: 'История: {{student}}',
@@ -7776,7 +7776,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       changes: {
         entry: 'Введено',
         not_held: '«Не проводилась»',
-        carry: 'Перенесено',
+        carry: 'Перенесено на следующий урок',
         move: 'Перенесено на урок проверки',
         takeover: 'Взято планом',
         separation: 'План разделён',

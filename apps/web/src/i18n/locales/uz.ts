@@ -879,7 +879,7 @@ export const uz: Texts<'one' | 'other'> = {
     journal_work_title_required: 'Ish nomini kiriting, koʻpi bilan 60 ta belgi.',
     work_holds_numbers:
       'Bu uy vazifasining shu darsda sonlari bor, shuning uchun u shu yerda tekshiriladi.',
-    work_carried: 'Bu uy vazifasi bir marta keyingi darsga oʻtkazilgan.',
+    work_carried: 'Bu uy vazifasi bir marta keyingi darsga koʻchirilgan.',
     no_next_lesson: 'Jurnalda bu uy vazifasini tekshirish uchun keyingi dars yoʻq.',
     work_total_missing: 'Avval ishning jamini belgilang, soʻng sonlarni kiriting.',
     score_above_total: 'Son ishning jamidan katta. 0 dan jamigacha son kiriting.',
@@ -1168,7 +1168,7 @@ export const uz: Texts<'one' | 'other'> = {
     text: 'Autentifikator ilovasidagi 6 xonali kodni yoki zaxira kodlaringizdan birini kiriting.',
     label: 'Kod',
     missing: 'Kodni kiriting.',
-    submit: 'Davom etish',
+    submit: 'Kirish',
   },
   password: {
     titleForced: 'Yangi parol oʻrnating',
@@ -4234,7 +4234,7 @@ export const uz: Texts<'one' | 'other'> = {
         work_delete: 'Qoʻlda qoʻshilgan ish olib tashlandi',
         work_total: 'Ishning jami belgilandi',
         work_not_held: 'Ish oʻtkazilmadi deb belgilandi yoki belgi bekor qilindi',
-        work_carry: 'Uy vazifasi keyingi darsga oʻtkazildi',
+        work_carry: 'Uy vazifasi keyingi darsga koʻchirildi',
         work_move: 'Ish tekshiriladigan darsga koʻchirildi',
         work_takeover: 'Qoʻlda qoʻshilgan ishlarni reja qatori oldi',
         work_rename: 'Qoʻlda qoʻshilgan ish nomi oʻzgartirildi',
@@ -6999,7 +6999,7 @@ export const uz: Texts<'one' | 'other'> = {
       voidReason: 'Nima uchun bekor qilinadi',
       check: 'Tekshirish',
       save: 'Saqlash',
-      confirm: 'Tasdiqlash',
+      confirm: 'Ozod qilish',
       drop: 'Rad etish',
       back: 'Orqaga',
       close: 'Yopish',
@@ -7278,7 +7278,7 @@ export const uz: Texts<'one' | 'other'> = {
       allPresentSkipped_other: '{{count}} tasi allaqachon belgilangan, oʻzgartirilmadi.',
       saved: 'Saqlandi',
       presentEarlier:
-        'Bugun avvalgi darsda maktabda boʻlgan: {{names}}. Sinf rahbari bu kunni koʻradi.',
+        'Bugun avvalgi darsda maktabda boʻlgan: {{names}}. Tyutor yoki sinf rahbari bu kunni koʻradi.',
       typedBy: 'Kiritgan: {{name}}',
       history: 'Tarix',
       historyTitle: 'Tarix: {{student}}',
@@ -7373,7 +7373,7 @@ export const uz: Texts<'one' | 'other'> = {
       notChecked: 'Tekshirilmadi',
       carry: 'Keyingi darsda tekshirish',
       remove: 'Ishni olib tashlash',
-      carried: 'oʻtkazilgan',
+      carried: 'koʻchirilgan',
       given: 'Berilgan uy vazifasi',
       checkedOn: '{{date}} da tekshiriladi',
       ungraded: {
@@ -7404,7 +7404,7 @@ export const uz: Texts<'one' | 'other'> = {
       changes: {
         entry: 'Kiritildi',
         not_held: '«Oʻtkazilmadi»',
-        carry: 'Oʻtkazildi',
+        carry: 'Keyingi darsga koʻchirildi',
         move: 'Tekshiriladigan darsga koʻchirildi',
         takeover: 'Reja oldi',
         separation: 'Reja ajratildi',
