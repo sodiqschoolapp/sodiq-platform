@@ -6,7 +6,9 @@ import {
   childText,
   digestText,
   escapeHtml,
-  splitText,
+  digestMessages,
+  splitDigest,
+  type ChildBlocks,
   summaryLine,
   type ChildPart,
 } from './digest-message.js';
@@ -206,51 +208,165 @@ describe('the text of the digest', () => {
     }
   });
 
-  it('splits only above the limit, between parts first, then at line ends', () => {
-    expect(splitText('short')).toEqual(['short']);
-    const block = (letter: string) => `${letter.repeat(30)}\n${letter.repeat(30)}`;
-    const text = [block('a'), block('b'), block('c')].join('\n\n');
-    const messages = splitText(text, 70);
-    expect(messages).toEqual([block('a'), block('b'), block('c')]);
-    expect(splitText(`${'x'.repeat(40)}\n${'y'.repeat(40)}`, 50)).toEqual([
-      'x'.repeat(40),
-      'y'.repeat(40),
+  /** A child of invented lines, each naming its child by letter: `• A0-3 …`. */
+  const kid = (letter: string, sizes: readonly number[]): ChildBlocks => ({
+    name: `<b>${letter}</b> · 7-A`,
+    sections: sizes.map((size, section) => [
+      `${SECTION_SIGNS.grades} <b>H${letter}${String(section)}</b>`,
+      ...Array.from(
+        { length: size },
+        (_, line) => `• ${letter}${String(section)}-${String(line)} ${'x'.repeat(50)}`,
+      ),
+    ]),
+  });
+  const top = '<b>Digest of 4 November</b>\nSince the previous digest';
+
+  /**
+   * Every message within the limit, none opening with the rule or closing on a name alone, and
+   * every line of a child read below that child's own name in the same message.
+   */
+  const expectEachLineUnderItsChild = (
+    messages: readonly string[],
+    children: readonly ChildBlocks[],
+    limit: number,
+  ): void => {
+    for (const message of messages) {
+      expect(message.length).toBeLessThanOrEqual(limit);
+      expect(message.startsWith(CHILD_RULE)).toBe(false);
+      const lines = message.split('\n');
+      expect(children.some((child) => lines.at(-1) === child.name)).toBe(false);
+      expect(lines.at(-1)).not.toMatch(/<b>H[A-Z]\d<\/b>$/u);
+      let owner: string | null = null;
+      for (const line of lines) {
+        if (children.some((child) => child.name === line)) {
+          owner = line;
+          continue;
+        }
+        const letter = /^• ([A-Z])\d/u.exec(line)?.[1] ?? /<b>H([A-Z])\d<\/b>$/u.exec(line)?.[1];
+        if (letter !== undefined) expect(owner).toBe(`<b>${letter}</b> · 7-A`);
+      }
+    }
+  };
+
+  /** Every line of the children once, in order, leaving out a repeated name or heading. */
+  const expectEveryLineOnce = (
+    messages: readonly string[],
+    children: readonly ChildBlocks[],
+  ): void => {
+    const sent = messages
+      .join('\n')
+      .split('\n')
+      .filter((line) => line.startsWith('• '));
+    const written = children.flatMap((child) =>
+      child.sections.flatMap((lines) => lines.filter((line) => line.startsWith('• '))),
+    );
+    expect(sent).toEqual(written);
+  };
+
+  it('sends one message while the digest fits, the same text as the whole digest', () => {
+    const second: ChildPart = { ...part, firstName: 'Laylo', className: '3-B' };
+    expect(digestMessages('en', '2026-11-04', [part, second])).toEqual([
+      digestText('en', '2026-11-04', [part, second]),
     ]);
-    for (const message of splitText('z'.repeat(120), 50))
-      expect(message.length).toBeLessThanOrEqual(50);
+  });
+
+  // Review of pull request #355: the second child's name closed the first message and its
+  // sections opened the next one, with no child named.
+  it("keeps a child's part whole in one message when it fits, its name with its sections", () => {
+    const children = [kid('A', [60, 60]), kid('B', [20, 20])];
+    const messages = splitDigest(top, children, 4096);
+    expect(messages.length).toBeGreaterThan(1);
+    const opening = messages.find((message) => message.includes(children[1]?.name ?? '-'));
+    expect(opening?.startsWith(`${children[1]?.name ?? '-'}\n\n`)).toBe(true);
+    expect(opening).toContain('<b>HB0</b>');
+    expect(opening).toContain('<b>HB1</b>');
+    expectEachLineUnderItsChild(messages, children, 4096);
+    expectEveryLineOnce(messages, children);
+  });
+
+  it('opens every message of a part cut in pieces with the name, and repeats a cut heading', () => {
+    const children = [kid('A', [3]), kid('B', [80, 2]), kid('C', [1])];
+    const messages = splitDigest(top, children, 1000);
+    const ofB = messages.filter((message) => message.includes('• B'));
+    expect(ofB.length).toBeGreaterThan(2);
+    for (const message of ofB) expect(message.startsWith('<b>B</b> · 7-A\n\n')).toBe(true);
+    // A message that goes on with section 0 of B repeats its heading under the name.
+    for (const message of ofB.filter((one) => one.includes('• B0-')))
+      expect(message.split('\n')[2]).toBe(`${SECTION_SIGNS.grades} <b>HB0</b>`);
+    expectEachLineUnderItsChild(messages, children, 1000);
+    expectEveryLineOnce(messages, children);
+  });
+
+  it('keeps each line under its own child at every limit, for real parts too', () => {
+    const shapes: readonly (readonly ChildBlocks[])[] = [
+      [kid('A', [60, 60]), kid('B', [20, 20])],
+      [kid('A', [3]), kid('B', [80, 2]), kid('C', [1])],
+      [kid('A', [1, 1, 1]), kid('B', [1]), kid('C', [40, 40, 40])],
+    ];
+    for (const children of shapes) {
+      for (const limit of [200, 333, 500, 777, 1000, 2048, 4096]) {
+        const messages = splitDigest(top, children, limit);
+        expectEachLineUnderItsChild(messages, children, limit);
+        expectEveryLineOnce(messages, children);
+      }
+    }
+    // Real parts: each line of Laylo's (her lessons only on 5 Nov) is read below her name.
+    const laylo: ChildPart = {
+      ...part,
+      firstName: 'Laylo',
+      className: '3-B',
+      marks: Array.from({ length: 30 }, () => ({
+        date: '2026-11-05',
+        subject: history,
+        mark: 0,
+        state: 'new' as const,
+      })),
+      scores: [],
+      comments: [],
+    };
+    for (const limit of [150, 400, 900]) {
+      for (const message of digestMessages('en', '2026-11-04', [part, laylo], false, limit)) {
+        expect(message.length).toBeLessThanOrEqual(limit);
+        let owner: string | null = null;
+        for (const line of message.split('\n')) {
+          if (line.startsWith('<b>Kamron</b>') || line.startsWith('<b>Laylo</b>')) owner = line;
+          if (line.startsWith('• 5 Nov')) expect(owner).toBe('<b>Laylo</b> · 3-B');
+          if (/^• [234] Nov/u.test(line)) expect(owner).toBe('<b>Kamron</b> · 7-A');
+        }
+      }
+    }
   });
 
   it('never opens a message with the rule between children', () => {
-    const second: ChildPart = { ...part, firstName: 'Laylo', className: '3-B' };
-    const text = digestText('en', '2026-11-04', [part, second]);
-    const messages = splitText(text, text.indexOf(CHILD_RULE));
+    const children = [kid('A', [10]), kid('B', [10])];
+    const messages = splitDigest(top, children, 700);
     expect(messages.length).toBeGreaterThan(1);
     for (const message of messages) expect(message.startsWith(CHILD_RULE)).toBe(false);
-    expect(messages.some((message) => message.startsWith('<b>Laylo</b>'))).toBe(true);
+    expect(messages.some((message) => message.startsWith('<b>B</b> · 7-A'))).toBe(true);
+    // Beside another child in one message, the rule stands above the name.
+    const both = splitDigest(top, [kid('A', [1]), kid('B', [1])], 4096);
+    expect(both).toHaveLength(1);
+    expect(both[0]).toContain(`\n\n${CHILD_RULE}\n<b>B</b> · 7-A\n\n`);
   });
 
-  it("never opens a message with the rule when a child's part is itself cut at line ends", () => {
-    const second: ChildPart = { ...part, firstName: 'Laylo', className: '3-B' };
-    const text = digestText('en', '2026-11-04', [part, second]);
-    const messages = splitText(text, 60);
-    expect(messages.length).toBeGreaterThan(2);
-    for (const message of messages) {
-      expect(message.startsWith(CHILD_RULE)).toBe(false);
-      expect(message.length).toBeLessThanOrEqual(60);
-    }
-    expect(messages).toContain('<b>Laylo</b> · 3-B');
-  });
-
-  it('keeps every tag and entity whole when a line must be cut', () => {
+  it('keeps every tag and entity whole when a line must be cut, under the name and heading', () => {
     const long = `— <i>${escapeHtml('a&b<c '.repeat(40))}</i>`;
-    const messages = splitText(long, 50);
-    expect(messages.length).toBeGreaterThan(1);
-    for (const message of messages) {
-      expect(message.length).toBeLessThanOrEqual(50);
-      expect(message).not.toMatch(/[<>]/u);
+    const child: ChildBlocks = { name: '<b>A</b> · 7-A', sections: [['💬 <b>H</b>', long]] };
+    const messages = splitDigest(top, [child], 80);
+    const pieces = messages.filter((message) => !message.includes('Digest of'));
+    expect(pieces.length).toBeGreaterThan(1);
+    // No message closes on the name and the heading with nothing under them.
+    expect(messages.every((message) => !message.endsWith('💬 <b>H</b>'))).toBe(true);
+    for (const message of pieces) {
+      expect(message.length).toBeLessThanOrEqual(80);
+      expect(message.startsWith('<b>A</b> · 7-A\n\n💬 <b>H</b>\n')).toBe(true);
+      const piece = message.split('\n').slice(3).join('\n');
+      expect(piece).not.toMatch(/[<>]/u);
       // Every `&` opens a whole entity.
-      expect(message).not.toMatch(/&(?!(?:amp|lt|gt);)/u);
+      expect(piece).not.toMatch(/&(?!(?:amp|lt|gt);)/u);
     }
-    expect(visible(messages.join(''))).toBe(visible(long));
+    expect(visible(pieces.map((message) => message.split('\n').slice(3).join('\n')).join(''))).toBe(
+      visible(long),
+    );
   });
 });

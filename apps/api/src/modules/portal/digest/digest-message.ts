@@ -126,19 +126,24 @@ const oneLine = (body: string): string => body.replace(/\s+/gu, ' ').trim();
 /** A list line: `• <date>, <subject>[, <work>] — <value>`. The date comes first, as it is sorted. */
 const item = (where: string, value: string): string => `• ${escapeHtml(where)} — ${value}`;
 
+/** A child's part in blocks: the name line, then each section as its lines (heading first). */
+export interface ChildBlocks {
+  readonly name: string;
+  readonly sections: readonly (readonly string[])[];
+}
+
 /**
  * The part of one child, as Telegram HTML: the name and class in bold, then the attendance
  * summary with each absence and late arrival, the grades, and the comments, each section under
- * a bold heading and parted by a blank line. Every line holds whole tags, so a split at a line
- * end never cuts one.
+ * a bold heading. Every line holds whole tags, so a split at a line end never cuts one.
  */
-export function childText(language: Language, part: ChildPart): string {
+export function childBlocks(language: Language, part: ChildPart): ChildBlocks {
   const texts = DIGEST_TEXTS[language];
   const name =
     part.className === null || part.className === ''
       ? bold(part.firstName)
       : `${bold(part.firstName)} · ${escapeHtml(part.className)}`;
-  const sections: string[] = [name];
+  const sections: string[][] = [];
 
   const attendance = [
     heading(SECTION_SIGNS.attendance, texts.attendanceHeading),
@@ -150,7 +155,7 @@ export function childText(language: Language, part: ChildPart): string {
       item(where, withState(texts, escapeHtml(markText(texts, one.mark)), one.state)),
     );
   }
-  sections.push(attendance.join('\n'));
+  sections.push(attendance);
 
   if (part.scores.length > 0) {
     const grades = [heading(SECTION_SIGNS.grades, texts.gradesHeading)];
@@ -166,7 +171,7 @@ export function childText(language: Language, part: ChildPart): string {
       const value = bold(`${String(one.score ?? '')}/${String(one.total ?? '')}`);
       grades.push(item(where, withState(texts, value, one.state)));
     }
-    sections.push(grades.join('\n'));
+    sections.push(grades);
   }
 
   if (part.comments.length > 0) {
@@ -186,13 +191,28 @@ export function childText(language: Language, part: ChildPart): string {
           : withState(texts, italic(oneLine(one.body ?? '')), one.state);
       comments.push(`— ${body}`);
     }
-    sections.push(comments.join('\n'));
+    sections.push(comments);
   }
-  return sections.join('\n\n');
+  return { name, sections };
+}
+
+const blocksText = (blocks: ChildBlocks): string =>
+  [blocks.name, ...blocks.sections.map((lines) => lines.join('\n'))].join('\n\n');
+
+/** The part of one child as one text: the name, then the sections parted by a blank line. */
+export function childText(language: Language, part: ChildPart): string {
+  return blocksText(childBlocks(language, part));
 }
 
 /** The line between two children's parts of one message. */
 export const CHILD_RULE = '──────────';
+
+/** The first two lines: the digest and its date in bold, then what it covers. */
+function topText(language: Language, date: string, first: boolean): string {
+  const texts = DIGEST_TEXTS[language];
+  const { day, month } = parseDate(date);
+  return `${bold(texts.title(texts.longDate(day, month)))}\n${escapeHtml(texts.covers(first))}`;
+}
 
 /**
  * The whole digest, as Telegram HTML: the digest and its date in bold, what it covers, then each
@@ -205,15 +225,27 @@ export function digestText(
   parts: readonly ChildPart[],
   first = false,
 ): string {
-  const texts = DIGEST_TEXTS[language];
-  const { day, month } = parseDate(date);
-  const top = `${bold(texts.title(texts.longDate(day, month)))}\n${escapeHtml(texts.covers(first))}`;
   return [
-    top,
+    topText(language, date, first),
     ...parts.map((part, index) =>
       index === 0 ? childText(language, part) : `${CHILD_RULE}\n${childText(language, part)}`,
     ),
   ].join('\n\n');
+}
+
+/** The digest as the messages to send, each at most `limit` characters (`splitDigest`). */
+export function digestMessages(
+  language: Language,
+  date: string,
+  parts: readonly ChildPart[],
+  first = false,
+  limit: number = TELEGRAM_TEXT_LIMIT,
+): string[] {
+  return splitDigest(
+    topText(language, date, first),
+    parts.map((part) => childBlocks(language, part)),
+    limit,
+  );
 }
 
 /**
@@ -243,51 +275,90 @@ function cutLine(line: string, limit: number): string[] {
 }
 
 /**
- * The text cut into messages of at most `limit` characters (plan decision 13): between
- * children's parts and sections first, then at line ends, and only a line longer than the limit is
- * cut inside. Each line holds whole tags, so every message is valid HTML.
+ * The digest cut into messages of at most `limit` characters (decision 13 of task 11.5: "between
+ * children first, then at line ends"):
+ *
+ * 1. whole children's parts, as many as fit in a message, the rule above every one that does not
+ *    open a message;
+ * 2. a part that does not fit in one message is cut between its sections, then at line ends, and
+ *    every message of it opens with the child's name, so no section is ever read without the name
+ *    of its child (`10`, Privacy; review of pull request #355). A section cut at a line end repeats
+ *    its heading under the name;
+ * 3. only a line longer than what is left is cut inside (`cutLine`).
+ *
+ * Each line holds whole tags, so every message is valid HTML.
  */
-export function splitText(text: string, limit: number = TELEGRAM_TEXT_LIMIT): string[] {
-  if (text.length <= limit) return [text];
+export function splitDigest(
+  top: string,
+  children: readonly ChildBlocks[],
+  limit: number = TELEGRAM_TEXT_LIMIT,
+): string[] {
   const messages: string[] = [];
-  let current = '';
-  const flush = (): void => {
+  let current = top;
+  const push = (): void => {
     if (current !== '') messages.push(current);
     current = '';
   };
-  // A message never opens with the rule between children.
-  const open = (piece: string): string =>
-    piece === CHILD_RULE
-      ? ''
-      : piece.startsWith(`${CHILD_RULE}\n`)
-        ? piece.slice(CHILD_RULE.length + 1)
-        : piece;
-  const add = (piece: string, joiner: string): void => {
-    if (current === '') {
-      current = open(piece);
-    } else if (current.length + joiner.length + piece.length <= limit) {
-      current = `${current}${joiner}${piece}`;
-    } else {
-      flush();
-      current = open(piece);
+  const fits = (joiner: string, piece: string): boolean =>
+    current.length + joiner.length + piece.length <= limit;
+
+  children.forEach((child, index) => {
+    const whole = blocksText(child);
+    // 1. The whole part beside what is before it, or opening a message of its own.
+    const ruled = index === 0 ? whole : `${CHILD_RULE}\n${whole}`;
+    if (current !== '' && fits('\n\n', ruled)) {
+      current = `${current}\n\n${ruled}`;
+      return;
     }
-  };
-  for (const block of text.split('\n\n')) {
-    if (block.length <= limit) {
-      add(block, '\n\n');
-      continue;
+    push();
+    if (whole.length <= limit) {
+      current = whole;
+      return;
     }
-    flush();
-    for (const line of block.split('\n')) {
-      if (line.length <= limit) {
-        add(line, '\n');
+    // 2. The part cut: each of its messages opens with the name.
+    current = child.name;
+    for (const lines of child.sections) {
+      if (current === '') current = child.name;
+      const block = lines.join('\n');
+      if (fits('\n\n', block)) {
+        current = `${current}\n\n${block}`;
         continue;
       }
-      flush();
-      messages.push(...cutLine(line, limit));
+      if (current !== child.name && child.name.length + 2 + block.length <= limit) {
+        push();
+        current = `${child.name}\n\n${block}`;
+        continue;
+      }
+      // The section cut at line ends; a later message repeats the name and the heading.
+      const heading = lines[0] ?? '';
+      const reopen = `${child.name}\n\n${heading}`;
+      // A message never closes on the name alone, nor on a heading with no line under it: that
+      // heading moves to the next message, which opens with the name and the heading.
+      const restart = (at: number): void => {
+        const dangling = at === 1 && current.endsWith(`\n\n${heading}`);
+        const kept = dangling ? current.slice(0, -(heading.length + 2)) : current;
+        if (kept !== '' && kept !== child.name) messages.push(kept);
+        current = '';
+      };
+      lines.forEach((line, at) => {
+        const joiner = at === 0 ? '\n\n' : '\n';
+        if (current !== '' && fits(joiner, line)) {
+          current = `${current}${joiner}${line}`;
+          return;
+        }
+        restart(at);
+        const prefix = at === 0 ? child.name : reopen;
+        if (prefix.length + joiner.length + line.length <= limit) {
+          current = `${prefix}${joiner}${line}`;
+          return;
+        }
+        // 3. A line longer than what is left.
+        for (const piece of cutLine(line, Math.max(1, limit - prefix.length - joiner.length))) {
+          messages.push(`${prefix}${joiner}${piece}`);
+        }
+      });
     }
-    flush();
-  }
-  flush();
+  });
+  push();
   return messages;
 }

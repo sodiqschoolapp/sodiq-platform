@@ -26,8 +26,7 @@ import { StudentResultsService } from '../../results/student-results.service.js'
 import { childSpans } from '../portal-scope.js';
 import { TelegramBot } from '../telegram/bot-api.js';
 import {
-  digestText,
-  splitText,
+  digestMessages,
   type AttendanceSummary,
   type ChildPart,
   type ListedComment,
@@ -387,8 +386,12 @@ export class DigestService {
           .execute();
         return;
       }
-      const text = digestText(start.language, start.digestDate, parts.map(partOf), start.first);
-      const messages = splitText(text);
+      const messages = digestMessages(
+        start.language,
+        start.digestDate,
+        parts.map(partOf),
+        start.first,
+      );
       const button = this.button(start.language);
       for (const [index, message] of messages.entries()) {
         const outcome = await this.bot.sendMessage(
