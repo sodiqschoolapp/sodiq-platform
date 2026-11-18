@@ -90,6 +90,7 @@ The owner's spec change of 18 November 2026 (pull request #348). Plan approved o
 | `coveredFrom` is answered only when the cover starts after the quarter's first school day; a start on a day off gives the next school day. The page shows "Timetable from {{date}}" to every reader of the windows list | `edge/lesson-plans`, the new row; decisions 3 and 4 |
 | A window opened under a first version that is withdrawn before its start stays; the list's `published` turns false or `coveredFrom` moves | Windows are stored moments (`CLAUDE.md`); the same as under the old rule (decision 2d) |
 | The branch's go-live date is not read; the 14-day reminder and "window not opened" are unchanged | The spec change ties the window to the timetable; decisions 5 and 6 |
+| One function, `coveredFromOf` (`plan-read.ts`), gives the first covered school day to both the window rule and the owner date, so the two never disagree (a version from a Sunday after the last school day neither publishes the quarter nor names an owner). It is read on each call, never cached: a transaction may change a version's status after reading it. The query filters both the quarter and the version by the branch | Code reviews of 5.19 (spec review should-fix 4, permission review should-fix 3 and 4, note 5) |
 | `publishedScene` takes `startsOn` and `quarters` (test kit) | A first version mid-quarter, and a quarter ending on a Sunday before its lessons are dated |
 
 ## 17 November 2026: a slot of one-sex mixed halves counts once in a class's weekly total (task 5.16)

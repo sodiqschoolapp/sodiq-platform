@@ -55,7 +55,6 @@ import {
   quarterOfToday,
   planDateOf,
   planDatesOf,
-  referenceDateOf,
   worksOf,
   type PlanQuarter,
   type PlanRowLesson,
@@ -239,7 +238,13 @@ export class PlansService {
         null;
     }
     if (yearId === null) return planListSchema.parse({ years, yearId, quarters: [], plans: [] });
-    const quarters = await datedQuarters(transaction, yearId);
+    // Task 5.19: each quarter with the date its plans' owners are read on.
+    const quarters = await planDatesOf(
+      transaction,
+      branchId,
+      await datedQuarters(transaction, yearId),
+      today,
+    );
     const journals = (await journalRows(transaction, branchId, { yearId })).filter((journal) =>
       plannedJournal(journal),
     );
@@ -255,8 +260,6 @@ export class PlansService {
         subject_id: journal.subjectId,
       })),
     );
-    // Task 5.19: owners read on the plans' date of each quarter.
-    const dates = await planDatesOf(transaction, branchId, quarters, today);
     const readable = journals.filter((journal) =>
       (quarters.length === 0 ? [null] : quarters).some((quarter) => {
         const owner =
@@ -266,7 +269,7 @@ export class PlansService {
                 facts.runs.get(journal.id) ?? [],
                 facts.periods.get(journal.id) ?? [],
                 facts.out,
-                dates.get(quarter.id) ?? referenceDateOf(quarter, today),
+                quarter.planDate,
               );
         const ownerId = owner === null || owner.kind === 'none' ? null : owner.staffId;
         return planReachOf(reader, journal, ownerId).read;
@@ -296,12 +299,12 @@ export class PlansService {
       links.map((link) => link.plan_id),
       now,
     );
-    const ownerOfQuarter = (journalId: string, quarter: PlanQuarter) => {
+    const ownerOfQuarter = (journalId: string, quarter: (typeof quarters)[number]) => {
       const owner = ownerOn(
         facts.runs.get(journalId) ?? [],
         facts.periods.get(journalId) ?? [],
         facts.out,
-        dates.get(quarter.id) ?? referenceDateOf(quarter, today),
+        quarter.planDate,
       );
       return { owner, ownerId: owner === null || owner.kind === 'none' ? null : owner.staffId };
     };

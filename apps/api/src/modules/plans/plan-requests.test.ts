@@ -4,6 +4,7 @@ import {
   BRANCH_HEADER,
   planEventDecidedSchema,
   planItemSchema,
+  planCompletenessSchema,
   planListSchema,
   planRequestSchema,
   planRequestsSchema,
@@ -22,6 +23,7 @@ import { Transactions, type Transaction } from '../../database/transactions.js';
 import { dayTemplatesKit, START, type DayTemplatesKit } from '../../testing/day-templates-kit.js';
 import { LoadKit } from '../../testing/load-kit.js';
 import { MemoryPhotoStore } from '../people/photo-store.js';
+import { PlansService } from './plans.service.js';
 import { publishedScene, publishOf, QUARTERS } from '../../testing/published-scene.js';
 
 /** Tuesday 27 October 2026, noon: the window of quarter 2 is opened. */
@@ -394,7 +396,7 @@ describe('the plan window and edit requests', () => {
         expect(coverOf(await windowsOf(x), 2)).toEqual({ published: true, coveredFrom: FIRST });
         // The window opens on 27 October, before the quarter and before the first version.
         // `edge`: the days before have no lessons, so they count nowhere: the confirmation
-        // counts the Mondays 23 and 30 November of each class, nothing earlier.
+        // counts the Mondays 23 and 30 November of each class (no lesson exists earlier).
         const asked = await openWindow(x, { startDate: '2026-10-28', endDate: '2026-11-30' });
         expect(codeOf(asked)).toBe('plan_window_confirm');
         expect(apiErrorSchema.parse(asked.body).error.details?.[0]?.lessonsWithoutPlan).toBe(4);
@@ -438,6 +440,78 @@ describe('the plan window and edit requests', () => {
           empty: 5,
           flag: null,
         });
+      });
+
+      // Code review of 5.19: the owner on the plans' date at every reader, with the clock inside
+      // the quarter before the first version (16 November: the reference date is today, and no
+      // lesson runs on it). The test fails with `referenceDateOf` in place of `planDateOf`.
+      it('reads the owner on the first version inside the quarter, at every reader, and no one else', async () => {
+        const x = await scene({ startsOn: FIRST });
+        const NOV16 = '2026-11-16T12:00:00+05:00';
+        // A window that ends before the first version: its lessons need a request after it.
+        ok(await openWindow(x, { startDate: '2026-10-28', endDate: '2026-11-10' }));
+        const plan = await planOf(x, NOV16);
+        expect({ owner: plan.owner, canEdit: plan.canEdit }).toEqual({
+          owner: expect.any(String) as string,
+          canEdit: true,
+        });
+        expect(plan.ownerStaffId).toBe(x.s.teacher.staffId);
+        // The teacher of the other class, of the same subject and grade, reads by profile only.
+        const byProfile = await planOf(x, NOV16, x.spare);
+        expect(byProfile.canEdit).toBe(false);
+        // The request goes to the owner: theirs in "mine", nobody else's.
+        const first = plan.rows[0];
+        expect(first?.date).toBe(FIRST);
+        const asked = requestOf(
+          await at(NOV16, async () =>
+            ask(x, { kind: 'replan', fromLessonId: first?.lessonId, reason: 'New topics' }),
+          ),
+          201,
+        );
+        const mine = (browser: Browser) =>
+          at(NOV16, async () =>
+            planRequestsSchema
+              .parse(
+                ok(await send('get', '/api/plans/requests?view=mine', x.s.branch, browser.cookie))
+                  .body,
+              )
+              .requests.map((one) => one.id),
+          );
+        expect(await mine(x.owner)).toEqual([asked.id]);
+        expect(await mine(x.spare)).toEqual([]);
+        // The completeness report names the owner as the plan's teacher.
+        const report = await at(NOV16, async () =>
+          planCompletenessSchema.parse(
+            ok(
+              await send(
+                'get',
+                `/api/plans/reports/completeness?quarterId=${x.q2}`,
+                x.s.branch,
+                x.vice.cookie,
+              ),
+            ).body,
+          ),
+        );
+        expect(report.plans.find((one) => one.journalId === x.journal)?.teacher?.id).toBe(
+          x.s.teacher.staffId,
+        );
+        // The daily reminders find the owner of each plan.
+        t.clock.set(NOV16);
+        try {
+          const reminded = await t.app.get(Transactions).run([x.s.branch], (transaction) =>
+            t.app.get(PlansService).remindersIn(transaction, x.s.branch, x.s.year, {
+              id: x.q2,
+              number: 2,
+              startDate: QUARTERS[1][0],
+              endDate: QUARTERS[1][1],
+            }),
+          );
+          expect(reminded.find((one) => one.journal.id === x.journal)?.ownerId).toBe(
+            x.s.teacher.staffId,
+          );
+        } finally {
+          t.clock.set(START);
+        }
       });
 
       it('refuses a quarter that ends before the first version starts', async () => {

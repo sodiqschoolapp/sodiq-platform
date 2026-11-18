@@ -25,13 +25,7 @@ import {
 import { lessonsCounted } from '../journal/lesson-counted.js';
 import { notFound } from '../setup/setup-refusals.js';
 import { ownerFactsOf, ownerOn } from '../timetable/journal-owners.js';
-import {
-  clockOf,
-  planDateOf,
-  quarterOfToday,
-  referenceDateOf,
-  type PlanQuarter,
-} from './plan-read.js';
+import { clockOf, planDateOf, quarterOfToday, type PlanQuarter } from './plan-read.js';
 import { notCoveredOf, type JournalProgress } from './plan-progress.js';
 import { Freshness, preparedPlanProgress } from '../results/prepared/read.js';
 import { PlansService } from './plans.service.js';
@@ -153,13 +147,13 @@ export class PlanReportsService {
       quarter === null ? null : await planDateOf(transaction, branchId, quarter, today);
     for (const journal of journals) {
       const owner =
-        quarter === null
+        planDate === null
           ? null
           : ownerOn(
               facts.runs.get(journal.id) ?? [],
               facts.periods.get(journal.id) ?? [],
               facts.out,
-              planDate ?? referenceDateOf(quarter, today),
+              planDate,
             );
       owners.set(journal.id, owner === null || owner.kind === 'none' ? null : owner.staffId);
     }

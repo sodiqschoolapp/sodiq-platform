@@ -1,13 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import {
-  nextDay,
   planWindowsSchema,
   type PlanWindowExtend,
   type PlanWindows,
   type PlanWindowSave,
   type PlanWindowsQuery,
 } from '@sodiq/shared';
-import { isSchoolDay } from '@sodiq/timetable-rules';
 import { sql } from 'kysely';
 import { Transactions, type Transaction } from '../../database/transactions.js';
 import { ApiException } from '../../http/api-exception.js';
@@ -17,7 +15,6 @@ import { Audit } from '../audit/audit.service.js';
 import { branchOf } from '../classes/classes.service.js';
 import { journalRows, staffNames, type JournalRow } from '../journal/journal-grid.query.js';
 import { Notifications } from '../notifications/notifications.service.js';
-import { loadCalendarSettings } from '../setup/calendar-state.js';
 import { lockOpenQuarter } from '../setup/closed-quarters.js';
 import { notFound } from '../setup/setup-refusals.js';
 import { ownerFactsOf, ownerOn } from '../timetable/journal-owners.js';
@@ -29,7 +26,7 @@ import {
   lockJournals,
   planItems,
   planRows,
-  firstPublishedStartOf,
+  coveredFromOf,
   planDateOf,
   type PlanQuarter,
 } from './plan-read.js';
@@ -197,38 +194,20 @@ export class PlanWindowsService {
   }
 
   /**
-   * Task 5.19 (the owner's spec change of 18 November 2026; `09`, The plan window: "every
-   * school day of the quarter from the start of the branch's first published timetable
-   * version of the year is covered by a published version"; replaces review decision 9). The
-   * published versions cover every day from the first one's start to the year's end
-   * (`firstPublishedStartOf`), so the quarter is published when it has a school day on or
-   * after that start. `coveredFrom` is the first such day when it is later than the
-   * quarter's first school day. A quarter whose school days all lie before the start is not
-   * published, even when the start falls inside its dates (decision 2b).
+   * Task 5.19 (`09`, The plan window, as changed on 18 November 2026; replaces review decision
+   * 9): the quarter is published when the timetable covers a school day of it
+   * (`coveredFromOf`); `coveredFrom` is that day when it is after the quarter's first school
+   * day (`edge/lesson-plans`: "The windows list shows the date the timetable covers the
+   * quarter from").
    */
   private async coverOf(
     transaction: Transaction,
     branchId: string,
     quarter: PlanQuarter,
   ): Promise<{ published: boolean; coveredFrom: string | null }> {
-    const none = { published: false, coveredFrom: null };
-    const first = await firstPublishedStartOf(transaction, branchId, quarter.id);
-    if (first === null) return none;
-    const branch = await transaction
-      .selectFrom('branches')
-      .select('working_weekdays')
-      .where('id', '=', branchId)
-      .executeTakeFirstOrThrow();
-    const settings = await loadCalendarSettings(transaction, branch.working_weekdays);
-    let firstSchoolDay: string | null = null;
-    for (let date = quarter.startDate; date <= quarter.endDate; date = nextDay(date)) {
-      if (!isSchoolDay(date, settings)) continue;
-      firstSchoolDay ??= date;
-      if (date >= first) {
-        return { published: true, coveredFrom: date > firstSchoolDay ? date : null };
-      }
-    }
-    return none;
+    const covered = await coveredFromOf(transaction, branchId, quarter);
+    if (covered === null) return { published: false, coveredFrom: null };
+    return { published: true, coveredFrom: covered.late ? covered.from : null };
   }
 
   /** The journals of the branch with a plan of the quarter, each with its owner on the reference date. */
