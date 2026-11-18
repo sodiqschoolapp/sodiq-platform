@@ -12,7 +12,61 @@ import { en } from '@/i18n/locales/en';
 import { ru } from '@/i18n/locales/ru';
 import { schoolDateText } from '@/lib/dates';
 import { fakeApi, json, NORTH, renderApp, sessionOf, SOUTH } from '@/testing/render-app';
-import { edit, panelActionNames, savedInPanel } from '@/testing/panel';
+import { edit, moreActionNames, panelAction, panelActionNames, panelActions, savedInPanel } from '@/testing/panel';
+
+
+/**
+ * The form an action of the panel opens, by the action's words: a button of the header, a button
+ * elsewhere in the panel (a part's own Edit), or an item of the "More" menu since the record's
+ * actions moved to the panel's header (owner, 17 November 2026).
+ */
+async function editVia(
+  panel: HTMLElement,
+  name: string,
+  text: string = en.form.edit,
+): Promise<HTMLElement> {
+  const row = panelActions(panel);
+  const found =
+    (row === null ? null : within(row).queryByRole('button', { name: text })) ??
+    within(panel).queryByRole('button', { name: text }) ??
+    (await menuAction(panel, text));
+  fireEvent.click(found);
+  return within(panel).findByRole('form', { name });
+}
+
+/**
+ * An item of the panel's "More" menu by its words, in any language: the menu's button is found by
+ * what it opens, not by its name.
+ */
+async function menuAction(panel: HTMLElement, text: string): Promise<HTMLElement> {
+  const more = panelActions(panel)?.querySelector<HTMLElement>('[aria-haspopup="menu"]');
+  if (more == null) {
+    throw new Error(`The panel has no "More" menu for "${text}".`);
+  }
+  if (more.getAttribute('aria-expanded') !== 'true') {
+    fireEvent.click(more);
+  }
+  return within(await screen.findByRole('menu')).findByRole('menuitem', { name: text });
+}
+
+/**
+ * An action of the record by its words, once the panel has drawn its actions: a button of the
+ * header, or an item of the "More" menu, which is opened for it.
+ */
+async function findAction(panel: HTMLElement, text: string): Promise<HTMLElement> {
+  const row = await waitFor(() => {
+    const found = panelActions(panel);
+    expect(found).not.toBeNull();
+    return found ?? panel;
+  });
+  return within(row).queryByRole('button', { name: text }) ?? menuAction(panel, text);
+}
+
+/** Every action of the record: the header's buttons, then the items of its "More" menu. */
+const allActions = async (panel: HTMLElement): Promise<string[]> => [
+  ...panelActionNames(panel),
+  ...(await moreActionNames(panel)),
+];
 
 const uid = (n: number): string => `0199f000-0000-7000-8000-${String(n).padStart(12, '0')}`;
 const PATH = '/people/students';
@@ -172,8 +226,8 @@ describe('class and group transfers in the side panel', () => {
     });
     renderApp(`${PATH}?open=${STUDENT.id}`);
     const panel = await screen.findByRole('complementary', { name: 'Oʻtkir Rahimov' });
-    await within(panel).findByRole('button', { name: en.people.students.moves.moveClass });
-    const form = await edit(
+    await findAction(panel, en.people.students.moves.moveClass);
+    const form = await editVia(
       panel,
       en.people.students.moves.moveClass,
       en.people.students.moves.moveClass,
@@ -227,8 +281,8 @@ describe('class and group transfers in the side panel', () => {
     });
     renderApp(`${PATH}?open=${STUDENT.id}`);
     const panel = await screen.findByRole('complementary', { name: 'Oʻtkir Rahimov' });
-    await within(panel).findByRole('button', { name: en.people.students.moves.moveClass });
-    const form = await edit(
+    await findAction(panel, en.people.students.moves.moveClass);
+    const form = await editVia(
       panel,
       en.people.students.moves.moveClass,
       en.people.students.moves.moveClass,
@@ -299,8 +353,8 @@ describe('class and group transfers in the side panel', () => {
     });
     renderApp(`${PATH}?open=${STUDENT.id}`);
     const panel = await screen.findByRole('complementary', { name: 'Oʻtkir Rahimov' });
-    await within(panel).findByRole('button', { name: en.people.students.moves.moveClass });
-    const form = await edit(
+    await findAction(panel, en.people.students.moves.moveClass);
+    const form = await editVia(
       panel,
       en.people.students.moves.moveClass,
       en.people.students.moves.moveClass,
@@ -400,8 +454,8 @@ describe('class and group transfers in the side panel', () => {
     });
     renderApp(`${PATH}?open=${STUDENT.id}`);
     const panel = await screen.findByRole('complementary', { name: 'Oʻtkir Rahimov' });
-    await within(panel).findByRole('button', { name: en.people.students.moves.moveClass });
-    const form = await edit(
+    await findAction(panel, en.people.students.moves.moveClass);
+    const form = await editVia(
       panel,
       en.people.students.moves.moveClass,
       en.people.students.moves.moveClass,
@@ -438,12 +492,12 @@ describe('class and group transfers in the side panel', () => {
     const panel = await screen.findByRole('complementary', { name: 'Oʻtkir Rahimov' });
     const change = en.people.students.moves.change.replace('{{target}}', '7 Yale');
     const cancel = en.people.students.moves.cancel.replace('{{target}}', '7 Yale');
-    await waitFor(() => {
-      expect(panelActionNames(panel)).toEqual(expect.arrayContaining([change, cancel]));
+    await waitFor(async () => {
+      expect(await allActions(panel)).toEqual(expect.arrayContaining([change, cancel]));
     });
     // No second class move while one is scheduled.
-    expect(panelActionNames(panel)).not.toContain(en.people.students.moves.moveClass);
-    fireEvent.click(within(panel).getByRole('button', { name: cancel }));
+    expect(await allActions(panel)).not.toContain(en.people.students.moves.moveClass);
+    fireEvent.click(await findAction(panel, cancel));
     const dialog = await screen.findByRole('alertdialog', {
       name: en.people.students.moves.cancelTitle,
     });
@@ -522,7 +576,7 @@ describe('class and group transfers in the side panel', () => {
     renderApp(`${PATH}?open=${STUDENT.id}`);
     const panel = await screen.findByRole('complementary', { name: 'Oʻtkir Rahimov' });
     const change = en.people.students.moves.change.replace('{{target}}', '7 Moskva');
-    fireEvent.click(await within(panel).findByRole('button', { name: change }));
+    fireEvent.click(await findAction(panel, change));
     const form = await within(panel).findByRole('form');
     fireEvent.change(within(form).getByLabelText(en.people.students.moves.from), {
       target: { value: '2026-10-23' },

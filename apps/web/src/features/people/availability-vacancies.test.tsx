@@ -11,13 +11,7 @@ import type {
 import { EXPORT_TEXTS, VACANCY_EXPORT_COLUMNS } from '@sodiq/shared';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import {
-  actionsInHeader,
-  edit,
-  panelActionNames,
-  panelActions,
-  savedInPanel,
-} from '@/testing/panel';
+import { actionsInHeader, edit, moreActionNames, panelAction, panelActionNames, panelActions, savedInPanel } from '@/testing/panel';
 import { en } from '@/i18n/locales/en';
 import { ru } from '@/i18n/locales/ru';
 import {
@@ -31,6 +25,60 @@ import {
   SOUTH,
 } from '@/testing/render-app';
 import { savedRecordPanel } from '@/testing/new-record';
+
+
+/**
+ * The form an action of the panel opens, by the action's words: a button of the header, a button
+ * elsewhere in the panel (a part's own Edit), or an item of the "More" menu since the record's
+ * actions moved to the panel's header (owner, 17 November 2026).
+ */
+async function editVia(
+  panel: HTMLElement,
+  name: string,
+  text: string = en.form.edit,
+): Promise<HTMLElement> {
+  const row = panelActions(panel);
+  const found =
+    (row === null ? null : within(row).queryByRole('button', { name: text })) ??
+    within(panel).queryByRole('button', { name: text }) ??
+    (await menuAction(panel, text));
+  fireEvent.click(found);
+  return within(panel).findByRole('form', { name });
+}
+
+/**
+ * An item of the panel's "More" menu by its words, in any language: the menu's button is found by
+ * what it opens, not by its name.
+ */
+async function menuAction(panel: HTMLElement, text: string): Promise<HTMLElement> {
+  const more = panelActions(panel)?.querySelector<HTMLElement>('[aria-haspopup="menu"]');
+  if (more == null) {
+    throw new Error(`The panel has no "More" menu for "${text}".`);
+  }
+  if (more.getAttribute('aria-expanded') !== 'true') {
+    fireEvent.click(more);
+  }
+  return within(await screen.findByRole('menu')).findByRole('menuitem', { name: text });
+}
+
+/**
+ * An action of the record by its words, once the panel has drawn its actions: a button of the
+ * header, or an item of the "More" menu, which is opened for it.
+ */
+async function findAction(panel: HTMLElement, text: string): Promise<HTMLElement> {
+  const row = await waitFor(() => {
+    const found = panelActions(panel);
+    expect(found).not.toBeNull();
+    return found ?? panel;
+  });
+  return within(row).queryByRole('button', { name: text }) ?? menuAction(panel, text);
+}
+
+/** Every action of the record: the header's buttons, then the items of its "More" menu. */
+const allActions = async (panel: HTMLElement): Promise<string[]> => [
+  ...panelActionNames(panel),
+  ...(await moreActionNames(panel)),
+];
 
 const uid = (n: number): string => `0199c000-0000-7000-8000-${String(n).padStart(12, '0')}`;
 
@@ -542,6 +590,8 @@ describe('the vacancies', () => {
     expect(within(panel).queryByRole('form')).toBeNull();
     expect(within(panel).queryByRole('button', { name: en.people.vacancies.close })).toBeNull();
     expect(within(panel).queryByRole('button', { name: en.people.vacancies.delete })).toBeNull();
+    // Nor in the "More" menu, where a danger action is.
+    expect(await allActions(panel)).not.toContain(en.people.vacancies.delete);
     // Task 2.7c-2b-2a: the record is read, with no row of actions at the bottom.
     expect(panelActions(panel)).toBeNull();
     expect(within(panel).queryByRole('button', { name: en.form.edit })).toBeNull();
@@ -556,14 +606,14 @@ describe('the vacancies', () => {
     const panel = await screen.findByRole('complementary', { name: OPEN.name });
     await within(panel).findByRole('heading', { name: en.people.vacancies.statusTitle });
     expect(within(panel).queryByRole('form')).toBeNull();
-    let form = await edit(panel, OPEN.name);
+    let form = await editVia(panel, OPEN.name);
     fireEvent.click(within(form).getByRole('button', { name: en.form.cancel }));
     await waitFor(() => {
       expect(within(panel).queryByRole('form')).toBeNull();
     });
     expect(calls.some((call) => call.route.startsWith('PUT'))).toBe(false);
 
-    form = await edit(panel, OPEN.name);
+    form = await editVia(panel, OPEN.name);
     fireEvent.change(within(form).getByLabelText(en.people.staff.weeklyLessons), {
       target: { value: '14' },
     });
@@ -586,7 +636,7 @@ describe('the vacancies', () => {
     renderApp(`/people/vacancies?open=${OPEN.id}`);
     const panel = await screen.findByRole('complementary', { name: OPEN.name });
     await within(panel).findByRole('heading', { name: en.people.vacancies.statusTitle });
-    const form = await edit(panel, OPEN.name);
+    const form = await editVia(panel, OPEN.name);
     fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
     await savedInPanel(panel);
 
@@ -620,7 +670,7 @@ describe('the vacancies', () => {
     });
     renderApp(`/people/vacancies?open=${OPEN.id}`);
     const panel = await screen.findByRole('complementary', { name: OPEN.name });
-    fireEvent.click(await within(panel).findByRole('button', { name: en.people.vacancies.delete }));
+    fireEvent.click(await findAction(panel, en.people.vacancies.delete));
     const dialog = await screen.findByRole('alertdialog');
     fireEvent.click(within(dialog).getByRole('button', { name: en.people.vacancies.delete }));
     await waitFor(() => {
@@ -650,12 +700,10 @@ describe('the vacancies', () => {
     const panel = await screen.findByRole('complementary', { name: OPEN.name });
     fireEvent.click(await within(panel).findByRole('button', { name: en.people.vacancies.close }));
     const reopen = await within(panel).findByRole('button', { name: en.people.vacancies.reopen });
-    // Task 2.7c-2b-2a: Edit, then Close or Reopen, then Delete, last in the panel.
-    expect(panelActionNames(panel)).toEqual([
-      en.form.edit,
-      en.people.vacancies.reopen,
-      en.people.vacancies.delete,
-    ]);
+    // Task 2.7c-2b-2a: Edit, then Close or Reopen in the header, then Delete, the danger action,
+    // in the "More" menu (owner, 17 November 2026).
+    expect(panelActionNames(panel)).toEqual([en.form.edit, en.people.vacancies.reopen]);
+    expect(await moreActionNames(panel)).toEqual([en.people.vacancies.delete]);
     expect(actionsInHeader(panel)).toBe(true);
     // Finding 18: the close is said to be saved, in the bottom row.
     await savedInPanel(panel);
@@ -664,7 +712,7 @@ describe('the vacancies', () => {
     await within(panel).findByRole('button', { name: en.people.vacancies.close });
     await savedInPanel(panel);
     expect(calls.some((call) => call.route.endsWith('/reopen'))).toBe(true);
-    fireEvent.click(within(panel).getByRole('button', { name: en.people.vacancies.delete }));
+    fireEvent.click(await findAction(panel, en.people.vacancies.delete));
     const dialog = await screen.findByRole('alertdialog');
     expect(within(dialog).getByText(OPEN.name)).toBeDefined();
     expect(calls.some((call) => call.route.endsWith('/delete'))).toBe(false);

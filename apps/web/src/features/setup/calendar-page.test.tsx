@@ -6,6 +6,8 @@ import { ru } from '@/i18n/locales/ru';
 import {
   actionsInHeader,
   edit,
+  moreActionNames,
+  panelAction,
   panelActionNames,
   panelActions,
   savedInPanel,
@@ -591,6 +593,7 @@ describe('the calendar page', () => {
     await openList();
     const panel = await openEntry('Seniors exams');
     expect(panelActionNames(panel)).toEqual([en.form.edit]);
+    expect(await moreActionNames(panel)).toEqual([]);
     await edit(panel, 'Seniors exams');
 
     expect(within(panel).getByLabelText(en.setup.calendar.name)).not.toBeNull();
@@ -609,6 +612,7 @@ describe('the calendar page', () => {
     // Task 2.7c-2b-1: the note is the bottom row's, without a button.
     expect(panelActions(panel)?.textContent).toContain(en.setup.calendar.pastNote);
     expect(panelActionNames(panel)).toEqual([]);
+    expect(await moreActionNames(panel)).toEqual([]);
     expect(within(panel).queryByRole('button', { name: en.setup.calendar.archive })).toBeNull();
   });
 
@@ -618,7 +622,8 @@ describe('the calendar page', () => {
         json({ ...HOLIDAY, ...(body as object) }),
     });
     const panel = await openEntry('Teachers day');
-    expect(panelActionNames(panel)).toEqual([en.form.edit, en.setup.calendar.archive]);
+    expect(panelActionNames(panel)).toEqual([en.form.edit]);
+    expect(await moreActionNames(panel)).toEqual([en.setup.calendar.archive]);
     expect(actionsInHeader(panel)).toBe(true);
     const form = await edit(panel, 'Teachers day');
     type(within(form).getByLabelText(en.setup.calendar.name), 'Teachers and mentors day');
@@ -656,7 +661,7 @@ describe('the calendar page', () => {
         json({ ...HOLIDAY, archivedAt: '2026-10-10T10:00:00.000Z' }),
     });
     const panel = await openEntry('Teachers day');
-    fireEvent.click(within(panel).getByRole('button', { name: en.setup.calendar.archive }));
+    fireEvent.click(await panelAction(panel, en.setup.calendar.archive));
     const dialog = await screen.findByRole('dialog', { name: en.setup.calendar.previewTitle });
     expect(
       calls.some((call) => call.route === `POST /api/setup/calendar-entries/${HOLIDAY.id}/archive`),
@@ -729,7 +734,7 @@ describe('the calendar page', () => {
         json({ ...HOLIDAY, archivedAt: '2026-10-10T10:00:00.000Z' }),
     });
     const panel = await openEntry('Teachers day');
-    fireEvent.click(within(panel).getByRole('button', { name: en.setup.calendar.archive }));
+    fireEvent.click(await panelAction(panel, en.setup.calendar.archive));
     const dialog = await screen.findByRole('dialog', { name: en.setup.calendar.previewTitle });
     const save = within(dialog).getByRole('button', { name: en.setup.calendar.save });
     expect(save).toHaveProperty('disabled', true);
@@ -796,7 +801,7 @@ describe('the calendar page', () => {
         json({ ...HOLIDAY, archivedAt: '2026-10-10T10:00:00.000Z' }),
     });
     const panel = await openEntry('Teachers day');
-    fireEvent.click(within(panel).getByRole('button', { name: en.setup.calendar.archive }));
+    fireEvent.click(await panelAction(panel, en.setup.calendar.archive));
     const dialog = await screen.findByRole('dialog', { name: en.setup.calendar.previewTitle });
     const box = (name: string) =>
       within(dialog).getByRole<HTMLInputElement>('checkbox', { name: new RegExp(name) });
@@ -908,7 +913,7 @@ describe('the calendar page', () => {
           json({ ...HOLIDAY, archivedAt: '2026-10-10T10:00:00.000Z' }),
       });
       const panel = await openEntry('Teachers day');
-      const archive = within(panel).getByRole('button', { name: en.setup.calendar.archive });
+      const archive = await panelAction(panel, en.setup.calendar.archive);
       fireEvent.click(archive);
       const dialog = await screen.findByRole('dialog', { name: en.setup.calendar.previewTitle });
       const line = (id: string) => dialog.querySelector<HTMLElement>(`[data-exam="${id}"]`);
@@ -1065,7 +1070,7 @@ describe('the calendar page', () => {
         json({ ...HOLIDAY, archivedAt: '2026-10-10T10:00:00.000Z' }),
     });
     const panel = await openEntry('Teachers day');
-    fireEvent.click(within(panel).getByRole('button', { name: en.setup.calendar.archive }));
+    fireEvent.click(await panelAction(panel, en.setup.calendar.archive));
     const dialog = await screen.findByRole('dialog', { name: en.setup.calendar.previewTitle });
     fireEvent.click(
       within(dialog).getByRole('button', { name: en.timetable.publish.shortened.reset }),

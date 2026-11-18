@@ -6,6 +6,8 @@ import { ru } from '@/i18n/locales/ru';
 import {
   actionsInHeader,
   edit,
+  moreActionNames,
+  panelAction,
   panelActionNames,
   panelActions,
   savedInPanel,
@@ -229,11 +231,8 @@ describe('the slot types page', () => {
     });
     const panel = await openSlotType('Lunch');
     expect(within(panel).queryByRole('form')).toBeNull();
-    expect(panelActionNames(panel)).toEqual([
-      en.form.edit,
-      en.setup.slotTypes.changeLength,
-      en.setup.slotTypes.archive,
-    ]);
+    expect(panelActionNames(panel)).toEqual([en.form.edit, en.setup.slotTypes.changeLength]);
+    expect(await moreActionNames(panel)).toEqual([en.setup.slotTypes.archive]);
     expect(actionsInHeader(panel)).toBe(true);
 
     const form = await edit(panel, 'Lunch');
@@ -306,7 +305,7 @@ describe('the slot types page', () => {
         json({ ...LUNCH, archivedAt: '2026-10-10T10:00:00.000Z' }),
     });
     const panel = await openSlotType('Lunch');
-    fireEvent.click(within(panel).getByRole('button', { name: en.setup.slotTypes.archive }));
+    fireEvent.click(await panelAction(panel, en.setup.slotTypes.archive));
     const dialog = await screen.findByRole('alertdialog');
     fireEvent.click(within(dialog).getByRole('button', { name: en.setup.slotTypes.archive }));
 

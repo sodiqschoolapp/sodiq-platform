@@ -6,6 +6,7 @@ import { ru } from '@/i18n/locales/ru';
 import {
   actionsInHeader,
   edit,
+  moreActionNames,
   panelActionNames,
   panelActions,
   savedInPanel,
@@ -356,11 +357,8 @@ describe('the day templates page', () => {
     expect(await within(panel).findAllByText('08:00–08:45')).toHaveLength(1);
     // Task 2.7c-2b-1: the actions at the bottom; the forms behind them.
     expect(within(panel).queryByRole('form')).toBeNull();
-    expect(panelActionNames(panel)).toEqual([
-      en.form.edit,
-      en.setup.dayTemplates.changeSlots,
-      en.setup.dayTemplates.archive,
-    ]);
+    expect(panelActionNames(panel)).toEqual([en.form.edit, en.setup.dayTemplates.changeSlots]);
+    expect(await moreActionNames(panel)).toEqual([en.setup.dayTemplates.archive]);
     expect(actionsInHeader(panel)).toBe(true);
     const form = await changeSlots(panel);
     expect(within(form).getAllByText('08:00–08:45')).toHaveLength(1);

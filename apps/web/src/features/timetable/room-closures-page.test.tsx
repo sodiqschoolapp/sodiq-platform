@@ -2,6 +2,7 @@ import type { Room, RoomClosure, RoomClosureLessons } from '@sodiq/shared';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { en } from '@/i18n/locales/en';
+import { moreActionNames, panelAction } from '@/testing/panel';
 import { fakeApi, json, NORTH, refusal, renderApp, sessionOf } from '@/testing/render-app';
 
 const uid = (n: number): string => `0199a000-0000-7000-8000-${String(n).padStart(12, '0')}`;
@@ -213,7 +214,8 @@ describe('the room closures page', () => {
         calls.find((call) => call.route === `PATCH /api/timetable/room-closures/${uid(701)}`)?.body,
       ).toEqual({ startsOn: '2026-10-19', endsOn: '2026-10-23' });
     });
-    fireEvent.click(await within(panel).findByRole('button', { name: texts.withdraw }));
+    // The withdraw is a danger action: in the "More" menu of the panel (owner, 17 November 2026).
+    fireEvent.click(await waitFor(() => panelAction(panel, texts.withdraw)));
     const dialog = await screen.findByRole('alertdialog');
     expect(within(dialog).getByText(texts.withdrawTitle)).toBeDefined();
     fireEvent.click(within(dialog).getByRole('button', { name: texts.withdraw }));
@@ -302,6 +304,7 @@ describe('the room closures page', () => {
     await within(panel).findByRole('region', { name: texts.lessons });
     expect(within(panel).queryByRole('button', { name: texts.moveAll })).toBeNull();
     expect(within(panel).queryByRole('button', { name: texts.withdraw })).toBeNull();
+    expect(await moreActionNames(panel)).not.toContain(texts.withdraw);
     fireEvent.click(within(panel).getByRole('button', { name: texts.changeDates }));
     const form = within(panel).getByRole('form', { name: texts.changeDates });
     expect(within(form).getByLabelText<HTMLInputElement>(texts.firstDay).disabled).toBe(true);

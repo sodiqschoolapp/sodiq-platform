@@ -24,13 +24,61 @@ import {
   SOUTH,
   type Handler,
 } from '@/testing/render-app';
-import {
-  actionsInHeader,
-  edit,
-  panelActionNames,
-  panelActions,
-  savedInPanel,
-} from '@/testing/panel';
+import { actionsInHeader, edit, moreActionNames, panelAction, panelActionNames, panelActions, savedInPanel } from '@/testing/panel';
+
+
+/**
+ * The form an action of the panel opens, by the action's words: a button of the header, a button
+ * elsewhere in the panel (a part's own Edit), or an item of the "More" menu since the record's
+ * actions moved to the panel's header (owner, 17 November 2026).
+ */
+async function editVia(
+  panel: HTMLElement,
+  name: string,
+  text: string = en.form.edit,
+): Promise<HTMLElement> {
+  const row = panelActions(panel);
+  const found =
+    (row === null ? null : within(row).queryByRole('button', { name: text })) ??
+    within(panel).queryByRole('button', { name: text }) ??
+    (await menuAction(panel, text));
+  fireEvent.click(found);
+  return within(panel).findByRole('form', { name });
+}
+
+/**
+ * An item of the panel's "More" menu by its words, in any language: the menu's button is found by
+ * what it opens, not by its name.
+ */
+async function menuAction(panel: HTMLElement, text: string): Promise<HTMLElement> {
+  const more = panelActions(panel)?.querySelector<HTMLElement>('[aria-haspopup="menu"]');
+  if (more == null) {
+    throw new Error(`The panel has no "More" menu for "${text}".`);
+  }
+  if (more.getAttribute('aria-expanded') !== 'true') {
+    fireEvent.click(more);
+  }
+  return within(await screen.findByRole('menu')).findByRole('menuitem', { name: text });
+}
+
+/**
+ * An action of the record by its words, once the panel has drawn its actions: a button of the
+ * header, or an item of the "More" menu, which is opened for it.
+ */
+async function findAction(panel: HTMLElement, text: string): Promise<HTMLElement> {
+  const row = await waitFor(() => {
+    const found = panelActions(panel);
+    expect(found).not.toBeNull();
+    return found ?? panel;
+  });
+  return within(row).queryByRole('button', { name: text }) ?? menuAction(panel, text);
+}
+
+/** Every action of the record: the header's buttons, then the items of its "More" menu. */
+const allActions = async (panel: HTMLElement): Promise<string[]> => [
+  ...panelActionNames(panel),
+  ...(await moreActionNames(panel)),
+];
 
 const uid = (n: number): string => `0199f000-0000-7000-8000-${String(n).padStart(12, '0')}`;
 const PATH = '/people/students';
@@ -480,7 +528,7 @@ describe('the profile of a student', () => {
     fireEvent.click(await screen.findByText('Rahimov Oʻtkir', { selector: 'button' }));
     const panel = await screen.findByRole('complementary', { name: 'Oʻtkir Rahimov' });
     await within(panel).findByRole('radiogroup');
-    const form = await edit(panel, 'Oʻtkir Rahimov');
+    const form = await editVia(panel, 'Oʻtkir Rahimov');
     expect(within(panel).queryByRole('radiogroup')).toBeNull();
     expect(panelActions(panel)).toBeNull();
     await waitFor(() => {
@@ -497,7 +545,7 @@ describe('the profile of a student', () => {
       );
     });
 
-    const again = await edit(panel, 'Oʻtkir Rahimov');
+    const again = await editVia(panel, 'Oʻtkir Rahimov');
     fireEvent.click(within(again).getByRole('button', { name: en.form.save }));
     await savedInPanel(panel);
     expect(calls.filter((call) => call.route.startsWith('PUT'))).toHaveLength(1);
@@ -1304,7 +1352,7 @@ describe('editing a student', () => {
     renderApp(PATH);
     fireEvent.click(await screen.findByText('Rahimov Oʻtkir', { selector: 'button' }));
     const panel = await screen.findByRole('complementary', { name: 'Oʻtkir Rahimov' });
-    const form = await edit(panel, 'Oʻtkir Rahimov');
+    const form = await editVia(panel, 'Oʻtkir Rahimov');
     const lists = () => calls.filter((call) => call.route === 'GET /api/people/students').length;
     const before = lists();
     fireEvent.change(within(form).getByLabelText(en.people.students.jshshir), {
@@ -1353,20 +1401,18 @@ describe('leaving, return and delete', () => {
     renderApp(PATH);
     fireEvent.click(await screen.findByText('Rahimov Oʻtkir', { selector: 'button' }));
     const panel = await screen.findByRole('complementary', { name: 'Oʻtkir Rahimov' });
-    // Leave school and Delete are the danger actions at the bottom (decision 5).
+    // Leave school and Delete are the danger actions (decision 5): last, in the "More" menu since
+    // the actions moved to the panel's header (owner, 17 November 2026).
     await waitFor(() => {
-      expect(panelActionNames(panel)).toEqual([
-        en.form.edit,
-        en.people.students.uidTitle,
-        en.people.students.leaveTitle,
-        en.people.students.deleteAction,
-      ]);
+      expect(panelActionNames(panel)).toEqual([en.form.edit, en.people.students.uidTitle]);
     });
-    const leave = within(panelActions(panel) ?? panel).getByRole('button', {
-      name: en.people.students.leaveTitle,
-    });
+    expect(await moreActionNames(panel)).toEqual([
+      en.people.students.leaveTitle,
+      en.people.students.deleteAction,
+    ]);
+    const leave = await panelAction(panel, en.people.students.leaveTitle);
     expect(leave.getAttribute('data-variant')).toBe('destructive');
-    const form = await edit(panel, en.people.students.leaveTitle, en.people.students.leaveTitle);
+    const form = await editVia(panel, en.people.students.leaveTitle, en.people.students.leaveTitle);
     // The status and its history above the form.
     expect(
       within(panel).getByRole('heading', { name: en.people.students.statusTitle }),
@@ -1410,7 +1456,7 @@ describe('leaving, return and delete', () => {
     fireEvent.click(await screen.findByText('Rahimov Oʻtkir', { selector: 'button' }));
     const panel = await screen.findByRole('complementary', { name: 'Oʻtkir Rahimov' });
     await within(panel).findByRole('heading', { name: en.people.students.statusTitle });
-    const form = await edit(panel, en.people.students.leaveTitle, en.people.students.leaveTitle);
+    const form = await editVia(panel, en.people.students.leaveTitle, en.people.students.leaveTitle);
     fireEvent.change(within(form).getByLabelText(en.people.students.lastDay), {
       target: { value: '2026-10-20' },
     });
@@ -1448,7 +1494,7 @@ describe('leaving, return and delete', () => {
     const tabs = await within(panel).findByRole('radiogroup');
     fireEvent.click(within(tabs).getByRole('radio', { name: en.people.students.tabs.relatives }));
     await within(panel).findByText('Dilfuza Rahimova');
-    const form = await edit(panel, en.people.students.leaveTitle, en.people.students.leaveTitle);
+    const form = await editVia(panel, en.people.students.leaveTitle, en.people.students.leaveTitle);
     fireEvent.change(within(form).getByLabelText(en.people.students.lastDay), {
       target: { value: '2026-10-20' },
     });
@@ -1501,6 +1547,8 @@ describe('leaving, return and delete', () => {
     expect(
       within(panel).queryByRole('button', { name: en.people.students.cancelLeaving }),
     ).toBeNull();
+    // Nor in the "More" menu, where the actions after the first two secondary ones are.
+    expect(await allActions(panel)).not.toContain(en.people.students.cancelLeaving);
   });
 
   it('marks a scheduled leaving in the list, in Russian too', async () => {
@@ -1563,16 +1611,17 @@ describe('leaving, return and delete', () => {
     renderApp(PATH);
     fireEvent.click(await screen.findByText('Karimova Lola', { selector: 'button' }));
     const panel = await screen.findByRole('complementary', { name: 'Lola Karimova' });
-    // Inactive after a leaving: Undo and Return at the bottom, no Leave.
+    // Inactive after a leaving: Undo and Return, no Leave. Two secondary actions stand in the
+    // header, the next in "More" (owner, 17 November 2026).
     await waitFor(() => {
       expect(panelActionNames(panel)).toEqual([
         en.form.edit,
         en.people.students.uidTitle,
         en.people.students.undoTitle,
-        en.people.students.returnTitle,
       ]);
     });
-    const form = await edit(panel, en.people.students.returnTitle, en.people.students.returnTitle);
+    expect(await moreActionNames(panel)).toEqual([en.people.students.returnTitle]);
+    const form = await editVia(panel, en.people.students.returnTitle, en.people.students.returnTitle);
     const type = (label: string, value: string) => {
       fireEvent.change(within(form).getByLabelText(label), { target: { value } });
     };
@@ -1630,7 +1679,7 @@ describe('leaving, return and delete', () => {
     fireEvent.click(await screen.findByText('Rahimov Oʻtkir', { selector: 'button' }));
     const panel = await screen.findByRole('complementary', { name: 'Oʻtkir Rahimov' });
     await within(panel).findByRole('heading', { name: en.people.students.statusTitle });
-    const form = await edit(panel, en.people.students.leaveTitle, en.people.students.leaveTitle);
+    const form = await editVia(panel, en.people.students.leaveTitle, en.people.students.leaveTitle);
     fireEvent.change(within(form).getByLabelText(en.people.students.lastDay), {
       target: { value: '2026-10-20' },
     });
@@ -1668,7 +1717,7 @@ describe('leaving, return and delete', () => {
     fireEvent.click(await screen.findByText('Rahimov Oʻtkir', { selector: 'button' }));
     const panel = await screen.findByRole('complementary', { name: 'Oʻtkir Rahimov' });
     await within(panel).findByRole('heading', { name: en.people.students.statusTitle });
-    const form = await edit(panel, en.people.students.leaveTitle, en.people.students.leaveTitle);
+    const form = await editVia(panel, en.people.students.leaveTitle, en.people.students.leaveTitle);
     fireEvent.change(within(form).getByLabelText(en.people.students.lastDay), {
       target: { value: '2026-10-20' },
     });
@@ -1687,7 +1736,7 @@ describe('leaving, return and delete', () => {
     const actions = panelActions(panel);
     expect(actions).not.toBeNull();
     expect(within(actions ?? panel).getByText(en.errors.student_changed)).toBeDefined();
-    expect(panelActionNames(panel)).toContain(en.people.students.cancelLeaving);
+    expect(await allActions(panel)).toContain(en.people.students.cancelLeaving);
     await waitFor(() => {
       expect(document.activeElement).toBe(
         within(panel).getByRole('heading', { name: en.people.students.statusTitle }),
@@ -1716,7 +1765,7 @@ describe('leaving, return and delete', () => {
     fireEvent.click(await screen.findByText('Rahimov Oʻtkir', { selector: 'button' }));
     const panel = await screen.findByRole('complementary', { name: 'Oʻtkir Rahimov' });
     await within(panel).findByRole('heading', { name: en.people.students.statusTitle });
-    const form = await edit(panel, en.people.students.deleteTitle, en.people.students.deleteAction);
+    const form = await editVia(panel, en.people.students.deleteTitle, en.people.students.deleteAction);
     fireEvent.change(within(form).getByLabelText(en.people.students.reason), {
       target: { value: 'Created twice' },
     });
@@ -1730,7 +1779,7 @@ describe('leaving, return and delete', () => {
       expect(within(panel).queryByRole('form')).toBeNull();
     });
     expect(within(panelActions(panel) ?? panel).getByText(en.errors.student_changed)).toBeDefined();
-    expect(panelActionNames(panel)).not.toContain(en.people.students.deleteAction);
+    expect(await allActions(panel)).not.toContain(en.people.students.deleteAction);
   });
 
   it('records a leaving for ticked rows and names the refused ones', async () => {
@@ -1789,7 +1838,7 @@ describe('leaving, return and delete', () => {
     fireEvent.click(screen.getByText('Rahimov Oʻtkir', { selector: 'button' }));
     const record = await screen.findByRole('complementary', { name: 'Oʻtkir Rahimov' });
     await within(record).findByRole('heading', { name: en.people.students.statusTitle });
-    const form = await edit(record, 'Oʻtkir Rahimov');
+    const form = await editVia(record, 'Oʻtkir Rahimov');
     fireEvent.change(within(form).getByLabelText(en.people.students.lastName), {
       target: { value: 'Rahimova' },
     });
@@ -1982,7 +2031,7 @@ describe('leaving, return and delete', () => {
     renderApp(`${PATH}?open=${OTKIR.id}`);
     const panel = await screen.findByRole('complementary', { name: 'Oʻtkir Rahimov' });
     await within(panel).findByRole('heading', { name: en.people.students.statusTitle });
-    const form = await edit(panel, en.people.students.deleteTitle, en.people.students.deleteAction);
+    const form = await editVia(panel, en.people.students.deleteTitle, en.people.students.deleteAction);
     fireEvent.change(within(form).getByLabelText(en.people.students.reason), {
       target: { value: 'Created twice' },
     });
@@ -2059,7 +2108,7 @@ describe('the Status section', () => {
     renderApp(`${PATH}?open=${GRADUATED.id}`);
     const panel = await screen.findByRole('complementary', { name: 'Nodira Ergasheva' });
     await within(panel).findByRole('heading', { name: en.people.students.statusTitle });
-    const form = await edit(
+    const form = await editVia(
       panel,
       en.people.students.restoreTitle,
       en.people.students.restoreTitle,
@@ -2121,7 +2170,7 @@ describe('the Status section', () => {
     renderApp(`${PATH}?open=${LOLA.id}`);
     const panel = await screen.findByRole('complementary', { name: 'Lola Karimova' });
     await within(panel).findByRole('heading', { name: en.people.students.statusTitle });
-    const form = await edit(panel, en.people.students.undoTitle, en.people.students.undoTitle);
+    const form = await editVia(panel, en.people.students.undoTitle, en.people.students.undoTitle);
     fireEvent.change(within(form).getByLabelText(en.people.students.reason), {
       target: { value: 'Entered for the wrong student' },
     });
@@ -2201,9 +2250,12 @@ describe('the Status section', () => {
     });
     renderApp(`${PATH}?open=${OTKIR.id}`);
     const panel = await screen.findByRole('complementary', { name: 'Oʻtkir Rahimov' });
-    fireEvent.click(
-      await within(panel).findByRole('button', { name: en.people.students.cancelReturn }),
-    );
+    const cancelReturn = await within(panel).findByRole('button', {
+      name: en.people.students.cancelReturn,
+    });
+    // Neither in the header nor in the "More" menu while a return is scheduled.
+    expect(await allActions(panel)).not.toContain(en.people.students.returnTitle);
+    fireEvent.click(cancelReturn);
     expect(
       within(panel).queryByRole('button', { name: en.people.students.returnTitle }),
     ).toBeNull();
@@ -2250,7 +2302,7 @@ describe('the Status section', () => {
     renderApp(`${PATH}?open=${OTKIR.id}`);
     const panel = await screen.findByRole('complementary', { name: 'Oʻtkir Rahimov' });
     await within(panel).findByRole('heading', { name: en.people.students.statusTitle });
-    const form = await edit(panel, en.people.students.returnTitle, en.people.students.returnTitle);
+    const form = await editVia(panel, en.people.students.returnTitle, en.people.students.returnTitle);
     const pick = await within(form).findByRole('button', {
       name: en.people.students.nextYearStart.replace(
         '{{date}}',
@@ -2279,7 +2331,7 @@ describe('the Status section', () => {
     const panel = await screen.findByRole('complementary', { name: 'Oʻtkir Rahimov' });
     await within(panel).findByRole('heading', { name: en.people.students.statusTitle });
     const label = en.people.students.uidLabel.replace('{{name}}', 'Oʻtkir Rahimov');
-    const form = await edit(panel, label, en.people.students.uidTitle);
+    const form = await editVia(panel, label, en.people.students.uidTitle);
     fireEvent.change(within(form).getByLabelText(en.people.students.uid), {
       target: { value: '2606077' },
     });
@@ -2302,7 +2354,7 @@ describe('the Status section', () => {
         within(panel).getByRole('button', { name: en.people.students.uidTitle }),
       );
     });
-    const again = await edit(panel, label, en.people.students.uidTitle);
+    const again = await editVia(panel, label, en.people.students.uidTitle);
     expect(within(again).getByLabelText<HTMLInputElement>(en.people.students.uid).value).toBe(
       '2606077',
     );
@@ -2323,7 +2375,7 @@ describe('the Status section', () => {
     renderApp(`${PATH}?open=${OTKIR.id}`);
     const panel = await screen.findByRole('complementary', { name: 'Oʻtkir Rahimov' });
     await within(panel).findByRole('heading', { name: en.people.students.statusTitle });
-    const form = await edit(
+    const form = await editVia(
       panel,
       en.people.students.uidLabel.replace('{{name}}', 'Oʻtkir Rahimov'),
       en.people.students.uidTitle,
@@ -2488,13 +2540,9 @@ describe('the Status section', () => {
           .replace('{{reason}}', 'Переезд'),
       ),
     ).toBeDefined();
+    expect(await menuAction(panel, ru.people.students.returnTitle)).toBeDefined();
     expect(
-      within(panelActions(panel) ?? panel).getByRole('button', {
-        name: ru.people.students.returnTitle,
-      }),
-    ).toBeDefined();
-    expect(
-      await edit(panel, ru.people.students.returnTitle, ru.people.students.returnTitle),
+      await editVia(panel, ru.people.students.returnTitle, ru.people.students.returnTitle),
     ).toBeDefined();
   });
 });
@@ -3095,7 +3143,7 @@ describe('the class of a return and of a restore', () => {
     renderApp(`${PATH}?open=${LOLA.id}`, language);
     const panel = await screen.findByRole('complementary', { name: 'Lola Karimova' });
     await within(panel).findByRole('heading', { name: texts.people.students.statusTitle });
-    const form = await edit(
+    const form = await editVia(
       panel,
       texts.people.students.returnTitle,
       texts.people.students.returnTitle,
@@ -3334,7 +3382,7 @@ describe('the class of a return and of a restore', () => {
     renderApp(`${PATH}?open=${LOLA.id}`);
     const panel = await screen.findByRole('complementary', { name: 'Lola Karimova' });
     await within(panel).findByRole('heading', { name: en.people.students.statusTitle });
-    const form = await edit(
+    const form = await editVia(
       panel,
       en.people.students.restoreTitle,
       en.people.students.restoreTitle,

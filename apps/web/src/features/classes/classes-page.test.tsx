@@ -16,7 +16,14 @@ import { describe, expect, it, vi } from 'vitest';
 import { en } from '@/i18n/locales/en';
 import { ru } from '@/i18n/locales/ru';
 import { uz } from '@/i18n/locales/uz';
-import { actionsInHeader, edit, panelActionNames, savedInPanel } from '@/testing/panel';
+import {
+  actionsInHeader,
+  edit,
+  moreActionNames,
+  panelAction,
+  panelActionNames,
+  savedInPanel,
+} from '@/testing/panel';
 import { fakeApi, json, NORTH, refusal, renderApp, sessionOf, SOUTH } from '@/testing/render-app';
 import { setWindowWidth } from '@/testing/window-width';
 
@@ -533,7 +540,8 @@ describe('a class in the side panel', () => {
     const panel = await screen.findByRole('complementary', { name: '7 Oxford' });
     await within(panel).findByText(en.classes.tutors);
     expect(within(panel).getByText(`${en.classes.kinds.tutor}: Tursunova Dilnoza`)).toBeDefined();
-    expect(panelActionNames(panel)).toEqual([en.form.edit, en.classes.archiveClass]);
+    expect(panelActionNames(panel)).toEqual([en.form.edit]);
+    expect(await moreActionNames(panel)).toEqual([en.classes.archiveClass]);
     expect(actionsInHeader(panel)).toBe(true);
     const form = await edit(panel, '7 Oxford');
     // The year is fixed after the create (decision 6).
@@ -901,7 +909,7 @@ describe('a class in the side panel', () => {
     });
     fireEvent.click(rowButton('7 Oxford'));
     const panel = await screen.findByRole('complementary', { name: '7 Oxford' });
-    fireEvent.click(await within(panel).findByRole('button', { name: en.classes.archiveClass }));
+    fireEvent.click(await waitFor(() => panelAction(panel, en.classes.archiveClass)));
     const dialog = await screen.findByRole('alertdialog');
     expect(dialog.textContent).toContain('7 Oxford');
     expect(dialog.textContent).toContain(`${en.classes.kinds.tutor}: Tursunova Dilnoza`);
@@ -956,10 +964,10 @@ describe('a class in the side panel', () => {
           : en.classes.archiveHasStudents_other
       ).replace('{{count}}', String(members.length));
       expect(await within(panel).findByText(text)).toBeDefined();
+      // A danger action in the "More" menu: switched off as a disabled item.
       expect(
-        within(panel).getByRole<HTMLButtonElement>('button', { name: en.classes.archiveClass })
-          .disabled,
-      ).toBe(true);
+        (await panelAction(panel, en.classes.archiveClass)).getAttribute('aria-disabled'),
+      ).toBe('true');
       cleanup();
     }
   });
@@ -971,6 +979,7 @@ describe('a class in the side panel', () => {
     const panel = await screen.findByRole('complementary', { name: '7 Oxford' });
     await within(panel).findByText(en.classes.tutors);
     expect(panelActionNames(panel)).toEqual([]);
+    expect(await moreActionNames(panel)).toEqual([]);
     expect(within(panel).queryByRole('button', { name: en.classes.giveTutor })).toBeNull();
     expect(calls.some((call) => call.route === 'GET /api/classes/tutor-candidates')).toBe(false);
   });
@@ -1282,6 +1291,7 @@ describe('the classes of a Tutor', () => {
     const panel = await screen.findByRole('complementary', { name: '7 Oxford' });
     await within(panel).findByText(en.classes.tutors);
     expect(panelActionNames(panel)).toEqual([]);
+    expect(await moreActionNames(panel)).toEqual([]);
     expect(within(panel).queryByRole('button', { name: en.classes.giveTutor })).toBeNull();
     expect(within(panel).queryByRole('button', { name: en.classes.putIntoClass })).toBeNull();
     for (const route of [

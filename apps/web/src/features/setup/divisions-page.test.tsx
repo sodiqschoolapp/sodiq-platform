@@ -7,6 +7,8 @@ import { en } from '@/i18n/locales/en';
 import {
   actionsInHeader,
   edit,
+  moreActionNames,
+  panelAction,
   panelActionNames,
   panelActions,
   savedInPanel,
@@ -192,6 +194,7 @@ describe('the divisions page', () => {
     expect(
       within(panel).queryByRole('button', { name: en.setup.divisions.archiveDivision }),
     ).toBeNull();
+    expect(await moreActionNames(panel)).not.toContain(en.setup.divisions.archiveDivision);
     expect(
       within(panel).getByRole('button', {
         name: en.setup.divisions.renameNamed.replace('{{name}}', 'STEAM'),
@@ -219,7 +222,8 @@ describe('the divisions page', () => {
     expect(departments[1]?.textContent).toContain(en.setup.divisions.archived);
     // Task 2.7c-2b-1: read first, the actions at the bottom.
     expect(within(panel).getByText('Хозяйственный отдел')).toBeDefined();
-    expect(panelActionNames(panel)).toEqual([en.form.edit, en.setup.divisions.archiveDivision]);
+    expect(panelActionNames(panel)).toEqual([en.form.edit]);
+    expect(await moreActionNames(panel)).toEqual([en.setup.divisions.archiveDivision]);
     expect(actionsInHeader(panel)).toBe(true);
     const form = await edit(panel, 'Operations');
     expect(within(form).getByLabelText(en.setup.divisions.nameRu)).toHaveProperty(
@@ -323,9 +327,7 @@ describe('the divisions page', () => {
       ).toBe(true);
     });
 
-    fireEvent.click(
-      within(panel).getByRole('button', { name: en.setup.divisions.archiveDivision }),
-    );
+    fireEvent.click(await panelAction(panel, en.setup.divisions.archiveDivision));
     await goOn(en.setup.divisions.archive);
     await waitFor(() => {
       expect(
@@ -449,9 +451,7 @@ describe('the divisions page', () => {
 
     fireEvent.click(rowButton('Operations'));
     const panel = await screen.findByRole('complementary', { name: 'Operations' });
-    fireEvent.click(
-      within(panel).getByRole('button', { name: en.setup.divisions.archiveDivision }),
-    );
+    fireEvent.click(await panelAction(panel, en.setup.divisions.archiveDivision));
     const dialog = await screen.findByRole('alertdialog');
     fireEvent.click(within(dialog).getByRole('button', { name: en.setup.divisions.archive }));
 
