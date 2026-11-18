@@ -53,6 +53,8 @@ The tokens keep the names of shadcn/ui and are written in the app's stylesheet i
 | `--accent-foreground` | #06113C | as foreground | |
 | `--destructive` | #A3221A | oklch(0.4680 0.1662 28.87) | Danger text and danger buttons (7.50 : 1 on white). |
 | `--destructive-bg` (new) | #FDE7E4 | oklch(0.9448 0.0245 26.92) | Danger tint (danger text on it 6.33 : 1). |
+| `--destructive-foreground` (new) | #FFFFFF | oklch(1 0 0) | Text on the filled danger button (7.50 : 1). |
+| `--destructive-hover` (new) | #930A08 | oklch(0.4200 0.1662 28.87) | The filled danger button under the pointer (white on it 9.21 : 1). |
 | `--success`, `--success-bg` (new) | #146C2E on #E6F4EA | oklch(0.4670 0.1247 148.20) on oklch(0.9540 0.0199 154.90) | Saved, active, done (5.75 : 1). |
 | `--warning`, `--warning-bg` (new) | #7A4A00 on #FFF1CC | oklch(0.4544 0.0996 68.13) on oklch(0.9599 0.0504 89.76) | Late, provisional, needs attention (6.66 : 1). Amber, never the brand orange. |
 | `--info`, `--info-bg` (new) | #1D4FA8 on #E3ECFB | oklch(0.4486 0.1532 260.94) on oklch(0.9407 0.0225 260.72) | Notices (6.45 : 1). |
@@ -85,6 +87,8 @@ The tokens keep the names of shadcn/ui and are written in the app's stylesheet i
 | `--muted-foreground` | #A9B1CC | oklch(0.7629 0.0397 272.38) (8.41 : 1 on the card) |
 | `--accent` | #16224F | oklch(0.2703 0.0841 268.91) |
 | `--destructive` | #FF8F85 | oklch(0.7681 0.1370 26.09) (8.13 : 1 on the card) |
+| `--destructive-foreground` | #06113C | oklch(0.2026 0.0841 266.73), the navy of the primary button's text (8.25 : 1 on `--destructive`) |
+| `--destructive-hover` | #EE8077 | oklch(0.7200 0.1370 26.09) (its text 6.92 : 1) |
 | `--success` | #6FD08C | oklch(0.7806 0.1343 151.86) |
 | `--warning` | #FFD27A | oklch(0.8847 0.1180 82.93) |
 | `--info` | #9DBBFF | oklch(0.7953 0.1027 265.79) |
@@ -137,12 +141,21 @@ Three sizes, four kinds, one shape. Every button is a fill with no border.
 | Secondary | `--secondary` | `--secondary-foreground` | `--secondary-hover` |
 | Quiet | none | foreground | `--accent` |
 | Danger | none | `--destructive` | `--destructive-bg` |
+| Danger, filled | `--destructive` | `--destructive-foreground` | `--destructive-hover` |
 
+- **Danger, filled** is used in one place only: the confirming button of a dialog that asks about an action that cannot be undone or that removes something (delete, archive a record with data, a forced change). Its word names the action ("Delete the work", never "OK" or "Yes"); the other button is the quiet "Cancel", so the dialog has one fill. Everywhere else, in a page, a panel or a menu, a danger action is the quiet danger kind (owner, 17 November 2026).
+- **Pending.** A button that sends something shows that it is waiting from the click until the answer: it keeps its size and kind, is disabled, shows the `progress_activity` icon turning before its word, and its word becomes the action in progress ("Saving…", "Sending…", "Deleting…"). A second click does nothing. When the answer comes it returns to its word; what happened is said by the page (the changed record, a short confirmation, or the error next to the form) (owner, 17 November 2026).
 - At phone width every control a finger uses is at least 44 high; a small button takes the height of a medium one (44).
 - An icon-only button is square (40 × 40 at medium, 44 × 44 at phone width) and has an `aria-label`.
 - Buttons in one row have one size. Action buttons in a list of items share one minimum width (112 at medium) so they line up.
 - A link styled as a button uses the same classes. Plain links are navy, weight 600, underlined on hover.
-- In the shadcn/ui button the sizes are `sm` 32, `default` 40 and `lg` 48, with the square `icon-sm`, `icon` and `icon-lg`; the kinds are `default` (primary), `secondary`, `ghost` (quiet) and `destructive` (danger, no fill until hover). There are no `xs` sizes and no `outline` or `link` variants.
+- In the shadcn/ui button the sizes are `sm` 32, `default` 40 and `lg` 48, with the square `icon-sm`, `icon` and `icon-lg`; the kinds are `default` (primary), `secondary`, `ghost` (quiet), `destructive` (danger, no fill until hover) and `destructive-fill` (danger, filled), and `pending` is a property of the button, not a kind. There are no `xs` sizes and no `outline` or `link` variants.
+
+## Dialogs and short confirmations
+
+- **A dialog** has a title that says what it is about, the content, and at the bottom right its buttons: the action at the right, "Cancel" or "Close" to its left. One filled button at most. A dialog that only shows something has one secondary "Close". Escape and the close button at the top right close it; a dialog with typed text asks before it is closed.
+- **A confirmation** names what the action will touch ("Delete the work “Dictation” and its 24 numbers?") and confirms with a filled danger button when the action cannot be undone or removes something, with a primary button otherwise.
+- **A short confirmation** (toast) says that an action finished when the person stays where they are and the change is not otherwise in view (a record saved in a panel that closes, a file sent, rows changed in bulk): one line with `check_circle` in `--success` ("Saved.", "3 students moved."), white (the card in the dark theme) with the floating shadow, bottom right of the page (at phone width at the bottom, above the tab bar), read out by a screen reader (`role="status"`). It goes after 4 seconds, on Escape or with its close button; a new one replaces it. A failure is never a toast: it stays next to what failed until the person acts. A toast never holds the only way to do something (owner, 17 November 2026).
 
 ## Fields and switches
 
@@ -163,7 +176,7 @@ Three sizes, four kinds, one shape. Every button is a fill with no border.
 - **Menu:** left, navy in both themes, 240 wide: the one-line logo (on-dark version) at the top, the items (icon and word, 40 high, corner 8, the active one solid orange with navy text), a count as a plain number at the right of an item, and at the bottom the person (round avatar with initials on #1B2A63, name, role) with a sign-out icon button. It can collapse to a 72-wide rail of icons with the shield logo; the choice is kept in the browser. In the collapsed rail the current item is its icon on the solid orange fill of an item (corner 8); this is not an icon in a coloured square.
 - **Top bar:** white (dark: #08102F), 64 high, a bottom border: the app's context selects on the left (which ones: "This app"), the search field with "Ctrl K" as plain text at its right, and at the right the notifications button and any app-specific switch.
 - **Page:** a header with breadcrumbs (inner pages), the title and its actions at the right; then the content. A short fact may follow the title on the same line in muted text ("74 active, 6 archived"; "Monday, 12 October").
-- **Lists:** a toolbar (search field, filter selects, a quiet "Reset", the column chooser as an icon button), a selection bar in `--today` above the table when rows are chosen (count, small secondary actions, quiet "Clear"), the table in a white panel, and the side panel (white, left border) for an opened record with its actions at the bottom: primary "Edit", secondary actions, danger quiet "Archive".
+- **Lists:** a toolbar (search field, filter selects, a quiet "Reset", the column chooser as an icon button), a selection bar in `--today` above the table when rows are chosen (count, small secondary actions, quiet "Clear"), the table in a white panel, and the side panel (white, left border) for an opened record. The record's actions are in the panel's header, at the right of its title, so they are in view without scrolling: primary "Edit", at most two secondary actions, and the rest in a quiet "More" menu (`more_horiz`) whose last items are the danger ones ("Archive"). A form, in a panel or on its own page, has its "Save" (primary) and "Cancel" (quiet) in a footer pinned to the bottom of the panel or the window, with a top border, always in view while the form scrolls (owner, 17 November 2026).
 - **Phone width (below 640 px):** the menu becomes a bottom tab bar (navy, the app's main items with icon and word, the active one orange), the top bar keeps the context select and the search button, toolbars wrap, wide tables scroll inside their panel or become cards where the app's spec says so.
 
 ## Brand moments
@@ -188,7 +201,7 @@ The brand book's rules: keep clear space around the logo, never recolour, stretc
 
 ## Motion
 
-Short and quiet: 120 ms for hover and press, 160 ms for panels and menus opening, ease-out; nothing moves on its own, with one exception: the "Open the journal" button of the lesson happening now on a teacher's home page pulses gently (`12`, Home page; owner, 7 November 2026). People who ask the system for reduced motion get none.
+Short and quiet: 120 ms for hover and press, 160 ms for panels and menus opening, ease-out; nothing moves on its own, with two exceptions: the "Open the journal" button of the lesson happening now on a teacher's home page pulses gently (`12`, Home page; owner, 7 November 2026), and the icon of a pending button turns while it waits. People who ask the system for reduced motion get none: the pending icon stands still and the word still says what is happening.
 
 ## Accessibility
 
@@ -205,4 +218,5 @@ This section belongs to `sodiqschoolapp/sodiq-platform` only.
 - **Phone tab bar.** The role's first four menu items and "More". This is the owner's decision of 12 October 2026 (`docs/decisions.md`, "one design for both apps"); `12`, Devices lists which functions work on a phone, not the tab bar.
 - **Subject colours.** The 12 subject colours of task 2.1 stay as they are (keys and values in `index.css`): a timetable tile or a chip is the colour's 15% tint with the subject in the normal text and a 10 px square of the full colour. A subject colour never carries meaning alone: the subject's name is always written.
 - **Status labels: grades and attendance marks.** Always the digit; colour only helps. Grade 2 danger tint, 3 warning tint, 4 info tint, 5 success tint, each with its text colour. Attendance marks in the journal: 1 plain; 0 and 3 danger tint; 2 warning tint; 4 and 5 (exempt) muted fill with muted text.
+- **Journal labels.** The short labels of the journal's lesson columns follow the person's language, on screen and in the exported journal (`07`, Layout; spec change of 18 November 2026): Dav / Пос / Att, SI / Кл/р / CW, UV / Д/з / HW, Oʻrt / Ср. / Avg, "Soni 30" / "из 30" / "of 30". The journal is titled by its class and subject; "Sinf jurnali" is in the breadcrumbs.
 - **Printouts.** The first-password slips (task 2.3: name, the roles held when it is printed (none at a first issue), the three steps to sign in at the site's address, and a box with login, password and date of issue; one slip per page for one account; four per A4 page with cut lines when several accounts are printed at once (a staff import)), the personal data report (2.6), and later the PDF exports.
