@@ -75,7 +75,13 @@ export function usePanelEditing(): PanelEditing {
     if (next.to === 'field') {
       panel.querySelector<HTMLElement>(FIRST_FIELD)?.focus();
     } else {
-      panel.querySelector<HTMLElement>(`[data-opens="${CSS.escape(next.key)}"]`)?.focus();
+      const key = CSS.escape(next.key);
+      // An action in the panel's "More" menu is not on the page while the menu is closed: the
+      // focus goes back to the menu's button, which names the actions it holds (`PanelActions`).
+      (
+        panel.querySelector<HTMLElement>(`[data-opens="${key}"]`) ??
+        panel.querySelector<HTMLElement>(`[data-holds~="${key}"]`)
+      )?.focus();
     }
   }, [editing, pointed]);
 

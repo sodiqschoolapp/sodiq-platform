@@ -1238,6 +1238,8 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
     tooMany_other: 'За последние 24 часа вы отправили {{n}} сообщения. Попробуйте позже.',
   },
   list: {
+    // The menu of a record's other actions in its side panel (owner, 17 November 2026).
+    moreActions: 'Другие действия',
     search: 'Поиск',
     all: 'Все',
     columns: 'Столбцы',

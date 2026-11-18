@@ -475,3 +475,31 @@ describe('the Cancel of a record form', () => {
     expect(cancel().disabled).toBe(true);
   });
 });
+
+// docs/design-system.md, Layout shell, Lists (owner, 17 November 2026): Save and Cancel sit in a
+// footer pinned to the bottom of the window while the form scrolls.
+describe('the foot of a record form', () => {
+  it('holds Save and Cancel, pinned to the bottom, last in the form', () => {
+    render(
+      <I18nextProvider i18n={createI18n('en')}>
+        <ConfirmProvider>
+          <UnsentProvider>
+            <SampleForm row={ROW} onSave={async () => undefined} onCancel={() => undefined} />
+          </UnsentProvider>
+        </ConfirmProvider>
+      </I18nextProvider>,
+    );
+    const form = screen.getByRole('form');
+    const foot = form.querySelector<HTMLElement>('[data-slot="form-footer"]');
+    expect(foot?.className).toContain('sticky');
+    expect(foot?.className).toContain('bottom-0');
+    expect(
+      foot === null
+        ? []
+        : within(foot)
+            .getAllByRole('button')
+            .map((one) => one.textContent),
+    ).toEqual([en.form.save, en.form.cancel]);
+    expect(form.lastElementChild).toBe(foot);
+  });
+});

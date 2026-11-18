@@ -1256,6 +1256,8 @@ export const uz: Texts<'one' | 'other'> = {
     tooMany_other: 'Soʻnggi 24 soatda {{n}} ta xabar yubordingiz. Keyinroq urinib koʻring.',
   },
   list: {
+    // The menu of a record's other actions in its side panel (owner, 17 November 2026).
+    moreActions: 'Boshqa amallar',
     search: 'Qidirish',
     all: 'Hammasi',
     columns: 'Ustunlar',
