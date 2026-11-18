@@ -13,62 +13,8 @@ import { createI18n } from '@/i18n/i18n';
 import { ru } from '@/i18n/locales/ru';
 import { uz } from '@/i18n/locales/uz';
 import { schoolDateText } from '@/lib/dates';
-import { edit, moreActionNames, panelAction, panelActionNames, panelActions, savedInPanel } from '@/testing/panel';
+import { savedInPanel, edit, panelAction, allActionNames } from '@/testing/panel';
 import { fakeApi, json, NORTH, renderApp, sessionOf, SOUTH } from '@/testing/render-app';
-
-
-/**
- * The form an action of the panel opens, by the action's words: a button of the header, a button
- * elsewhere in the panel (a part's own Edit), or an item of the "More" menu since the record's
- * actions moved to the panel's header (owner, 17 November 2026).
- */
-async function editVia(
-  panel: HTMLElement,
-  name: string,
-  text: string = en.form.edit,
-): Promise<HTMLElement> {
-  const row = panelActions(panel);
-  const found =
-    (row === null ? null : within(row).queryByRole('button', { name: text })) ??
-    within(panel).queryByRole('button', { name: text }) ??
-    (await menuAction(panel, text));
-  fireEvent.click(found);
-  return within(panel).findByRole('form', { name });
-}
-
-/**
- * An item of the panel's "More" menu by its words, in any language: the menu's button is found by
- * what it opens, not by its name.
- */
-async function menuAction(panel: HTMLElement, text: string): Promise<HTMLElement> {
-  const more = panelActions(panel)?.querySelector<HTMLElement>('[aria-haspopup="menu"]');
-  if (more == null) {
-    throw new Error(`The panel has no "More" menu for "${text}".`);
-  }
-  if (more.getAttribute('aria-expanded') !== 'true') {
-    fireEvent.click(more);
-  }
-  return within(await screen.findByRole('menu')).findByRole('menuitem', { name: text });
-}
-
-/**
- * An action of the record by its words, once the panel has drawn its actions: a button of the
- * header, or an item of the "More" menu, which is opened for it.
- */
-async function findAction(panel: HTMLElement, text: string): Promise<HTMLElement> {
-  const row = await waitFor(() => {
-    const found = panelActions(panel);
-    expect(found).not.toBeNull();
-    return found ?? panel;
-  });
-  return within(row).queryByRole('button', { name: text }) ?? menuAction(panel, text);
-}
-
-/** Every action of the record: the header's buttons, then the items of its "More" menu. */
-const allActions = async (panel: HTMLElement): Promise<string[]> => [
-  ...panelActionNames(panel),
-  ...(await moreActionNames(panel)),
-];
 
 const uid = (n: number): string => `0199f100-0000-7000-8000-${String(n).padStart(12, '0')}`;
 const PATH = '/people/students';
@@ -264,8 +210,8 @@ describe('the move to another branch', () => {
     });
     renderApp(`${PATH}?open=${STUDENT.id}`);
     const panel = await screen.findByRole('complementary', { name: 'Oʻtkir Rahimov' });
-    await findAction(panel, texts.move);
-    const form = await editVia(panel, texts.move, texts.move);
+    await panelAction(panel, texts.move);
+    const form = await edit(panel, texts.move, texts.move);
     const date = within(form).getByLabelText<HTMLInputElement>(texts.from);
     expect(date.value).toBe('2026-10-11');
     const branch = await within(form).findByLabelText<HTMLSelectElement>(texts.toBranch);
@@ -300,10 +246,10 @@ describe('the move to another branch', () => {
     renderApp(`${PATH}?open=${STUDENT.id}`);
     const panel = await screen.findByRole('complementary', { name: 'Oʻtkir Rahimov' });
     await waitFor(async () => {
-      expect(await allActions(panel)).toContain(texts.cancel);
+      expect(await allActionNames(panel)).toContain(texts.cancel);
     });
-    expect(await allActions(panel)).not.toContain(texts.move);
-    fireEvent.click(await findAction(panel, texts.cancel));
+    expect(await allActionNames(panel)).not.toContain(texts.move);
+    fireEvent.click(await panelAction(panel, texts.cancel));
     const dialog = await screen.findByRole('alertdialog', { name: texts.cancelTitle });
     expect(within(dialog).getByText('Oʻtkir Rahimov')).toBeDefined();
     fireEvent.click(within(dialog).getByRole('button', { name: texts.cancel }));
@@ -335,19 +281,19 @@ describe('the move to another branch', () => {
     renderApp(`${PATH}?open=${STUDENT.id}`);
     const panel = await screen.findByRole('complementary', { name: 'Oʻtkir Rahimov' });
     await waitFor(async () => {
-      expect(await allActions(panel)).toContain(texts.cancel);
+      expect(await allActionNames(panel)).toContain(texts.cancel);
     });
     const reads = () =>
       calls.filter((call) => call.route === `GET /api/people/students/${STUDENT.id}`).length;
     const before = reads();
-    fireEvent.click(await findAction(panel, texts.cancel));
+    fireEvent.click(await panelAction(panel, texts.cancel));
     const dialog = await screen.findByRole('alertdialog', { name: texts.cancelTitle });
     fireEvent.click(within(dialog).getByRole('button', { name: texts.cancel }));
     await waitFor(() => {
       expect(reads()).toBeGreaterThan(before);
     });
     await waitFor(async () => {
-      expect(await allActions(panel)).not.toContain(texts.cancel);
+      expect(await allActionNames(panel)).not.toContain(texts.cancel);
     });
     expect(within(panel).getByText(en.errors.branch_move_closed)).toBeDefined();
   });
@@ -368,7 +314,7 @@ describe('the move to another branch', () => {
           .replace('{{date}}', schoolDateText('2026-10-05', 'en')),
       ),
     ).toBeDefined();
-    expect(await allActions(panel)).not.toContain(texts.move);
+    expect(await allActionNames(panel)).not.toContain(texts.move);
   });
 
   it('draws the move on the History tab with the class it joined', async () => {

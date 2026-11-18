@@ -15,11 +15,12 @@ export const panelActionNames = (panel: HTMLElement): string[] =>
     .map((button) => button.textContent ?? '')
     .filter((text) => text !== '');
 
-/** The "More" button of the panel's actions, or `null` when every action is in the header. */
-export const moreButton = (panel: HTMLElement): HTMLElement | null => {
-  const row = panelActions(panel);
-  return row === null ? null : within(row).queryByRole('button', { name: en.list.moreActions });
-};
+/**
+ * The "More" button of the panel's actions, or `null` when every action is in the header. Found by
+ * what it opens, not by its name, so a test in any language finds it.
+ */
+export const moreButton = (panel: HTMLElement): HTMLElement | null =>
+  panelActions(panel)?.querySelector<HTMLElement>('[aria-haspopup="menu"]') ?? null;
 
 /** The words of the items of the "More" menu, in their order; the menu is closed again after. */
 export async function moreActionNames(panel: HTMLElement): Promise<string[]> {
@@ -39,16 +40,14 @@ export async function moreActionNames(panel: HTMLElement): Promise<string[]> {
   return names;
 }
 
-/**
- * An action of the record by its words: a button of the header, or an item of the "More"
- * menu, which is opened for it. Press it with `fireEvent.click`.
- */
-export async function panelAction(panel: HTMLElement, name: string): Promise<HTMLElement> {
-  const row = panelActions(panel);
-  const inRow = row === null ? null : within(row).queryByRole('button', { name });
-  if (inRow !== null) {
-    return inRow;
-  }
+/** The words of every action of the record: the header's buttons, then the items of "More". */
+export const allActionNames = async (panel: HTMLElement): Promise<string[]> => [
+  ...panelActionNames(panel),
+  ...(await moreActionNames(panel)),
+];
+
+/** The item `name` of the panel's "More" menu, which is opened for it. */
+async function menuItem(panel: HTMLElement, name: string): Promise<HTMLElement> {
   const more = moreButton(panel);
   if (more === null) {
     throw new Error(`The panel has no action "${name}".`);
@@ -57,6 +56,19 @@ export async function panelAction(panel: HTMLElement, name: string): Promise<HTM
     fireEvent.click(more);
   }
   return within(await screen.findByRole('menu')).findByRole('menuitem', { name });
+}
+
+/**
+ * An action of the record by its words, once the panel has drawn its actions: a button of the
+ * header, or an item of the "More" menu, which is opened for it. Press it with `fireEvent.click`.
+ */
+export async function panelAction(panel: HTMLElement, name: string): Promise<HTMLElement> {
+  const row = await waitFor(() => {
+    const found = panelActions(panel);
+    expect(found).not.toBeNull();
+    return found ?? panel;
+  });
+  return within(row).queryByRole('button', { name }) ?? menuItem(panel, name);
 }
 
 /**
@@ -77,7 +89,8 @@ export const actionsInHeader = (panel: HTMLElement): boolean => {
 /**
  * Edit, or the button `editText` of a part, pressed: its form, named
  * `name`. The actions are searched first, since a part may have a button
- * of the same words in a language ("Изменить", task 2.7c-2b-2b).
+ * of the same words in a language ("Изменить", task 2.7c-2b-2b); then the
+ * panel's other buttons, then the items of "More".
  */
 export async function edit(
   panel: HTMLElement,
@@ -86,7 +99,11 @@ export async function edit(
 ): Promise<HTMLElement> {
   const row = panelActions(panel);
   const inRow = row === null ? null : within(row).queryByRole('button', { name: editText });
-  fireEvent.click(inRow ?? within(panel).getByRole('button', { name: editText }));
+  fireEvent.click(
+    inRow ??
+      within(panel).queryByRole('button', { name: editText }) ??
+      (await menuItem(panel, editText)),
+  );
   return within(panel).findByRole('form', { name });
 }
 

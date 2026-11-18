@@ -4,61 +4,13 @@ import { describe, expect, it } from 'vitest';
 import { en } from '@/i18n/locales/en';
 import { ru } from '@/i18n/locales/ru';
 import { fakeApi, json, NORTH, renderApp, sessionOf, SOUTH } from '@/testing/render-app';
-import { actionsInHeader, edit, moreActionNames, panelAction, panelActionNames, panelActions, savedInPanel } from '@/testing/panel';
-
-
-/**
- * The form an action of the panel opens, by the action's words: a button of the header, a button
- * elsewhere in the panel (a part's own Edit), or an item of the "More" menu since the record's
- * actions moved to the panel's header (owner, 17 November 2026).
- */
-async function editVia(
-  panel: HTMLElement,
-  name: string,
-  text: string = en.form.edit,
-): Promise<HTMLElement> {
-  const row = panelActions(panel);
-  const found =
-    (row === null ? null : within(row).queryByRole('button', { name: text })) ??
-    within(panel).queryByRole('button', { name: text }) ??
-    (await menuAction(panel, text));
-  fireEvent.click(found);
-  return within(panel).findByRole('form', { name });
-}
-
-/**
- * An item of the panel's "More" menu by its words, in any language: the menu's button is found by
- * what it opens, not by its name.
- */
-async function menuAction(panel: HTMLElement, text: string): Promise<HTMLElement> {
-  const more = panelActions(panel)?.querySelector<HTMLElement>('[aria-haspopup="menu"]');
-  if (more == null) {
-    throw new Error(`The panel has no "More" menu for "${text}".`);
-  }
-  if (more.getAttribute('aria-expanded') !== 'true') {
-    fireEvent.click(more);
-  }
-  return within(await screen.findByRole('menu')).findByRole('menuitem', { name: text });
-}
-
-/**
- * An action of the record by its words, once the panel has drawn its actions: a button of the
- * header, or an item of the "More" menu, which is opened for it.
- */
-async function findAction(panel: HTMLElement, text: string): Promise<HTMLElement> {
-  const row = await waitFor(() => {
-    const found = panelActions(panel);
-    expect(found).not.toBeNull();
-    return found ?? panel;
-  });
-  return within(row).queryByRole('button', { name: text }) ?? menuAction(panel, text);
-}
-
-/** Every action of the record: the header's buttons, then the items of its "More" menu. */
-const allActions = async (panel: HTMLElement): Promise<string[]> => [
-  ...panelActionNames(panel),
-  ...(await moreActionNames(panel)),
-];
+import {
+  actionsInHeader,
+  panelActionNames,
+  panelActions,
+  savedInPanel,
+  edit,
+} from '@/testing/panel';
 
 const uid = (n: number): string => `0199f000-0000-7000-8000-${String(n).padStart(12, '0')}`;
 const PATH = '/people/parents';
@@ -280,7 +232,7 @@ describe('the page of a relative', () => {
     });
     renderApp(PATH);
     const panel = await openPanel();
-    const form = await editVia(
+    const form = await edit(
       panel,
       en.people.relatives.formLabel.replace('{{name}}', 'Dilfuza Rahimova'),
     );
@@ -311,7 +263,7 @@ describe('the page of a relative', () => {
     openList('academic_vice_principal');
     renderApp(PATH);
     const panel = await openPanel();
-    const form = await editVia(
+    const form = await edit(
       panel,
       en.people.relatives.formLabel.replace('{{name}}', 'Dilfuza Rahimova'),
     );
@@ -330,7 +282,7 @@ describe('the page of a relative', () => {
     expect(within(panel).queryByRole('form')).toBeNull();
     expect(panelActionNames(panel)).toEqual([en.form.edit]);
     expect(actionsInHeader(panel)).toBe(true);
-    const form = await editVia(
+    const form = await edit(
       panel,
       en.people.relatives.formLabel.replace('{{name}}', 'Dilfuza Rahimova'),
     );
@@ -354,7 +306,7 @@ describe('the page of a relative', () => {
     });
     renderApp(PATH);
     const panel = await openPanel();
-    const form = await editVia(
+    const form = await edit(
       panel,
       en.people.relatives.formLabel.replace('{{name}}', 'Dilfuza Rahimova'),
     );
@@ -419,7 +371,7 @@ describe('the page of a relative', () => {
 
     const refuse = async () => {
       const panel = await openPanel();
-      const form = await editVia(
+      const form = await edit(
         panel,
         en.people.relatives.formLabel.replace('{{name}}', 'Dilfuza Rahimova'),
       );
@@ -803,7 +755,7 @@ describe('the extra phones and the same person of a relative', () => {
     });
     renderApp(PATH);
     const panel = await openPanel();
-    const form = await editVia(
+    const form = await edit(
       panel,
       en.people.relatives.formLabel.replace('{{name}}', 'Dilfuza Rahimova'),
     );
@@ -870,7 +822,7 @@ describe('the extra phones and the same person of a relative', () => {
     );
     renderApp(PATH);
     const panel = await openPanel();
-    const form = await editVia(
+    const form = await edit(
       panel,
       en.people.relatives.formLabel.replace('{{name}}', 'Dilfuza Rahimova'),
     );
@@ -959,7 +911,7 @@ describe('the extra phones and the same person of a relative', () => {
       within(section).getByText(ru.people.relatives.staffIdOf.replace('{{staffId}}', 'S-260012')),
     ).toBeDefined();
     expect(await valueOf(panel, ru.people.relatives.extraPhones)).toBe('+998 93 555 66 77');
-    const form = await editVia(
+    const form = await edit(
       panel,
       ru.people.relatives.formLabel.replace('{{name}}', 'Dilfuza Rahimova'),
       ru.form.edit,
