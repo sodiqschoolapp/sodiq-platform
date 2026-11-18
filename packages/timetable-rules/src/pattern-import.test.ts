@@ -405,6 +405,33 @@ describe('importedBlocks', () => {
       }
     });
 
+    // Two invalid slots, still refused (code review of 5.18, should-fix 1 and 2).
+    it('refuses a slot of three sport halves: no pairing, each half of a two-row block told in part', () => {
+      const { blocks, problems } = importedBlocks(sports, [
+        lesson(3, 'pe-b', 1, 1),
+        lesson(4, 'sw-g', 1, 1),
+        lesson(5, 'gym-g', 1, 1),
+      ]);
+      expect(rowsOf(blocks)).toEqual([['gym-g']]);
+      expect(problems).toEqual([
+        { key: 3, code: 'pattern_import_block_part', missingRowIds: ['pe-g'] },
+        { key: 4, code: 'pattern_import_block_part', missingRowIds: ['sw-b'] },
+      ]);
+    });
+
+    it("pairs two girls' lessons of two subjects as the grid would, and the engine refuses them", () => {
+      const { blocks, problems } = importedBlocks(sports, [
+        lesson(3, 'pe-g', 1, 1),
+        lesson(4, 'gym-g', 1, 1),
+      ]);
+      expect(problems).toEqual([]);
+      expect(rowsOf(blocks)).toEqual([
+        newBlockOf(sports, 'pe-g', 'gym-g').lessons.map((one) => one.loadRowId),
+      ]);
+      // The girls in two lessons at once, the boys in none.
+      expect([...splitOrDouble(sports, blocks)].sort()).toEqual(['split_apart', 'student_double']);
+    });
+
     it('counts a held partner as present: nothing placed, nothing told, either way round', () => {
       const gymHeld = importedBlocks(
         sports,
