@@ -41,7 +41,12 @@ export class TelegramBot {
     return this.config.telegram !== undefined;
   }
 
-  async sendMessage(chatId: string, text: string, button?: MiniAppButton): Promise<SendOutcome> {
+  async sendMessage(
+    chatId: string,
+    text: string,
+    button?: MiniAppButton,
+    options: { html?: boolean } = {},
+  ): Promise<SendOutcome> {
     const telegram = this.config.telegram;
     if (telegram === undefined) {
       throw new TelegramUnavailable('The Telegram bot is not set up.');
@@ -51,7 +56,7 @@ export class TelegramBot {
       answer = await this.fetcher(`https://api.telegram.org/bot${telegram.botToken}/sendMessage`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(messageBody(chatId, text, button)),
+        body: JSON.stringify(messageBody(chatId, text, button, options.html === true)),
         signal: AbortSignal.timeout(10_000),
       });
     } catch {
@@ -73,10 +78,13 @@ export function messageBody(
   chatId: string,
   text: string,
   button?: MiniAppButton,
+  /** The text is Telegram HTML (`parse_mode: HTML`), its values escaped by the caller. */
+  html = false,
 ): Record<string, unknown> {
   return {
     chat_id: chatId,
     text,
+    ...(html ? { parse_mode: 'HTML' } : {}),
     ...(button === undefined
       ? {}
       : {

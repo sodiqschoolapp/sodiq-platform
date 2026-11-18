@@ -335,6 +335,8 @@ export class DigestService {
         // Review correction 1: the end is taken before the journal is read.
         until: now,
         from: previous?.period_until ?? link.linked_at,
+        /** No digest before: it covers what was saved since the chat was linked. */
+        first: previous === undefined,
         language: isLanguage(account.language) ? account.language : 'uz',
       };
     });
@@ -385,7 +387,7 @@ export class DigestService {
           .execute();
         return;
       }
-      const text = digestText(start.language, start.digestDate, parts.map(partOf));
+      const text = digestText(start.language, start.digestDate, parts.map(partOf), start.first);
       const messages = splitText(text);
       const button = this.button(start.language);
       for (const [index, message] of messages.entries()) {
@@ -393,6 +395,7 @@ export class DigestService {
           link.telegram_user_id,
           message,
           index === messages.length - 1 ? button : undefined,
+          { html: true },
         );
         if (outcome === 'blocked') {
           const now = await transactionMoment(transaction);

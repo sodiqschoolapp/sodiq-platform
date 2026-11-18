@@ -24,6 +24,7 @@ interface Sent {
   chat: string;
   text: string;
   button: boolean;
+  parseMode: string | undefined;
 }
 
 // All names, chats and tokens are invented. Task 11.5, pull request #299: the parents' digest
@@ -53,16 +54,22 @@ describe('the parents digest', () => {
       chat_id: string;
       text: string;
       reply_markup?: unknown;
+      parse_mode?: string;
     };
     if (answer.ok) {
       sent.push({
         chat: String(body.chat_id),
         text: body.text,
         button: body.reply_markup !== undefined,
+        parseMode: body.parse_mode,
       });
     }
     return Promise.resolve(answer);
   };
+
+  /** A list line of the digest: `• <date>, <subject>[, <work>] — <value>`, on one line. */
+  const listed = (date: string, value: string): RegExp =>
+    new RegExp(`• ${date}, [^\\n]* — ${value}(?:\\n|$)`, 'u');
 
   const messagesTo = (chat: string): string[] =>
     sent.filter((one) => one.chat === chat).map((one) => one.text);
@@ -420,8 +427,10 @@ describe('the parents digest', () => {
     expect(more).toEqual([]);
     expect(text).toContain('Kamron');
     // The summary: three marked lessons (present, skipped, late), one not marked.
-    expect(text).toMatch(/Attendance: attended 2 of 3 lessons\.|Davomat: 3 ta darsdan 2 tasiga/u);
+    expect(text).toMatch(/Attended 2 of 3 lessons\.|3 ta darsdan 2 tasiga keldi\./u);
     expect(sent.find((one) => one.chat === motherA.chat)?.button).toBe(true);
+    // Telegram HTML: the bold headings, every value escaped by the builder.
+    expect(sent.find((one) => one.chat === motherA.chat)?.parseMode).toBe('HTML');
   });
 
   it('writes in the parent language, Uzbek until chosen', () => {
@@ -460,8 +469,8 @@ describe('the parents digest', () => {
     const before = messagesTo(motherA.chat).length;
     await run('2026-10-20T19:00:00+05:00');
     const text = messagesTo(motherA.chat).slice(before).join('\n');
-    expect(text).toContain('5/5 (corrected)');
-    expect(text).toContain('19 Oct: absent');
+    expect(text).toContain('<b>5/5</b> (corrected)');
+    expect(text).toMatch(listed('19 Oct', 'absent'));
     expect(text).not.toContain('12/30');
     expect(text).not.toContain('Good start, parents');
     // The next day: nothing saved, no lesson held (the class has lessons on Mondays): no message.
@@ -487,8 +496,8 @@ describe('the parents digest', () => {
     const before = messagesTo(motherA.chat).length;
     await run('2026-10-23T19:00:00+05:00');
     const text = messagesTo(motherA.chat).slice(before).join('\n');
-    expect(text).toContain('19 Oct: removed');
-    expect(text).not.toMatch(/: absent|: late/u);
+    expect(text).toMatch(listed('19 Oct', 'removed'));
+    expect(text).not.toMatch(/ — (?:absent|late)/u);
     expect(text).not.toContain('DIAGNOSIS');
   });
 
@@ -528,10 +537,10 @@ describe('the parents digest', () => {
     const before = messagesTo(motherA.chat).length;
     await run('2026-10-27T19:00:00+05:00');
     const text = messagesTo(motherA.chat).slice(before).join('\n');
-    expect(text.match(/12 Oct: removed/gu)?.length).toBe(1);
+    expect(text.match(new RegExp(listed('12 Oct', 'removed'), 'gu'))?.length).toBe(1);
     expect(text).not.toContain('9/10');
     expect(text).not.toContain('NO-score-comment');
-    expect(text).toContain('«Good start, edited» (corrected)');
+    expect(text).toContain('<i>Good start, edited</i> (corrected)');
   });
 
   // Review correction 1: a save whose moment lies before the end of the previous digest, committed
@@ -543,7 +552,7 @@ describe('the parents digest', () => {
     const before = messagesTo(motherA.chat).length;
     await run('2026-10-28T19:00:00+05:00');
     const text = messagesTo(motherA.chat).slice(before).join('\n');
-    expect(text).toContain('12 Oct: late (corrected)');
+    expect(text).toMatch(listed('12 Oct', 'late \\(corrected\\)'));
     expect(text).not.toContain('Good start');
   });
 
@@ -795,10 +804,10 @@ describe('the parents digest', () => {
       const layloPart = text.slice(text.indexOf('Laylo'));
       expect(text.indexOf('Kamron')).toBeGreaterThan(-1);
       expect(text.indexOf('Laylo')).toBeGreaterThan(text.indexOf('Kamron'));
-      expect(kamronPart).toContain('9 Nov: late');
-      expect(kamronPart).not.toMatch(/: absent/u);
-      expect(layloPart).toContain('9 Nov: absent');
-      expect(layloPart).not.toMatch(/: late/u);
+      expect(kamronPart).toMatch(listed('9 Nov', 'late'));
+      expect(kamronPart).not.toMatch(/ — absent/u);
+      expect(layloPart).toMatch(listed('9 Nov', 'absent'));
+      expect(layloPart).not.toMatch(/ — late/u);
       expect(text).not.toContain('Bobur');
       expect(text).not.toContain('Sardor');
     });
@@ -833,7 +842,7 @@ describe('the parents digest', () => {
       expect(text).toContain('Laylo');
       expect(text).not.toContain('Kamron');
       // A sent mark changed to another mark (must-fix 6): listed again, "corrected".
-      expect(text).toContain('9 Nov: late (corrected)');
+      expect(text).toMatch(listed('9 Nov', 'late \\(corrected\\)'));
       const row = await digestOf(motherA.accountId, '2026-11-13');
       expect(row?.status).toBe('delivered');
       const parts = await t.database.migrator
@@ -869,7 +878,7 @@ describe('the parents digest', () => {
       const before = messagesTo(motherA.chat).length;
       await run('2026-11-16T19:01:00+05:00');
       const text = messagesTo(motherA.chat).slice(before).join('\n');
-      expect(text).not.toContain('16 Nov: absent');
+      expect(text).not.toMatch(listed('16 Nov', 'absent'));
     });
 
     // Must-fix 6: a retry held by the quiet hours; the 8th attempt failed, its period left open.
@@ -945,8 +954,10 @@ describe('the parents digest', () => {
       const before = messagesTo(motherA.chat).length;
       await run('2026-11-20T19:00:00+05:00');
       const text = messagesTo(motherA.chat).slice(before).join('\n');
-      // The score 12/30 and its comment, each once.
-      expect(text.match(/12 Oct: removed/gu)?.length).toBe(2);
+      // The score 12/30 and its comment, each once: the score in the grades, the comment under
+      // its lesson line in the comments.
+      expect(text.match(new RegExp(listed('12 Oct', 'removed'), 'gu'))?.length).toBe(1);
+      expect(text.match(/\n• 12 Oct, [^\n—]*\n— comment removed(?:\n|$)/gu)?.length).toBe(1);
       expect(text).not.toContain('12/30');
       const after = messagesTo(motherA.chat).length;
       await run('2026-11-21T19:00:00+05:00');
@@ -1028,6 +1039,6 @@ describe('the parents digest', () => {
     await run('2026-11-02T19:00:00+05:00');
     const text = messagesTo(father.chat).join('\n');
     expect(text).toContain('Nodir');
-    expect(text).toContain('26 okt: kelmagan');
+    expect(text).toMatch(listed('26-okt', 'kelmagan'));
   });
 });

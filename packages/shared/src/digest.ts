@@ -121,15 +121,21 @@ export type DigestLog = z.infer<typeof digestLogSchema>;
 /**
  * The texts of the digest message (`10`, Language: "Messages come from templates in the three
  * languages"), in the parent's language. A child is named by first name and class only.
+ *
+ * The message is sent as Telegram HTML: the builder (`digest-message.ts` of the API) adds the bold
+ * headings and escapes every value, so no text here holds markup.
  */
 export interface DigestTexts {
-  title: (date: string) => string;
+  /** The first line: the school. */
+  title: string;
+  /** The second line: the date of the digest and what it covers. */
+  subtitle: (date: string, first: boolean) => string;
   attendedAllOnTime: (lessons: number) => string;
   attendedAllLate: (lessons: number, late: number) => string;
   attendedSome: (attended: number, lessons: number) => string;
   notYetEntered: (lessons: number) => string;
   noLessons: string;
-  absencesHeading: string;
+  attendanceHeading: string;
   gradesHeading: string;
   commentsHeading: string;
   absent: string;
@@ -141,26 +147,78 @@ export interface DigestTexts {
   ratingExam: string;
   corrected: string;
   removed: string;
-  months: readonly string[];
+  commentRemoved: string;
+  /** A lesson date in a list: `day` 1 to 31, `month` 0 to 11. */
+  shortDate: (day: number, month: number) => string;
+  /** The date of the digest in the subtitle. */
+  longDate: (day: number, month: number) => string;
   openPortal: string;
 }
 
+/** Russian plural forms: one (1, 21), few (2 to 4, 22), many (5 to 20, 25). */
+function ruPlural(count: number, one: string, few: string, many: string): string {
+  const tens = count % 100;
+  const units = count % 10;
+  if (tens >= 11 && tens <= 14) return many;
+  if (units === 1) return one;
+  if (units >= 2 && units <= 4) return few;
+  return many;
+}
+
+const uzShort = [
+  'yan',
+  'fev',
+  'mar',
+  'apr',
+  'may',
+  'iyn',
+  'iyl',
+  'avg',
+  'sen',
+  'okt',
+  'noy',
+  'dek',
+];
+const uzLong = [
+  'yanvar',
+  'fevral',
+  'mart',
+  'aprel',
+  'may',
+  'iyun',
+  'iyul',
+  'avgust',
+  'sentabr',
+  'oktabr',
+  'noyabr',
+  'dekabr',
+];
+
 const uz: DigestTexts = {
-  title: (date) => `Sodiq maktabi: ${date} holatiga koʻra xabarnoma`,
+  title: 'Sodiq maktabi',
+  subtitle: (date, first) =>
+    `Xabarnoma, ${date} · ${first ? 'Telegram ulanganidan beri' : 'oldingi xabarnomadan beri'}`,
   attendedAllOnTime: (lessons) =>
-    `Davomat: barcha ${String(lessons)} ta darsga oʻz vaqtida kelgan.`,
+    lessons === 1
+      ? 'Darsga oʻz vaqtida keldi.'
+      : `Barcha ${String(lessons)} ta darsga oʻz vaqtida keldi.`,
   attendedAllLate: (lessons, late) =>
-    `Davomat: barcha ${String(lessons)} ta darsga kelgan, ${String(late)} tasiga kechikkan.`,
+    lessons === 1
+      ? 'Darsga keldi, lekin kechikdi.'
+      : `Barcha ${String(lessons)} ta darsga keldi, ${String(late)} tasiga kechikdi.`,
   attendedSome: (attended, lessons) =>
-    `Davomat: ${String(lessons)} ta darsdan ${String(attended)} tasiga kelgan.`,
-  notYetEntered: (lessons) =>
-    `Davomat: ${String(lessons)} ta dars boʻldi, davomat hali kiritilmagan.`,
-  noLessons: 'Davomat: bu davrda dars boʻlmadi.',
-  absencesHeading: 'Qoldirilgan va kechikilgan darslar:',
-  gradesHeading: 'Baholar:',
-  commentsHeading: 'Izohlar:',
+    attended === 0
+      ? lessons === 1
+        ? 'Darsga kelmadi.'
+        : `${String(lessons)} ta darsning hech biriga kelmadi.`
+      : `${String(lessons)} ta darsdan ${String(attended)} tasiga keldi.`,
+  notYetEntered: (lessons) => `${String(lessons)} ta dars boʻldi, davomat hali kiritilmagan.`,
+  noLessons: 'Bu davrda dars boʻlmadi.',
+  attendanceHeading: 'Davomat',
+  gradesHeading: 'Baholar',
+  commentsHeading: 'Oʻqituvchi izohlari',
   absent: 'kelmagan',
-  skipped: 'maktabda, lekin darsga kirmagan',
+  skipped: 'maktabda boʻlgan, lekin darsga kirmagan',
   late: 'kechikkan',
   present: 'kelgan',
   classwork: (position) => `Sinf ishi ${String(position)}`,
@@ -168,51 +226,136 @@ const uz: DigestTexts = {
   ratingExam: 'Reyting imtihoni',
   corrected: 'tuzatildi',
   removed: 'oʻchirildi',
-  months: ['yan', 'fev', 'mar', 'apr', 'may', 'iyn', 'iyl', 'avg', 'sen', 'okt', 'noy', 'dek'],
+  commentRemoved: 'izoh oʻchirildi',
+  shortDate: (day, month) => `${String(day)}-${uzShort[month] ?? ''}`,
+  longDate: (day, month) => `${String(day)}-${uzLong[month] ?? ''}`,
   openPortal: 'Portalni ochish',
 };
 
+const ruShort = [
+  'янв.',
+  'фев.',
+  'мар.',
+  'апр.',
+  'мая',
+  'июн.',
+  'июл.',
+  'авг.',
+  'сен.',
+  'окт.',
+  'нояб.',
+  'дек.',
+];
+const ruLong = [
+  'января',
+  'февраля',
+  'марта',
+  'апреля',
+  'мая',
+  'июня',
+  'июля',
+  'августа',
+  'сентября',
+  'октября',
+  'ноября',
+  'декабря',
+];
+const ruLessons = (count: number): string => ruPlural(count, 'урок', 'урока', 'уроков');
+
 const ru: DigestTexts = {
-  title: (date) => `Школа Sodiq: сводка на ${date}`,
-  attendedAllOnTime: (lessons) => `Посещаемость: все ${String(lessons)} уроков вовремя.`,
+  title: 'Школа Sodiq',
+  subtitle: (date, first) =>
+    `Сводка на ${date} · ${first ? 'с момента подключения Telegram' : 'с прошлой сводки'}`,
+  attendedAllOnTime: (lessons) =>
+    lessons === 1
+      ? 'Урок посещён, без опоздания.'
+      : `Посещены все ${String(lessons)} ${ruLessons(lessons)}, без опозданий.`,
   attendedAllLate: (lessons, late) =>
-    `Посещаемость: все ${String(lessons)} уроков, опозданий: ${String(late)}.`,
+    lessons === 1
+      ? 'Урок посещён, с опозданием.'
+      : `Посещены все ${String(lessons)} ${ruLessons(lessons)}, опозданий: ${String(late)}.`,
   attendedSome: (attended, lessons) =>
-    `Посещаемость: ${String(attended)} из ${String(lessons)} уроков.`,
-  notYetEntered: (lessons) =>
-    `Посещаемость: прошло уроков: ${String(lessons)}, отметки ещё не внесены.`,
-  noLessons: 'Посещаемость: в этот период уроков не было.',
-  absencesHeading: 'Пропуски и опоздания:',
-  gradesHeading: 'Оценки:',
-  commentsHeading: 'Комментарии:',
-  absent: 'отсутствовал(а)',
-  skipped: 'был(а) в школе, но не пришёл(ла) на урок',
-  late: 'опоздал(а)',
-  present: 'присутствовал(а)',
+    attended === 0
+      ? lessons === 1
+        ? 'Урок пропущен.'
+        : `Пропущены все ${String(lessons)} ${ruLessons(lessons)}.`
+      : `Посещено ${String(attended)} из ${String(lessons)} ${ruPlural(lessons, 'урока', 'уроков', 'уроков')}.`,
+  notYetEntered: (lessons) => `Проведено уроков: ${String(lessons)}, посещаемость ещё не внесена.`,
+  noLessons: 'В этот период уроков не было.',
+  attendanceHeading: 'Посещаемость',
+  gradesHeading: 'Оценки',
+  commentsHeading: 'Комментарии учителей',
+  absent: 'отсутствие',
+  skipped: 'был(а) в школе, но не на уроке',
+  late: 'опоздание',
+  present: 'присутствие',
   classwork: (position) => `Классная работа ${String(position)}`,
   homework: (position) => `Домашняя работа ${String(position)}`,
   ratingExam: 'Рейтинговый экзамен',
   corrected: 'исправлено',
   removed: 'удалено',
-  months: ['янв', 'фев', 'мар', 'апр', 'мая', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'],
+  commentRemoved: 'комментарий удалён',
+  shortDate: (day, month) => `${String(day)} ${ruShort[month] ?? ''}`,
+  longDate: (day, month) => `${String(day)} ${ruLong[month] ?? ''}`,
   openPortal: 'Открыть портал',
 };
 
+const enShort = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
+];
+const enLong = [
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
+];
+const enLessons = (count: number): string => (count === 1 ? 'lesson' : 'lessons');
+
 const en: DigestTexts = {
-  title: (date) => `Sodiq School: digest of ${date}`,
-  attendedAllOnTime: (lessons) => `Attendance: attended all ${String(lessons)} lessons on time.`,
+  title: 'Sodiq School',
+  subtitle: (date, first) =>
+    `Digest of ${date} · ${first ? 'since Telegram was connected' : 'since the previous digest'}`,
+  attendedAllOnTime: (lessons) =>
+    lessons === 1
+      ? 'Attended the lesson on time.'
+      : `Attended all ${String(lessons)} lessons on time.`,
   attendedAllLate: (lessons, late) =>
-    `Attendance: attended all ${String(lessons)} lessons, ${String(late)} late.`,
+    lessons === 1
+      ? 'Attended the lesson, but was late.'
+      : `Attended all ${String(lessons)} lessons; late for ${String(late)}.`,
   attendedSome: (attended, lessons) =>
-    `Attendance: attended ${String(attended)} of ${String(lessons)} lessons.`,
+    attended === 0
+      ? lessons === 1
+        ? 'Missed the lesson.'
+        : `Missed all ${String(lessons)} lessons.`
+      : `Attended ${String(attended)} of ${String(lessons)} ${enLessons(lessons)}.`,
   notYetEntered: (lessons) =>
-    `Attendance: ${String(lessons)} lessons held, attendance not yet entered.`,
-  noLessons: 'Attendance: no lessons in this period.',
-  absencesHeading: 'Absences and late arrivals:',
-  gradesHeading: 'Grades:',
-  commentsHeading: 'Comments:',
+    `${String(lessons)} ${enLessons(lessons)} held; attendance not entered yet.`,
+  noLessons: 'No lessons in this period.',
+  attendanceHeading: 'Attendance',
+  gradesHeading: 'Grades',
+  commentsHeading: 'Teachers’ comments',
   absent: 'absent',
-  skipped: 'at school but did not come to the lesson',
+  skipped: 'at school but missed the lesson',
   late: 'late',
   present: 'present',
   classwork: (position) => `Classwork ${String(position)}`,
@@ -220,7 +363,9 @@ const en: DigestTexts = {
   ratingExam: 'Rating exam',
   corrected: 'corrected',
   removed: 'removed',
-  months: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+  commentRemoved: 'comment removed',
+  shortDate: (day, month) => `${String(day)} ${enShort[month] ?? ''}`,
+  longDate: (day, month) => `${String(day)} ${enLong[month] ?? ''}`,
   openPortal: 'Open the portal',
 };
 

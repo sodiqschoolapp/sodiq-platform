@@ -2,6 +2,18 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 18 November 2026: the parents' digest laid out for reading
+
+Not a task of the build plan: the owner found the digest message hard to read (screenshot, 18 November 2026). The content is unchanged (`10`, What it holds); only its layout and wording.
+
+- The message is sent as Telegram HTML (`parse_mode: HTML`, digest only; announcements and the move notice stay plain text). The school's name and each section heading are bold, sections are parted by a blank line, the child's name is bold with the class beside it, and a score is bold. Every value a person typed (a name, a class, a comment) is escaped (`escapeHtml`).
+- The second line gives the date in full and what the digest covers: "since the previous digest", or "since Telegram was connected" for the first one, so a lesson of an earlier date listed because it was entered late reads as such.
+- The attendance summary sits under the "Attendance" heading with its absences and late arrivals below it, so there is no separate "Absences and late arrivals" heading. Each list line starts with the date ("• 10-noy, Geografiya — kelmagan"), in the order the list is sorted.
+- Comments of the same lesson (date and subject) are grouped under one line, each on its own line in italics; a teacher's line breaks become one space.
+- The summary says one lesson in the singular ("Darsga keldi, lekin kechikdi", not "barcha 1 ta darsga"); Russian counts take their plural form (`ruPlural`); Russian statuses are neutral nouns ("отсутствие", "опоздание") in place of "отсутствовал(а)".
+- With two or more children, a thin rule stands above every child's name after the first. A split at the 4096-character limit never starts a message with that rule and never cuts a tag or an entity (a line over the limit loses its italics).
+- Tests: `digest-message.test.ts` (layout, plurals, escaping, the rule, splitting); `digest.database.test.ts` reads list lines by `listed(date, value)` and checks `parse_mode`.
+
 ## 18 November 2026: design review step 2, a record's actions in its side panel's header
 
 Not a task of the build plan: the last building block of step 2 (owner, 17 November 2026; the look approved from screenshots of the student record on 18 November).
