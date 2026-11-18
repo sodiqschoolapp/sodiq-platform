@@ -2,6 +2,17 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 18 November 2026: design review step 2, a record's actions in its side panel's header
+
+Not a task of the build plan: the last building block of step 2 (owner, 17 November 2026; the look approved from screenshots of the student record on 18 November).
+
+- `PanelActions` draws into the header of its `SidePanel`, under the title: the primary action, at most two secondary ones, and the rest and every danger action in a "More actions" menu (`list.moreActions`), the danger ones last. No panel changed its code. A part the menu cannot hold (not a `Button` with an action) stays in the header. Outside a side panel the actions stay where the page draws them.
+- After a form opened from "More" closes, the focus goes back to "More" (`data-holds`, `usePanelEditing`).
+- `RecordForm`'s Save and Cancel sit in a footer pinned to the bottom of the window; what the browser scrolls into view, a field reached with Tab among them, stops above it (`scroll-padding-bottom`, WCAG 2.2, 2.4.11).
+- Found by the browser tests: Escape in the open menu also closed the panel; `SidePanel` now leaves an Escape in a menu to the menu.
+- Tests: the side-panel tests of 20 screens read the actions in the header and in "More" (`testing/panel.ts`: `panelAction`, `allActionNames`, `moreActionNames`, `actionsInHeader`; browser tests `panelAction`, `allPanelActions` in `e2e/steps.ts`); `pages.spec.ts` checks every panel has its actions in its header.
+- Left: `timetable-absence-substitution.spec.ts` failed once in a local run of all panel browser tests in one worker (the draft had a reason it could not be published, left by an earlier test); it passes alone and touches no panel.
+
 ## 18 November 2026: task 5.19, a plan window may open from the branch's first timetable version
 
 - **Built**: `coverOf` of `plan-windows.service.ts` (the open route and the windows list): a quarter is published when it has a school day on or after the earliest published version start of the year (`firstPublishedStartOf`, `plan-read.ts`); the list answers `coveredFrom` when the cover starts after the quarter's first school day, and the windows page shows "Timetable from" with it (three languages).

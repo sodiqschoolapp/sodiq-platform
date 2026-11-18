@@ -9,6 +9,7 @@ import {
   heading,
   languageChooser,
   signIn,
+  panelAction,
 } from './steps';
 import { codeNow } from './totp';
 
@@ -298,7 +299,7 @@ test('every page of Phases 0 to 2 is drawn with the design system in light, dark
       ? openFirstRecord(page)
       : page.getByRole('button', { name: row, exact: true }).first().click());
     const panel = page.getByRole('complementary');
-    await panel.getByRole('button', { name: opener, exact: true }).click();
+    await (await panelAction(panel, opener)).click();
     // Task 3.5b, H22: with nobody holding the Tutor role, Give Tutor says what to do instead of a form.
     await expect(
       panel

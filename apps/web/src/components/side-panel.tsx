@@ -63,6 +63,11 @@ export function SidePanel({ title, recordKey, onClose, children }: SidePanelProp
       if (event.key !== 'Escape' || event.defaultPrevented) {
         return;
       }
+      // Escape in a menu (the record's "More") closes the menu only: the menu does not mark the
+      // key as handled, and the panel closed with it (found by the browser tests, 18 November 2026).
+      if (event.target instanceof Element && event.target.closest('[role="menu"]') !== null) {
+        return;
+      }
       const outside =
         event.target instanceof Node && panel.current?.contains(event.target) !== true;
       if (isField(event.target)) {

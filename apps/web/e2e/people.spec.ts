@@ -4,7 +4,14 @@ import { expect, test, type Page } from '@playwright/test';
 import { en } from '../src/i18n/locales/en';
 import { accountOf } from './accounts';
 import { jpegSizeOf, pngOf } from './photos';
-import { changeFirstPassword, heading, languageChooser, signIn } from './steps';
+import {
+  changeFirstPassword,
+  heading,
+  languageChooser,
+  signIn,
+  panelAction,
+  allPanelActions,
+} from './steps';
 import { codeNow } from './totp';
 
 // docs/spec/04-people.md, Teacher and staff record; task 2.2a. An Academic
@@ -433,7 +440,7 @@ test('an Academic Vice Principal records a leaving, undoes it, brings the studen
 
   // Each status form opens behind its button at the bottom of the panel (task 2.7c-2b-2b).
   async function leave(lastDay: string) {
-    await panel.getByRole('button', { name: texts.leaveTitle, exact: true }).click();
+    await (await panelAction(panel, texts.leaveTitle)).click();
     const form = panel.getByRole('form', { name: texts.leaveTitle });
     await form.getByLabel(texts.lastDay, { exact: true }).fill(lastDay);
     await form.getByLabel(texts.reason, { exact: true }).fill('The family moved to Samarkand.');
@@ -449,18 +456,18 @@ test('an Academic Vice Principal records a leaving, undoes it, brings the studen
   await expect(row).toContainText(texts.inactiveFrom.replace('{{date}}', '').trim());
   await panel.getByRole('heading', { name: texts.statusTitle }).scrollIntoViewIfNeeded();
   await leavingScreenshot(page, 'scheduled');
-  await panel.getByRole('button', { name: texts.cancelLeaving, exact: true }).click();
+  await (await panelAction(panel, texts.cancelLeaving)).click();
   await page
     .getByRole('alertdialog', { name: texts.cancelConfirmTitle })
     .getByRole('button', { name: texts.cancelLeaving, exact: true })
     .click();
-  await expect(panel.getByRole('button', { name: texts.leaveTitle, exact: true })).toBeVisible();
+  await expect.poll(() => allPanelActions(panel)).toContain(texts.leaveTitle);
   await expect(row).not.toContainText(texts.inactiveFrom.replace('{{date}}', '').trim());
 
   // In the past: inactive now; undone with a reason.
   await leave(daysAgo(10));
   await expect(row).toContainText(texts.statuses.inactive);
-  await panel.getByRole('button', { name: texts.undoTitle, exact: true }).click();
+  await (await panelAction(panel, texts.undoTitle)).click();
   const undo = panel.getByRole('form', { name: texts.undoTitle });
   await undo.getByLabel(texts.reason, { exact: true }).fill('Entered for the wrong student.');
   await undo.getByRole('button', { name: en.form.save, exact: true }).click();
@@ -469,7 +476,7 @@ test('an Academic Vice Principal records a leaving, undoes it, brings the studen
   // Again, then back with a new contract: the same UID, every row kept.
   await leave(daysAgo(10));
   await expect(row).toContainText(texts.statuses.inactive);
-  await panel.getByRole('button', { name: texts.returnTitle, exact: true }).click();
+  await (await panelAction(panel, texts.returnTitle)).click();
   const back = panel.getByRole('form', { name: texts.returnTitle });
   await back.getByLabel(texts.returnFrom, { exact: true }).fill(daysAgo(3));
   await back.getByLabel(texts.contractNumber, { exact: true }).fill('E2E-LEAVE-1R');
@@ -498,7 +505,7 @@ test('an Academic Vice Principal records a leaving, undoes it, brings the studen
   await add('9998002', 'Yoqubovaa', 'E2E-LEAVE-2');
   await page.getByRole('button', { name: 'Yoqubovaa Madina', exact: true }).click();
   const twice = page.getByRole('complementary', { name: 'Madina Yoqubovaa' });
-  await twice.getByRole('button', { name: texts.deleteAction, exact: true }).click();
+  await (await panelAction(twice, texts.deleteAction)).click();
   const remove = twice.getByRole('form', { name: texts.deleteTitle });
   await remove.getByLabel(texts.reason, { exact: true }).fill('Created twice by mistake.');
   await remove.getByRole('button', { name: en.form.save, exact: true }).click();

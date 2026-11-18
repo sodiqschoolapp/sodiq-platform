@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { en } from '../src/i18n/locales/en';
 import { accountOf } from './accounts';
-import { changeFirstPassword, heading, languageChooser, signIn } from './steps';
+import { changeFirstPassword, heading, languageChooser, signIn, panelAction } from './steps';
 import { codeNow } from './totp';
 
 async function signedIn(page: Page) {
@@ -44,7 +44,7 @@ test('the Academic Vice Principal records a late class move, voids the old journ
   await expect(heading(page, texts.title)).toBeVisible();
   await page.getByRole('button', { name: 'Qodirova Dilfuza', exact: true }).click();
   const panel = page.getByRole('complementary', { name: 'Dilfuza Qodirova' });
-  await panel.getByRole('button', { name: texts.moves.moveClass, exact: true }).click();
+  await (await panelAction(panel, texts.moves.moveClass)).click();
   const form = panel.getByRole('form', { name: texts.moves.moveClass });
   await form.getByLabel(texts.moves.toClass, { exact: true }).selectOption({ label: '7 Leeds' });
   await form.getByLabel(texts.moves.from, { exact: true }).fill(daysAgo(6));

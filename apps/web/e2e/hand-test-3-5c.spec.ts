@@ -1,7 +1,14 @@
 import { expect, test } from '@playwright/test';
 import { en } from '../src/i18n/locales/en';
 import { accountOf } from './accounts';
-import { changeFirstPassword, heading, languageChooser, signIn } from './steps';
+import {
+  changeFirstPassword,
+  heading,
+  languageChooser,
+  signIn,
+  panelAction,
+  allPanelActions,
+} from './steps';
 import { codeNow } from './totp';
 
 // Task 3.5c (issue #105, Part D), with an account of its own (seeded in "Hand
@@ -43,7 +50,7 @@ test('a cancelled leaving and a changed and cancelled move leave one stay in the
   const panel = page.getByRole('complementary', { name: 'Sardor Usmonov' });
 
   // A leaving with its last day next week, then its cancel.
-  await panel.getByRole('button', { name: texts.leaveTitle, exact: true }).click();
+  await (await panelAction(panel, texts.leaveTitle)).click();
   const leaving = panel.getByRole('form', { name: texts.leaveTitle });
   await leaving.getByLabel(texts.lastDay, { exact: true }).fill(inDays(7));
   await leaving.getByLabel(texts.reason, { exact: true }).fill('The family moved to Navoiy.');
@@ -52,15 +59,15 @@ test('a cancelled leaving and a changed and cancelled move leave one stay in the
     .getByRole('alertdialog', { name: texts.leaveConfirmTitle })
     .getByRole('button', { name: texts.leaveAction, exact: true })
     .click();
-  await panel.getByRole('button', { name: texts.cancelLeaving, exact: true }).click();
+  await (await panelAction(panel, texts.cancelLeaving)).click();
   await page
     .getByRole('alertdialog', { name: texts.cancelConfirmTitle })
     .getByRole('button', { name: texts.cancelLeaving, exact: true })
     .click();
-  await expect(panel.getByRole('button', { name: texts.leaveTitle, exact: true })).toBeVisible();
+  await expect.poll(() => allPanelActions(panel)).toContain(texts.leaveTitle);
 
   // A move to 7 Princeton in six days, its date changed to thirteen, then cancelled.
-  await panel.getByRole('button', { name: moves.moveClass, exact: true }).click();
+  await (await panelAction(panel, moves.moveClass)).click();
   const move = panel.getByRole('form', { name: moves.moveClass });
   await move.getByLabel(moves.toClass, { exact: true }).selectOption({ label: '7 Princeton' });
   await move.getByLabel(moves.from, { exact: true }).fill(inDays(6));
@@ -74,7 +81,7 @@ test('a cancelled leaving and a changed and cancelled move leave one stay in the
   await change.getByLabel(moves.from, { exact: true }).fill(inDays(13));
   await change.getByRole('button', { name: en.form.save, exact: true }).click();
   const cancel = moves.cancel.replace('{{target}}', target);
-  await panel.getByRole('button', { name: cancel, exact: true }).click();
+  await (await panelAction(panel, cancel)).click();
   await page
     .getByRole('alertdialog', { name: moves.cancelTitle })
     .getByRole('button', { name: cancel, exact: true })

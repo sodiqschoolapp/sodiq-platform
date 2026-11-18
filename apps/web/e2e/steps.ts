@@ -1,6 +1,6 @@
 import { mkdirSync } from 'node:fs';
 import path from 'node:path';
-import { expect, type Page } from '@playwright/test';
+import { expect, type Locator, type Page } from '@playwright/test';
 import { en } from '../src/i18n/locales/en';
 import type { ru } from '../src/i18n/locales/ru';
 import type { uz } from '../src/i18n/locales/uz';
@@ -98,7 +98,7 @@ interface Measured {
    * Each visible side panel: its name, the words of its primary buttons, and
    * what of it follows its bottom row of actions (task 2.7c-2b-1).
    */
-  panels: { name: string; primaries: string[]; afterActions: string[] }[];
+  panels: { name: string; primaries: string[]; beforeActions: string[] }[];
 }
 
 /**
@@ -155,10 +155,13 @@ export async function checkPage(
             primaries: [...panel.querySelectorAll('[data-variant="default"], a[class*="bg-primary"]')]
               .filter(visible)
               .map((button) => (button.getAttribute('aria-label') ?? button.textContent ?? '').trim()),
-            afterActions: actions === undefined
+            // What stands between the title row and the actions: nothing, since the actions are in
+            // the panel's header (owner, 17 November 2026). The title, its Close and their icons
+            // come before them.
+            beforeActions: actions === undefined
               ? []
               : [...panel.querySelectorAll('*')]
-                  .filter((element) => visible(element) && !actions.contains(element) && (actions.compareDocumentPosition(element) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0)
+                  .filter((element) => visible(element) && !actions.contains(element) && !element.contains(actions) && element.closest('h2') === null && element.closest('button') === null && element.querySelector('h2') === null && (actions.compareDocumentPosition(element) & Node.DOCUMENT_POSITION_PRECEDING) !== 0)
                   .slice(0, 3)
                   .map((element) => element.tagName.toLowerCase() + ' "' + (element.textContent ?? '').trim().slice(0, 40) + '"'),
           };
@@ -192,16 +195,16 @@ export async function checkPage(
       expect(small, `${where}: checkbox targets of 44 px`).toEqual([]);
     }
     // Principle: one primary per area; Layout shell, Lists: the side panel's
-    // actions at the bottom (task 2.7c-2b-1), every side panel without
-    // exception since task 2.7c-2b-2b.
+    // actions in its header, under the title (owner, 17 November 2026), every
+    // side panel without exception.
     for (const panel of measured.panels) {
       expect(
         panel.primaries.length,
         `${where}: one primary in the side panel "${panel.name}" (${panel.primaries.join(', ')})`,
       ).toBeLessThanOrEqual(1);
       expect(
-        panel.afterActions,
-        `${where}: the actions of the side panel "${panel.name}" are its last part`,
+        panel.beforeActions,
+        `${where}: the actions of the side panel "${panel.name}" are in its header`,
       ).toEqual([]);
     }
     if (process.env.SCREENSHOTS === '1') {
@@ -228,4 +231,74 @@ export async function checkNewRecord(
   await button.click();
   await expect(page.getByRole('complementary', { name: newTitle })).toBeVisible();
   await checkPage(page, `${name}-new`);
+}
+
+/**
+ * An action of a record in its side panel, by its words (owner, 17 November 2026): a button of
+ * the panel's header, a button of a part of the panel (a tab's own "Add"), or an item of its
+ * "More" menu, which is opened for it. Waits until the action is there, as a click does: the
+ * panel may still be reading the record. Click it after.
+ */
+export async function panelAction(panel: Locator, name: string): Promise<Locator> {
+  const page = panel.page();
+  await expect(panel).toBeVisible();
+  const actions = panel.locator('[data-slot="panel-actions"]');
+  const button = actions.getByRole('button', { name, exact: true });
+  const inPanel = panel.getByRole('button', { name, exact: true });
+  const more = actions.locator('[aria-haspopup="menu"]');
+  const item = page.getByRole('menuitem', { name, exact: true });
+  let found: Locator | null = null;
+  await expect
+    .poll(
+      async () => {
+        if ((await button.count()) > 0) {
+          found = button;
+        } else if ((await inPanel.count()) > 0) {
+          found = inPanel.first();
+        } else if ((await more.count()) > 0) {
+          if ((await more.getAttribute('aria-expanded')) !== 'true') {
+            await more.click();
+          }
+          if ((await item.count()) > 0) {
+            found = item;
+          } else if ((await more.getAttribute('aria-expanded')) === 'true') {
+            // Not there yet: the menu is closed again with its own button, and asked again.
+            await more.click();
+          }
+        }
+        return found !== null;
+      },
+      { message: `the action "${name}" of the side panel` },
+    )
+    .toBe(true);
+  if (found === null) {
+    throw new Error(`The side panel has no action "${name}".`);
+  }
+  return found;
+}
+
+/** The words of every action of a record in its side panel: the header's, then those in "More". */
+export async function allPanelActions(panel: Locator): Promise<string[]> {
+  const actions = panel.locator('[data-slot="panel-actions"]');
+  await expect(actions).toBeVisible();
+  const names = (await actions.locator('[data-slot="button"]').allTextContents()).filter(
+    (text) => text !== '',
+  );
+  const more = actions.locator('[aria-haspopup="menu"]');
+  if ((await more.count()) === 0) {
+    return names;
+  }
+  await more.click();
+  const menu = panel.page().getByRole('menu');
+  await expect(menu).toBeVisible();
+  const items = await menu.getByRole('menuitem').allTextContents();
+  // Escape closes the menu only, never the panel with it (found by the browser tests, 18 November
+  // 2026): every check of a panel's actions checks this too. A menu that closed itself as the
+  // record was read again is not pressed for: the panel takes an Escape outside a menu.
+  if (await menu.isVisible()) {
+    await menu.press('Escape');
+  }
+  await expect(menu).toHaveCount(0);
+  await expect(panel).toBeVisible();
+  return [...names, ...items];
 }
