@@ -1286,6 +1286,8 @@ export const en = {
     remove: 'Remove {{name}} (place {{place}})',
     save: 'Save',
     saved: 'Saved.',
+    // A Save button waiting for the answer (docs/design-system.md, Buttons, Pending).
+    saving: 'Saving…',
     notSaved: 'Not saved: nothing was changed.',
     required: 'Fill in this field.',
     chooseOne: 'Choose at least one.',

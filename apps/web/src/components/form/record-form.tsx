@@ -115,7 +115,7 @@ export function RecordForm<Field extends string>({
       {children}
       <FailureAlert error={form.failure} text={failureText} />
       <div className="flex flex-wrap items-center gap-3">
-        <Button type="submit" disabled={form.status === 'saving'}>
+        <Button type="submit" pending={form.status === 'saving'} pendingText={t('form.saving')}>
           {t('form.save')}
         </Button>
         {onCancel !== undefined && (

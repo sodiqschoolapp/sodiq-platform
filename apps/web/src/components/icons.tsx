@@ -32,6 +32,7 @@ import InfoSvg from '@material-symbols/svg-500/rounded/info-fill.svg?react';
 import LanguageSvg from '@material-symbols/svg-500/rounded/language-fill.svg?react';
 import LockSvg from '@material-symbols/svg-500/rounded/lock-fill.svg?react';
 import PrintSvg from '@material-symbols/svg-500/rounded/print-fill.svg?react';
+import ProgressActivitySvg from '@material-symbols/svg-500/rounded/progress_activity-fill.svg?react';
 import NotificationsSvg from '@material-symbols/svg-500/rounded/notifications-fill.svg?react';
 import RadioButtonUncheckedSvg from '@material-symbols/svg-500/rounded/radio_button_unchecked-fill.svg?react';
 import SearchSvg from '@material-symbols/svg-500/rounded/search-fill.svg?react';
@@ -101,6 +102,8 @@ export const LanguageIcon = icon(LanguageSvg);
 export const LockIcon = icon(LockSvg);
 export const NotificationsIcon = icon(NotificationsSvg);
 export const PrintIcon = icon(PrintSvg);
+/** A pending button's sign that it waits (docs/design-system.md, Buttons, Pending). */
+export const ProgressActivityIcon = icon(ProgressActivitySvg);
 export const RadioButtonUncheckedIcon = icon(RadioButtonUncheckedSvg);
 export const SearchIcon = icon(SearchSvg);
 export const UnfoldMoreIcon = icon(UnfoldMoreSvg);

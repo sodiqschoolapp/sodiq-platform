@@ -131,6 +131,28 @@ describe('a record form while its save is on the way', () => {
     expect(unsent()).toBe('');
   });
 
+  // docs/design-system.md, Buttons, Pending (owner, 17 November 2026).
+  it('shows that Save waits for the answer, and gives its word back after it', async () => {
+    const { save, answer } = heldSave();
+    renderForm(save);
+    type('90');
+    const button = within(screen.getByRole('form')).getByRole('button', { name: en.form.save });
+    pressSave();
+
+    await waitFor(() => {
+      expect(button.textContent).toBe(en.form.saving);
+    });
+    expect(button.getAttribute('aria-busy')).toBe('true');
+    expect(button.hasAttribute('disabled') || button.getAttribute('aria-disabled') === 'true').toBe(
+      true,
+    );
+    expect(button.querySelector('svg')).not.toBeNull();
+
+    await answer(0, 'saved');
+    expect(button.textContent).toBe(en.form.save);
+    expect(button.getAttribute('aria-busy')).toBeNull();
+  });
+
   it('sends once when Save is pressed twice', async () => {
     const { save, answer } = heldSave();
     renderForm(save);

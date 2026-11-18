@@ -36,7 +36,9 @@ interface Pair {
  * `button.tsx` draws the primary button as `bg-primary` hovered
  * `bg-primary-hover`, the secondary as `bg-secondary` hovered
  * `bg-secondary-hover`, the quiet one hovered `bg-accent`, and the danger
- * one as `text-destructive` with no fill until `hover:bg-destructive-bg`;
+ * one as `text-destructive` with no fill until `hover:bg-destructive-bg`, and the
+ * filled danger button of a confirmation as `bg-destructive text-destructive-foreground`
+ * hovered `bg-destructive-hover`;
  * `control.ts` draws fields and selects on `bg-card` with a `border-input`,
  * placeholders in `text-muted-foreground`, checkboxes in `accent-checkbox`
  * and the focus outline in `outline-ring`; `alert.tsx` draws the state
@@ -119,6 +121,11 @@ function pairsOf(theme: ':root' | '.dark'): Pair[] {
       'destructive-bg (danger button hovered, danger alert)',
       fill('destructive-bg'),
     ),
+    // The filled danger button of a confirmation (owner, 17 November 2026).
+    text('destructive-foreground', 'destructive (filled danger button)', fill('destructive')),
+    text('destructive-foreground', 'destructive-hover', fill('destructive-hover')),
+    // Its focus outline lies 2 px out, on the dialog.
+    control('destructive', 'popover (a filled danger button on a dialog)', fill('popover')),
     // Status in plain words, on the page and on their tints.
     ...(['success', 'warning', 'info'] as const).flatMap((state) => [
       text(state, 'card', card),
