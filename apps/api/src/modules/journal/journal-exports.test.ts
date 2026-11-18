@@ -418,7 +418,7 @@ describe('journal exports', () => {
       expect(others).toEqual([]);
       if (sheet === undefined) throw new Error('One sheet.');
       const values = sheet.rows.map((row) => row.values);
-      // 07, Opening a journal: "Sinf jurnali", then Class · Subject · Quarter · Month, "Teacher".
+      // 07, Opening a journal: the printed journal keeps "Sinf jurnali" (here in English) as its heading.
       expect(values[0]).toEqual(['Class journal']);
       expect(String(values[1]?.[0])).toContain('Quarter 1');
       expect(String(values[2]?.[0])).toMatch(/^Teacher: /);
@@ -427,12 +427,12 @@ describe('journal exports', () => {
       const headings = (values[4] ?? []).map(String);
       expect(headings.slice(0, 3)).toEqual(['No.', 'Student', 'UID']);
       const markColumn = headings.findIndex(
-        (one) => one.startsWith('12.10.2026 Mon') && one.endsWith('· A'),
+        (one) => one.startsWith('12.10.2026 Mon') && one.endsWith('· Att'),
       );
       expect(markColumn).toBeGreaterThan(2);
-      const cwColumn = headings.findIndex((one) => one.includes('CW1') && one.includes('Soni 30'));
+      const cwColumn = headings.findIndex((one) => one.includes('CW1') && one.includes('of 30'));
       // Task 10.6: the title typed for a work added by hand is its column title in the file.
-      expect(headings[cwColumn]).toContain('CW1 Dictation Soni 30');
+      expect(headings[cwColumn]).toContain('CW1 Dictation of 30');
       expect(headings[cwColumn + 1]).toMatch(/%$/);
       // The date row: real dates (edge/system-behaviour: "Excel exports contain real numbers and dates").
       const dateRow = sheet.rows[5];
@@ -633,7 +633,7 @@ describe('journal exports', () => {
       const [sheet] = await sheetsOf(answer.body as Buffer);
       const headings = (sheet?.rows[4]?.values ?? []).map(String);
       const first = headings.findIndex(
-        (one) => one.startsWith('12.10.2026') && one.endsWith('· A'),
+        (one) => one.startsWith('12.10.2026') && one.endsWith('· Att'),
       );
       const oktamov = sheet?.rows.find((row) => row.values[1] === 'Oʻktamov Bek');
       expect(oktamov?.values[first]).toBe(4);

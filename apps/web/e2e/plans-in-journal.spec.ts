@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { en } from '../src/i18n/locales/en';
 import { accountOf } from './accounts';
-import { changeFirstPassword, heading, languageChooser, signIn } from './steps';
+import { currentPage, changeFirstPassword, heading, languageChooser, signIn } from './steps';
 
 // docs/spec/09-lesson-plans.md, In the journal: "Clicking it opens the lesson card"; the
 // lesson card's homework lines; docs/spec/edge-cases/lesson-plans.md, "A substitute supervises
@@ -23,7 +23,7 @@ test('a teacher marks a homework "not given" on the lesson card, and the next le
     .locator('[data-home-today]')
     .getByRole('button', { name: en.journal.open, exact: true })
     .click();
-  await expect(heading(page, en.journal.sheet)).toBeVisible();
+  await expect(currentPage(page)).toHaveText(en.journal.sheet);
 
   // The header shows the number and topic of yesterday's lesson; today's lesson checks the homework.
   const yesterday = page

@@ -2,6 +2,22 @@
 
 Not written yet for most of the journal: the journal grid, attendance, marks, works and totals, exemptions, locks and unlock requests (tasks 6.1a to 8.6) have no page here yet; where they are written is the owner's to decide (issue #42). This page holds the parts that task 8.7 added.
 
+## The title and the column labels
+
+<!-- Sources: spec 07 (Opening a journal; Layout, Lessons row and the table of short labels); spec change of 18 November 2026 -->
+
+**What it is.** A journal is titled by its class or group and its subject, for example "5 Oxford · Ingliz tili", so a teacher with several classes sees at once which journal is open. The page's name, **Sinf jurnali** (**Классный журнал**, **Class journal**), is in the line above the title. The short labels over the lesson columns are in the language of the screen, with the full word when the pointer rests on them:
+
+| Column | Uzbek | Russian | English |
+| --- | --- | --- | --- |
+| Attendance | Dav | Пос | Att |
+| Classwork | SI | Кл/р | CW |
+| Homework | UV | Д/з | HW |
+| Lesson score | Oʻrt | Ср. | Avg |
+| Total (of 30) | Soni 30 | из 30 | of 30 |
+
+The exported and printed journal uses the same labels, under the heading **Sinf jurnali** in its language.
+
 ## Lesson status
 
 <!-- Sources: spec 07 (Lesson status, Exemptions), edge/journal (Entering, rows 1 to 3 and 15; Locks), edge/00-definitions (Held lesson, Data on a lesson, Expected student, Lock moment); task 8.7, decisions 2, 7 and 8 -->
@@ -139,7 +155,7 @@ Not written yet for most of the journal: the journal grid, attendance, marks, wo
 
 <!-- Sources: spec 09 (In the journal), edge/lesson-plans (Plans and the journal, "Who may read a plan?", "A double lesson"); task 8.8, decisions 6 and 16, plan review correction 1 -->
 
-**What it is.** The header of each lesson in the journal shows the lesson's number in the quarter and its topic from the plan, shortened to fit; the whole topic shows when the pointer rests on the header. The **Lesson card** (**Dars kartasi**) button under the A of a lesson opens the card: number, date, slot, topic, classworks, the homework given today, the homework checked today, objectives and materials.
+**What it is.** The header of each lesson in the journal shows the lesson's number in the quarter and its topic from the plan, shortened to fit; the whole topic shows when the pointer rests on the header. The **Lesson card** (**Dars kartasi**) button under the attendance column of a lesson (**Dav**) opens the card: number, date, slot, topic, classworks, the homework given today, the homework checked today, objectives and materials.
 
 **Who can use it.**
 
@@ -178,7 +194,7 @@ Not written yet for most of the journal: the journal grid, attendance, marks, wo
 - A work can be renamed while the lesson can still be edited (its edit days, or an open unlock). Each change is kept in the work's history.
 - When the plan item is written later, its works take over the columns in order and their titles replace the typed ones; the typed titles stay in the history. A work added by hand with no match keeps its own title.
 - A work that came from the plan is renamed in the plan, not in the journal.
-- Works added by hand before this change have no title and show as "CW 1" or "HW 1" until someone renames them.
+- Works added by hand before this change have no title and show as "SI 1" or "UV 1" ("Кл/р 1" or "Д/з 1" in Russian, "CW 1" or "HW 1" in English) until someone renames them.
 
 ## Topic not delivered and homework not given
 

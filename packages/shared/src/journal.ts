@@ -235,7 +235,7 @@ export const journalCellSchema = z.object({
       notGraded: z.boolean(),
     }),
   ),
-  /** The lesson score (AVG), `null` when blank or for an attendance-only subject. */
+  /** The lesson score (`07`, Calculation rules, rule 3), `null` when blank or for an attendance-only subject. */
   score: z.int().min(0).max(100).nullable(),
 });
 
