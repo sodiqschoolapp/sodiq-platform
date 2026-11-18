@@ -157,7 +157,7 @@ const CALCULATION: readonly Row[] = [
     tasks: ['9.2a'],
   },
   {
-    case: "The lesson score (AVG) of a lesson where one student has no classwork number, or has numbers for only some of the lesson's classworks.",
+    case: "The lesson score of a lesson where one student has no classwork number, or has numbers for only some of the lesson's classworks.",
     rule: 'cfb7cb8f78766fac',
     tests: [['daily.test.ts']],
     tasks: [],
