@@ -119,7 +119,7 @@ export function RecordForm<Field extends string>({
         data-slot="form-footer"
         className="sticky bottom-0 z-10 -mx-6 flex flex-wrap items-center gap-3 border-t bg-card px-6 py-3"
       >
-        <Button type="submit" disabled={form.status === 'saving'}>
+        <Button type="submit" pending={form.status === 'saving'} pendingText={t('form.saving')}>
           {t('form.save')}
         </Button>
         {onCancel !== undefined && (

@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { en } from '../src/i18n/locales/en';
 import { accountOf, NEW_PASSWORD } from './accounts';
-import { changeFirstPassword, heading, languageChooser, signIn } from './steps';
+import { currentPage, changeFirstPassword, heading, languageChooser, signIn } from './steps';
 
 async function signedIn(page: Page, key: 'attendanceTeacher' | 'attendanceTutor') {
   const account = accountOf(key);
@@ -33,7 +33,7 @@ test('a teacher marks all present and an absence, and the Tutor records its reas
     .getByRole('button')
     .first()
     .click();
-  await expect(heading(page, en.journal.sheet)).toBeVisible();
+  await expect(currentPage(page)).toHaveText(en.journal.sheet);
   await expect(
     page.locator('.ag-row').filter({ hasText: 'Ergasheva Kamola' }).first(),
   ).toBeVisible();

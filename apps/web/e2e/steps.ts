@@ -13,6 +13,15 @@ export const heading = (page: Page, name: string) =>
   page.getByRole('heading', { name, exact: true });
 
 /**
+ * The name of the page in its breadcrumbs, for a page whose title names a record: the journal is
+ * titled by its class and subject, and named "Class journal" here (`07`, Opening a journal).
+ */
+export const currentPage = (page: Page) =>
+  page
+    .getByRole('navigation', { name: en.layout.breadcrumbs, exact: true })
+    .locator('li[aria-current="page"]');
+
+/**
  * A link of the page's own header (`PageHeader`, inside `main`), never one of the same words
  * elsewhere: an empty list repeats its header's actions in its empty state (`12`, an empty page
  * shows its first action), so "Import from Excel" is on the page twice while the branch holds

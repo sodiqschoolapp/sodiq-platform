@@ -12,6 +12,11 @@ interface PageHeaderProps {
   title: string;
   /** The pages above this one, from the top; the page itself is not among them. */
   breadcrumbs?: Breadcrumb[];
+  /**
+   * The name of the page in the breadcrumbs when its title names a record (the journal: title
+   * "5 Oxford · Ingliz tili", breadcrumb "Sinf jurnali", `07`, Opening a journal). The title by default.
+   */
+  current?: string;
   /** The buttons of the page, for example "Add". */
   actions?: ReactNode;
 }
@@ -20,7 +25,7 @@ interface PageHeaderProps {
  * The head of a page inside the layout (docs/spec/12-ux-standards.md,
  * Navigation: breadcrumbs on inner pages).
  */
-export function PageHeader({ title, breadcrumbs = [], actions }: PageHeaderProps) {
+export function PageHeader({ title, breadcrumbs = [], current, actions }: PageHeaderProps) {
   const { t } = useTranslation();
   return (
     <header className="mb-6 grid gap-1">
@@ -29,8 +34,10 @@ export function PageHeader({ title, breadcrumbs = [], actions }: PageHeaderProps
           <ol className="flex flex-wrap items-center gap-1 text-sm text-muted-foreground">
             {breadcrumbs.map((crumb) => (
               <li key={crumb.label} className="flex items-center gap-1">
+                {/* Exact: a page above this one is never marked as the current page. */}
                 <Link
                   to={crumb.to}
+                  activeOptions={{ exact: true }}
                   className="font-semibold text-link underline-offset-4 hover:underline"
                 >
                   {crumb.label}
@@ -38,7 +45,7 @@ export function PageHeader({ title, breadcrumbs = [], actions }: PageHeaderProps
                 <ChevronRightIcon className="size-4" />
               </li>
             ))}
-            <li aria-current="page">{title}</li>
+            <li aria-current="page">{current ?? title}</li>
           </ol>
         </nav>
       )}

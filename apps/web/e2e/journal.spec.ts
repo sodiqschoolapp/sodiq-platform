@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { en } from '../src/i18n/locales/en';
 import { accountOf } from './accounts';
-import { changeFirstPassword, heading, languageChooser, signIn } from './steps';
+import { currentPage, changeFirstPassword, heading, languageChooser, signIn } from './steps';
 
 // docs/spec/07-journal.md, Opening a journal: "From the teacher's timetable:
 // clicking a lesson opens the journal already scrolled sideways to that date";
@@ -25,7 +25,7 @@ test('a teacher opens the journal from today’s lesson on the home page and rea
   await expect(open).toBeVisible();
   const started = Date.now();
   await open.click();
-  await expect(heading(page, en.journal.sheet)).toBeVisible();
+  await expect(currentPage(page)).toHaveText(en.journal.sheet);
   const zokirova = page.locator('.ag-row').filter({ hasText: 'Zokirova Nodira' }).first();
   await expect(zokirova).toBeVisible();
   const opened = Date.now() - started;
@@ -39,7 +39,9 @@ test('a teacher opens the journal from today’s lesson on the home page and rea
   await expect(page.locator('[data-journal-full-screen]')).toHaveCount(0);
   await expect(page).not.toHaveURL(/view=full/);
 
-  await expect(page.locator('[data-journal-header]')).toContainText('7 Oxford · Geography');
+  // The title is the class and the subject (spec change of 18 November 2026).
+  await expect(heading(page, '7 Oxford · Geography')).toBeVisible();
+  await expect(page.locator('[data-journal-header]')).toContainText('Quarter 1');
   await expect(page.locator('[data-journal-header]')).toContainText('Teacher: Qodirov Sanjar');
   // The students in the one fixed order: A, Z, then oʻ after z.
   const names = page.locator('[row-id]:not([row-id="bottom"]) [col-id="name"]');
@@ -74,7 +76,7 @@ test('a teacher opens the journal from today’s lesson on the home page and rea
     .click();
   await dialog.getByRole('button', { name: en.journal.entry.close, exact: true }).click();
   await expect(page.locator(`.ag-header-cell[col-id="${column ?? ''}"]`)).toContainText(
-    `${en.journal.grid.soni} 20`,
+    en.journal.grid.total.replace('{{total}}', '20'),
   );
   const oktamov = await page
     .locator('.ag-row')

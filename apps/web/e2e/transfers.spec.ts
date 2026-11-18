@@ -1,7 +1,14 @@
 import { expect, test, type Page } from '@playwright/test';
 import { en } from '../src/i18n/locales/en';
 import { accountOf } from './accounts';
-import { changeFirstPassword, heading, languageChooser, signIn, panelAction } from './steps';
+import {
+  currentPage,
+  changeFirstPassword,
+  heading,
+  languageChooser,
+  signIn,
+  panelAction,
+} from './steps';
 import { codeNow } from './totp';
 
 async function signedIn(page: Page) {
@@ -77,7 +84,7 @@ test('the Academic Vice Principal records a late class move, voids the old journ
   });
   await page.goto('/journal');
   await page.locator('tbody tr').filter({ hasText: '7 Leeds' }).getByRole('button').first().click();
-  await expect(heading(page, en.journal.sheet)).toBeVisible();
+  await expect(currentPage(page)).toHaveText(en.journal.sheet);
   const row = page.locator('.ag-row').filter({ hasText: 'Qodirova Dilfuza' });
   await expect(row.locator('[data-carried-in="true"]').first()).toBeVisible();
   await expect(row.locator('[data-marker="optional"]').first()).toBeVisible();

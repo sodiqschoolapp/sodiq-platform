@@ -115,8 +115,8 @@ const found = (student: JournalStudent, words: readonly string[] | null) => {
 
 /**
  * A journal for one quarter (task 6.2, pull request #210; `07`, Opening a
- * journal, Layout): the header "Sinf jurnali", then Class · Subject · Quarter
- * · Month, then the teacher; the selectors; the grid, or lesson mode; the
+ * journal, Layout): the class or group and the subject as the title ("Sinf jurnali" in the
+ * breadcrumbs, spec change of 18 November 2026), then Quarter · Month, then the teacher; the selectors; the grid, or lesson mode; the
  * legend under it. Read only until entry comes (6.3, 8.1 to 8.4).
  */
 export function JournalPage(): React.JSX.Element {
@@ -333,8 +333,6 @@ function JournalLoaded({
   );
 
   const header = [
-    data.journal.unit.name,
-    subject,
     t('journal.page.quarterNumber', { number: data.quarter.number }),
     month === null
       ? monthsText(data.quarter.startDate, data.quarter.endDate, language)
@@ -344,7 +342,8 @@ function JournalLoaded({
   return (
     <>
       <PageHeader
-        title={t('journal.sheet')}
+        title={[data.journal.unit.name, subject].join(' · ')}
+        current={t('journal.sheet')}
         breadcrumbs={breadcrumbs}
         actions={
           // 07: "Export to Excel and PDF, and print, for a month or a quarter": the month shown,

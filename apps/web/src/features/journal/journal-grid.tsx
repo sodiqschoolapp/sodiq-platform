@@ -56,8 +56,9 @@ const shortDate = (date: string): string => `${date.slice(8, 10)}.${date.slice(5
 /**
  * The journal grid (task 6.2, pull request #210; `07`, Layout): AG Grid
  * Community with the student columns and the figures pinned on the left, one
- * column group per dated lesson (row 1: date, weekday, slot; row 2: A, each
- * classwork and homework with its title, AVG; row 3: "Soni" and the total),
+ * column group per dated lesson (row 1: date, weekday, slot; row 2: attendance, each
+ * classwork and homework with its title, the lesson score; row 3: the total label and the
+ * total; the short labels in the person's language, spec change of 18 November 2026),
  * the bottom row of class or group averages pinned at the bottom, and the
  * folded section of students who left or moved. Every number is the server's,
  * from `packages/calc` (decision 7): nothing is calculated here.
@@ -128,7 +129,7 @@ interface HeaderAction {
   readonly icon?: 'check' | 'more' | 'copy';
 }
 
-/** A header of two lines: the title, and "Soni" with the total under a work, or an action. */
+/** A header of two lines: the title, and the total label with the total under a work, or an action. */
 /**
  * Task 8.4: "entered after the edit period" with the approver, or "corrected" (`edge/journal`):
  * a sign beside the value, its words in the label.
@@ -204,16 +205,24 @@ function TwoLineHeader(
     menuBelow?: boolean;
     /** Task 10.7: a work column's kind, drawn as its tag in front of the title. */
     kind?: WorkKind;
+    /**
+     * The full word of a short label, shown on hover (`07`, Layout, the table of short labels:
+     * "Dav" says "Davomat"), as the tag of a work's kind does.
+     */
+    hover?: string;
   },
 ) {
   // Every column the same two lines (`07`, Layout, rows 2 and 3): the label with the column's
-  // menu on the first, "Soni" and the total or the entry buttons of A on the second.
+  // menu on the first, the total label and the total or the entry buttons of attendance on the
+  // second.
   const below = [props.action, props.copy].filter((one): one is HeaderAction => one !== undefined);
   return (
     <div className="flex w-full min-w-0 flex-col justify-center gap-0.5" aria-label={props.label}>
       <span className="flex min-h-6 min-w-0 items-center gap-0.5">
         {props.kind !== undefined && <WorkKindTag kind={props.kind} className="mr-0.5" />}
-        <span className="truncate leading-tight font-semibold">{props.displayName}</span>
+        <span className="truncate leading-tight font-semibold" title={props.hover}>
+          {props.displayName}
+        </span>
         {props.more !== undefined && props.menuBelow !== true && (
           <HeaderButton button={props.more} />
         )}
@@ -852,6 +861,7 @@ export function JournalGridView({
           headerName: t('journal.grid.attendanceShort'),
           headerComponentParams: {
             label: t('journal.grid.attendance'),
+            hover: t('journal.grid.attendance'),
             // Task 8.4: the lock of the lesson for the reader, under the A.
             ...(lesson.held && lesson.lock.window === 'locked'
               ? { second: t('journal.locks.lockedShort') }
@@ -897,8 +907,9 @@ export function JournalGridView({
                 }
               : {}),
           },
-          // Room for A with its menu, and under it "all present" (and "copy") or the lock.
-          width: entering && lesson.canEnter && lesson.copyFrom !== null ? 80 : 64,
+          // Room for the short label with its menu ("Dav", "Пос", "Att": the labels follow the
+          // language since 18 November 2026), and under it "all present" (and "copy") or the lock.
+          width: entering && lesson.canEnter && lesson.copyFrom !== null ? 92 : 76,
           cellClass: (params) =>
             cn(
               cancelled ||
@@ -1036,8 +1047,8 @@ export function JournalGridView({
           headerComponentParams: {
             second: [
               work.total === null
-                ? t('journal.grid.soni')
-                : `${t('journal.grid.soni')} ${work.total}`,
+                ? t('journal.grid.totalUnset')
+                : t('journal.grid.total', { total: work.total }),
               // A homework checked here was given at an earlier lesson (`07`, Homework column):
               // its day, so the column is not read as the homework of this lesson.
               given === null ? null : t('journal.grid.givenFrom', { date: shortDate(given) }),
@@ -1162,7 +1173,10 @@ export function JournalGridView({
         children.push({
           colId: `${lesson.id}:avg`,
           headerName: t('journal.grid.avg'),
-          headerComponentParams: { label: t('journal.grid.lessonScore') },
+          headerComponentParams: {
+            label: t('journal.grid.lessonScore'),
+            hover: t('journal.grid.lessonScore'),
+          },
           width: 60,
           cellRenderer: (params: ICellRendererParams<GridRow>) => {
             const row = params.data;
@@ -1383,7 +1397,8 @@ export function JournalGridView({
     (): GridRow[] => (bottom === null ? [] : [{ kind: 'bottom', bottom }]),
     [bottom],
   );
-  // Two lines in every column header: the label with its menu, then "Soni" or the buttons of A.
+  // Two lines in every column header: the label with its menu, then the total or the buttons of
+  // attendance.
   const headerHeight = 56;
   // A class fits the page: the grid is exactly as tall as its two header rows, its rows, the
   // bottom row and the horizontal scrollbar, with no empty band and no second scrollbar. (AG

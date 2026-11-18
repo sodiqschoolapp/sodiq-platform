@@ -26,6 +26,8 @@
   --color-border: var(--border);
   --color-destructive: var(--destructive);
   --color-destructive-bg: var(--destructive-bg);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-destructive-hover: var(--destructive-hover);
   --color-success: var(--success);
   --color-success-bg: var(--success-bg);
   --color-warning: var(--warning);
@@ -116,6 +118,9 @@
   --accent-foreground: oklch(0.2026 0.0841 266.73);
   --destructive: oklch(0.468 0.1662 28.87);
   --destructive-bg: oklch(0.9448 0.0245 26.92);
+  /* The filled danger button of a confirmation (docs/design-system.md, Buttons; owner, 17 November 2026). */
+  --destructive-foreground: oklch(1 0 0);
+  --destructive-hover: oklch(0.42 0.1662 28.87);
   --success: oklch(0.467 0.1247 148.2);
   --success-bg: oklch(0.954 0.0199 154.9);
   --warning: oklch(0.4544 0.0996 68.13);
@@ -181,6 +186,9 @@
      mixed in sRGB and written as their oklch value (pull request #60, decision 10). */
   --destructive: oklch(0.7681 0.137 26.09);
   --destructive-bg: oklch(0.3009 0.0522 299.93);
+  /* The light red takes navy text, as the orange of the primary button does. */
+  --destructive-foreground: oklch(0.2026 0.0841 266.73);
+  --destructive-hover: oklch(0.72 0.137 26.09);
   --success: oklch(0.7806 0.1343 151.86);
   --success-bg: oklch(0.308 0.0456 245.34);
   --warning: oklch(0.8847 0.118 82.93);

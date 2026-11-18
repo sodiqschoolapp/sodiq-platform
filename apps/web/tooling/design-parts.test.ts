@@ -90,7 +90,13 @@ describe('the parts of the design system', () => {
         (match) => match[1] ?? '',
       );
     };
-    expect(keysOf('variant').sort()).toEqual(['default', 'destructive', 'ghost', 'secondary']);
+    expect(keysOf('variant').sort()).toEqual([
+      'default',
+      'destructive',
+      'destructive-fill',
+      'ghost',
+      'secondary',
+    ]);
     expect(keysOf('size').sort()).toEqual(['default', 'icon', 'icon-lg', 'icon-sm', 'lg', 'sm']);
   });
 

@@ -13,6 +13,15 @@ Not a task of the build plan: the last building block of step 2 (owner, 17 Novem
 - Tests: the side-panel tests of 20 screens read the actions in the header and in "More" (`testing/panel.ts`: `panelAction`, `allActionNames`, `moreActionNames`, `actionsInHeader`; browser tests `panelAction`, `allPanelActions` in `e2e/steps.ts`); `pages.spec.ts` checks every panel has its actions in its header.
 - Left: `timetable-absence-substitution.spec.ts` failed once in a local run of all panel browser tests in one worker (the draft had a reason it could not be published, left by an earlier test); it passes alone and touches no panel.
 
+## 18 November 2026: design review step 2, the journal's title and its labels in each language
+
+Not a task of the build plan: the code of the owner's spec change of 18 November (pull request #350), the first pull request of step 2 of the design review.
+
+- The journal is titled by its class or group and subject ("5 Oxford · Ingliz tili"); "Sinf jurnali" names the page in the breadcrumbs (`PageHeader` takes `current`). The breadcrumb links match exactly, so the page above is no longer a second "current page" for a screen reader.
+- The short labels of the grid and of the exported journal follow the language (`07`, Layout table): Dav / Пос / Att, SI / Кл/р / CW, UV / Д/з / HW, Oʻrt / Ср. / Avg, "Soni 30" / "из 30" / "of 30". The key `journal.grid.soni` became `total` and `totalUnset`.
+- The attendance column is 76 px (92 with "copy"), from 64 (80): "Dav" and "Пос" were cut beside the column menu, measured at 1366 × 768.
+- Handbook: a section "The title and the column labels".
+
 ## 18 November 2026: task 5.19, a plan window may open from the branch's first timetable version
 
 - **Built**: `coverOf` of `plan-windows.service.ts` (the open route and the windows list): a quarter is published when it has a school day on or after the earliest published version start of the year (`firstPublishedStartOf`, `plan-read.ts`); the list answers `coveredFrom` when the cover starts after the quarter's first school day, and the windows page shows "Timetable from" with it (three languages).

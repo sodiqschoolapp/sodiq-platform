@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { en } from '../src/i18n/locales/en';
 import { accountOf } from './accounts';
-import { changeFirstPassword, heading, languageChooser, signIn } from './steps';
+import { currentPage, changeFirstPassword, heading, languageChooser, signIn } from './steps';
 import { codeNow } from './totp';
 
 async function signedIn(page: Page, key: 'exemptionsTeacher' | 'exemptionsVice') {
@@ -70,7 +70,7 @@ test('the Academic Vice Principal enters a late exemption over a locked lesson, 
     .getByRole('button')
     .first()
     .click();
-  await expect(heading(teacher, en.journal.sheet)).toBeVisible();
+  await expect(currentPage(teacher)).toHaveText(en.journal.sheet);
   // Every lesson on screen is exempt: Alimova is in the folded "Exempt" section.
   await teacher.getByRole('button', { name: 'Exempt: 1 student' }).click();
   const cell = teacher

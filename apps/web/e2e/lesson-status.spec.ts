@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { en } from '../src/i18n/locales/en';
 import { accountOf } from './accounts';
-import { changeFirstPassword, heading, languageChooser, signIn } from './steps';
+import { currentPage, changeFirstPassword, heading, languageChooser, signIn } from './steps';
 
 // docs/spec/07-journal.md, Lesson status: "Every lesson that has been held shows a status,
 // on the teacher's home page, on the timetable and in the journal header. The home page sums
@@ -25,7 +25,7 @@ test('a teacher completes today’s lesson with "Not graded", and the journal an
   // The seeded total of the classwork is data on the lesson (edge/00-definitions): in progress.
   await expect(today.locator('[data-status]')).toHaveText(en.journal.lessonStatus.in_progress);
   await today.getByRole('button', { name: en.journal.open, exact: true }).click();
-  await expect(heading(page, en.journal.sheet)).toBeVisible();
+  await expect(currentPage(page)).toHaveText(en.journal.sheet);
 
   // Both present, and a number for Alimov only.
   await page.getByRole('button', { name: en.journal.entry.allPresent, exact: true }).click();

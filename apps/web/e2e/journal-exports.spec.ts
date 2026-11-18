@@ -3,7 +3,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { en } from '../src/i18n/locales/en';
 import { accountOf } from './accounts';
 import { watchPage, whatPageShows } from './diagnose';
-import { changeFirstPassword, heading, languageChooser, signIn } from './steps';
+import { currentPage, changeFirstPassword, heading, languageChooser, signIn } from './steps';
 import { xlsxTexts } from './xlsx-text';
 
 /** The file a click saves, read back. */
@@ -40,7 +40,7 @@ test('a Principal exports a journal to Excel and downloads the export of the bra
   await page.goto('/journal');
   await expect(heading(page, en.journal.page.title)).toBeVisible();
   await page.locator('tbody tr').filter({ hasText: 'Geodesy' }).getByRole('button').first().click();
-  await expect(heading(page, en.journal.sheet)).toBeVisible();
+  await expect(currentPage(page)).toHaveText(en.journal.sheet);
   const journal = await saved(page, () =>
     page.getByRole('button', { name: en.timetable.views.excel, exact: true }).click(),
   );

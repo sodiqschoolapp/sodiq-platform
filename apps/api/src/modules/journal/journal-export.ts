@@ -122,7 +122,11 @@ function figuresOf(student: JournalStudent, month: string | null): JournalFigure
   return student.months?.[month] ?? null;
 }
 
-/** "Sinf jurnali", then Class · Subject · Quarter · Month, "Teacher: name", the stamp (`07`, Opening a journal). */
+/**
+ * The heading of the printed and exported journal: "Sinf jurnali" in its language, then Class ·
+ * Subject · Quarter · Month, "Teacher: name", the stamp (`07`, Opening a journal: a printed
+ * document says what it is; spec change of 18 November 2026).
+ */
 export function journalHeader(input: JournalFileInput, texts: JournalExportTexts): string[] {
   const { grid } = input;
   const stored = input.final?.names ?? null;
