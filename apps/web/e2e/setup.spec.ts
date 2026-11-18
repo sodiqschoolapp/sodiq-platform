@@ -10,6 +10,7 @@ import {
   heading,
   languageChooser,
   signIn,
+  panelAction,
 } from './steps';
 import { keepSecondStep } from './second-steps';
 import { codeNow } from './totp';
@@ -322,7 +323,7 @@ test('the Super Admin edits the branch, adds a building, a floor and a room, and
     await openSetupPage(page, en.setup.roomsLink, en.setup.rooms.title);
     await page.getByRole('button', { name: '101', exact: true }).click();
     const room = page.getByRole('complementary', { name: '101' });
-    await room.getByRole('button', { name: deleted.deletePlace, exact: true }).click();
+    await (await panelAction(room, deleted.deletePlace)).click();
     const dialog = page.getByRole('dialog');
     await dialog.getByLabel(deleted.reason, { exact: true }).fill('Added by mistake');
     await dialog.getByRole('button', { name: deleted.send, exact: true }).click();
@@ -385,6 +386,10 @@ test('the Super Admin sees Academic as built in, adds a division with a departme
   await expect(
     academic.getByRole('button', { name: en.setup.divisions.archiveDivision, exact: true }),
   ).toHaveCount(0);
+  // Nor in a "More" menu: the record has none (owner, 17 November 2026).
+  await expect(academic.locator('[data-slot="panel-actions"] [aria-haspopup="menu"]')).toHaveCount(
+    0,
+  );
   await expect(academic.getByRole('row').filter({ hasText: 'Tutors' })).toBeVisible();
 
   // A new division with a department.
@@ -414,9 +419,7 @@ test('the Super Admin sees Academic as built in, adds a division with a departme
   await expect(panel.getByRole('row').filter({ hasText: 'Pool' })).toBeVisible();
 
   // The division archived takes its department with it.
-  await panel
-    .getByRole('button', { name: en.setup.divisions.archiveDivision, exact: true })
-    .click();
+  await (await panelAction(panel, en.setup.divisions.archiveDivision)).click();
   await confirmWith(page, en.setup.divisions.archive);
   await expect(panel.getByRole('row').filter({ hasText: 'Pool' })).toContainText(
     en.setup.divisions.archived,

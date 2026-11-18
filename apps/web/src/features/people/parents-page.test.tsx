@@ -5,11 +5,11 @@ import { en } from '@/i18n/locales/en';
 import { ru } from '@/i18n/locales/ru';
 import { fakeApi, json, NORTH, renderApp, sessionOf, SOUTH } from '@/testing/render-app';
 import {
-  actionsAreLast,
-  edit,
+  actionsInHeader,
   panelActionNames,
   panelActions,
   savedInPanel,
+  edit,
 } from '@/testing/panel';
 
 const uid = (n: number): string => `0199f000-0000-7000-8000-${String(n).padStart(12, '0')}`;
@@ -281,7 +281,7 @@ describe('the page of a relative', () => {
     await within(panel).findByText(en.people.relatives.phone, { selector: 'dt' });
     expect(within(panel).queryByRole('form')).toBeNull();
     expect(panelActionNames(panel)).toEqual([en.form.edit]);
-    expect(actionsAreLast(panel)).toBe(true);
+    expect(actionsInHeader(panel)).toBe(true);
     const form = await edit(
       panel,
       en.people.relatives.formLabel.replace('{{name}}', 'Dilfuza Rahimova'),

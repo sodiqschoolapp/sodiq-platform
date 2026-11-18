@@ -4,8 +4,10 @@ import { describe, expect, it } from 'vitest';
 import { en } from '@/i18n/locales/en';
 import { ru } from '@/i18n/locales/ru';
 import {
-  actionsAreLast,
+  actionsInHeader,
   edit,
+  moreActionNames,
+  panelAction,
   panelActionNames,
   panelActions,
   savedInPanel,
@@ -222,19 +224,16 @@ describe('the slot types page', () => {
     await savedInPanel(panel);
   });
 
-  it('shows a slot type to read with its actions at the bottom, and renames it through Edit', async () => {
+  it('shows a slot type to read with its actions in the header, and renames it through Edit', async () => {
     const calls = await openList('academic_vice_principal', {
       [`PATCH /api/setup/slot-types/${LUNCH.id}`]: (body) =>
         json({ ...LUNCH, ...(body as object) }),
     });
     const panel = await openSlotType('Lunch');
     expect(within(panel).queryByRole('form')).toBeNull();
-    expect(panelActionNames(panel)).toEqual([
-      en.form.edit,
-      en.setup.slotTypes.changeLength,
-      en.setup.slotTypes.archive,
-    ]);
-    expect(actionsAreLast(panel)).toBe(true);
+    expect(panelActionNames(panel)).toEqual([en.form.edit, en.setup.slotTypes.changeLength]);
+    expect(await moreActionNames(panel)).toEqual([en.setup.slotTypes.archive]);
+    expect(actionsInHeader(panel)).toBe(true);
 
     const form = await edit(panel, 'Lunch');
     type(within(form).getByLabelText(en.setup.slotTypes.name), 'Long lunch');
@@ -306,7 +305,7 @@ describe('the slot types page', () => {
         json({ ...LUNCH, archivedAt: '2026-10-10T10:00:00.000Z' }),
     });
     const panel = await openSlotType('Lunch');
-    fireEvent.click(within(panel).getByRole('button', { name: en.setup.slotTypes.archive }));
+    fireEvent.click(await panelAction(panel, en.setup.slotTypes.archive));
     const dialog = await screen.findByRole('alertdialog');
     fireEvent.click(within(dialog).getByRole('button', { name: en.setup.slotTypes.archive }));
 

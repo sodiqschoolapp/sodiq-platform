@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { en } from '../src/i18n/locales/en';
 import { accountOf } from './accounts';
-import { changeFirstPassword, heading, languageChooser, signIn } from './steps';
+import { changeFirstPassword, heading, languageChooser, signIn, panelAction } from './steps';
 import { codeNow } from './totp';
 
 // docs/spec/04-people.md, Movements: "Class transfer and group transfer. One
@@ -42,20 +42,20 @@ test('an Academic Vice Principal moves a student to another class, cancels, and 
   await expect(heading(page, texts.title)).toBeVisible();
   await page.getByRole('button', { name: 'Qosimova Sabina', exact: true }).click();
   const panel = page.getByRole('complementary', { name: 'Sabina Qosimova' });
-  await panel.getByRole('button', { name: moves.moveClass, exact: true }).click();
+  await (await panelAction(panel, moves.moveClass)).click();
   const form = panel.getByRole('form', { name: moves.moveClass });
   await form.getByLabel(moves.toClass, { exact: true }).selectOption({ label: '7 Yale' });
   await form.getByRole('button', { name: en.form.save, exact: true }).click();
   // Scheduled: still in 7 Oxford, with the badge of the move.
   await expect(panel.getByText(/Moves to 7 Yale on/)).toBeVisible();
   const cancel = moves.cancel.replace('{{target}}', '7 Yale');
-  await panel.getByRole('button', { name: cancel, exact: true }).click();
+  await (await panelAction(panel, cancel)).click();
   const dialog = page.getByRole('alertdialog', { name: moves.cancelTitle });
   await dialog.getByRole('button', { name: cancel, exact: true }).click();
   await expect(panel.getByText(/Moves to 7 Yale on/)).toHaveCount(0);
 
   // "A transfer is recorded a week late": from yesterday, by the Academic Vice Principal.
-  await panel.getByRole('button', { name: moves.moveClass, exact: true }).click();
+  await (await panelAction(panel, moves.moveClass)).click();
   const late = panel.getByRole('form', { name: moves.moveClass });
   await late.getByLabel(moves.toClass, { exact: true }).selectOption({ label: '7 Yale' });
   await late.getByLabel(moves.from, { exact: true }).fill(yesterday);

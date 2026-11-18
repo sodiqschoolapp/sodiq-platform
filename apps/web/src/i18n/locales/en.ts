@@ -1234,6 +1234,8 @@ export const en = {
     tooMany_other: 'You have sent {{n}} reports in the last 24 hours. Try again later.',
   },
   list: {
+    // The menu of a record's other actions in its side panel (owner, 17 November 2026).
+    moreActions: 'More actions',
     search: 'Search',
     all: 'All',
     columns: 'Columns',

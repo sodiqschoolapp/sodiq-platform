@@ -12,11 +12,14 @@ import { EXPORT_TEXTS, VACANCY_EXPORT_COLUMNS } from '@sodiq/shared';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import {
-  actionsAreLast,
-  edit,
+  actionsInHeader,
+  moreActionNames,
   panelActionNames,
   panelActions,
   savedInPanel,
+  edit,
+  panelAction,
+  allActionNames,
 } from '@/testing/panel';
 import { en } from '@/i18n/locales/en';
 import { ru } from '@/i18n/locales/ru';
@@ -542,13 +545,15 @@ describe('the vacancies', () => {
     expect(within(panel).queryByRole('form')).toBeNull();
     expect(within(panel).queryByRole('button', { name: en.people.vacancies.close })).toBeNull();
     expect(within(panel).queryByRole('button', { name: en.people.vacancies.delete })).toBeNull();
+    // Nor in the "More" menu, where a danger action is.
+    expect(await allActionNames(panel)).not.toContain(en.people.vacancies.delete);
     // Task 2.7c-2b-2a: the record is read, with no row of actions at the bottom.
     expect(panelActions(panel)).toBeNull();
     expect(within(panel).queryByRole('button', { name: en.form.edit })).toBeNull();
   });
 
   // Task 2.7c-2b-2a: the record reads first; Edit opens its form, Cancel closes it.
-  it('are changed behind Edit, with "Saved." at the bottom, and closed without a call on Cancel', async () => {
+  it('are changed behind Edit, with "Saved." under the actions, and closed without a call on Cancel', async () => {
     const calls = api('academic_vice_principal', {
       [`PUT /api/people/vacancies/${OPEN.id}`]: () => json(vacancyDetail(OPEN)),
     });
@@ -575,7 +580,7 @@ describe('the vacancies', () => {
       ).toBe(14);
     });
     await savedInPanel(panel);
-    expect(actionsAreLast(panel)).toBe(true);
+    expect(actionsInHeader(panel)).toBe(true);
   });
 
   it('show a refused close inside the row of actions, without the "Saved." of an earlier save', async () => {
@@ -595,7 +600,7 @@ describe('the vacancies', () => {
       expect(panelActions(panel)?.textContent).toContain(en.errors.status_unchanged);
     });
     expect(panelActions(panel)?.textContent).not.toContain(en.form.saved);
-    expect(actionsAreLast(panel)).toBe(true);
+    expect(actionsInHeader(panel)).toBe(true);
   });
 
   // Task 3.4a (04, Vacancy): "A vacancy cannot be closed while a load row names it."
@@ -620,7 +625,7 @@ describe('the vacancies', () => {
     });
     renderApp(`/people/vacancies?open=${OPEN.id}`);
     const panel = await screen.findByRole('complementary', { name: OPEN.name });
-    fireEvent.click(await within(panel).findByRole('button', { name: en.people.vacancies.delete }));
+    fireEvent.click(await panelAction(panel, en.people.vacancies.delete));
     const dialog = await screen.findByRole('alertdialog');
     fireEvent.click(within(dialog).getByRole('button', { name: en.people.vacancies.delete }));
     await waitFor(() => {
@@ -650,13 +655,11 @@ describe('the vacancies', () => {
     const panel = await screen.findByRole('complementary', { name: OPEN.name });
     fireEvent.click(await within(panel).findByRole('button', { name: en.people.vacancies.close }));
     const reopen = await within(panel).findByRole('button', { name: en.people.vacancies.reopen });
-    // Task 2.7c-2b-2a: Edit, then Close or Reopen, then Delete, last in the panel.
-    expect(panelActionNames(panel)).toEqual([
-      en.form.edit,
-      en.people.vacancies.reopen,
-      en.people.vacancies.delete,
-    ]);
-    expect(actionsAreLast(panel)).toBe(true);
+    // Task 2.7c-2b-2a: Edit, then Close or Reopen in the header, then Delete, the danger action,
+    // in the "More" menu (owner, 17 November 2026).
+    expect(panelActionNames(panel)).toEqual([en.form.edit, en.people.vacancies.reopen]);
+    expect(await moreActionNames(panel)).toEqual([en.people.vacancies.delete]);
+    expect(actionsInHeader(panel)).toBe(true);
     // Finding 18: the close is said to be saved, in the bottom row.
     await savedInPanel(panel);
     // Reopened: the sign goes while it is on its way and comes with the answer.
@@ -664,7 +667,7 @@ describe('the vacancies', () => {
     await within(panel).findByRole('button', { name: en.people.vacancies.close });
     await savedInPanel(panel);
     expect(calls.some((call) => call.route.endsWith('/reopen'))).toBe(true);
-    fireEvent.click(within(panel).getByRole('button', { name: en.people.vacancies.delete }));
+    fireEvent.click(await panelAction(panel, en.people.vacancies.delete));
     const dialog = await screen.findByRole('alertdialog');
     expect(within(dialog).getByText(OPEN.name)).toBeDefined();
     expect(calls.some((call) => call.route.endsWith('/delete'))).toBe(false);

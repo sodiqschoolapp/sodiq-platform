@@ -11,8 +11,9 @@ import { describe, expect, it } from 'vitest';
 import { en } from '@/i18n/locales/en';
 import { ru } from '@/i18n/locales/ru';
 import {
-  actionsAreLast,
+  actionsInHeader,
   edit,
+  moreActionNames,
   panelActionNames,
   panelActions,
   savedInPanel,
@@ -929,13 +930,14 @@ describe('the subjects page', () => {
     expect(panelActionNames(panel)).toEqual([subjectsText.restoreSubject]);
   });
 
-  it('shows a subject to read with Edit and Archive at the bottom, and one of its forms at a time', async () => {
+  it('shows a subject to read with Edit and Archive in the header, and one of its forms at a time', async () => {
     await openList();
     fireEvent.click(rowButton('Mathematics'));
     const panel = await screen.findByRole('complementary', { name: 'Mathematics' });
     expect(within(panel).queryByRole('form')).toBeNull();
-    expect(panelActionNames(panel)).toEqual([en.form.edit, subjectsText.archiveSubject]);
-    expect(actionsAreLast(panel)).toBe(true);
+    expect(panelActionNames(panel)).toEqual([en.form.edit]);
+    expect(await moreActionNames(panel)).toEqual([subjectsText.archiveSubject]);
+    expect(actionsInHeader(panel)).toBe(true);
 
     const daily = await changeWeights(panel, subjectsText.daily);
     expect(panelActions(panel)).toBeNull();
@@ -955,7 +957,8 @@ describe('the subjects page', () => {
     await waitFor(() => {
       expect(within(panel).queryByRole('form')).toBeNull();
     });
-    expect(panelActionNames(panel)).toEqual([en.form.edit, subjectsText.archiveSubject]);
+    expect(panelActionNames(panel)).toEqual([en.form.edit]);
+    expect(await moreActionNames(panel)).toEqual([subjectsText.archiveSubject]);
   });
 
   it('names a subject that is not restored because its department is archived', async () => {

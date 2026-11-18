@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { en } from '../src/i18n/locales/en';
 import { accountOf } from './accounts';
-import { changeFirstPassword, heading, languageChooser, signIn } from './steps';
+import { changeFirstPassword, heading, languageChooser, signIn, panelAction } from './steps';
 import { codeNow } from './totp';
 
 // docs/spec/04-people.md, Movements, "Coming back": the student "is placed in
@@ -43,7 +43,7 @@ test('an Academic Vice Principal returns a student into a class of another langu
   const panel = page.getByRole('complementary', { name: 'Muxlisa Hamroyeva' });
 
   // The leaving, its last day the day before yesterday: inactive since yesterday.
-  await panel.getByRole('button', { name: texts.leaveTitle, exact: true }).click();
+  await (await panelAction(panel, texts.leaveTitle)).click();
   const leaving = panel.getByRole('form', { name: texts.leaveTitle });
   await leaving.getByLabel(texts.lastDay, { exact: true }).fill(dayBeforeYesterday);
   await leaving.getByLabel(texts.reason, { exact: true }).fill('The family moved to Bukhara.');
@@ -56,7 +56,7 @@ test('an Academic Vice Principal returns a student into a class of another langu
   await expect(row).toContainText(texts.statuses.inactive);
 
   // Back today: the class left is offered first; 7 Yale is chosen instead.
-  await panel.getByRole('button', { name: texts.returnTitle, exact: true }).click();
+  await (await panelAction(panel, texts.returnTitle)).click();
   const back = panel.getByRole('form', { name: texts.returnTitle });
   await back.getByLabel(texts.returnFrom, { exact: true }).fill(today);
   const classField = back.getByLabel(texts.class, { exact: true });

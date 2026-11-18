@@ -25,11 +25,14 @@ import {
   type Handler,
 } from '@/testing/render-app';
 import {
-  actionsAreLast,
-  edit,
+  actionsInHeader,
+  moreActionNames,
+  panelAction,
   panelActionNames,
   panelActions,
   savedInPanel,
+  edit,
+  allActionNames,
 } from '@/testing/panel';
 
 const uid = (n: number): string => `0199f000-0000-7000-8000-${String(n).padStart(12, '0')}`;
@@ -452,7 +455,7 @@ describe('the profile of a student', () => {
     expect(within(panel).queryByRole('form')).toBeNull();
     const actions = [en.form.edit, en.people.students.uidTitle];
     expect(panelActionNames(panel)).toEqual(actions);
-    expect(actionsAreLast(panel)).toBe(true);
+    expect(actionsInHeader(panel)).toBe(true);
 
     fireEvent.click(within(tabs).getByRole('radio', { name: en.people.students.tabs.contract }));
     expect(await within(panel).findByText(/SQ-2026\/017/)).toBeDefined();
@@ -464,7 +467,7 @@ describe('the profile of a student', () => {
     expect(await within(panel).findByText('Dilfuza Rahimova')).toBeDefined();
     expect(titles()).not.toContain(en.people.students.statusTitle);
     expect(panelActionNames(panel)).toEqual(actions);
-    expect(actionsAreLast(panel)).toBe(true);
+    expect(actionsInHeader(panel)).toBe(true);
   });
 
   it('opens the record form behind Edit in the place of the tabs, and closes it with "Saved."', async () => {
@@ -1353,18 +1356,16 @@ describe('leaving, return and delete', () => {
     renderApp(PATH);
     fireEvent.click(await screen.findByText('Rahimov Oʻtkir', { selector: 'button' }));
     const panel = await screen.findByRole('complementary', { name: 'Oʻtkir Rahimov' });
-    // Leave school and Delete are the danger actions at the bottom (decision 5).
+    // Leave school and Delete are the danger actions (decision 5): last, in the "More" menu since
+    // the actions moved to the panel's header (owner, 17 November 2026).
     await waitFor(() => {
-      expect(panelActionNames(panel)).toEqual([
-        en.form.edit,
-        en.people.students.uidTitle,
-        en.people.students.leaveTitle,
-        en.people.students.deleteAction,
-      ]);
+      expect(panelActionNames(panel)).toEqual([en.form.edit, en.people.students.uidTitle]);
     });
-    const leave = within(panelActions(panel) ?? panel).getByRole('button', {
-      name: en.people.students.leaveTitle,
-    });
+    expect(await moreActionNames(panel)).toEqual([
+      en.people.students.leaveTitle,
+      en.people.students.deleteAction,
+    ]);
+    const leave = await panelAction(panel, en.people.students.leaveTitle);
     expect(leave.getAttribute('data-variant')).toBe('destructive');
     const form = await edit(panel, en.people.students.leaveTitle, en.people.students.leaveTitle);
     // The status and its history above the form.
@@ -1501,6 +1502,8 @@ describe('leaving, return and delete', () => {
     expect(
       within(panel).queryByRole('button', { name: en.people.students.cancelLeaving }),
     ).toBeNull();
+    // Nor in the "More" menu, where the actions after the first two secondary ones are.
+    expect(await allActionNames(panel)).not.toContain(en.people.students.cancelLeaving);
   });
 
   it('marks a scheduled leaving in the list, in Russian too', async () => {
@@ -1563,15 +1566,16 @@ describe('leaving, return and delete', () => {
     renderApp(PATH);
     fireEvent.click(await screen.findByText('Karimova Lola', { selector: 'button' }));
     const panel = await screen.findByRole('complementary', { name: 'Lola Karimova' });
-    // Inactive after a leaving: Undo and Return at the bottom, no Leave.
+    // Inactive after a leaving: Undo and Return, no Leave. Two secondary actions stand in the
+    // header, the next in "More" (owner, 17 November 2026).
     await waitFor(() => {
       expect(panelActionNames(panel)).toEqual([
         en.form.edit,
         en.people.students.uidTitle,
         en.people.students.undoTitle,
-        en.people.students.returnTitle,
       ]);
     });
+    expect(await moreActionNames(panel)).toEqual([en.people.students.returnTitle]);
     const form = await edit(panel, en.people.students.returnTitle, en.people.students.returnTitle);
     const type = (label: string, value: string) => {
       fireEvent.change(within(form).getByLabelText(label), { target: { value } });
@@ -1650,7 +1654,7 @@ describe('leaving, return and delete', () => {
     expect(await within(form).findByText(en.errors.student_changed)).toBeDefined();
   });
 
-  it('closes a leaving form whose action is gone after the re-read, and keeps the refusal at the bottom', async () => {
+  it('closes a leaving form whose action is gone after the re-read, and keeps the refusal under the actions', async () => {
     let reads = 0;
     openList('academic_vice_principal', {
       // Someone else recorded a leaving in between.
@@ -1687,7 +1691,7 @@ describe('leaving, return and delete', () => {
     const actions = panelActions(panel);
     expect(actions).not.toBeNull();
     expect(within(actions ?? panel).getByText(en.errors.student_changed)).toBeDefined();
-    expect(panelActionNames(panel)).toContain(en.people.students.cancelLeaving);
+    expect(await allActionNames(panel)).toContain(en.people.students.cancelLeaving);
     await waitFor(() => {
       expect(document.activeElement).toBe(
         within(panel).getByRole('heading', { name: en.people.students.statusTitle }),
@@ -1695,7 +1699,7 @@ describe('leaving, return and delete', () => {
     });
   });
 
-  it('closes a delete refused because the student changed and now holds data, with the refusal at the bottom', async () => {
+  it('closes a delete refused because the student changed and now holds data, with the refusal under the actions', async () => {
     let reads = 0;
     openList('academic_vice_principal', {
       [`GET /api/people/students/${OTKIR.id}`]: () => {
@@ -1730,7 +1734,7 @@ describe('leaving, return and delete', () => {
       expect(within(panel).queryByRole('form')).toBeNull();
     });
     expect(within(panelActions(panel) ?? panel).getByText(en.errors.student_changed)).toBeDefined();
-    expect(panelActionNames(panel)).not.toContain(en.people.students.deleteAction);
+    expect(await allActionNames(panel)).not.toContain(en.people.students.deleteAction);
   });
 
   it('records a leaving for ticked rows and names the refused ones', async () => {
@@ -2201,9 +2205,12 @@ describe('the Status section', () => {
     });
     renderApp(`${PATH}?open=${OTKIR.id}`);
     const panel = await screen.findByRole('complementary', { name: 'Oʻtkir Rahimov' });
-    fireEvent.click(
-      await within(panel).findByRole('button', { name: en.people.students.cancelReturn }),
-    );
+    const cancelReturn = await within(panel).findByRole('button', {
+      name: en.people.students.cancelReturn,
+    });
+    // Neither in the header nor in the "More" menu while a return is scheduled.
+    expect(await allActionNames(panel)).not.toContain(en.people.students.returnTitle);
+    fireEvent.click(cancelReturn);
     expect(
       within(panel).queryByRole('button', { name: en.people.students.returnTitle }),
     ).toBeNull();
@@ -2488,11 +2495,7 @@ describe('the Status section', () => {
           .replace('{{reason}}', 'Переезд'),
       ),
     ).toBeDefined();
-    expect(
-      within(panelActions(panel) ?? panel).getByRole('button', {
-        name: ru.people.students.returnTitle,
-      }),
-    ).toBeDefined();
+    expect(await panelAction(panel, ru.people.students.returnTitle)).toBeDefined();
     expect(
       await edit(panel, ru.people.students.returnTitle, ru.people.students.returnTitle),
     ).toBeDefined();

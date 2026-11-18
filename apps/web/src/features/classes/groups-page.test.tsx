@@ -13,6 +13,7 @@ import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { en } from '@/i18n/locales/en';
 import { ru } from '@/i18n/locales/ru';
+import { panelAction } from '@/testing/panel';
 import { fakeApi, json, NORTH, refusal, renderApp, sessionOf } from '@/testing/render-app';
 import { setWindowWidth } from '@/testing/window-width';
 
@@ -471,7 +472,7 @@ describe('a group in the side panel', () => {
     });
     fireEvent.click(screen.getByText('7-M-1', { selector: 'button' }));
     const panel = await screen.findByRole('complementary', { name: '7-M-1' });
-    fireEvent.click(await within(panel).findByRole('button', { name: en.groups.archiveGroup }));
+    fireEvent.click(await waitFor(() => panelAction(panel, en.groups.archiveGroup)));
     const dialog = await screen.findByRole('alertdialog');
     expect(within(dialog).getByText('7-M-1')).not.toBeNull();
     fireEvent.click(within(dialog).getByRole('button', { name: en.groups.archiveGroup }));
@@ -512,10 +513,10 @@ describe('a group in the side panel', () => {
     expect(
       await within(panel).findByText(en.groups.archiveHasStudents_other.replace('{{count}}', '2')),
     ).toBeDefined();
-    expect(
-      within(panel).getByRole<HTMLButtonElement>('button', { name: en.groups.archiveGroup })
-        .disabled,
-    ).toBe(true);
+    // A danger action in the "More" menu: switched off as a disabled item.
+    expect((await panelAction(panel, en.groups.archiveGroup)).getAttribute('aria-disabled')).toBe(
+      'true',
+    );
   });
 
   // Code round 1 of the review, finding 1: a restore that brings the group back

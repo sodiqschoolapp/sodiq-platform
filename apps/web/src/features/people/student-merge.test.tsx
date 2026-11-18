@@ -9,7 +9,7 @@ import { describe, expect, it } from 'vitest';
 import { en } from '@/i18n/locales/en';
 import { ru } from '@/i18n/locales/ru';
 import { schoolDateText } from '@/lib/dates';
-import { edit, panelActionNames, savedInPanel } from '@/testing/panel';
+import { savedInPanel, edit, panelAction, allActionNames } from '@/testing/panel';
 import { fakeApi, json, NORTH, renderApp, sessionOf, SOUTH } from '@/testing/render-app';
 
 const uid = (n: number): string => `0199f200-0000-7000-8000-${String(n).padStart(12, '0')}`;
@@ -173,7 +173,7 @@ function open(
 
 /** Opens the merge form, types the other UID and shows the preview. */
 async function previewed(panel: HTMLElement): Promise<HTMLElement> {
-  await within(panel).findByRole('button', { name: texts.action });
+  await panelAction(panel, texts.action);
   const form = await edit(panel, texts.action, texts.action);
   fireEvent.change(within(form).getByLabelText(texts.uid), { target: { value: OTHER.uid } });
   fireEvent.click(within(form).getByRole('button', { name: texts.show }));
@@ -186,10 +186,10 @@ describe('the merge of two student records', () => {
     open(detailOf({ canMerge: false }), {}, { role: 'academic_vice_principal' });
     renderApp(`${PATH}?open=${STUDENT.id}`);
     const panel = await screen.findByRole('complementary', { name: 'Oʻtkir Rahimov' });
-    await waitFor(() => {
-      expect(panelActionNames(panel)).toContain(en.people.students.branchMoves.move);
+    await waitFor(async () => {
+      expect(await allActionNames(panel)).toContain(en.people.students.branchMoves.move);
     });
-    expect(panelActionNames(panel)).not.toContain(texts.action);
+    expect(await allActionNames(panel)).not.toContain(texts.action);
   });
 
   it('shows the preview, asks a confirmation naming both records, and sends the digest it saw', async () => {
@@ -280,7 +280,7 @@ describe('the merge of two student records', () => {
     const calls = open(detailOf());
     renderApp(`${PATH}?open=${STUDENT.id}`);
     const panel = await screen.findByRole('complementary', { name: 'Oʻtkir Rahimov' });
-    await within(panel).findByRole('button', { name: texts.action });
+    await panelAction(panel, texts.action);
     const form = await edit(panel, texts.action, texts.action);
     const field = within(form).getByLabelText(texts.uid);
     expect(field.getAttribute('inputmode')).toBeNull();

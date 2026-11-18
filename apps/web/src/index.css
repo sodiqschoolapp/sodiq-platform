@@ -240,6 +240,15 @@
     @apply font-sans;
   }
   /*
+   * A form's foot is pinned to the bottom of the window (owner, 17 November 2026): what the
+   * browser scrolls into view, a field reached with Tab among them, stops above it, never under
+   * it (WCAG 2.2, 2.4.11 Focus not obscured). 72 px: the foot's 40 px buttons, its 24 px of
+   * padding and its border, with room to spare.
+   */
+  html:has([data-slot='form-footer']) {
+    scroll-padding-bottom: 5rem;
+  }
+  /*
    * Whatever acts on a click shows the hand (owner, 27 October 2026): Tailwind 4 leaves a
    * button on the arrow. A switched-off control keeps the arrow.
    */

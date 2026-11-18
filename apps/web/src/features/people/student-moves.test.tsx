@@ -12,7 +12,7 @@ import { en } from '@/i18n/locales/en';
 import { ru } from '@/i18n/locales/ru';
 import { schoolDateText } from '@/lib/dates';
 import { fakeApi, json, NORTH, renderApp, sessionOf, SOUTH } from '@/testing/render-app';
-import { edit, panelActionNames, savedInPanel } from '@/testing/panel';
+import { savedInPanel, edit, panelAction, allActionNames } from '@/testing/panel';
 
 const uid = (n: number): string => `0199f000-0000-7000-8000-${String(n).padStart(12, '0')}`;
 const PATH = '/people/students';
@@ -172,7 +172,7 @@ describe('class and group transfers in the side panel', () => {
     });
     renderApp(`${PATH}?open=${STUDENT.id}`);
     const panel = await screen.findByRole('complementary', { name: 'Oʻtkir Rahimov' });
-    await within(panel).findByRole('button', { name: en.people.students.moves.moveClass });
+    await panelAction(panel, en.people.students.moves.moveClass);
     const form = await edit(
       panel,
       en.people.students.moves.moveClass,
@@ -227,7 +227,7 @@ describe('class and group transfers in the side panel', () => {
     });
     renderApp(`${PATH}?open=${STUDENT.id}`);
     const panel = await screen.findByRole('complementary', { name: 'Oʻtkir Rahimov' });
-    await within(panel).findByRole('button', { name: en.people.students.moves.moveClass });
+    await panelAction(panel, en.people.students.moves.moveClass);
     const form = await edit(
       panel,
       en.people.students.moves.moveClass,
@@ -299,7 +299,7 @@ describe('class and group transfers in the side panel', () => {
     });
     renderApp(`${PATH}?open=${STUDENT.id}`);
     const panel = await screen.findByRole('complementary', { name: 'Oʻtkir Rahimov' });
-    await within(panel).findByRole('button', { name: en.people.students.moves.moveClass });
+    await panelAction(panel, en.people.students.moves.moveClass);
     const form = await edit(
       panel,
       en.people.students.moves.moveClass,
@@ -400,7 +400,7 @@ describe('class and group transfers in the side panel', () => {
     });
     renderApp(`${PATH}?open=${STUDENT.id}`);
     const panel = await screen.findByRole('complementary', { name: 'Oʻtkir Rahimov' });
-    await within(panel).findByRole('button', { name: en.people.students.moves.moveClass });
+    await panelAction(panel, en.people.students.moves.moveClass);
     const form = await edit(
       panel,
       en.people.students.moves.moveClass,
@@ -438,12 +438,12 @@ describe('class and group transfers in the side panel', () => {
     const panel = await screen.findByRole('complementary', { name: 'Oʻtkir Rahimov' });
     const change = en.people.students.moves.change.replace('{{target}}', '7 Yale');
     const cancel = en.people.students.moves.cancel.replace('{{target}}', '7 Yale');
-    await waitFor(() => {
-      expect(panelActionNames(panel)).toEqual(expect.arrayContaining([change, cancel]));
+    await waitFor(async () => {
+      expect(await allActionNames(panel)).toEqual(expect.arrayContaining([change, cancel]));
     });
     // No second class move while one is scheduled.
-    expect(panelActionNames(panel)).not.toContain(en.people.students.moves.moveClass);
-    fireEvent.click(within(panel).getByRole('button', { name: cancel }));
+    expect(await allActionNames(panel)).not.toContain(en.people.students.moves.moveClass);
+    fireEvent.click(await panelAction(panel, cancel));
     const dialog = await screen.findByRole('alertdialog', {
       name: en.people.students.moves.cancelTitle,
     });
@@ -522,7 +522,7 @@ describe('class and group transfers in the side panel', () => {
     renderApp(`${PATH}?open=${STUDENT.id}`);
     const panel = await screen.findByRole('complementary', { name: 'Oʻtkir Rahimov' });
     const change = en.people.students.moves.change.replace('{{target}}', '7 Moskva');
-    fireEvent.click(await within(panel).findByRole('button', { name: change }));
+    fireEvent.click(await panelAction(panel, change));
     const form = await within(panel).findByRole('form');
     fireEvent.change(within(form).getByLabelText(en.people.students.moves.from), {
       target: { value: '2026-10-23' },

@@ -3,7 +3,14 @@ import { EXPORT_TEXTS, BUILDING_EXPORT_COLUMNS } from '@sodiq/shared';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { en } from '@/i18n/locales/en';
-import { actionsAreLast, edit, panelActionNames, panelActions } from '@/testing/panel';
+import {
+  actionsInHeader,
+  edit,
+  moreActionNames,
+  panelAction,
+  panelActionNames,
+  panelActions,
+} from '@/testing/panel';
 import { fakeApi, json, NORTH, refusal, renderApp, sessionOf } from '@/testing/render-app';
 
 const PATH = '/setup/buildings';
@@ -119,7 +126,7 @@ describe('the buildings page', () => {
     ]);
   });
 
-  it('opens a building in the side panel to read, with its floors and its actions at the bottom', async () => {
+  it('opens a building in the side panel to read, with its floors and its actions in the header', async () => {
     await openList();
 
     fireEvent.click(rowButton('Main'));
@@ -134,15 +141,15 @@ describe('the buildings page', () => {
     expect(floors[2]?.textContent).toContain(en.setup.buildings.archived);
     // Task 2.7c-2b-1: the record is read first; its form is behind Edit.
     expect(within(panel).queryByRole('form', { name: 'Main' })).toBeNull();
-    expect(panelActionNames(panel)).toEqual([en.form.edit, en.setup.buildings.archiveBuilding]);
-    expect(actionsAreLast(panel)).toBe(true);
+    expect(panelActionNames(panel)).toEqual([en.form.edit]);
+    expect(await moreActionNames(panel)).toEqual([en.setup.buildings.archiveBuilding]);
+    expect(actionsInHeader(panel)).toBe(true);
     expect(within(panel).getByRole('button', { name: en.form.edit }).dataset.variant).toBe(
       'default',
     );
-    expect(
-      within(panel).getByRole('button', { name: en.setup.buildings.archiveBuilding }).dataset
-        .variant,
-    ).toBe('destructive');
+    expect((await panelAction(panel, en.setup.buildings.archiveBuilding)).dataset.variant).toBe(
+      'destructive',
+    );
   });
 
   it('renames the building through Edit, then shows it to read with "Saved." and the focus on Edit', async () => {
@@ -210,10 +217,8 @@ describe('the buildings page', () => {
     await openList();
     fireEvent.click(rowButton('Annex'));
     const panel = await screen.findByRole('complementary', { name: 'Annex' });
-    expect(panelActionNames(panel)).toEqual([
-      en.setup.buildings.restoreBuilding,
-      en.forcedDeletes.deletePlace,
-    ]);
+    expect(panelActionNames(panel)).toEqual([en.setup.buildings.restoreBuilding]);
+    expect(await moreActionNames(panel)).toEqual([en.forcedDeletes.deletePlace]);
     expect(
       within(panel).getByRole('button', { name: en.setup.buildings.restoreBuilding }).dataset
         .variant,
@@ -317,9 +322,7 @@ describe('the buildings page', () => {
       );
     });
 
-    fireEvent.click(
-      within(panel).getByRole('button', { name: en.setup.buildings.archiveBuilding }),
-    );
+    fireEvent.click(await panelAction(panel, en.setup.buildings.archiveBuilding));
     await goOn(en.setup.buildings.archive);
     expect((await within(panel).findByRole('alert')).textContent).toBe(en.errors.archive_refused);
   });
@@ -450,6 +453,7 @@ describe('the buildings page', () => {
     expect(within(panel).queryByRole('button', { name: named('Ground') })).toBeNull();
     // Main has rooms: no forced delete of the building.
     expect(panelActionNames(panel)).not.toContain(en.forcedDeletes.deletePlace);
+    expect(await moreActionNames(panel)).not.toContain(en.forcedDeletes.deletePlace);
     fireEvent.click(within(panel).getByRole('button', { name: named('Attic') }));
     const dialog = await screen.findByRole('dialog');
     fireEvent.click(within(dialog).getByRole('button', { name: en.forcedDeletes.send }));
@@ -475,7 +479,7 @@ describe('the buildings page', () => {
     });
     fireEvent.click(rowButton('Annex'));
     const panel = await screen.findByRole('complementary', { name: 'Annex' });
-    fireEvent.click(within(panel).getByRole('button', { name: en.forcedDeletes.deletePlace }));
+    fireEvent.click(await panelAction(panel, en.forcedDeletes.deletePlace));
     const dialog = await screen.findByRole('dialog');
     type(within(dialog).getByLabelText(en.forcedDeletes.reason), 'Never built');
     fireEvent.click(within(dialog).getByRole('button', { name: en.forcedDeletes.send }));
@@ -494,7 +498,7 @@ describe('the buildings page', () => {
     });
     fireEvent.click(rowButton('Annex'));
     const panel = await screen.findByRole('complementary', { name: 'Annex' });
-    fireEvent.click(within(panel).getByRole('button', { name: en.forcedDeletes.deletePlace }));
+    fireEvent.click(await panelAction(panel, en.forcedDeletes.deletePlace));
     const dialog = await screen.findByRole('dialog');
     type(within(dialog).getByLabelText(en.forcedDeletes.reason), 'Never built');
     fireEvent.click(within(dialog).getByRole('button', { name: en.forcedDeletes.send }));

@@ -13,7 +13,7 @@ import { createI18n } from '@/i18n/i18n';
 import { ru } from '@/i18n/locales/ru';
 import { uz } from '@/i18n/locales/uz';
 import { schoolDateText } from '@/lib/dates';
-import { edit, panelActionNames, savedInPanel } from '@/testing/panel';
+import { savedInPanel, edit, panelAction, allActionNames } from '@/testing/panel';
 import { fakeApi, json, NORTH, renderApp, sessionOf, SOUTH } from '@/testing/render-app';
 
 const uid = (n: number): string => `0199f100-0000-7000-8000-${String(n).padStart(12, '0')}`;
@@ -210,7 +210,7 @@ describe('the move to another branch', () => {
     });
     renderApp(`${PATH}?open=${STUDENT.id}`);
     const panel = await screen.findByRole('complementary', { name: 'Oʻtkir Rahimov' });
-    await within(panel).findByRole('button', { name: texts.move });
+    await panelAction(panel, texts.move);
     const form = await edit(panel, texts.move, texts.move);
     const date = within(form).getByLabelText<HTMLInputElement>(texts.from);
     expect(date.value).toBe('2026-10-11');
@@ -245,11 +245,11 @@ describe('the move to another branch', () => {
     });
     renderApp(`${PATH}?open=${STUDENT.id}`);
     const panel = await screen.findByRole('complementary', { name: 'Oʻtkir Rahimov' });
-    await waitFor(() => {
-      expect(panelActionNames(panel)).toContain(texts.cancel);
+    await waitFor(async () => {
+      expect(await allActionNames(panel)).toContain(texts.cancel);
     });
-    expect(panelActionNames(panel)).not.toContain(texts.move);
-    fireEvent.click(within(panel).getByRole('button', { name: texts.cancel }));
+    expect(await allActionNames(panel)).not.toContain(texts.move);
+    fireEvent.click(await panelAction(panel, texts.cancel));
     const dialog = await screen.findByRole('alertdialog', { name: texts.cancelTitle });
     expect(within(dialog).getByText('Oʻtkir Rahimov')).toBeDefined();
     fireEvent.click(within(dialog).getByRole('button', { name: texts.cancel }));
@@ -280,20 +280,20 @@ describe('the move to another branch', () => {
     });
     renderApp(`${PATH}?open=${STUDENT.id}`);
     const panel = await screen.findByRole('complementary', { name: 'Oʻtkir Rahimov' });
-    await waitFor(() => {
-      expect(panelActionNames(panel)).toContain(texts.cancel);
+    await waitFor(async () => {
+      expect(await allActionNames(panel)).toContain(texts.cancel);
     });
     const reads = () =>
       calls.filter((call) => call.route === `GET /api/people/students/${STUDENT.id}`).length;
     const before = reads();
-    fireEvent.click(within(panel).getByRole('button', { name: texts.cancel }));
+    fireEvent.click(await panelAction(panel, texts.cancel));
     const dialog = await screen.findByRole('alertdialog', { name: texts.cancelTitle });
     fireEvent.click(within(dialog).getByRole('button', { name: texts.cancel }));
     await waitFor(() => {
       expect(reads()).toBeGreaterThan(before);
     });
-    await waitFor(() => {
-      expect(panelActionNames(panel)).not.toContain(texts.cancel);
+    await waitFor(async () => {
+      expect(await allActionNames(panel)).not.toContain(texts.cancel);
     });
     expect(within(panel).getByText(en.errors.branch_move_closed)).toBeDefined();
   });
@@ -314,7 +314,7 @@ describe('the move to another branch', () => {
           .replace('{{date}}', schoolDateText('2026-10-05', 'en')),
       ),
     ).toBeDefined();
-    expect(panelActionNames(panel)).not.toContain(texts.move);
+    expect(await allActionNames(panel)).not.toContain(texts.move);
   });
 
   it('draws the move on the History tab with the class it joined', async () => {

@@ -1,6 +1,6 @@
 import { expect, type Page } from '@playwright/test';
 import { en } from '../src/i18n/locales/en';
-import { heading } from './steps';
+import { heading, panelAction } from './steps';
 
 /**
  * edge/students-classes-groups, "A student who left in 2025 is created again
@@ -23,7 +23,7 @@ export async function mergeRecords(page: Page): Promise<void> {
   const again = page.locator('tbody tr').filter({ hasText: '9999962' });
   await again.getByRole('button', { name: 'Karimova Dilnoza', exact: true }).click();
   const panel = page.getByRole('complementary', { name: 'Dilnoza Karimova' });
-  await panel.getByRole('button', { name: merge.action, exact: true }).click();
+  await (await panelAction(panel, merge.action)).click();
   const form = panel.getByRole('form', { name: merge.action });
   await form.getByLabel(merge.uid, { exact: true }).fill('9999961');
   await form.getByRole('button', { name: merge.show, exact: true }).click();

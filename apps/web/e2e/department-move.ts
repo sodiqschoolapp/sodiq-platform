@@ -1,6 +1,6 @@
 import { expect, type Page } from '@playwright/test';
 import { en } from '../src/i18n/locales/en';
-import { heading } from './steps';
+import { heading, panelAction } from './steps';
 
 /** A school date some days from today in Tashkent. */
 function schoolDay(days: number): string {
@@ -98,7 +98,7 @@ export async function moveSubjectDepartment(page: Page): Promise<void> {
     .filter({ hasText: '7 Oxford' })
     .filter({ hasText: 'Cosmology' });
   await row.getByRole('button').first().click();
-  await page.getByRole('button', { name: en.timetable.load.deleteRow, exact: true }).click();
+  await (await panelAction(page.getByRole('complementary'), en.timetable.load.deleteRow)).click();
   await page
     .getByRole('alertdialog')
     .getByRole('button', { name: en.timetable.load.deleteRow, exact: true })

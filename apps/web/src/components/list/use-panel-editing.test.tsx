@@ -279,3 +279,50 @@ describe('the focus moved by the panel without a record form', () => {
     });
   });
 });
+
+// Owner, 17 November 2026: an action in the side panel's "More" menu is not on the page once the
+// menu has closed; the focus goes back to the menu's button, which names the forms it holds.
+describe('the focus after a form opened from the "More" menu', () => {
+  function FromMenu() {
+    const panel = usePanelEditing();
+    return (
+      <aside data-slot="side-panel" aria-label="panel">
+        <button type="button" data-holds="moved other">
+          More actions
+        </button>
+        {panel.editing === 'moved' ? (
+          <SampleForm
+            row={ROW}
+            onSave={() => Promise.resolve()}
+            onCancel={() => {
+              panel.stop();
+            }}
+          />
+        ) : (
+          // The menu's item, gone from the page with its menu: it carries no `opener`.
+          <button type="button" onClick={() => panel.start('moved')}>
+            menu item
+          </button>
+        )}
+      </aside>
+    );
+  }
+
+  it('goes back to the "More" button when the form closes', async () => {
+    render(
+      <I18nextProvider i18n={createI18n('en')}>
+        <ConfirmProvider>
+          <UnsentProvider>
+            <FromMenu />
+          </UnsentProvider>
+        </ConfirmProvider>
+      </I18nextProvider>,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'menu item' }));
+    const form = await screen.findByRole('form');
+    fireEvent.click(within(form).getByRole('button', { name: en.form.cancel }));
+    await waitFor(() => {
+      expect(document.activeElement?.textContent).toBe('More actions');
+    });
+  });
+});

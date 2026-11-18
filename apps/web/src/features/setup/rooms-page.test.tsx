@@ -3,7 +3,14 @@ import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { en } from '@/i18n/locales/en';
 import { setWindowWidth } from '@/testing/window-width';
-import { actionsAreLast, edit, panelActionNames, savedInPanel } from '@/testing/panel';
+import {
+  actionsInHeader,
+  edit,
+  moreActionNames,
+  panelAction,
+  panelActionNames,
+  savedInPanel,
+} from '@/testing/panel';
 import { fakeApi, json, NORTH, refusal, renderApp, sessionOf } from '@/testing/render-app';
 import { savedRecordPanel } from '@/testing/new-record';
 
@@ -203,11 +210,12 @@ describe('the room list', () => {
 
     fireEvent.click(rowButton('101'));
     const panel = await screen.findByRole('complementary', { name: '101' });
-    // Task 2.7c-2b-1: read first, Edit at the bottom; a room has no archive,
+    // Task 2.7c-2b-1: read first, Edit in the header; a room has no archive,
     // only the forced delete of the Super Admin (task 5.8c).
     expect(within(panel).queryByRole('form')).toBeNull();
-    expect(panelActionNames(panel)).toEqual([en.form.edit, en.forcedDeletes.deletePlace]);
-    expect(actionsAreLast(panel)).toBe(true);
+    expect(panelActionNames(panel)).toEqual([en.form.edit]);
+    expect(await moreActionNames(panel)).toEqual([en.forcedDeletes.deletePlace]);
+    expect(actionsInHeader(panel)).toBe(true);
     const form = await edit(panel, '101');
     expect(field(form, en.setup.rooms.name).value).toBe('101');
     expect(field(form, en.setup.rooms.building).value).toBe(MAIN.id);
@@ -432,7 +440,7 @@ describe('the room list', () => {
     });
     fireEvent.click(rowButton('101'));
     const panel = await screen.findByRole('complementary', { name: '101' });
-    fireEvent.click(within(panel).getByRole('button', { name: en.forcedDeletes.deletePlace }));
+    fireEvent.click(await panelAction(panel, en.forcedDeletes.deletePlace));
     const dialog = await screen.findByRole('dialog');
     type(within(dialog).getByLabelText(en.forcedDeletes.reason), 'Never used');
     fireEvent.click(within(dialog).getByRole('button', { name: en.forcedDeletes.send }));

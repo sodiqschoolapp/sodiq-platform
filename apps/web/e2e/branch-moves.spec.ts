@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { en } from '../src/i18n/locales/en';
 import { accountOf } from './accounts';
-import { changeFirstPassword, heading, languageChooser, signIn } from './steps';
+import { changeFirstPassword, heading, languageChooser, signIn, panelAction } from './steps';
 import { codeNow } from './totp';
 
 // edge/students-classes-groups, "A student moves to another branch": "The
@@ -39,7 +39,7 @@ test('a student is released by one branch and accepted by another', async ({ pag
   await branch.selectOption({ label: 'Sending browser test branch' });
   await page.getByRole('button', { name: 'Qosimova Gulshan', exact: true }).click();
   const panel = page.getByRole('complementary', { name: 'Gulshan Qosimova' });
-  await panel.getByRole('button', { name: moves.move, exact: true }).click();
+  await (await panelAction(panel, moves.move)).click();
   const release = panel.getByRole('form', { name: moves.move });
   await release
     .getByLabel(moves.toBranch, { exact: true })

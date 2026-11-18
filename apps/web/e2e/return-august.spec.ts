@@ -1,7 +1,14 @@
 import { expect, test } from '@playwright/test';
 import { en } from '../src/i18n/locales/en';
 import { accountOf } from './accounts';
-import { changeFirstPassword, heading, languageChooser, signIn } from './steps';
+import {
+  changeFirstPassword,
+  heading,
+  languageChooser,
+  signIn,
+  panelAction,
+  allPanelActions,
+} from './steps';
 import { codeNow } from './totp';
 
 // edge/students-classes-groups, "A student returns": a student can be brought
@@ -42,7 +49,7 @@ test('a student is returned on the first day of next year, cancelled, and return
   const row = page.locator('tbody tr').filter({ hasText: '9999971' });
 
   // The leaving, its last day the day before yesterday.
-  await panel.getByRole('button', { name: texts.leaveTitle, exact: true }).click();
+  await (await panelAction(panel, texts.leaveTitle)).click();
   const leaving = panel.getByRole('form', { name: texts.leaveTitle });
   await leaving.getByLabel(texts.lastDay, { exact: true }).fill(dayBeforeYesterday);
   await leaving.getByLabel(texts.reason, { exact: true }).fill('The family moved to Bukhara.');
@@ -55,7 +62,7 @@ test('a student is returned on the first day of next year, cancelled, and return
 
   // The return on the first day of next year, picked with the button the form offers.
   const giveBack = async (contract: string) => {
-    await panel.getByRole('button', { name: texts.returnTitle, exact: true }).click();
+    await (await panelAction(panel, texts.returnTitle)).click();
     const back = panel.getByRole('form', { name: texts.returnTitle });
     await back.getByRole('button', { name: /^First day of next year/ }).click();
     await back.getByLabel(texts.class, { exact: true }).selectOption({ label: '7 Cambridge' });
@@ -71,16 +78,16 @@ test('a student is returned on the first day of next year, cancelled, and return
 
   // Still inactive until the date; the return can be cancelled, Return is gone.
   await expect(row).toContainText(texts.statuses.inactive);
-  await expect(panel.getByRole('button', { name: texts.returnTitle, exact: true })).toHaveCount(0);
-  await panel.getByRole('button', { name: texts.cancelReturn, exact: true }).click();
+  await expect.poll(() => allPanelActions(panel)).not.toContain(texts.returnTitle);
+  await (await panelAction(panel, texts.cancelReturn)).click();
   await page
     .getByRole('alertdialog', { name: texts.cancelReturnConfirmTitle })
     .getByRole('button', { name: texts.cancelReturn, exact: true })
     .click();
-  await expect(panel.getByRole('button', { name: texts.cancelReturn, exact: true })).toHaveCount(0);
+  await expect.poll(() => allPanelActions(panel)).not.toContain(texts.cancelReturn);
   await expect(row).toContainText(texts.statuses.inactive);
 
   // Returned again after the cancel.
   await giveBack('E2E-AUGUST-2');
-  await expect(panel.getByRole('button', { name: texts.cancelReturn, exact: true })).toBeVisible();
+  await expect.poll(() => allPanelActions(panel)).toContain(texts.cancelReturn);
 });
