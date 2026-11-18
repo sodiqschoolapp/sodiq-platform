@@ -2,6 +2,7 @@ import { DIGEST_TEXTS } from '@sodiq/shared';
 import { describe, expect, it } from 'vitest';
 import {
   CHILD_RULE,
+  SECTION_SIGNS,
   childText,
   digestText,
   escapeHtml,
@@ -112,17 +113,17 @@ describe('the text of the digest', () => {
     expect(childText('en', part).split('\n')).toEqual([
       '<b>Kamron</b> · 7-A',
       '',
-      '<b>Attendance</b>',
+      '📅 <b>Attendance</b>',
       'Attended 18 of 20 lessons.',
       '• 3 Nov, Mathematics — absent',
       '• 4 Nov, Mathematics — present (corrected)',
       '• 2 Nov, Mathematics — removed',
       '',
-      '<b>Grades</b>',
+      '📝 <b>Grades</b>',
       '• 3 Nov, Mathematics, Classwork 1 — <b>8/10</b>',
       '• 3 Nov, Mathematics, Fractions — <b>5/5</b> (corrected)',
       '',
-      '<b>Teachers’ comments</b>',
+      '💬 <b>Teachers’ comments</b>',
       '• 3 Nov, Mathematics',
       '— <i>Well done</i>',
       '— <i>Neat work</i> (corrected)',
@@ -141,7 +142,7 @@ describe('the text of the digest', () => {
       comments: [],
     };
     expect(childText('en', quiet)).toBe(
-      '<b>Kamron</b>\n\n<b>Attendance</b>\nAttended all 4 lessons on time.',
+      '<b>Kamron</b>\n\n📅 <b>Attendance</b>\nAttended all 4 lessons on time.',
     );
   });
 
@@ -163,18 +164,21 @@ describe('the text of the digest', () => {
     expect(escapeHtml('a<b>&c')).toBe('a&lt;b&gt;&amp;c');
   });
 
-  it('opens with the school and the date, and says what the first digest covers', () => {
+  it('opens with the date in bold and says what the digest covers, without the school name', () => {
     expect(digestText('en', '2026-11-04', [part]).split('\n').slice(0, 2)).toEqual([
-      '<b>Sodiq School</b>',
-      'Digest of 4 November · since the previous digest',
+      '<b>Digest of 4 November</b>',
+      'Since the previous digest',
     ]);
     expect(digestText('uz', '2026-11-17', [part], true).split('\n').slice(0, 2)).toEqual([
-      '<b>Sodiq maktabi</b>',
-      'Xabarnoma, 17-noyabr · Telegram ulanganidan beri',
+      '<b>Xabarnoma, 17-noyabr</b>',
+      'Telegram ulanganidan beri',
     ]);
-    expect(digestText('ru', '2026-11-17', [part]).split('\n')[1]).toBe(
-      'Сводка на 17 ноября · с прошлой сводки',
-    );
+    expect(digestText('ru', '2026-11-17', [part]).split('\n').slice(0, 2)).toEqual([
+      '<b>Сводка на 17 ноября</b>',
+      'С прошлой сводки',
+    ]);
+    for (const language of ['uz', 'ru', 'en'] as const)
+      expect(digestText(language, '2026-11-17', [part])).not.toMatch(/Sodiq|Школа/u);
   });
 
   it('parts two children by a rule above the second name, and only between them', () => {
@@ -190,8 +194,15 @@ describe('the text of the digest', () => {
       const text = digestText(language, '2026-11-04', [part]);
       expect(text).toContain(part.firstName);
       expect(text).toContain(maths[language]);
-      expect(text).toContain(`<b>${DIGEST_TEXTS[language].gradesHeading}</b>`);
-      expect(text).toContain(`<b>${DIGEST_TEXTS[language].attendanceHeading}</b>`);
+      expect(text).toContain(
+        `${SECTION_SIGNS.attendance} <b>${DIGEST_TEXTS[language].attendanceHeading}</b>`,
+      );
+      expect(text).toContain(
+        `${SECTION_SIGNS.grades} <b>${DIGEST_TEXTS[language].gradesHeading}</b>`,
+      );
+      expect(text).toContain(
+        `${SECTION_SIGNS.comments} <b>${DIGEST_TEXTS[language].commentsHeading}</b>`,
+      );
     }
   });
 

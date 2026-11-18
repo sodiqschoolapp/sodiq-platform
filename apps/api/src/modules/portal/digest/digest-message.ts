@@ -69,6 +69,14 @@ export function escapeHtml(value: string): string {
 }
 
 const bold = (value: string): string => `<b>${escapeHtml(value)}</b>`;
+
+/**
+ * One sign before each section heading, the same in every language (owner, 18 November 2026: "a
+ * couple of emoji if necessary"). Nothing else in the message carries one.
+ */
+export const SECTION_SIGNS = { attendance: '📅', grades: '📝', comments: '💬' } as const;
+
+const heading = (sign: string, value: string): string => `${sign} ${bold(value)}`;
 const italic = (value: string): string => `<i>${escapeHtml(value)}</i>`;
 
 const parseDate = (date: string): { day: number; month: number } => {
@@ -132,7 +140,10 @@ export function childText(language: Language, part: ChildPart): string {
       : `${bold(part.firstName)} · ${escapeHtml(part.className)}`;
   const sections: string[] = [name];
 
-  const attendance = [bold(texts.attendanceHeading), escapeHtml(summaryLine(texts, part.summary))];
+  const attendance = [
+    heading(SECTION_SIGNS.attendance, texts.attendanceHeading),
+    escapeHtml(summaryLine(texts, part.summary)),
+  ];
   for (const one of part.marks) {
     const where = head(shortDate(texts, one.date), subjectText(one.subject, language));
     attendance.push(
@@ -142,7 +153,7 @@ export function childText(language: Language, part: ChildPart): string {
   sections.push(attendance.join('\n'));
 
   if (part.scores.length > 0) {
-    const grades = [bold(texts.gradesHeading)];
+    const grades = [heading(SECTION_SIGNS.grades, texts.gradesHeading)];
     for (const one of part.scores) {
       const work =
         one.work.kind === 'rating'
@@ -161,7 +172,7 @@ export function childText(language: Language, part: ChildPart): string {
   if (part.comments.length > 0) {
     // The comments of one lesson (the same date and subject) under one line: the list is sorted
     // by date, then subject, so they come together.
-    const comments = [bold(texts.commentsHeading)];
+    const comments = [heading(SECTION_SIGNS.comments, texts.commentsHeading)];
     let previous: string | null = null;
     for (const one of part.comments) {
       const where = head(shortDate(texts, one.date), subjectText(one.subject, language));
@@ -184,7 +195,7 @@ export function childText(language: Language, part: ChildPart): string {
 export const CHILD_RULE = '──────────';
 
 /**
- * The whole digest, as Telegram HTML: the school in bold, the date and what it covers, then each
+ * The whole digest, as Telegram HTML: the digest and its date in bold, what it covers, then each
  * child's part; with more than one child a thin rule parts them. `first`: no digest before this
  * one, so it covers what was saved since the chat was linked (`10`, What it holds).
  */
@@ -196,7 +207,7 @@ export function digestText(
 ): string {
   const texts = DIGEST_TEXTS[language];
   const { day, month } = parseDate(date);
-  const top = `${bold(texts.title)}\n${escapeHtml(texts.subtitle(texts.longDate(day, month), first))}`;
+  const top = `${bold(texts.title(texts.longDate(day, month)))}\n${escapeHtml(texts.covers(first))}`;
   return [
     top,
     ...parts.map((part, index) =>

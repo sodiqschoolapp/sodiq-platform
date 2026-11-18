@@ -126,10 +126,10 @@ export type DigestLog = z.infer<typeof digestLogSchema>;
  * headings and escapes every value, so no text here holds markup.
  */
 export interface DigestTexts {
-  /** The first line: the school. */
-  title: string;
-  /** The second line: the date of the digest and what it covers. */
-  subtitle: (date: string, first: boolean) => string;
+  /** The first line, in bold: the digest and its date. */
+  title: (date: string) => string;
+  /** The second line: what the digest covers; `first` when no digest came before it. */
+  covers: (first: boolean) => string;
   attendedAllOnTime: (lessons: number) => string;
   attendedAllLate: (lessons: number, late: number) => string;
   attendedSome: (attended: number, lessons: number) => string;
@@ -150,7 +150,7 @@ export interface DigestTexts {
   commentRemoved: string;
   /** A lesson date in a list: `day` 1 to 31, `month` 0 to 11. */
   shortDate: (day: number, month: number) => string;
-  /** The date of the digest in the subtitle. */
+  /** The date of the digest in the title. */
   longDate: (day: number, month: number) => string;
   openPortal: string;
 }
@@ -195,9 +195,8 @@ const uzLong = [
 ];
 
 const uz: DigestTexts = {
-  title: 'Sodiq maktabi',
-  subtitle: (date, first) =>
-    `Xabarnoma, ${date} · ${first ? 'Telegram ulanganidan beri' : 'oldingi xabarnomadan beri'}`,
+  title: (date) => `Xabarnoma, ${date}`,
+  covers: (first) => (first ? 'Telegram ulanganidan beri' : 'Oldingi xabarnomadan beri'),
   attendedAllOnTime: (lessons) =>
     lessons === 1
       ? 'Darsga oʻz vaqtida keldi.'
@@ -263,9 +262,8 @@ const ruLong = [
 const ruLessons = (count: number): string => ruPlural(count, 'урок', 'урока', 'уроков');
 
 const ru: DigestTexts = {
-  title: 'Школа Sodiq',
-  subtitle: (date, first) =>
-    `Сводка на ${date} · ${first ? 'с момента подключения Telegram' : 'с прошлой сводки'}`,
+  title: (date) => `Сводка на ${date}`,
+  covers: (first) => (first ? 'С момента подключения Telegram' : 'С прошлой сводки'),
   attendedAllOnTime: (lessons) =>
     lessons === 1
       ? 'Урок посещён, без опоздания.'
@@ -331,9 +329,8 @@ const enLong = [
 const enLessons = (count: number): string => (count === 1 ? 'lesson' : 'lessons');
 
 const en: DigestTexts = {
-  title: 'Sodiq School',
-  subtitle: (date, first) =>
-    `Digest of ${date} · ${first ? 'since Telegram was connected' : 'since the previous digest'}`,
+  title: (date) => `Digest of ${date}`,
+  covers: (first) => (first ? 'Since Telegram was connected' : 'Since the previous digest'),
   attendedAllOnTime: (lessons) =>
     lessons === 1
       ? 'Attended the lesson on time.'

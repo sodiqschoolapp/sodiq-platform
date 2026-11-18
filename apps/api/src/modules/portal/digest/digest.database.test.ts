@@ -435,7 +435,7 @@ describe('the parents digest', () => {
 
   it('writes in the parent language, Uzbek until chosen', () => {
     const [text] = messagesTo(motherA.chat);
-    expect(text).toContain('Sodiq maktabi');
+    expect(text).toContain('<b>Xabarnoma, 19-oktabr</b>');
     expect(text).toContain('12/30');
     expect(text).toContain('4/5');
     expect(text).toContain('Fractions quiz');
