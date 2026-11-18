@@ -11,7 +11,8 @@ Newest entry first. Each finished task adds an entry: what was built, what was l
 
 The next sessions must know:
 
-- The spec text is in pull request #348, for the owner to merge; the fix reaches production only with the owner's deploy.
+- The spec text came with pull request #348 (merged 18 November). The fix reaches production only with the owner's deploy.
+- The owner accepted the plan's owner before the first version starts (pull request #349, 18 November 2026). The permission reviewer had read this as stop-list item 5.
 
 ## 17 November 2026: step 1 of the design review, small fixes
 
