@@ -135,12 +135,19 @@ export async function publishedScene(
      * 10 · 50 · 40 (the done-when of 9.4f).
      */
     ratingExam?: boolean;
+    /**
+     * Task 5.19: the version starts (and is published from) this date, Monday 12 October
+     * unless said: a branch whose first timetable starts mid-quarter.
+     */
+    startsOn?: string;
+    /** Task 5.19: the dates of the four quarters, `QUARTERS` unless said. */
+    quarters?: readonly (readonly [string, string])[];
   } = {},
 ) {
   const grade = input.grade ?? 7;
   const branch = input.branch ?? (await t.newBranch());
   const year = await load.classes.year(branch);
-  for (const [index, [start, end]] of QUARTERS.entries()) {
+  for (const [index, [start, end]] of (input.quarters ?? QUARTERS).entries()) {
     await t.database.migrator
       .updateTable('quarters')
       .set({ start_date: start, end_date: end })
@@ -217,7 +224,7 @@ export async function publishedScene(
   );
   const created = await t.post('/api/timetable/versions', branch, {
     academicYearId: year,
-    startsOn: MONDAY,
+    startsOn: input.startsOn ?? MONDAY,
     copyFrom: null,
   });
   expect(created.status, JSON.stringify(created.body)).toBe(201);
@@ -257,7 +264,7 @@ export async function publishedScene(
   const confirmed = await t.post(`/api/timetable/versions/${version}/templates/confirm`, branch);
   expect(confirmed.status, JSON.stringify(confirmed.body)).toBe(200);
   await load.freeEditLock(version);
-  const published = await publishOf(t)(branch, version, MONDAY);
+  const published = await publishOf(t)(branch, version, input.startsOn ?? MONDAY);
   expect(published.status, JSON.stringify(published.body)).toBe(200);
   return {
     branch,

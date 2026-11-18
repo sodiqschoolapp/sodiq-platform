@@ -53,6 +53,8 @@ import {
   planRows,
   preparedRequestOf,
   quarterOfToday,
+  planDateOf,
+  planDatesOf,
   referenceDateOf,
   worksOf,
   type PlanQuarter,
@@ -253,6 +255,8 @@ export class PlansService {
         subject_id: journal.subjectId,
       })),
     );
+    // Task 5.19: owners read on the plans' date of each quarter.
+    const dates = await planDatesOf(transaction, branchId, quarters, today);
     const readable = journals.filter((journal) =>
       (quarters.length === 0 ? [null] : quarters).some((quarter) => {
         const owner =
@@ -262,7 +266,7 @@ export class PlansService {
                 facts.runs.get(journal.id) ?? [],
                 facts.periods.get(journal.id) ?? [],
                 facts.out,
-                referenceDateOf(quarter, today),
+                dates.get(quarter.id) ?? referenceDateOf(quarter, today),
               );
         const ownerId = owner === null || owner.kind === 'none' ? null : owner.staffId;
         return planReachOf(reader, journal, ownerId).read;
@@ -297,7 +301,7 @@ export class PlansService {
         facts.runs.get(journalId) ?? [],
         facts.periods.get(journalId) ?? [],
         facts.out,
-        referenceDateOf(quarter, today),
+        dates.get(quarter.id) ?? referenceDateOf(quarter, today),
       );
       return { owner, ownerId: owner === null || owner.kind === 'none' ? null : owner.staffId };
     };
@@ -453,6 +457,7 @@ export class PlansService {
     );
     const counts = await this.rowCounts(transaction, journals, [quarter]);
     const filled = await this.filledCounts(transaction, journals, [quarter], counts);
+    const planDate = await planDateOf(transaction, branchId, quarter, today);
     const found = [];
     for (const journal of journals) {
       const key = `${journal.id}|${quarter.id}`;
@@ -462,7 +467,7 @@ export class PlansService {
         facts.runs.get(journal.id) ?? [],
         facts.periods.get(journal.id) ?? [],
         facts.out,
-        referenceDateOf(quarter, today),
+        planDate,
       );
       const ownerId = owner === null || owner.kind === 'none' ? null : owner.staffId;
       const window = await storedWindowOf(transaction, quarter, ownerId, timeZone);
@@ -626,7 +631,12 @@ export class PlansService {
         transaction,
         scene.branchId,
         scene.journal,
-        referenceDateOf(scene.quarter, schoolDateOf(scene.now, scene.timeZone)),
+        await planDateOf(
+          transaction,
+          scene.branchId,
+          scene.quarter,
+          schoolDateOf(scene.now, scene.timeZone),
+        ),
       ),
       window: state,
       ownerPeriod: ownerPeriods.has(`${planId ?? ''}|${scene.journal.id}`),
@@ -772,7 +782,12 @@ export class PlansService {
         transaction,
         scene.branchId,
         journal,
-        referenceDateOf(scene.quarter, schoolDateOf(scene.now, scene.timeZone)),
+        await planDateOf(
+          transaction,
+          scene.branchId,
+          scene.quarter,
+          schoolDateOf(scene.now, scene.timeZone),
+        ),
       );
       if (!planReachOf(scene.reader, journal, ownerId).read) continue;
       const rows = await planRows(
@@ -837,7 +852,7 @@ export class PlansService {
         transaction,
         scene.branchId,
         journal,
-        referenceDateOf(scene.quarter, today),
+        await planDateOf(transaction, scene.branchId, scene.quarter, today),
       );
       if (owner === null || owner !== scene.ownerId) continue;
       const theirs = await planIdOf(transaction, journal.id, scene.quarter.id);
@@ -1006,7 +1021,7 @@ export class PlansService {
       transaction,
       branchId,
       journal,
-      referenceDateOf(quarter, today),
+      await planDateOf(transaction, branchId, quarter, today),
     );
     const reader: PlanReader = await planReaderOf(transaction, access);
     const open = await transaction

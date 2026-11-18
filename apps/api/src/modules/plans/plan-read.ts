@@ -86,6 +86,77 @@ export function referenceDateOf(quarter: PlanQuarter, today: string): string {
   return today;
 }
 
+/** Per transaction: the first published start of the year of each quarter read (task 5.19). */
+const firstStarts = new WeakMap<Transaction, Map<string, Promise<string | null>>>();
+
+/**
+ * Task 5.19 (the owner's spec change of 18 November 2026; `09`, The plan window): the
+ * earliest start of a published timetable version of the quarter's year in the branch, or
+ * `null` when none is published. After it the published versions leave no day uncovered to
+ * the year's end: a version runs until the next one starts (`06`), 0076 archives only a
+ * version not started, and a withdraw lets the earlier version run again. Drafts, withdrawn
+ * and archived versions do not count. Read once per transaction and quarter.
+ */
+export function firstPublishedStartOf(
+  transaction: Transaction,
+  branchId: string,
+  quarterId: string,
+): Promise<string | null> {
+  let known = firstStarts.get(transaction);
+  if (known === undefined) {
+    known = new Map();
+    firstStarts.set(transaction, known);
+  }
+  const key = `${branchId}|${quarterId}`;
+  let found = known.get(key);
+  if (found === undefined) {
+    found = transaction
+      .selectFrom('timetable_versions')
+      .innerJoin('quarters', 'quarters.academic_year_id', 'timetable_versions.academic_year_id')
+      .select(sql<string | null>`min(timetable_versions.starts_on)::text`.as('first'))
+      .where('quarters.id', '=', quarterId)
+      .where('timetable_versions.branch_id', '=', branchId)
+      .where('timetable_versions.status', '=', 'published')
+      .executeTakeFirst()
+      .then((row) => row?.first ?? null);
+    known.set(key, found);
+  }
+  return found;
+}
+
+/**
+ * Task 5.19 (spec review of the plan, must-fix 1; `edge/academic-year`: "The plan window is
+ * opened before the start date, and plans cover the lessons from the start date"): the date a
+ * plan's owner is read on. The quarter's reference date (`referenceDateOf`), or the start of
+ * the branch's first published version when that is later and inside the quarter: before it
+ * no lesson runs and the plan would have no owner. Only the plans read it; the results keep
+ * `referenceDateOf`.
+ */
+export async function planDateOf(
+  transaction: Transaction,
+  branchId: string,
+  quarter: PlanQuarter,
+  today: string,
+): Promise<string> {
+  const reference = referenceDateOf(quarter, today);
+  const first = await firstPublishedStartOf(transaction, branchId, quarter.id);
+  return first !== null && first > reference && first <= quarter.endDate ? first : reference;
+}
+
+/** `planDateOf` of each quarter, for a read that finds owners in a loop. */
+export async function planDatesOf(
+  transaction: Transaction,
+  branchId: string,
+  quarters: readonly PlanQuarter[],
+  today: string,
+): Promise<Map<string, string>> {
+  const found = new Map<string, string>();
+  for (const quarter of quarters) {
+    found.set(quarter.id, await planDateOf(transaction, branchId, quarter, today));
+  }
+  return found;
+}
+
 /** A row of a plan: a lesson of the quarter not cancelled. */
 export interface PlanRowLesson {
   readonly number: number;

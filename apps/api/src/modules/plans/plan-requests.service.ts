@@ -36,7 +36,7 @@ import {
   datedQuarters,
   planIdOf,
   planItems,
-  referenceDateOf,
+  planDateOf,
   type PlanRowLesson,
 } from './plan-read.js';
 import { decisionReach, firstTier } from '../access/request-routing.js';
@@ -118,7 +118,12 @@ export class PlanRequestsService {
     const quarters = await datedQuarters(transaction, journal.academicYearId);
     const quarter = quarters.find((one) => one.id === request.quarter_id);
     if (quarter === undefined) return null;
-    const owner = await ownerIdOn(transaction, branchId, journal, referenceDateOf(quarter, today));
+    const owner = await ownerIdOn(
+      transaction,
+      branchId,
+      journal,
+      await planDateOf(transaction, branchId, quarter, today),
+    );
     return accountOfStaff(transaction, owner);
   }
 
@@ -195,7 +200,12 @@ export class PlanRequestsService {
           const owner =
             quarter === undefined
               ? null
-              : await ownerIdOn(transaction, branchId, journal, referenceDateOf(quarter, today));
+              : await ownerIdOn(
+                  transaction,
+                  branchId,
+                  journal,
+                  await planDateOf(transaction, branchId, quarter, today),
+                );
           include = requester === access.accountId || (owner !== null && owner === reader?.id);
         } else {
           const reach = await this.reachOf(transaction, access, branchId, journal, requester, now);
