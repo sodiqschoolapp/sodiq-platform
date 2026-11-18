@@ -2,6 +2,17 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 18 November 2026: task 5.18, the timetable import pairs a one-sex half with its partner
+
+- **Built**: `importedBlocks` (`packages/timetable-rules/src/pattern-import.ts`) groups a slot in three passes decided by the rows present: whole blocks, except a one-row one-sex mixed half (`oneSexHalf`) whose partner is in the slot; then the pairings, in row-id order; then any one-sex half left over, whole, so that the engine names the clash. A slot of boys PE beside girls Gymnastics (or girls PE beside boys Taekwondo) now imports as one block, as the grid builds it.
+- The sex of a group reaches the pattern facts (`PatternUnitData.sex`, optional; `pattern-facts.ts`; `patternFactsDataSchema`, web client regenerated). No migration.
+- Fixes the production refusal of 112 of 798 rows of the Labzak timetable file.
+- **Left out**: nothing of the plan. A one-sex block of two or more rows (two boys' groups of one subject) is still taken whole: a pairing holds two rows (`pairingOf`), so the grid cannot build that slot either.
+
+The next sessions must know:
+
+- The fix reaches production only with the owner's deploy.
+
 ## 17 November 2026: task 5.17, a version may start today in a branch with no lesson today
 
 - **Built**: a publish may start today when the branch has no lesson dated today (cancelled ones included), no published version starting today, and its first lesson slot of today has not begun by the branch clock (`sameDayOpen`, `startChoices(today, year, todayOpen)` in `packages/timetable-rules`; `same-day.ts` in the timetable module), read again under the publish lock at saving. A version from today cannot be withdrawn.
