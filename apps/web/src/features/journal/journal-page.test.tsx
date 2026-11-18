@@ -287,17 +287,26 @@ describe('a journal', () => {
   // Task 10.7: these tests read the UID and the figures, hidden by default since then.
   beforeEach(showEveryJournalColumn);
 
-  it('shows the header in order, the teacher and the subject chip', async () => {
+  // Spec change of 18 November 2026: the title is the class and the subject, the page's name is in
+  // the breadcrumbs.
+  it('titles the journal by its class and subject and shows the header in order', async () => {
     open(GRID);
-    await screen.findByRole('heading', { name: en.journal.sheet });
+    await screen.findByRole('heading', { name: '7 Oxford · Mathematics', level: 1 });
+    expect(
+      screen
+        .getByRole('navigation', { name: en.layout.breadcrumbs })
+        .querySelector('li[aria-current="page"]')?.textContent,
+    ).toBe(en.journal.sheet);
+    // The page above is a link, never a second "current page" (TanStack marks a parent route active).
+    expect(
+      screen.getByRole('link', { name: en.journal.page.title }).getAttribute('aria-current'),
+    ).toBeNull();
     const header = await waitFor(() => {
       const found = document.querySelector('[data-journal-header]');
       expect(found).not.toBeNull();
       return found;
     });
-    expect(header?.querySelector('p')?.textContent).toBe(
-      '7 Oxford · Mathematics · Quarter 1 · September – October',
-    );
+    expect(header?.querySelector('p')?.textContent).toBe('Quarter 1 · September – October');
     expect(header?.textContent).toContain('Teacher: Karimova Aziza');
   });
 
@@ -563,19 +572,35 @@ describe('a journal', () => {
     );
   });
 
-  it('heads each work with its title and "Soni" with its total (07, Layout, row 3)', async () => {
-    open(GRID);
-    await waitFor(() => {
+  // Spec change of 18 November 2026: the short labels follow the language (`07`, Layout).
+  it.each([
+    ['en', 'CTestof 30', 'Att', 'Avg'],
+    ['ru', 'КTestиз 30', 'Пос', 'Ср.'],
+    ['uz', 'STestSoni 30', 'Dav', 'Oʻrt'],
+  ] as const)(
+    'heads the columns in %s: the work and its total, attendance, the lesson score',
+    async (language, work, attendance, score) => {
+      open(GRID, `/journal/${JOURNAL}`, 'principal', language);
+      await waitFor(() => {
+        expect(
+          document.querySelector(`.ag-header-cell[col-id="${uid(60)}:${uid(70)}"]`),
+        ).not.toBeNull();
+      });
       expect(
-        document.querySelector(`.ag-header-cell[col-id="${uid(60)}:${uid(70)}"]`),
-      ).not.toBeNull();
-    });
-    expect(
-      document
-        .querySelector(`.ag-header-cell[col-id="${uid(60)}:${uid(70)}"]`)
-        ?.textContent?.trim(),
-    ).toBe('CTestSoni 30');
-  });
+        document
+          .querySelector(`.ag-header-cell[col-id="${uid(60)}:${uid(70)}"]`)
+          ?.textContent?.trim(),
+      ).toBe(work);
+      const header = (col: string) =>
+        document
+          .querySelector(
+            `.ag-header-cell[col-id="${uid(60)}:${col}"] .ag-header-cell-text, .ag-header-cell[col-id="${uid(60)}:${col}"]`,
+          )
+          ?.textContent?.trim() ?? '';
+      expect(header('a').startsWith(attendance)).toBe(true);
+      expect(header('avg').startsWith(score)).toBe(true);
+    },
+  );
 
   it('filters the students who left, and those with an empty cell', async () => {
     open(GRID, `/journal/${JOURNAL}?filter=left`);

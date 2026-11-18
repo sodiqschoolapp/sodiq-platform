@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { en } from '../src/i18n/locales/en';
 import { accountOf } from './accounts';
-import { changeFirstPassword, heading, languageChooser, signIn } from './steps';
+import { currentPage, changeFirstPassword, heading, languageChooser, signIn } from './steps';
 
 // docs/spec/09-lesson-plans.md, In the journal: "The lesson card is a second way into the plan
 // item of its lesson. The plan's owner can change the topic ... and the works there"; What a plan
@@ -24,7 +24,7 @@ test('the owner adds a homework with a file from the lesson card and finds both 
     .locator('[data-home-today]')
     .getByRole('button', { name: en.journal.open, exact: true })
     .click();
-  await expect(heading(page, en.journal.sheet)).toBeVisible();
+  await expect(currentPage(page)).toHaveText(en.journal.sheet);
   const journalId = /\/journal\/([0-9a-f-]+)/.exec(page.url())?.[1] ?? '';
   expect(journalId).not.toBe('');
 
