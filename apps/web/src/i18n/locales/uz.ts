@@ -1310,6 +1310,8 @@ export const uz: Texts<'one' | 'other'> = {
     remove: '{{name}}ni ({{place}}-oʻrin) olib tashlash',
     save: 'Saqlash',
     saved: 'Saqlandi.',
+    // A Save button waiting for the answer (docs/design-system.md, Buttons, Pending).
+    saving: 'Saqlanmoqda…',
     notSaved: 'Saqlanmadi: hech narsa oʻzgarmadi.',
     required: 'Bu maydonni toʻldiring.',
     chooseOne: 'Kamida bittasini tanlang.',

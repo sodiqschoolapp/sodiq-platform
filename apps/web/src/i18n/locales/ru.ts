@@ -1300,6 +1300,8 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
     remove: 'Убрать {{name}} (место {{place}})',
     save: 'Сохранить',
     saved: 'Сохранено.',
+    // A Save button waiting for the answer (docs/design-system.md, Buttons, Pending).
+    saving: 'Сохранение…',
     notSaved: 'Не сохранено: ничего не изменилось.',
     required: 'Заполните это поле.',
     chooseOne: 'Выберите хотя бы один вариант.',

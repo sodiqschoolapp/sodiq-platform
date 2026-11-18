@@ -155,7 +155,8 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
                 {question.cancel ?? t('confirm.cancel')}
               </AlertDialogCancel>
               <AlertDialogAction
-                variant={question.destructive === true ? 'destructive' : 'default'}
+                // A filled danger button confirms what cannot be undone (owner, 17 November 2026).
+                variant={question.destructive === true ? 'destructive-fill' : 'default'}
                 onClick={() => {
                   answer(true);
                 }}
