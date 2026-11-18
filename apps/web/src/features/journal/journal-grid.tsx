@@ -205,6 +205,11 @@ function TwoLineHeader(
     menuBelow?: boolean;
     /** Task 10.7: a work column's kind, drawn as its tag in front of the title. */
     kind?: WorkKind;
+    /**
+     * The full word of a short label, shown on hover (`07`, Layout, the table of short labels:
+     * "Dav" says "Davomat"), as the tag of a work's kind does.
+     */
+    hover?: string;
   },
 ) {
   // Every column the same two lines (`07`, Layout, rows 2 and 3): the label with the column's
@@ -215,7 +220,9 @@ function TwoLineHeader(
     <div className="flex w-full min-w-0 flex-col justify-center gap-0.5" aria-label={props.label}>
       <span className="flex min-h-6 min-w-0 items-center gap-0.5">
         {props.kind !== undefined && <WorkKindTag kind={props.kind} className="mr-0.5" />}
-        <span className="truncate leading-tight font-semibold">{props.displayName}</span>
+        <span className="truncate leading-tight font-semibold" title={props.hover}>
+          {props.displayName}
+        </span>
         {props.more !== undefined && props.menuBelow !== true && (
           <HeaderButton button={props.more} />
         )}
@@ -854,6 +861,7 @@ export function JournalGridView({
           headerName: t('journal.grid.attendanceShort'),
           headerComponentParams: {
             label: t('journal.grid.attendance'),
+            hover: t('journal.grid.attendance'),
             // Task 8.4: the lock of the lesson for the reader, under the A.
             ...(lesson.held && lesson.lock.window === 'locked'
               ? { second: t('journal.locks.lockedShort') }
@@ -1165,7 +1173,10 @@ export function JournalGridView({
         children.push({
           colId: `${lesson.id}:avg`,
           headerName: t('journal.grid.avg'),
-          headerComponentParams: { label: t('journal.grid.lessonScore') },
+          headerComponentParams: {
+            label: t('journal.grid.lessonScore'),
+            hover: t('journal.grid.lessonScore'),
+          },
           width: 60,
           cellRenderer: (params: ICellRendererParams<GridRow>) => {
             const row = params.data;

@@ -573,13 +573,14 @@ describe('a journal', () => {
   });
 
   // Spec change of 18 November 2026: the short labels follow the language (`07`, Layout).
+  // Each short label shows its full word on hover (review of #351).
   it.each([
-    ['en', 'CTestof 30', 'Att', 'Avg'],
-    ['ru', 'КTestиз 30', 'Пос', 'Ср.'],
-    ['uz', 'STestSoni 30', 'Dav', 'Oʻrt'],
+    ['en', 'CTestof 30', 'Att', 'Avg', 'Attendance', 'Lesson score'],
+    ['ru', 'КTestиз 30', 'Пос', 'Ср.', 'Посещаемость', 'Оценка за урок'],
+    ['uz', 'STestSoni 30', 'Dav', 'Oʻrt', 'Davomat', 'Dars bahosi'],
   ] as const)(
     'heads the columns in %s: the work and its total, attendance, the lesson score',
-    async (language, work, attendance, score) => {
+    async (language, work, attendance, score, attendanceWord, scoreWord) => {
       open(GRID, `/journal/${JOURNAL}`, 'principal', language);
       await waitFor(() => {
         expect(
@@ -599,6 +600,13 @@ describe('a journal', () => {
           ?.textContent?.trim() ?? '';
       expect(header('a').startsWith(attendance)).toBe(true);
       expect(header('avg').startsWith(score)).toBe(true);
+      // The short label itself carries its full word as the hover text.
+      const hover = (col: string, short: string) =>
+        [...document.querySelectorAll(`.ag-header-cell[col-id="${uid(60)}:${col}"] span[title]`)]
+          .find((one) => one.textContent === short)
+          ?.getAttribute('title');
+      expect(hover('a', attendance)).toBe(attendanceWord);
+      expect(hover('avg', score)).toBe(scoreWord);
     },
   );
 
