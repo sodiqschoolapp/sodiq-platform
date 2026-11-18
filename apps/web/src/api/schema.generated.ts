@@ -23863,6 +23863,7 @@ export interface operations {
                         } | null;
                         /** Format: date-time */
                         demoNow: string | null;
+                        timeZone: string;
                     };
                 };
             };

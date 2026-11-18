@@ -104,7 +104,22 @@ describe('the year and quarter of the top bar', () => {
       next: null,
       // Task 10.5: no demo time where the demo clock is off.
       demoNow: null,
+      timeZone: 'Asia/Tashkent',
     });
+  });
+
+  // Design review of 17 November 2026 (T5): the top bar wrote the demo time in the device's zone
+  // for every role that may not read the branch record (a Teacher here); the period now names
+  // the zone of the branch of the request.
+  it('names the time zone of the branch of the request, to a Teacher', async () => {
+    const west = await insertBranch(database.migrator, 'West');
+    await database.migrator
+      .updateTable('branches')
+      .set({ time_zone: 'Europe/Moscow' })
+      .where('id', '=', west)
+      .execute();
+    expect((await periodAt('2026-08-01T09:00:00+05:00', west)).timeZone).toBe('Europe/Moscow');
+    expect((await periodAt('2026-08-01T09:00:00+05:00')).timeZone).toBe('Asia/Tashkent');
   });
 
   it('says when quarter 1 starts, before it starts', async () => {

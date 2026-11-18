@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import { useView } from '@/features/access/use-view';
-import { branchQuery, currentPeriodQuery } from './setup-api';
+import { currentPeriodQuery } from './setup-api';
 import { schoolDateText, weekdayMomentText } from '@/lib/dates';
 
 /** The year part of the label: its name, marked when it is planned (`edge/academic-year`: "The top bar labels a planned year"). */
@@ -55,16 +55,12 @@ function quarterText(t: TFunction, language: string, period: Period): string | n
  * Task 10.5 (decision 9): on the test environment, the demo time the server's clock shows, beside
  * the period, so that every signed-in person sees which "now" the platform is at.
  */
-function DemoTime({ demoNow }: { demoNow: string }) {
+function DemoTime({ demoNow, timeZone }: { demoNow: string; timeZone: string }) {
   const { t, i18n } = useTranslation();
-  const { branchId } = useView();
-  const branch = useQuery(branchQuery(branchId));
+  // In the branch's time zone from the period's own answer: the branch record is not for every
+  // role, and without it the device's zone showed 04:13 for 09:13 (design review, T5).
   const text = t('period.demoTime', {
-    moment: weekdayMomentText(
-      i18n.language,
-      demoNow,
-      branch.data === undefined ? {} : { timeZone: branch.data.timeZone },
-    ),
+    moment: weekdayMomentText(i18n.language, demoNow, { timeZone }),
   });
   // The first part of the bar to shorten when it runs out of room, its whole text in the
   // tooltip (design review of 17 November 2026, T1).
@@ -111,7 +107,7 @@ export function CurrentPeriod() {
   ) : (
     <>
       {shown}
-      <DemoTime demoNow={period.data.demoNow} />
+      <DemoTime demoNow={period.data.demoNow} timeZone={period.data.timeZone} />
     </>
   );
 }

@@ -13,14 +13,17 @@ const YEAR = {
 
 const q = (number: number, startDate: string, endDate: string) => ({ number, startDate, endDate });
 
+let lastCalls: ReturnType<typeof fakeApi> = [];
+
 async function topBarWith(
-  period: Omit<CurrentPeriod, 'demoNow'> & { demoNow?: string | null },
+  period: Omit<CurrentPeriod, 'demoNow' | 'timeZone'> & { demoNow?: string | null },
   language: 'en' | 'ru' = 'en',
 ): Promise<string> {
   const texts = language === 'ru' ? ru : en;
-  fakeApi({
+  lastCalls = fakeApi({
     'GET /api/auth/session': () => json({ ...sessionOf(), language }),
-    'GET /api/setup/current-period': () => json({ demoNow: null, ...period }),
+    'GET /api/setup/current-period': () =>
+      json({ demoNow: null, timeZone: 'Asia/Tashkent', ...period }),
   });
   renderApp('/', language);
   const label = await screen.findByLabelText(texts.period.label);
@@ -139,10 +142,13 @@ describe('the top bar', () => {
       next: null,
       demoNow: '2026-11-18T02:05:00.000Z',
     });
-    // In the branch's time zone; here the device's, as no branch record is answered.
-    expect((await screen.findByText(/^Demo time:/)).textContent).toMatch(
-      /^Demo time: Wednesday, 18 Nov 2026, \d\d:05$/,
+    // In the branch's time zone of the period's answer, never the device's: 02:05 UTC is 07:05
+    // in Tashkent. The branch record, which most roles may not read, is not asked for (design
+    // review of 17 November 2026, T5).
+    expect((await screen.findByText(/^Demo time:/)).textContent).toBe(
+      'Demo time: Wednesday, 18 Nov 2026, 07:05',
     );
+    expect(lastCalls.some((call) => call.route === 'GET /api/setup/branch')).toBe(false);
   });
 
   it('shows no demo time where the demo clock is off', async () => {

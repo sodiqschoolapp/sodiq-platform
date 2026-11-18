@@ -402,12 +402,19 @@ export const currentPeriodSchema = z.object({
    * the top bar; `null` where the demo clock is off (production, decision 9) or has not moved yet.
    */
   demoNow: z.iso.datetime({ offset: true }).nullable(),
+  /**
+   * The branch's time zone (`edge/00-definitions`, Branch time), for the moments the top bar
+   * writes: every role reads the period, while the branch record is for the few who view the
+   * branch, and the demo time fell back to the device's zone for the others (design review of
+   * 17 November 2026, T5).
+   */
+  timeZone: z.string(),
 });
 
 export type CurrentPeriod = z.infer<typeof currentPeriodSchema>;
 
-/** What `periodOn` works out: the period without the demo time. */
-export type PeriodOn = Omit<CurrentPeriod, 'demoNow'>;
+/** What `periodOn` works out: the period without the demo time and the zone. */
+export type PeriodOn = Omit<CurrentPeriod, 'demoNow' | 'timeZone'>;
 
 /** The parts of a year `periodOn` reads. */
 export interface PeriodYear {
