@@ -1,5 +1,5 @@
 import { CloseIcon } from '@/components/icons';
-import { useEffect, useRef, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { SECTION_TITLE } from '@/components/ui/control';
@@ -10,6 +10,17 @@ interface SidePanelProps {
   recordKey: string;
   onClose: () => void;
   children: ReactNode;
+}
+
+/**
+ * Where a record's actions go: the header of its side panel, under the title, so they are in
+ * view without scrolling (docs/design-system.md, Layout shell, Lists; owner, 17 November 2026).
+ * `null` outside a panel, or before the header is drawn.
+ */
+const ActionsSlot = createContext<HTMLElement | null>(null);
+
+export function usePanelActionsSlot(): HTMLElement | null {
+  return useContext(ActionsSlot);
 }
 
 /** A field a person types or chooses in: Escape there belongs to the field. */
@@ -31,6 +42,7 @@ export function SidePanel({ title, recordKey, onClose, children }: SidePanelProp
   const { t } = useTranslation();
   const panel = useRef<HTMLElement>(null);
   const heading = useRef<HTMLHeadingElement>(null);
+  const [slot, setSlot] = useState<HTMLElement | null>(null);
 
   // Once per record: a title that changes under an open record (its name was
   // edited and saved) does not take the focus out of the field.
@@ -87,7 +99,8 @@ export function SidePanel({ title, recordKey, onClose, children }: SidePanelProp
           <CloseIcon aria-hidden />
         </Button>
       </div>
-      {children}
+      <div ref={setSlot} data-slot="panel-header-actions" className="empty:hidden mb-4" />
+      <ActionsSlot.Provider value={slot}>{children}</ActionsSlot.Provider>
     </aside>
   );
 }

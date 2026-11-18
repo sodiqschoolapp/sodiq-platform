@@ -114,7 +114,11 @@ export function RecordForm<Field extends string>({
     >
       {children}
       <FailureAlert error={form.failure} text={failureText} />
-      <div className="flex flex-wrap items-center gap-3">
+      {/* Pinned to the bottom of the window while the form scrolls (owner, 17 November 2026). */}
+      <div
+        data-slot="form-footer"
+        className="sticky bottom-0 z-10 -mx-6 flex flex-wrap items-center gap-3 border-t bg-card px-6 py-3"
+      >
         <Button type="submit" disabled={form.status === 'saving'}>
           {t('form.save')}
         </Button>

@@ -1,4 +1,9 @@
-import type { ReactNode } from 'react';
+import { Children, useState, type ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
+import { MoreHorizIcon } from '@/components/icons';
+import { Button } from '@/components/ui/button';
+import { createPortal } from 'react-dom';
+import { usePanelActionsSlot } from '@/components/side-panel';
 import { FailureAlert } from '@/components/failure-alert';
 import { SavedSign } from '@/components/form/saved-sign';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -36,17 +41,46 @@ export function PanelActions({
   errorText,
   saved,
 }: PanelActionsProps) {
+  const slot = usePanelActionsSlot();
+  const { t } = useTranslation();
+  const [moreOpen, setMoreOpen] = useState(false);
+  // PROTOTYPE: at most two secondary actions in the header; the rest and the danger ones in "More".
+  const seconds = Children.toArray(secondary);
+  const shown = seconds.slice(0, 2);
+  const tucked = [...seconds.slice(2), ...Children.toArray(danger)];
   const has = (part: ReactNode) => part !== undefined && part !== null && part !== false;
   if (!has(primary) && !has(secondary) && !has(danger) && !has(note) && saved !== true) {
     return null;
   }
-  return (
-    <div data-slot="panel-actions" className="grid gap-3 border-t pt-4">
+  const actions = (
+    <div
+      data-slot="panel-actions"
+      className={slot === null ? 'grid gap-3 border-t pt-4' : 'grid gap-3 border-b pb-4'}
+    >
       {(has(primary) || has(secondary) || has(danger)) && (
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2">
           {primary}
-          {secondary}
-          {danger}
+          {shown}
+          {tucked.length > 0 && (
+            <div className="relative ml-auto">
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label={t('menu.more')}
+                aria-expanded={moreOpen}
+                onClick={() => {
+                  setMoreOpen((was) => !was);
+                }}
+              >
+                <MoreHorizIcon aria-hidden />
+              </Button>
+              {moreOpen && (
+                <div className="absolute top-full right-0 z-20 mt-1 grid min-w-56 gap-1 rounded-lg bg-popover p-1 shadow-[0_8px_24px_-8px_rgb(11_26_74/0.2)] [&>button]:justify-start [&>button[data-variant=secondary]]:bg-transparent [&>button[data-variant=secondary]]:hover:bg-accent">
+                  {tucked}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
       {has(note) && <p className="text-sm text-muted-foreground">{note}</p>}
@@ -60,4 +94,6 @@ export function PanelActions({
       <SavedSign saved={saved === true} />
     </div>
   );
+  // In a side panel: in its header, under the title (owner, 17 November 2026).
+  return slot === null ? actions : createPortal(actions, slot);
 }
