@@ -2,7 +2,14 @@ import { useQuery } from '@tanstack/react-query';
 import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import { ErrorState, LoadingOutline } from '@/components/states';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import {
   Table,
   TableBody,
@@ -76,7 +83,9 @@ export function ResultLessonsDialog({
         if (!open) onClose();
       }}
     >
-      <DialogContent className="max-w-3xl">
+      {/* `sm:` so that it wins over the dialog's own 384 px from 640 px up, and the phone keeps
+          its margin (design review of 17 November 2026, D3). */}
+      <DialogContent className="sm:max-w-3xl">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
@@ -144,6 +153,12 @@ export function ResultLessonsDialog({
             )}
           </div>
         )}
+        {/* Every dialog has a visible way out (design review of 17 November 2026, D3). */}
+        <DialogFooter>
+          <Button variant="secondary" onClick={onClose}>
+            {t('app.close')}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

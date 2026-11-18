@@ -5,6 +5,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
   app: {
     name: 'Sodiq School',
     loading: 'Загрузка…',
+    close: 'Закрыть',
   },
   brand: {
     slogan: 'Образование начинается с воспитания',
