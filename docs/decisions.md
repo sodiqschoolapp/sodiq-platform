@@ -78,6 +78,21 @@ The owner asked for the interface to look and feel like the products of big comp
 | Step 1 of the review, small fixes that change no rule, each its own pull request (#330 to #339) | Real people use the pilot: one change at a time. |
 | The side panel's Escape (#335) changes the 0.8b row "Escape and its button close it": Escape in a field inside the panel first moves the focus to the panel's heading, and a second Escape closes the panel (asking about unsent changes as before) | A first Escape that closed the panel took a half-typed form away; the heading already takes the focus when a record opens, so the focus goes nowhere new. |
 
+## 18 November 2026: a plan window may open from the branch's first timetable version (task 5.19)
+
+The owner's spec change of 18 November 2026 (pull request #348). Plan approved on pull request #349 with corrections 1 and 2. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first** (confirmed by the plan review). The plans read their owner on the later of the quarter's reference date and the start of the branch's first published version of the year (`planDateOf`), not on `referenceDateOf` alone. Before the first version starts no lesson runs, so the plan had no owner, and nobody could write it or be told the window opened. The results keep `referenceDateOf`. No permission or guard changed: the owner is still the journal's teacher by the timetable, read on a day the journal runs | `edge/academic-year`: "The plan window is opened before the start date, and plans cover the lessons from the start date"; spec review of the plan, must-fix 1 |
+| A quarter is published when it has a school day on or after the earliest published `starts_on` of the year. After that start nothing is uncovered to the year's end: a version runs until the next starts (`06`), 0076 archives only a version not started, a withdraw lets the earlier version run again, "replace" runs to the year's end. Drafts, withdrawn and archived versions do not count. Replaces the 7.2 row "opens only when a published version starts on or before the quarter's first school day" | `09` as changed; decisions 2 and 2b |
+| A quarter whose school days all lie before the first start is not published, even when the start falls inside its dates (a day off after its last school day) | It has no lessons, as a quarter that ends before the start |
+| `coveredFrom` is answered only when the cover starts after the quarter's first school day; a start on a day off gives the next school day. The page shows "Timetable from {{date}}" to every reader of the windows list | `edge/lesson-plans`, the new row; decisions 3 and 4 |
+| A window opened under a first version that is withdrawn before its start stays; the list's `published` turns false or `coveredFrom` moves | Windows are stored moments (`CLAUDE.md`); the same as under the old rule (decision 2d) |
+| The branch's go-live date is not read; the 14-day reminder and "window not opened" are unchanged | The spec change ties the window to the timetable; decisions 5 and 6 |
+| One function, `coveredFromOf` (`plan-read.ts`), gives the first covered school day to both the window rule and the owner date, so the two never disagree (a version from a Sunday after the last school day neither publishes the quarter nor names an owner). It is read on each call, never cached: a transaction may change a version's status after reading it. The query filters both the quarter and the version by the branch | Code reviews of 5.19 (spec review should-fix 4, permission review should-fix 3 and 4, note 5) |
+| `publishedScene` takes `startsOn` and `quarters` (test kit) | A first version mid-quarter, and a quarter ending on a Sunday before its lessons are dated |
+
 ## 17 November 2026: a slot of one-sex mixed halves counts once in a class's weekly total (task 5.16)
 
 Bug on production reported by the owner (Labzak, quarter 2: grade 1 to 4 classes shown with 42 lessons for 40 slots). Plan approved on pull request #344 with corrections 1 to 3. Flagged on issue #42.
@@ -1549,7 +1564,7 @@ Plan approved on pull request #215 with corrections 1 to 5; decisions 1 to 23 co
 | A late extension is one approved request of kind `extension` per plan the teacher owns, decided by the Academic Vice Principal, open until the given end; an extension must end later than the end in force | Review decision 5 |
 | The queue edit (insert, delete, merge, reorder) is one route over the order from the first row not started; in a shared plan laid per journal | Review decision 6 |
 | Days are school days from the approval day (counted when one); a period ends at 23:59:59.999 branch time of its last day; a window opens at 00:00 of its first day and ends at 23:59:59.999 of its last | Review decisions 7 and 8 |
-| The window opens only when a published version starts on or before the quarter's first school day; the confirmation counts the rows with no item dated on or before the window's last day (`planRows`) | Review decisions 9 and 10 |
+| The window opens only when a published version starts on or before the quarter's first school day (changed by task 5.19: from the branch's first published version of the year); the confirmation counts the rows with no item dated on or before the window's last day (`planRows`) | Review decisions 9 and 10 |
 | A request names lessons by id with their date; Text covers wording and a create on its lessons, Re-plan covers create, clear and the queue from its first lesson on rows not started; a request is asked whenever the owner's window is not open | Review decisions 11 to 13 |
 | The window's end request is worked out on read and stored when sent or decided, named by a cause `window_end`; an approver may decide it without its being sent | Review decisions 14 and 15; correction 2 |
 | Approve by event approves each waiting request with a cause of the event, whole; "late" is 2 school days after the send; a separation or a change of owner ends the earlier owner's periods and voids their sent requests | Review decisions 16 to 18; correction 4 |

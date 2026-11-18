@@ -53,7 +53,7 @@ import {
   planItems,
   planJournalIds,
   planRows,
-  referenceDateOf,
+  planDateOf,
   type PlanQuarter,
   type PlanRowLesson,
 } from './plan-read.js';
@@ -594,7 +594,7 @@ export class PlanDelivery {
       transaction,
       scene.branchId,
       scene.journal,
-      referenceDateOf(scene.quarter, scene.today),
+      await planDateOf(transaction, scene.branchId, scene.quarter, scene.today),
     );
     if (ownerId === null || ownerId === scene.staffId) return;
     const owner = await transaction

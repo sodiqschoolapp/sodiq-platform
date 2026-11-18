@@ -836,6 +836,31 @@ describe('the plan window and edit requests', () => {
     });
   });
 
+  it('shows the date the timetable covers a quarter from, only when it starts inside the quarter (task 5.19)', async () => {
+    open({
+      role: 'academic_vice_principal',
+      path: '/plans/windows',
+      routes: {
+        'GET /api/plans/windows': () =>
+          json({
+            ...WINDOWS,
+            quarters: WINDOWS.quarters.map((one) =>
+              one.quarter.number === 2 ? { ...one, coveredFrom: '2026-11-23' } : one,
+            ),
+          }),
+      },
+    });
+    await screen.findByRole('form', {
+      name: en.plans.windows.formTitle.replace('{{number}}', '2'),
+    });
+    const sections = (number: number) =>
+      document.querySelector(`section[data-quarter="${String(number)}"]`);
+    const line = sections(2)?.querySelector('[data-covered-from]');
+    expect(line?.getAttribute('data-covered-from')).toBe('2026-11-23');
+    expect(line?.textContent).toMatch(/^Timetable from .*23/);
+    expect(sections(1)?.querySelector('[data-covered-from]')).toBeNull();
+  });
+
   it('asks to confirm the lessons held without a plan, then opens the window', async () => {
     let tries = 0;
     const calls = open({
@@ -1251,11 +1276,13 @@ const WINDOWS: PlanWindows = {
     {
       quarter: quarters[0] ?? { id: Q1, number: 1, startDate: '', endDate: '' },
       published: true,
+      coveredFrom: null,
       window: { startDate: '2026-09-01', endDate: '2026-10-10', state: 'ended', extensions: [] },
     },
     {
       quarter: quarters[1] ?? { id: Q2, number: 2, startDate: '', endDate: '' },
       published: true,
+      coveredFrom: null,
       window: null,
     },
   ],

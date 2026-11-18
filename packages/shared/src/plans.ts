@@ -599,8 +599,18 @@ export const planWindowsSchema = z.object({
   quarters: z.array(
     z.object({
       quarter: planQuarterSchema,
-      /** Every school day of the quarter lies in a published version (review decision 9). */
+      /**
+       * Task 5.19 (`09`, The plan window): every school day of the quarter from the start of
+       * the branch's first published version of the year lies in a published version, and the
+       * quarter has a school day from that start on.
+       */
       published: z.boolean(),
+      /**
+       * Task 5.19 (`edge/lesson-plans`): the first school day the timetable covers, when it is
+       * later than the quarter's first school day (the first version starts inside the
+       * quarter); `null` otherwise.
+       */
+      coveredFrom: schoolDateSchema.nullable(),
       window: z
         .object({
           startDate: schoolDateSchema,

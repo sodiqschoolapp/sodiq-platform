@@ -4,6 +4,7 @@ import {
   BRANCH_HEADER,
   planEventDecidedSchema,
   planItemSchema,
+  planCompletenessSchema,
   planListSchema,
   planRequestSchema,
   planRequestsSchema,
@@ -13,6 +14,7 @@ import {
   type Plan,
   type PlanItem,
   type PlanRequest,
+  type PlanWindows,
 } from '@sodiq/shared';
 import { sql } from 'kysely';
 import request, { type Response } from 'supertest';
@@ -21,6 +23,7 @@ import { Transactions, type Transaction } from '../../database/transactions.js';
 import { dayTemplatesKit, START, type DayTemplatesKit } from '../../testing/day-templates-kit.js';
 import { LoadKit } from '../../testing/load-kit.js';
 import { MemoryPhotoStore } from '../people/photo-store.js';
+import { PlansService } from './plans.service.js';
 import { publishedScene, publishOf, QUARTERS } from '../../testing/published-scene.js';
 
 /** Tuesday 27 October 2026, noon: the window of quarter 2 is opened. */
@@ -125,7 +128,13 @@ describe('the plan window and edit requests', () => {
    * A graded scene: its owner and a spare teacher, the Head Teacher, the
    * Senior Head Teacher and the Academic Vice Principal of the subject.
    */
-  async function scene(input: { shared?: boolean } = {}) {
+  async function scene(
+    input: {
+      shared?: boolean;
+      startsOn?: string;
+      quarters?: readonly (readonly [string, string])[];
+    } = {},
+  ) {
     const owner = await account();
     const spare = await account();
     const head = await account();
@@ -134,6 +143,8 @@ describe('the plan window and edit requests', () => {
     const s = await publishedScene(t, load, {
       graded: true,
       ...(input.shared === true ? { shared: true } : {}),
+      ...(input.startsOn === undefined ? {} : { startsOn: input.startsOn }),
+      ...(input.quarters === undefined ? {} : { quarters: input.quarters }),
       accounts: { teacher: owner.account.id, spare: spare.account.id },
     });
     for (const browser of [owner, spare]) {
@@ -184,6 +195,7 @@ describe('the plan window and edit requests', () => {
       vice,
       journal: await journalOf(s.classId),
       otherJournal: await journalOf(s.otherClass),
+      q1: quarters[0]?.id ?? '',
       q2: quarters[1]?.id ?? '',
       q3: quarters[2]?.id ?? '',
     };
@@ -354,6 +366,248 @@ describe('the plan window and edit requests', () => {
           lessonsWithoutPlan: 2,
         }),
       );
+    });
+
+    // Task 5.19, the owner's spec change of 18 November 2026 (`09`, The plan window: "every
+    // school day of the quarter from the start of the branch's first published timetable
+    // version of the year is covered"; `edge/lesson-plans`, a first timetable from the eighth
+    // school day of quarter 2; `edge/academic-year`: "The plan window is opened before the
+    // start date, and plans cover the lessons from the start date").
+    describe('from the first timetable version (task 5.19)', () => {
+      /** Monday 23 November 2026: the third Monday of quarter 2 (9 November to 28 December). */
+      const FIRST = '2026-11-23';
+      const windowsOf = (x: Scene, moment = OCT27) =>
+        at(moment, async () =>
+          planWindowsSchema.parse(
+            ok(
+              await send('get', `/api/plans/windows?yearId=${x.s.year}`, x.s.branch, x.vice.cookie),
+            ).body,
+          ),
+        );
+      const quarterOf = (windows: PlanWindows, number: number) =>
+        windows.quarters.find((one) => one.quarter.number === number);
+      const coverOf = (windows: PlanWindows, number: number) => {
+        const found = quarterOf(windows, number);
+        return { published: found?.published, coveredFrom: found?.coveredFrom };
+      };
+
+      it('opens a quarter in which the first version starts, before that start, and its plan begins there', async () => {
+        const x = await scene({ startsOn: FIRST });
+        expect(coverOf(await windowsOf(x), 2)).toEqual({ published: true, coveredFrom: FIRST });
+        // The window opens on 27 October, before the quarter and before the first version.
+        // `edge`: the days before have no lessons, so they count nowhere: the confirmation
+        // counts the Mondays 23 and 30 November of each class (no lesson exists earlier).
+        const asked = await openWindow(x, { startDate: '2026-10-28', endDate: '2026-11-30' });
+        expect(codeOf(asked)).toBe('plan_window_confirm');
+        expect(apiErrorSchema.parse(asked.body).error.details?.[0]?.lessonsWithoutPlan).toBe(4);
+        ok(
+          await openWindow(x, {
+            startDate: '2026-10-28',
+            endDate: '2026-11-30',
+            confirm: true,
+          }),
+        );
+        // The owner is told, and owns the plan before the first version starts.
+        expect(await noticesOf(x.owner.account.id, 'plans.window_opened')).toEqual([
+          { quarter: 2, startDate: '2026-10-28', endDate: '2026-11-30' },
+        ]);
+        const plan = await planOf(x, NOV02);
+        expect(plan.owner).not.toBeNull();
+        expect(plan.canEdit).toBe(true);
+        expect(plan.window.state).toBe('open');
+        // Row 1 is the first lesson of the first version; no row before it.
+        expect(plan.rows.map((row) => row.date)).toEqual([
+          '2026-11-23',
+          '2026-11-30',
+          '2026-12-07',
+          '2026-12-14',
+          '2026-12-21',
+          '2026-12-28',
+        ]);
+        expect(plan.notCovered).toEqual([]);
+        await at(NOV02, async () => ok(await create(x, plan, 1), 201));
+        // Completeness counts the rows from the first version only.
+        const list = await at(NOV02, async () =>
+          planListSchema.parse(
+            ok(await send('get', '/api/plans', x.s.branch, x.owner.cookie)).body,
+          ),
+        );
+        const own = list.plans
+          .find((one) => one.journalId === x.journal)
+          ?.quarters.find((one) => one.quarterId === x.q2);
+        expect({ rows: own?.rows, empty: own?.empty, flag: own?.flag }).toEqual({
+          rows: 6,
+          empty: 5,
+          flag: null,
+        });
+      });
+
+      // Code review of 5.19: the owner on the plans' date at every reader, with the clock inside
+      // the quarter before the first version (16 November: the reference date is today, and no
+      // lesson runs on it). The test fails with `referenceDateOf` in place of `planDateOf`.
+      it('reads the owner on the first version inside the quarter, at every reader, and no one else', async () => {
+        const x = await scene({ startsOn: FIRST });
+        const NOV16 = '2026-11-16T12:00:00+05:00';
+        // A window that ends before the first version: its lessons need a request after it.
+        ok(await openWindow(x, { startDate: '2026-10-28', endDate: '2026-11-10' }));
+        const plan = await planOf(x, NOV16);
+        expect({ owner: plan.owner, canEdit: plan.canEdit }).toEqual({
+          owner: expect.any(String) as string,
+          canEdit: true,
+        });
+        expect(plan.ownerStaffId).toBe(x.s.teacher.staffId);
+        // The teacher of the other class, of the same subject and grade, reads by profile only.
+        const byProfile = await planOf(x, NOV16, x.spare);
+        expect(byProfile.canEdit).toBe(false);
+        // The request goes to the owner: theirs in "mine", nobody else's.
+        const first = plan.rows[0];
+        expect(first?.date).toBe(FIRST);
+        const asked = requestOf(
+          await at(NOV16, async () =>
+            ask(x, { kind: 'replan', fromLessonId: first?.lessonId, reason: 'New topics' }),
+          ),
+          201,
+        );
+        const mine = (browser: Browser) =>
+          at(NOV16, async () =>
+            planRequestsSchema
+              .parse(
+                ok(await send('get', '/api/plans/requests?view=mine', x.s.branch, browser.cookie))
+                  .body,
+              )
+              .requests.map((one) => one.id),
+          );
+        expect(await mine(x.owner)).toEqual([asked.id]);
+        expect(await mine(x.spare)).toEqual([]);
+        // The completeness report names the owner as the plan's teacher.
+        const report = await at(NOV16, async () =>
+          planCompletenessSchema.parse(
+            ok(
+              await send(
+                'get',
+                `/api/plans/reports/completeness?quarterId=${x.q2}`,
+                x.s.branch,
+                x.vice.cookie,
+              ),
+            ).body,
+          ),
+        );
+        expect(report.plans.find((one) => one.journalId === x.journal)?.teacher?.id).toBe(
+          x.s.teacher.staffId,
+        );
+        // The daily reminders find the owner of each plan.
+        t.clock.set(NOV16);
+        try {
+          const reminded = await t.app.get(Transactions).run([x.s.branch], (transaction) =>
+            t.app.get(PlansService).remindersIn(transaction, x.s.branch, x.s.year, {
+              id: x.q2,
+              number: 2,
+              startDate: QUARTERS[1][0],
+              endDate: QUARTERS[1][1],
+            }),
+          );
+          expect(reminded.find((one) => one.journal.id === x.journal)?.ownerId).toBe(
+            x.s.teacher.staffId,
+          );
+        } finally {
+          t.clock.set(START);
+        }
+      });
+
+      it('refuses a quarter that ends before the first version starts', async () => {
+        const x = await scene({ startsOn: FIRST });
+        const windows = await windowsOf(x);
+        expect(coverOf(windows, 1)).toEqual({ published: false, coveredFrom: null });
+        // On 27 October, inside quarter 1: every earlier check of the route passes.
+        const refused = await at(OCT27, async () =>
+          send('put', `/api/plans/windows/${x.q1}`, x.s.branch, x.vice.cookie, {
+            startDate: '2026-10-28',
+            endDate: '2026-10-30',
+            confirm: true,
+          }),
+        );
+        expect(codeOf(refused)).toBe('plan_window_unpublished');
+        expect(
+          await t.database.migrator
+            .selectFrom('lesson_plan_windows')
+            .select('id')
+            .where('quarter_id', '=', x.q1)
+            .execute(),
+        ).toEqual([]);
+      });
+
+      it('answers no date for a quarter covered from its first school day', async () => {
+        const x = await scene();
+        expect(coverOf(await windowsOf(x), 2)).toEqual({ published: true, coveredFrom: null });
+      });
+
+      it('takes the next school day for a version starting on a day off', async () => {
+        // Sunday 22 November.
+        const x = await scene({ startsOn: '2026-11-22' });
+        expect(coverOf(await windowsOf(x), 2)).toEqual({ published: true, coveredFrom: FIRST });
+      });
+
+      it("opens on a version from the quarter's last school day, not on one after it", async () => {
+        const last = await scene({ startsOn: '2026-12-28' });
+        expect(coverOf(await windowsOf(last), 2)).toEqual({
+          published: true,
+          coveredFrom: '2026-12-28',
+        });
+        ok(await openWindow(last));
+        // A quarter that ends on Sunday 27 December: its last school day is before a
+        // version from that Sunday, although the start lies inside its dates.
+        const after = await scene({
+          startsOn: '2026-12-27',
+          quarters: QUARTERS.map(([start, end], index) =>
+            index === 1 ? ([start, '2026-12-27'] as const) : ([start, end] as const),
+          ),
+        });
+        expect(coverOf(await windowsOf(after), 2)).toEqual({
+          published: false,
+          coveredFrom: null,
+        });
+        expect(codeOf(await openWindow(after))).toBe('plan_window_unpublished');
+      });
+
+      it('never counts a draft', async () => {
+        const x = await scene({ startsOn: FIRST });
+        // A draft from before the quarter, earlier than the published start: out by its
+        // status alone.
+        const draft = await t.post('/api/timetable/versions', x.s.branch, {
+          academicYearId: x.s.year,
+          startsOn: '2026-11-02',
+          copyFrom: null,
+        });
+        expect(draft.status, JSON.stringify(draft.body)).toBe(201);
+        expect(coverOf(await windowsOf(x), 2)).toEqual({ published: true, coveredFrom: FIRST });
+        // A branch whose only version is a draft from before quarter 2.
+        const bare = await t.newBranch();
+        const bareYear = await load.classes.year(bare);
+        for (const [index, [start, end]] of QUARTERS.entries()) {
+          await t.database.migrator
+            .updateTable('quarters')
+            .set({ start_date: start, end_date: end })
+            .where('academic_year_id', '=', bareYear)
+            .where('number', '=', index + 1)
+            .execute();
+        }
+        const bareDraft = await t.post('/api/timetable/versions', bare, {
+          academicYearId: bareYear,
+          startsOn: '2026-11-02',
+          copyFrom: null,
+        });
+        expect(bareDraft.status, JSON.stringify(bareDraft.body)).toBe(201);
+        const bareQ2 = await t.database.migrator
+          .selectFrom('quarters')
+          .select('id')
+          .where('academic_year_id', '=', bareYear)
+          .where('number', '=', 2)
+          .executeTakeFirstOrThrow();
+        const refused = await at(OCT27, async () =>
+          send('put', `/api/plans/windows/${bareQ2.id}`, bare, t.admin, WINDOW),
+        );
+        expect(codeOf(refused)).toBe('plan_window_unpublished');
+      });
     });
 
     it('moves its end to any date from today on, never past the quarter, and its start only before it starts', async () => {

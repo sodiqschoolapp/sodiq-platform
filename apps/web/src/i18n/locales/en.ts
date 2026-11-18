@@ -6486,6 +6486,7 @@ export const en = {
       emptyTitle: 'No quarters',
       empty: 'The quarters of the academic year appear here once they are dated.',
       unpublished: 'The timetable of this quarter is not published yet.',
+      coveredFrom: 'Timetable from {{date}}',
       formTitle: 'Window of quarter {{number}}',
       start: 'First day',
       end: 'Last day',

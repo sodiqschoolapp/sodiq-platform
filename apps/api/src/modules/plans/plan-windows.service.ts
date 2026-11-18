@@ -1,13 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import {
-  nextDay,
   planWindowsSchema,
   type PlanWindowExtend,
   type PlanWindows,
   type PlanWindowSave,
   type PlanWindowsQuery,
 } from '@sodiq/shared';
-import { isSchoolDay } from '@sodiq/timetable-rules';
 import { sql } from 'kysely';
 import { Transactions, type Transaction } from '../../database/transactions.js';
 import { ApiException } from '../../http/api-exception.js';
@@ -17,7 +15,6 @@ import { Audit } from '../audit/audit.service.js';
 import { branchOf } from '../classes/classes.service.js';
 import { journalRows, staffNames, type JournalRow } from '../journal/journal-grid.query.js';
 import { Notifications } from '../notifications/notifications.service.js';
-import { loadCalendarSettings } from '../setup/calendar-state.js';
 import { lockOpenQuarter } from '../setup/closed-quarters.js';
 import { notFound } from '../setup/setup-refusals.js';
 import { ownerFactsOf, ownerOn } from '../timetable/journal-owners.js';
@@ -29,7 +26,8 @@ import {
   lockJournals,
   planItems,
   planRows,
-  referenceDateOf,
+  coveredFromOf,
+  planDateOf,
   type PlanQuarter,
 } from './plan-read.js';
 import { windowStateOf } from './plan-window.js';
@@ -39,7 +37,8 @@ import { holdQuarter } from './plans.service.js';
  * The plan window (task 7.2, pull request #215; `09`, The plan window: "The
  * Academic Vice Principal opens a window for a quarter: a start date and an
  * end date. It can be opened only when the timetable covering that quarter is
- * published"; "can extend the window for one teacher"; `edge/lesson-plans`,
+ * published" (task 5.19: from the branch's first published version of the year); "can
+ * extend the window for one teacher"; `edge/lesson-plans`,
  * The window and requests). The window and an extension are stored as
  * moments; nothing flips on a timer.
  */
@@ -142,7 +141,7 @@ export class PlanWindowsService {
         }
         answer.push({
           quarter,
-          published: await this.published(transaction, branchId, yearId, quarter),
+          ...(await this.coverOf(transaction, branchId, quarter)),
           window: shown,
         });
       }
@@ -195,39 +194,20 @@ export class PlanWindowsService {
   }
 
   /**
-   * Review decision 9: every school day of the quarter lies in the run of a
-   * published version, that is a published version of the year starts on or
-   * before the quarter's first school day (the chain runs on to the year's end).
+   * Task 5.19 (`09`, The plan window, as changed on 18 November 2026; replaces review decision
+   * 9): the quarter is published when the timetable covers a school day of it
+   * (`coveredFromOf`); `coveredFrom` is that day when it is after the quarter's first school
+   * day (`edge/lesson-plans`: "The windows list shows the date the timetable covers the
+   * quarter from").
    */
-  private async published(
+  private async coverOf(
     transaction: Transaction,
     branchId: string,
-    yearId: string,
     quarter: PlanQuarter,
-  ): Promise<boolean> {
-    const branch = await transaction
-      .selectFrom('branches')
-      .select('working_weekdays')
-      .where('id', '=', branchId)
-      .executeTakeFirstOrThrow();
-    const settings = await loadCalendarSettings(transaction, branch.working_weekdays);
-    let first: string | null = null;
-    for (let date = quarter.startDate; date <= quarter.endDate; date = nextDay(date)) {
-      if (isSchoolDay(date, settings)) {
-        first = date;
-        break;
-      }
-    }
-    if (first === null) return false;
-    const version = await transaction
-      .selectFrom('timetable_versions')
-      .select('id')
-      .where('branch_id', '=', branchId)
-      .where('academic_year_id', '=', yearId)
-      .where('status', '=', 'published')
-      .where('starts_on', '<=', first)
-      .executeTakeFirst();
-    return version !== undefined;
+  ): Promise<{ published: boolean; coveredFrom: string | null }> {
+    const covered = await coveredFromOf(transaction, branchId, quarter);
+    if (covered === null) return { published: false, coveredFrom: null };
+    return { published: true, coveredFrom: covered.late ? covered.from : null };
   }
 
   /** The journals of the branch with a plan of the quarter, each with its owner on the reference date. */
@@ -258,12 +238,14 @@ export class PlanWindowsService {
         subject_id: journal.subjectId,
       })),
     );
+    // Task 5.19: owners read on the plans' date (the first version's start, before it).
+    const planDate = await planDateOf(transaction, branchId, quarter, today);
     return journals.map((journal) => {
       const owner = ownerOn(
         facts.runs.get(journal.id) ?? [],
         facts.periods.get(journal.id) ?? [],
         facts.out,
-        referenceDateOf(quarter, today),
+        planDate,
       );
       return { journal, ownerId: owner === null || owner.kind === 'none' ? null : owner.staffId };
     });
@@ -349,7 +331,7 @@ export class PlanWindowsService {
         ) {
           throw new ApiException('plan_window_started', 409);
         }
-        if (!(await this.published(transaction, branchId, quarter.yearId, quarter))) {
+        if (!(await this.coverOf(transaction, branchId, quarter)).published) {
           throw new ApiException('plan_window_unpublished', 409);
         }
         const moments = await dayMoments(transaction, input.startDate, input.endDate, timeZone);

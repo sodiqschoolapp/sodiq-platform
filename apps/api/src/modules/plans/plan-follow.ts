@@ -14,13 +14,7 @@ import { Audit } from '../audit/audit.service.js';
 import { journalRows, type JournalRow } from '../journal/journal-grid.query.js';
 import { Notifications } from '../notifications/notifications.service.js';
 import { ownerFactsOf, ownerOn, type OwnerFacts } from '../timetable/journal-owners.js';
-import {
-  lockJournals,
-  movePlaces,
-  planRows,
-  referenceDateOf,
-  type PlanQuarter,
-} from './plan-read.js';
+import { lockJournals, movePlaces, planRows, planDateOf, type PlanQuarter } from './plan-read.js';
 import { storedWindowOf } from './plan-gate.js';
 import { clearUntouchedCopy } from './plan-copy-clear.js';
 import { separateJournal, unitKeysOf } from './plan-separate.js';
@@ -486,7 +480,7 @@ export class PlanFollow implements OnModuleInit {
           facts.runs.get(plan.journal.id) ?? [],
           facts.periods.get(plan.journal.id) ?? [],
           facts.out,
-          referenceDateOf(plan.quarter, today),
+          await planDateOf(transaction, branchId, plan.quarter, today),
         );
         const ownerId = owner === null || owner.kind === 'none' ? null : owner.staffId;
         if (!planReachOf(reader, plan.journal, ownerId).read) continue;
@@ -1019,7 +1013,7 @@ export class PlanFollow implements OnModuleInit {
       facts.runs.get(plan.journal.id) ?? [],
       facts.periods.get(plan.journal.id) ?? [],
       facts.out,
-      referenceDateOf(plan.quarter, today),
+      await planDateOf(transaction, branchId, plan.quarter, today),
     );
     return owner === null || owner.kind === 'none' ? null : owner.staffId;
   }

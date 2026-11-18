@@ -6550,6 +6550,7 @@ export const uz: Texts<'one' | 'other'> = {
       emptyTitle: 'Choraklar yoʻq',
       empty: 'Oʻquv yili choraklari sanalari belgilangach shu yerda koʻrinadi.',
       unpublished: 'Bu chorak dars jadvali hali eʼlon qilinmagan.',
+      coveredFrom: 'Dars jadvali boshlanishi: {{date}}',
       formTitle: '{{number}}-chorak oynasi',
       start: 'Birinchi kun',
       end: 'Oxirgi kun',

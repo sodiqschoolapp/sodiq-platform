@@ -53,7 +53,8 @@ import {
   planRows,
   preparedRequestOf,
   quarterOfToday,
-  referenceDateOf,
+  planDateOf,
+  planDatesOf,
   worksOf,
   type PlanQuarter,
   type PlanRowLesson,
@@ -237,7 +238,13 @@ export class PlansService {
         null;
     }
     if (yearId === null) return planListSchema.parse({ years, yearId, quarters: [], plans: [] });
-    const quarters = await datedQuarters(transaction, yearId);
+    // Task 5.19: each quarter with the date its plans' owners are read on.
+    const quarters = await planDatesOf(
+      transaction,
+      branchId,
+      await datedQuarters(transaction, yearId),
+      today,
+    );
     const journals = (await journalRows(transaction, branchId, { yearId })).filter((journal) =>
       plannedJournal(journal),
     );
@@ -262,7 +269,7 @@ export class PlansService {
                 facts.runs.get(journal.id) ?? [],
                 facts.periods.get(journal.id) ?? [],
                 facts.out,
-                referenceDateOf(quarter, today),
+                quarter.planDate,
               );
         const ownerId = owner === null || owner.kind === 'none' ? null : owner.staffId;
         return planReachOf(reader, journal, ownerId).read;
@@ -292,12 +299,12 @@ export class PlansService {
       links.map((link) => link.plan_id),
       now,
     );
-    const ownerOfQuarter = (journalId: string, quarter: PlanQuarter) => {
+    const ownerOfQuarter = (journalId: string, quarter: (typeof quarters)[number]) => {
       const owner = ownerOn(
         facts.runs.get(journalId) ?? [],
         facts.periods.get(journalId) ?? [],
         facts.out,
-        referenceDateOf(quarter, today),
+        quarter.planDate,
       );
       return { owner, ownerId: owner === null || owner.kind === 'none' ? null : owner.staffId };
     };
@@ -453,6 +460,7 @@ export class PlansService {
     );
     const counts = await this.rowCounts(transaction, journals, [quarter]);
     const filled = await this.filledCounts(transaction, journals, [quarter], counts);
+    const planDate = await planDateOf(transaction, branchId, quarter, today);
     const found = [];
     for (const journal of journals) {
       const key = `${journal.id}|${quarter.id}`;
@@ -462,7 +470,7 @@ export class PlansService {
         facts.runs.get(journal.id) ?? [],
         facts.periods.get(journal.id) ?? [],
         facts.out,
-        referenceDateOf(quarter, today),
+        planDate,
       );
       const ownerId = owner === null || owner.kind === 'none' ? null : owner.staffId;
       const window = await storedWindowOf(transaction, quarter, ownerId, timeZone);
@@ -626,7 +634,12 @@ export class PlansService {
         transaction,
         scene.branchId,
         scene.journal,
-        referenceDateOf(scene.quarter, schoolDateOf(scene.now, scene.timeZone)),
+        await planDateOf(
+          transaction,
+          scene.branchId,
+          scene.quarter,
+          schoolDateOf(scene.now, scene.timeZone),
+        ),
       ),
       window: state,
       ownerPeriod: ownerPeriods.has(`${planId ?? ''}|${scene.journal.id}`),
@@ -772,7 +785,12 @@ export class PlansService {
         transaction,
         scene.branchId,
         journal,
-        referenceDateOf(scene.quarter, schoolDateOf(scene.now, scene.timeZone)),
+        await planDateOf(
+          transaction,
+          scene.branchId,
+          scene.quarter,
+          schoolDateOf(scene.now, scene.timeZone),
+        ),
       );
       if (!planReachOf(scene.reader, journal, ownerId).read) continue;
       const rows = await planRows(
@@ -837,7 +855,7 @@ export class PlansService {
         transaction,
         scene.branchId,
         journal,
-        referenceDateOf(scene.quarter, today),
+        await planDateOf(transaction, scene.branchId, scene.quarter, today),
       );
       if (owner === null || owner !== scene.ownerId) continue;
       const theirs = await planIdOf(transaction, journal.id, scene.quarter.id);
@@ -1006,7 +1024,7 @@ export class PlansService {
       transaction,
       branchId,
       journal,
-      referenceDateOf(quarter, today),
+      await planDateOf(transaction, branchId, quarter, today),
     );
     const reader: PlanReader = await planReaderOf(transaction, access);
     const open = await transaction

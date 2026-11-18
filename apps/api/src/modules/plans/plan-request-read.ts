@@ -10,7 +10,7 @@ import { sql } from 'kysely';
 import type { Transaction } from '../../database/transactions.js';
 import { staffNames, type JournalRow } from '../journal/journal-grid.query.js';
 import { loadCalendarSettings } from '../setup/calendar-state.js';
-import { clockOf, datedQuarters, referenceDateOf } from './plan-read.js';
+import { clockOf, datedQuarters, planDateOf } from './plan-read.js';
 import { ownerIdOn } from './plan-scope.js';
 import { PLAN_REQUEST_LATE_DAYS, periodOpen, schoolDaysBetween } from './plan-window.js';
 import type { Scene } from './plans.service.js';
@@ -99,7 +99,12 @@ export async function answerOf(
   const owner =
     quarter === undefined
       ? null
-      : await ownerIdOn(transaction, branchId, journal, referenceDateOf(quarter, today));
+      : await ownerIdOn(
+          transaction,
+          branchId,
+          journal,
+          await planDateOf(transaction, branchId, quarter, today),
+        );
   const [lessons, causes] = await Promise.all([
     transaction
       .selectFrom('lesson_plan_request_lessons')

@@ -1,5 +1,6 @@
 import {
   lessonStateOf,
+  nextDay,
   planFileTypeSchema,
   planRequestCauseSchema,
   schoolDateOf,
@@ -8,9 +9,11 @@ import {
   type PlanTrayItem,
   type PlanWork,
 } from '@sodiq/shared';
+import { isSchoolDay } from '@sodiq/timetable-rules';
 import { sql } from 'kysely';
 import { transactionMoment, type Transaction } from '../../database/transactions.js';
 import { journalLessons, slotNumbers, type JournalRow } from '../journal/journal-grid.query.js';
+import { loadCalendarSettings } from '../setup/calendar-state.js';
 import { awayLessons } from '../timetable/away-read.js';
 
 /**
@@ -84,6 +87,83 @@ export function referenceDateOf(quarter: PlanQuarter, today: string): string {
   if (today > quarter.endDate) return quarter.endDate;
   if (today < quarter.startDate) return quarter.startDate;
   return today;
+}
+
+/**
+ * Task 5.19 (the owner's spec change of 18 November 2026; `09`, The plan window: "every school
+ * day of the quarter from the start of the branch's first published timetable version of the
+ * year is covered by a published version"). The first school day of the quarter on or after the
+ * earliest start of a published version of its year in the branch (`late` when it is after the
+ * quarter's first school day), or `null` when there is
+ * none: no version is published, or every school day of the quarter lies before that start
+ * (decision 2b). From that start on the published versions leave no day uncovered to the year's
+ * end: a version runs until the next one starts (`06`), 0076 archives only a version not
+ * started, and a withdraw lets the earlier version run again. Drafts and archived versions do
+ * not count. Read on each call, never kept: a transaction may change a version's status after
+ * reading it.
+ */
+export async function coveredFromOf(
+  transaction: Transaction,
+  branchId: string,
+  quarter: PlanQuarter,
+): Promise<{ readonly from: string; readonly late: boolean } | null> {
+  const row = await transaction
+    .selectFrom('timetable_versions')
+    .innerJoin('quarters', 'quarters.academic_year_id', 'timetable_versions.academic_year_id')
+    .select(sql<string | null>`min(timetable_versions.starts_on)::text`.as('first'))
+    .where('quarters.id', '=', quarter.id)
+    .where('quarters.branch_id', '=', branchId)
+    .where('timetable_versions.branch_id', '=', branchId)
+    .where('timetable_versions.status', '=', 'published')
+    .executeTakeFirst();
+  const first = row?.first ?? null;
+  if (first === null || first > quarter.endDate) return null;
+  const branch = await transaction
+    .selectFrom('branches')
+    .select('working_weekdays')
+    .where('id', '=', branchId)
+    .executeTakeFirstOrThrow();
+  const settings = await loadCalendarSettings(transaction, branch.working_weekdays);
+  let firstSchoolDay: string | null = null;
+  for (let date = quarter.startDate; date <= quarter.endDate; date = nextDay(date)) {
+    if (!isSchoolDay(date, settings)) continue;
+    firstSchoolDay ??= date;
+    if (date >= first) return { from: date, late: date > firstSchoolDay };
+  }
+  return null;
+}
+
+/**
+ * Task 5.19 (spec review of the plan, must-fix 1; `edge/academic-year`: "The plan window is
+ * opened before the start date, and plans cover the lessons from the start date"): the date a
+ * plan's owner is read on. The quarter's reference date (`referenceDateOf`), or the first day
+ * the timetable covers the quarter (`coveredFromOf`) when that is later: before it no lesson
+ * runs and the plan would have no owner. A quarter the timetable does not cover keeps the
+ * reference date. Only the plans read it; the results keep `referenceDateOf`.
+ */
+export async function planDateOf(
+  transaction: Transaction,
+  branchId: string,
+  quarter: PlanQuarter,
+  today: string,
+): Promise<string> {
+  const reference = referenceDateOf(quarter, today);
+  const covered = await coveredFromOf(transaction, branchId, quarter);
+  return covered !== null && covered.from > reference ? covered.from : reference;
+}
+
+/** Each quarter with its `planDateOf`, for a read that finds owners in a loop. */
+export async function planDatesOf(
+  transaction: Transaction,
+  branchId: string,
+  quarters: readonly PlanQuarter[],
+  today: string,
+): Promise<(PlanQuarter & { readonly planDate: string })[]> {
+  const found = [];
+  for (const quarter of quarters) {
+    found.push({ ...quarter, planDate: await planDateOf(transaction, branchId, quarter, today) });
+  }
+  return found;
 }
 
 /** A row of a plan: a lesson of the quarter not cancelled. */
