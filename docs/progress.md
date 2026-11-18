@@ -2,6 +2,17 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 18 November 2026: task 5.19, a plan window may open from the branch's first timetable version
+
+- **Built**: `coverOf` of `plan-windows.service.ts` (the open route and the windows list): a quarter is published when it has a school day on or after the earliest published version start of the year (`firstPublishedStartOf`, `plan-read.ts`); the list answers `coveredFrom` when the cover starts after the quarter's first school day, and the windows page shows "Timetable from" with it (three languages).
+- The plans read their owner on `planDateOf` (the later of the reference date and that start) in every plan reader and writer, so a window opened before the first version starts has owners who are told and can write. The results keep `referenceDateOf`. No migration, no permission change.
+- Fixes the production refusal `plan_window_unpublished` of Labzak's quarter 2 (first timetable from 18 November).
+- **Left out**: nothing of the plan.
+
+The next sessions must know:
+
+- The spec text is in pull request #348, for the owner to merge; the fix reaches production only with the owner's deploy.
+
 ## 17 November 2026: step 1 of the design review, small fixes
 
 Not a task of the build plan: asked for by the owner on 17 November 2026 ("go ahead with step 1"). Each fix is its own pull request from a `claude/` branch, merged by the owner; the decisions are in `docs/decisions.md`, "17 November 2026: the design review".

@@ -6863,6 +6863,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       emptyTitle: 'Нет четвертей',
       empty: 'Четверти учебного года появятся здесь, когда у них будут даты.',
       unpublished: 'Расписание этой четверти ещё не опубликовано.',
+      coveredFrom: 'Расписание с {{date}}',
       formTitle: 'Окно {{number}}-й четверти',
       start: 'Первый день',
       end: 'Последний день',

@@ -117,6 +117,13 @@ function QuarterWindow({
       <p className="text-sm text-muted-foreground">
         {date(one.quarter.startDate)} – {date(one.quarter.endDate)}
       </p>
+      {one.coveredFrom !== null && (
+        // Task 5.19 (`edge/lesson-plans`): "The windows list shows the date the timetable
+        // covers the quarter from."
+        <p className="text-sm text-muted-foreground" data-covered-from={one.coveredFrom}>
+          {t('plans.windows.coveredFrom', { date: date(one.coveredFrom) })}
+        </p>
+      )}
       <p className="text-sm" data-window-state={window?.state ?? 'not_opened'}>
         {window === null
           ? one.published

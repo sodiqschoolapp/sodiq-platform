@@ -1,6 +1,20 @@
 # Lesson plans
 
-Not written yet for most of the plans: plans and their items, shared plans, the window, edit requests and master plans (tasks 7.1a to 7.3) have no page here yet. This page holds the parts that tasks 8.8, 9.2d and 10.3a added.
+Not written yet for most of the plans: plans and their items, shared plans, the window, edit requests and master plans (tasks 7.1a to 7.3) have no page here yet. This page holds the parts that tasks 5.19, 8.8, 9.2d and 10.3a added.
+
+## A quarter whose timetable starts in the middle
+
+<!-- Sources: 09 (The plan window), edge/lesson-plans (The window and requests, "A branch's first timetable is published from the eighth school day of quarter 2"), edge/academic-year ("The school goes live in the middle of the year"); spec change of 18 November 2026; task 5.19 -->
+
+**What it is.** A branch whose first timetable starts inside a quarter can open that quarter's plan window. The days before the timetable have no lessons, so nothing is missing for them.
+
+**Rules.**
+
+- The window of a quarter can be opened once a published timetable covers the quarter from the start of the branch's first timetable of the year. Lesson plans → Plan windows shows "Timetable from" with that date under such a quarter.
+- The plans of that quarter begin at the first lesson of the timetable. The days before have no plan rows and count nowhere: not in completeness, not in "not covered", not in the lessons held without a plan.
+- The window can be opened before the timetable starts. The teachers of the timetable own the plans from then on, write them and are told the window opened.
+- A quarter that ends before the branch's first timetable starts has no lessons and no window.
+- If that first timetable is withdrawn before it starts, a window already opened stays as it is.
 
 ## Who sees an extension of the window
 

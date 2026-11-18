@@ -86568,6 +86568,8 @@ export interface operations {
                                 endDate: string;
                             };
                             published: boolean;
+                            /** Format: date */
+                            coveredFrom: string | null;
                             window: {
                                 /** Format: date */
                                 startDate: string;
@@ -86910,6 +86912,8 @@ export interface operations {
                                 endDate: string;
                             };
                             published: boolean;
+                            /** Format: date */
+                            coveredFrom: string | null;
                             window: {
                                 /** Format: date */
                                 startDate: string;
@@ -87251,6 +87255,8 @@ export interface operations {
                                 endDate: string;
                             };
                             published: boolean;
+                            /** Format: date */
+                            coveredFrom: string | null;
                             window: {
                                 /** Format: date */
                                 startDate: string;
