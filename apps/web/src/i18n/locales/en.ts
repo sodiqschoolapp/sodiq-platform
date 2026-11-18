@@ -12,6 +12,8 @@ export const en = {
   app: {
     name: 'Sodiq School',
     loading: 'Loading…',
+    /** The Close of a dialog that changes nothing. */
+    close: 'Close',
   },
   brand: {
     slogan: 'Education begins with upbringing',
@@ -1145,7 +1147,7 @@ export const en = {
     text: 'Enter the 6-digit code from your authenticator app, or one of your recovery codes.',
     label: 'Code',
     missing: 'Enter the code.',
-    submit: 'Continue',
+    submit: 'Sign in',
   },
   password: {
     titleForced: 'Choose a new password',
@@ -3698,7 +3700,7 @@ export const en = {
     },
   },
   switcher: {
-    rolePrefix: 'Menu and home page:',
+    menuTitle: 'Menu and home page',
     roleButton: 'Menu and home page: {{role}}',
     roleHint: 'Your rights stay those of all your roles.',
     branch: 'Branch',
@@ -6699,7 +6701,7 @@ export const en = {
       },
       resultNumber: '{{shown}}, grade {{grade}}',
       provisional: 'provisional',
-      basedOn: 'based on {{held}} of {{expected}} lessons',
+      basedOn: 'based on {{expected}} of {{held}} lessons',
       results: {
         exempt: 'Exempt',
         no_result: 'No result',
@@ -6720,7 +6722,7 @@ export const en = {
       titleLoading: 'Lesson',
       title: 'Lesson {{number}} · {{date}}',
       titleNoNumber: 'Lesson of {{date}}',
-      dateSlot: '{{date}} · slot {{slot}}',
+      slotOfDay: 'Slot {{slot}} of the day',
       topic: 'Topic',
       notDelivered: 'Topic not delivered',
       markNotDelivered: 'Topic not delivered',
@@ -6932,7 +6934,7 @@ export const en = {
       voidReason: 'Why it is voided',
       check: 'Check',
       save: 'Save',
-      confirm: 'Confirm',
+      confirm: 'Grant the exemption',
       drop: 'Drop',
       back: 'Back',
       close: 'Close',
@@ -7209,7 +7211,7 @@ export const en = {
       allPresentSkipped_other: '{{count}} already marked, left as typed.',
       saved: 'Saved',
       presentEarlier:
-        'Was at school at an earlier lesson today: {{names}}. The Tutor sees this day.',
+        'Was at school at an earlier lesson today: {{names}}. The Tutor or Class teacher sees this day.',
       typedBy: 'Typed by {{name}}',
       history: 'History',
       historyTitle: 'History: {{student}}',
@@ -7335,7 +7337,7 @@ export const en = {
       changes: {
         entry: 'Entered',
         not_held: '"Not held"',
-        carry: 'Carried',
+        carry: 'Moved to the next lesson',
         move: 'Moved to its check lesson',
         takeover: 'Taken over by the plan',
         separation: 'Plan separated',

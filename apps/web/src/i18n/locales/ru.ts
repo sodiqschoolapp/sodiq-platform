@@ -5,6 +5,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
   app: {
     name: 'Sodiq School',
     loading: 'Загрузка…',
+    close: 'Закрыть',
   },
   brand: {
     slogan: 'Образование начинается с воспитания',
@@ -1143,7 +1144,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
     text: 'Введите 6-значный код из приложения-аутентификатора или один из резервных кодов.',
     label: 'Код',
     missing: 'Введите код.',
-    submit: 'Продолжить',
+    submit: 'Войти',
   },
   password: {
     titleForced: 'Задайте новый пароль',
@@ -3891,7 +3892,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
     },
   },
   switcher: {
-    rolePrefix: 'Меню и главная:',
+    menuTitle: 'Меню и главная',
     roleButton: 'Меню и главная: {{role}}',
     roleHint: 'Права остаются по всем вашим ролям.',
     branch: 'Филиал',
@@ -7084,7 +7085,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       },
       resultNumber: '{{shown}}, оценка {{grade}}',
       provisional: 'предварительно',
-      basedOn: 'по {{held}} из {{expected}} уроков',
+      basedOn: 'по {{expected}} из {{held}} уроков',
       results: {
         exempt: 'Освобождён',
         no_result: 'Нет итога',
@@ -7105,7 +7106,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       titleLoading: 'Урок',
       title: 'Урок {{number}} · {{date}}',
       titleNoNumber: 'Урок {{date}}',
-      dateSlot: '{{date}} · {{slot}}-й урок',
+      slotOfDay: '{{slot}}-й урок дня',
       topic: 'Тема',
       notDelivered: 'Тема не пройдена',
       markNotDelivered: 'Тема не пройдена',
@@ -7335,7 +7336,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       voidReason: 'Почему аннулируется',
       check: 'Проверить',
       save: 'Сохранить',
-      confirm: 'Подтвердить',
+      confirm: 'Освободить',
       drop: 'Отклонить',
       back: 'Назад',
       close: 'Закрыть',
@@ -7644,7 +7645,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       allPresentSkipped_other: 'Уже отмечены {{count}}, оставлены как есть.',
       saved: 'Сохранено',
       presentEarlier:
-        'Был в школе на более раннем уроке сегодня: {{names}}. Классный руководитель видит этот день.',
+        'Был в школе на более раннем уроке сегодня: {{names}}. Тьютор или классный руководитель видит этот день.',
       typedBy: 'Внёс: {{name}}',
       history: 'История',
       historyTitle: 'История: {{student}}',
@@ -7775,7 +7776,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       changes: {
         entry: 'Введено',
         not_held: '«Не проводилась»',
-        carry: 'Перенесено',
+        carry: 'Перенесено на следующий урок',
         move: 'Перенесено на урок проверки',
         takeover: 'Взято планом',
         separation: 'План разделён',

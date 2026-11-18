@@ -229,6 +229,24 @@ describe('the lesson card', () => {
     expect(document.body.textContent).toContain('No. 8 · ');
   });
 
+  // Design review of 17 November 2026 (J3): the line under the title wrote the date again ("19
+  // October 2026 · slot 1" under "Lesson 7 · 19 October 2026"); it now gives the slot alone.
+  it('writes the date once, in the title, and the slot of the day under it', async () => {
+    open({});
+    const cards = await screen.findAllByRole('button', { name: en.journal.card.open });
+    fireEvent.click(cards[0] as HTMLElement);
+    const dialog = await screen.findByRole('dialog');
+    await waitFor(() => {
+      expect(dialog.querySelector('[data-card-slot]')?.textContent).toBe(
+        en.journal.card.slotOfDay.replace('{{slot}}', '1'),
+      );
+    });
+    const title = within(dialog).getByRole('heading').textContent ?? '';
+    const date = title.replace(/^Lesson 7 · /, '');
+    expect(date).not.toBe(title);
+    expect((dialog.textContent ?? '').split(date)).toHaveLength(2);
+  });
+
   it('shows given today and checked today, and marks a homework "not given" and the topic "not delivered"', async () => {
     const calls = open({
       [`PUT /api/journal/lessons/${PLANNED}/homework-given`]: () => json({ notGiven: [uid(71)] }),

@@ -60,7 +60,8 @@ export function FeedbackButton({ withWord = false }: { withWord?: boolean }) {
         }
       >
         <FeedbackIcon aria-hidden />
-        <span className={withWord ? undefined : 'sr-only xl:not-sr-only'}>
+        {/* `not-sr-only` lets the word wrap again: it broke onto two lines at 1366 px. */}
+        <span className={withWord ? undefined : 'sr-only xl:not-sr-only xl:whitespace-nowrap'}>
           {t('feedback.button')}
         </span>
       </DialogTrigger>

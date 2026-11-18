@@ -375,6 +375,52 @@ describe('the support view', () => {
     expect(calls.some((one) => one.route === 'GET /api/journal/support')).toBe(false);
   });
 
+  // Design review of 17 November 2026 (W8): `packages/calc` gives `expected`, the lessons the
+  // result counts, and `held`, the lessons held (expected ≤ held, outcome.ts). The text read
+  // them the other way round: "based on 7 of 2 lessons".
+  it.each([
+    ['en', 'based on 2 of 7 lessons'],
+    ['ru', 'по 2 из 7 уроков'],
+    ['uz', '7 ta darsdan 2 tasi asosida'],
+  ] as const)(
+    'names the lessons a result is based on in their order, in %s',
+    async (language, text) => {
+      const figures = SUPPORT.figures;
+      if (figures?.result?.kind !== 'number') throw new Error('The fixture gives a number.');
+      fakeApi({
+        'GET /api/auth/session': () =>
+          json(
+            sessionOf({
+              language,
+              assignments: [{ role: 'academic_vice_principal', branchId: NORTH.id }],
+            }),
+          ),
+        'GET /api/journal/journals': () =>
+          json({
+            years: [],
+            yearId: null,
+            journals: [{ id: JOURNAL, unit: UNIT, subject: SUBJECT }],
+          }),
+        [`GET /api/journal/journals/${JOURNAL}`]: () =>
+          json(gridWith({ quarters: [Q1, Q2], quarter: Q1 })),
+        'GET /api/journal/support': () =>
+          json({
+            ...SUPPORT,
+            figures: {
+              ...figures,
+              result: { ...figures.result, basedOn: { expected: 2, held: 7 } },
+            },
+          }),
+      });
+      renderApp(`/journal/support?journal=${JOURNAL}&student=${STUDENT}&date=2026-10-26`, language);
+      await waitFor(() => {
+        expect(document.querySelector('[data-support-quarter="true"]')?.textContent).toContain(
+          text,
+        );
+      });
+    },
+  );
+
   it('renders the answer of the server', async () => {
     fakeApi({
       'GET /api/auth/session': as('academic_vice_principal'),

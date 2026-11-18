@@ -942,6 +942,8 @@ export const patternFactsDataSchema = z.object({
       /** Ids of the members on the reading date; no names (decision 2). */
       studentIds: z.array(z.uuid()),
       mainRoomId: z.uuid().nullable(),
+      /** The sex a group is for; `null` for a class and a group for both (task 5.18). */
+      sex: z.enum(['male', 'female']).nullable().optional(),
     }),
   ),
   classStudents: z.array(z.object({ classId: z.uuid(), studentIds: z.array(z.uuid()) })),

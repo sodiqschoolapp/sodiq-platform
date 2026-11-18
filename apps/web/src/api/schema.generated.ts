@@ -53054,6 +53054,8 @@ export interface operations {
                                 studentIds: string[];
                                 /** Format: uuid */
                                 mainRoomId: string | null;
+                                /** @enum {string|null} */
+                                sex?: "male" | "female" | null;
                             }[];
                             classStudents: {
                                 /** Format: uuid */
@@ -53767,6 +53769,8 @@ export interface operations {
                                 studentIds: string[];
                                 /** Format: uuid */
                                 mainRoomId: string | null;
+                                /** @enum {string|null} */
+                                sex?: "male" | "female" | null;
                             }[];
                             classStudents: {
                                 /** Format: uuid */
@@ -55613,6 +55617,8 @@ export interface operations {
                                 studentIds: string[];
                                 /** Format: uuid */
                                 mainRoomId: string | null;
+                                /** @enum {string|null} */
+                                sex?: "male" | "female" | null;
                             }[];
                             classStudents: {
                                 /** Format: uuid */
@@ -56345,6 +56351,8 @@ export interface operations {
                                 studentIds: string[];
                                 /** Format: uuid */
                                 mainRoomId: string | null;
+                                /** @enum {string|null} */
+                                sex?: "male" | "female" | null;
                             }[];
                             classStudents: {
                                 /** Format: uuid */
@@ -57063,6 +57071,8 @@ export interface operations {
                                 studentIds: string[];
                                 /** Format: uuid */
                                 mainRoomId: string | null;
+                                /** @enum {string|null} */
+                                sex?: "male" | "female" | null;
                             }[];
                             classStudents: {
                                 /** Format: uuid */
@@ -57797,6 +57807,8 @@ export interface operations {
                                 studentIds: string[];
                                 /** Format: uuid */
                                 mainRoomId: string | null;
+                                /** @enum {string|null} */
+                                sex?: "male" | "female" | null;
                             }[];
                             classStudents: {
                                 /** Format: uuid */
@@ -58517,6 +58529,8 @@ export interface operations {
                                 studentIds: string[];
                                 /** Format: uuid */
                                 mainRoomId: string | null;
+                                /** @enum {string|null} */
+                                sex?: "male" | "female" | null;
                             }[];
                             classStudents: {
                                 /** Format: uuid */
@@ -59239,6 +59253,8 @@ export interface operations {
                                 studentIds: string[];
                                 /** Format: uuid */
                                 mainRoomId: string | null;
+                                /** @enum {string|null} */
+                                sex?: "male" | "female" | null;
                             }[];
                             classStudents: {
                                 /** Format: uuid */
@@ -59952,6 +59968,8 @@ export interface operations {
                                 studentIds: string[];
                                 /** Format: uuid */
                                 mainRoomId: string | null;
+                                /** @enum {string|null} */
+                                sex?: "male" | "female" | null;
                             }[];
                             classStudents: {
                                 /** Format: uuid */

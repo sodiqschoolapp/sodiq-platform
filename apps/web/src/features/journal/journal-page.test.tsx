@@ -350,6 +350,20 @@ describe('a journal', () => {
     });
   });
 
+  // Design review of 17 November 2026 (J6): every cell of a lesson still to come showed the
+  // closed sign; it now waits empty. The sign stays on a held lesson (the test above).
+  it('leaves the cells of a lesson after today empty, without the closed sign', async () => {
+    // The server's today before the lesson of 26 October: the same closed cell, still to come.
+    open({ ...GRID, today: '2026-10-25' });
+    fireEvent.click(await screen.findByRole('button', { name: 'Left or moved: 1 student' }));
+    await waitFor(() => {
+      expect(cellOf(uid(103), `${uid(62)}:a`)).not.toBeNull();
+    });
+    const ahead = cellOf(uid(103), `${uid(62)}:a`);
+    expect(ahead?.querySelector('[aria-label]')).toBeNull();
+    expect(ahead?.textContent).toBe('');
+  });
+
   // Task 8.5 (07, In the journal; Effect on totals).
   it('shows exempt cells as 4 or 5, "Exempt" with no grade, and folds a student exempt for every lesson', async () => {
     const exemptCell = (kind: 'temporary' | 'full') => ({

@@ -332,6 +332,8 @@ export async function readPatternFacts(
             ? (classStudents.get(unit.id) ?? [])
             : (groupStudents.get(unit.id) ?? []),
         mainRoomId: unit.unit.kind === 'class' ? (mainRoomOf.get(unit.id) ?? null) : null,
+        // Task 5.18: the import pairs a one-sex half with its partner.
+        sex: group?.sex ?? null,
       };
     }),
     classStudents: classIds.map((classId) => ({
