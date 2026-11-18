@@ -16,7 +16,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { en } from '@/i18n/locales/en';
 import { ru } from '@/i18n/locales/ru';
 import { uz } from '@/i18n/locales/uz';
-import { actionsAreLast, edit, panelActionNames, savedInPanel } from '@/testing/panel';
+import { actionsInHeader, edit, panelActionNames, savedInPanel } from '@/testing/panel';
 import { fakeApi, json, NORTH, refusal, renderApp, sessionOf, SOUTH } from '@/testing/render-app';
 import { setWindowWidth } from '@/testing/window-width';
 
@@ -522,7 +522,7 @@ describe('a new class', () => {
 });
 
 describe('a class in the side panel', () => {
-  it('shows the record and its Tutors, edits it with its version, actions at the bottom', async () => {
+  it('shows the record and its Tutors, edits it with its version, actions in the header', async () => {
     const calls = await openList({
       extra: {
         [`PUT /api/classes/${OXFORD.id}`]: (body) =>
@@ -534,7 +534,7 @@ describe('a class in the side panel', () => {
     await within(panel).findByText(en.classes.tutors);
     expect(within(panel).getByText(`${en.classes.kinds.tutor}: Tursunova Dilnoza`)).toBeDefined();
     expect(panelActionNames(panel)).toEqual([en.form.edit, en.classes.archiveClass]);
-    expect(actionsAreLast(panel)).toBe(true);
+    expect(actionsInHeader(panel)).toBe(true);
     const form = await edit(panel, '7 Oxford');
     // The year is fixed after the create (decision 6).
     expect(within(form).queryByLabelText(en.classes.year)).toBeNull();

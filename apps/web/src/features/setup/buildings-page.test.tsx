@@ -3,7 +3,7 @@ import { EXPORT_TEXTS, BUILDING_EXPORT_COLUMNS } from '@sodiq/shared';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { en } from '@/i18n/locales/en';
-import { actionsAreLast, edit, panelActionNames, panelActions } from '@/testing/panel';
+import { actionsInHeader, edit, panelActionNames, panelActions } from '@/testing/panel';
 import { fakeApi, json, NORTH, refusal, renderApp, sessionOf } from '@/testing/render-app';
 
 const PATH = '/setup/buildings';
@@ -119,7 +119,7 @@ describe('the buildings page', () => {
     ]);
   });
 
-  it('opens a building in the side panel to read, with its floors and its actions at the bottom', async () => {
+  it('opens a building in the side panel to read, with its floors and its actions in the header', async () => {
     await openList();
 
     fireEvent.click(rowButton('Main'));
@@ -135,7 +135,7 @@ describe('the buildings page', () => {
     // Task 2.7c-2b-1: the record is read first; its form is behind Edit.
     expect(within(panel).queryByRole('form', { name: 'Main' })).toBeNull();
     expect(panelActionNames(panel)).toEqual([en.form.edit, en.setup.buildings.archiveBuilding]);
-    expect(actionsAreLast(panel)).toBe(true);
+    expect(actionsInHeader(panel)).toBe(true);
     expect(within(panel).getByRole('button', { name: en.form.edit }).dataset.variant).toBe(
       'default',
     );

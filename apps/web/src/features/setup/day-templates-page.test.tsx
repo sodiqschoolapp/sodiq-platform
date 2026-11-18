@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { en } from '@/i18n/locales/en';
 import { ru } from '@/i18n/locales/ru';
 import {
-  actionsAreLast,
+  actionsInHeader,
   edit,
   panelActionNames,
   panelActions,
@@ -361,7 +361,7 @@ describe('the day templates page', () => {
       en.setup.dayTemplates.changeSlots,
       en.setup.dayTemplates.archive,
     ]);
-    expect(actionsAreLast(panel)).toBe(true);
+    expect(actionsInHeader(panel)).toBe(true);
     const form = await changeSlots(panel);
     expect(within(form).getAllByText('08:00–08:45')).toHaveLength(1);
     expect(within(form).getByLabelText<HTMLInputElement>(en.setup.dayTemplates.from).value).toBe(

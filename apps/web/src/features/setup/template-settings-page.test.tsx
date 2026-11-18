@@ -3,7 +3,7 @@ import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { en } from '@/i18n/locales/en';
 import { ru } from '@/i18n/locales/ru';
-import { actionsAreLast, panelActionNames, savedInPanel } from '@/testing/panel';
+import { actionsInHeader, panelActionNames, savedInPanel } from '@/testing/panel';
 import { fakeApi, json, NORTH, refusal, renderApp, sessionOf } from '@/testing/render-app';
 import { NO_LESSONS } from '@/testing/no-lessons';
 
@@ -327,7 +327,7 @@ describe('the page of where day templates apply', () => {
     // Task 2.7c-2b-1: read first; the end is the panel's one action, at the bottom.
     expect(within(panel).queryByRole('form')).toBeNull();
     expect(panelActionNames(panel)).toEqual([en.setup.templateSettings.endTitle]);
-    expect(actionsAreLast(panel)).toBe(true);
+    expect(actionsInHeader(panel)).toBe(true);
     fireEvent.click(
       within(panel).getByRole('button', { name: en.setup.templateSettings.endTitle }),
     );

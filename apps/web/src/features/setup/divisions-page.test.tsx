@@ -5,7 +5,7 @@ import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { en } from '@/i18n/locales/en';
 import {
-  actionsAreLast,
+  actionsInHeader,
   edit,
   panelActionNames,
   panelActions,
@@ -220,7 +220,7 @@ describe('the divisions page', () => {
     // Task 2.7c-2b-1: read first, the actions at the bottom.
     expect(within(panel).getByText('Хозяйственный отдел')).toBeDefined();
     expect(panelActionNames(panel)).toEqual([en.form.edit, en.setup.divisions.archiveDivision]);
-    expect(actionsAreLast(panel)).toBe(true);
+    expect(actionsInHeader(panel)).toBe(true);
     const form = await edit(panel, 'Operations');
     expect(within(form).getByLabelText(en.setup.divisions.nameRu)).toHaveProperty(
       'value',

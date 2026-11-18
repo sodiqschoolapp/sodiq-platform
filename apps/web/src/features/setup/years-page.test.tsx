@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { en } from '@/i18n/locales/en';
 import { ru } from '@/i18n/locales/ru';
 import {
-  actionsAreLast,
+  actionsInHeader,
   edit,
   panelActionNames,
   panelActions,
@@ -303,14 +303,14 @@ describe('the academic years page', () => {
     });
   });
 
-  it('changes the dates of a year through Edit, with "Start year" beside it at the bottom', async () => {
+  it('changes the dates of a year through Edit, with "Start year" beside it in the header', async () => {
     const calls = await openList('super_admin', [PLANNED], {
       [`PUT /api/setup/academic-years/${PLANNED.id}`]: (body) =>
         json({ ...PLANNED, ...(body as object) }),
     });
     const panel = await openYear('2027–2028');
     expect(panelActionNames(panel)).toEqual([en.form.edit, en.setup.years.start]);
-    expect(actionsAreLast(panel)).toBe(true);
+    expect(actionsInHeader(panel)).toBe(true);
 
     const form = await edit(panel, '2027–2028');
     // The quarters give way while the dates are edited: Save and Cancel are last.

@@ -25,7 +25,7 @@ import {
   type Handler,
 } from '@/testing/render-app';
 import {
-  actionsAreLast,
+  actionsInHeader,
   edit,
   panelActionNames,
   panelActions,
@@ -452,7 +452,7 @@ describe('the profile of a student', () => {
     expect(within(panel).queryByRole('form')).toBeNull();
     const actions = [en.form.edit, en.people.students.uidTitle];
     expect(panelActionNames(panel)).toEqual(actions);
-    expect(actionsAreLast(panel)).toBe(true);
+    expect(actionsInHeader(panel)).toBe(true);
 
     fireEvent.click(within(tabs).getByRole('radio', { name: en.people.students.tabs.contract }));
     expect(await within(panel).findByText(/SQ-2026\/017/)).toBeDefined();
@@ -464,7 +464,7 @@ describe('the profile of a student', () => {
     expect(await within(panel).findByText('Dilfuza Rahimova')).toBeDefined();
     expect(titles()).not.toContain(en.people.students.statusTitle);
     expect(panelActionNames(panel)).toEqual(actions);
-    expect(actionsAreLast(panel)).toBe(true);
+    expect(actionsInHeader(panel)).toBe(true);
   });
 
   it('opens the record form behind Edit in the place of the tabs, and closes it with "Saved."', async () => {
@@ -1650,7 +1650,7 @@ describe('leaving, return and delete', () => {
     expect(await within(form).findByText(en.errors.student_changed)).toBeDefined();
   });
 
-  it('closes a leaving form whose action is gone after the re-read, and keeps the refusal at the bottom', async () => {
+  it('closes a leaving form whose action is gone after the re-read, and keeps the refusal under the actions', async () => {
     let reads = 0;
     openList('academic_vice_principal', {
       // Someone else recorded a leaving in between.
@@ -1695,7 +1695,7 @@ describe('leaving, return and delete', () => {
     });
   });
 
-  it('closes a delete refused because the student changed and now holds data, with the refusal at the bottom', async () => {
+  it('closes a delete refused because the student changed and now holds data, with the refusal under the actions', async () => {
     let reads = 0;
     openList('academic_vice_principal', {
       [`GET /api/people/students/${OTKIR.id}`]: () => {

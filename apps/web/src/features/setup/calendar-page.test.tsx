@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { en } from '@/i18n/locales/en';
 import { ru } from '@/i18n/locales/ru';
 import {
-  actionsAreLast,
+  actionsInHeader,
   edit,
   panelActionNames,
   panelActions,
@@ -619,7 +619,7 @@ describe('the calendar page', () => {
     });
     const panel = await openEntry('Teachers day');
     expect(panelActionNames(panel)).toEqual([en.form.edit, en.setup.calendar.archive]);
-    expect(actionsAreLast(panel)).toBe(true);
+    expect(actionsInHeader(panel)).toBe(true);
     const form = await edit(panel, 'Teachers day');
     type(within(form).getByLabelText(en.setup.calendar.name), 'Teachers and mentors day');
     fireEvent.click(within(form).getByRole('button', { name: en.form.save }));

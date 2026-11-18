@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { en } from '@/i18n/locales/en';
 import { ru } from '@/i18n/locales/ru';
 import {
-  actionsAreLast,
+  actionsInHeader,
   edit,
   panelActionNames,
   panelActions,
@@ -222,7 +222,7 @@ describe('the slot types page', () => {
     await savedInPanel(panel);
   });
 
-  it('shows a slot type to read with its actions at the bottom, and renames it through Edit', async () => {
+  it('shows a slot type to read with its actions in the header, and renames it through Edit', async () => {
     const calls = await openList('academic_vice_principal', {
       [`PATCH /api/setup/slot-types/${LUNCH.id}`]: (body) =>
         json({ ...LUNCH, ...(body as object) }),
@@ -234,7 +234,7 @@ describe('the slot types page', () => {
       en.setup.slotTypes.changeLength,
       en.setup.slotTypes.archive,
     ]);
-    expect(actionsAreLast(panel)).toBe(true);
+    expect(actionsInHeader(panel)).toBe(true);
 
     const form = await edit(panel, 'Lunch');
     type(within(form).getByLabelText(en.setup.slotTypes.name), 'Long lunch');

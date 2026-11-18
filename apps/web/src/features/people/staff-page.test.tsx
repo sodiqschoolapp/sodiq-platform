@@ -7,7 +7,7 @@ import { ru } from '@/i18n/locales/ru';
 import { fakeApi, json, NORTH, refusal, renderApp, sessionOf, SOUTH } from '@/testing/render-app';
 import { savedRecordPanel } from '@/testing/new-record';
 import {
-  actionsAreLast,
+  actionsInHeader,
   edit,
   panelActionNames,
   panelActions,
@@ -937,12 +937,12 @@ async function openAkmal(): Promise<HTMLElement> {
 // docs/design-system.md, Layout shell, Lists: the side panel reads first, with
 // its actions at the bottom; one form open at a time (task 2.7c-2b-2a).
 describe('the actions of the staff panel', () => {
-  it('reads first, with Edit and Change status at the bottom for the Super Admin', async () => {
+  it('reads first, with Edit and Change status in the header for the Super Admin', async () => {
     openList('super_admin');
     const panel = await openAkmal();
     expect(within(panel).queryByRole('form')).toBeNull();
     expect(panelActionNames(panel)).toEqual([en.form.edit, en.people.staff.changeStatus]);
-    expect(actionsAreLast(panel)).toBe(true);
+    expect(actionsInHeader(panel)).toBe(true);
     for (const opener of [en.people.staff.changeTeaching, en.people.staff.changeBranches]) {
       expect(within(panel).getByRole('button', { name: opener })).toBeDefined();
     }
@@ -1113,7 +1113,7 @@ describe('the actions of the staff panel', () => {
     ).toBeNull();
   });
 
-  it('changes the branches behind their button and says "Saved." at the bottom', async () => {
+  it('changes the branches behind their button and says "Saved." under the actions', async () => {
     const calls = openList('super_admin', {
       [`PUT /api/people/staff/${AKMAL.id}/branches`]: () => json(detailOf(AKMAL)),
     });
