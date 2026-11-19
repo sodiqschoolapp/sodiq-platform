@@ -2,6 +2,14 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 19 November 2026: the demo data works on any day of the year
+
+Not a task of the build plan: the owner found, preparing the teachers' tutorial, that a demo run on 19 November 2026 opened no plan window (its fixed end, 7 November, was past: `plan_window_dates`, while the summary still said "open until 7 November") and left no locked lesson with an unlock request (the day ten days back was a Sunday). Only the demo seed changed; no application code.
+
+- `apps/api/src/testing/demo/dates.ts` picks the dates from the day of the run: `lockedDayOf` (the last school day of quarter 1, the only quarter the seed plans, whose lock moment with the default 7 edit days is before yesterday afternoon), `planWindowOf` (the quarter of today, or the next one in quarter 1 or a break, from today for 14 days, never past the quarter's end; opened with the confirmation, since quarter lessons may have been held without a plan), `schoolDayOnOrBefore` (the day one teacher forgets, now never a day of a break).
+- The run's summary says what it did: the window's quarter and dates per branch or why it was not opened, and the date of the locked lesson or why there is none.
+- Tests: `dates.test.ts` (the run of 19 November, a Sunday, the day off, a young year, a quarter's end, and every day the seed accepts).
+
 ## 19 November 2026: the digest names the kind of every score
 
 The owner asked for the kind in the parents' digest too, as in the portal (19 November 2026; the review of pull request #359 noted it).
