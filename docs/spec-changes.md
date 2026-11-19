@@ -2,6 +2,16 @@
 
 The spec in `docs/spec/` was taken from the full spec document on 3 October 2026 (revision 88). Every later change to a spec file is listed here, newest first, with the date, what changed, why, and the files touched. Changes are made only with the `/spec-change` skill and the owner's approval.
 
+## 19 November 2026: the portal's Today page, and the latest scores by the moment they were saved
+
+- What changed:
+  1. **A Today page in the parent portal**, the first page a parent opens: the child's lessons of the day with the mark of each one marked, or the next school day of the week when the day has none; the homework still to hand in, the nearest first; the latest scores. Each part links to its page. Before, the table of "What parents see" listed Timetable, Homework, Grades and Attendance only, and a parent landed on the timetable.
+  2. **The latest scores are the ones saved last.** The Grades row now says that the Today page lists the scores saved last, and that the moment of saving orders that list and is not shown. A score still shows its work's name and its lesson date. Before, the spec named only the work and the lesson date for each score, so the moment of saving did not reach parents.
+- Why: the owner, 19 November 2026, in chat. The portal redesign (pull request #356) added the Today page (decision 1 of #356). The review of #356 found that "newest by lesson date" hid a score entered late for an older lesson, and the owner asked for it to be fixed before the merge. That fix sends each score's moment of saving to parents (decision 6 of #356, Look first, confirmed by the owner on issue #42). The parents' digest already reports scores by the moment an entry was saved (`10`, The parents' digest), so the portal now agrees with it.
+- Not changed: what a parent may see of the child (only links with portal access, never staff-only comments, never another student); the figures, which all come from `packages/calc` through the staff results reader; the digest.
+- Code: none to change; built and merged in pull request #356 (`portal-today-page.tsx`; `savedAt` of `portalScoreSchema`, read by `scoresSaved` in `portal-grades.service.ts`).
+- Files: `docs/spec/10-portal-notifications-release-2.md` (What parents see: the new Today row, the Grades row).
+
 ## 18 November 2026: the journal is titled by its class and subject, and its column labels follow the language
 
 - What changed:
