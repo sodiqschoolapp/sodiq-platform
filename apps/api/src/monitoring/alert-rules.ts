@@ -1,3 +1,4 @@
+import { DAILY_LATE_MS } from '@sodiq/shared';
 import { DURATION_BOUNDS, SERIES } from './series.js';
 
 /**
@@ -102,7 +103,8 @@ const sameHourLastWeek = (series: string) =>
 /** A heartbeat that stopped: nothing for 10 minutes is 0, which fires. */
 const stopped = (series: string) => `(sum(sum_over_time(${series}[${WINDOW}])) or vector(0)) < 1`;
 
-const DAY_AND_TWO_HOURS = 26 * 3600;
+// The System status page reads the same limit (pull request #361), so the page and the emails agree.
+const DAY_AND_TWO_HOURS = DAILY_LATE_MS / 1000;
 
 const NOT_FILES = 'route!~".*(export|pdf|print|xlsx|photo|file).*"';
 const listed = [...JOURNAL_ROUTES, ...SEARCH_ROUTES, ...REPORT_ROUTES].map(

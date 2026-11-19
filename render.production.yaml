@@ -83,6 +83,20 @@ services:
         sync: false
       - key: PARENT_BOT_USERNAME
         sync: false
+      # The System status page of the Super Admin (pull request #361; docs/monitoring.md,
+      # step 11): read-only keys of UptimeRobot, Grafana and Sentry, entered by the owner in
+      # the dashboard (stop-list item 1). Unset, each panel says "Not connected". The API only:
+      # the worker reads no outside service. SENTRY_ORG above names the organisation.
+      - key: STATUS_UPTIMEROBOT_KEY
+        sync: false
+      - key: STATUS_GRAFANA_URL
+        sync: false
+      - key: STATUS_GRAFANA_TOKEN
+        sync: false
+      - key: STATUS_SENTRY_TOKEN
+        sync: false
+      - key: STATUS_SENTRY_URL
+        sync: false
 
   - type: worker
     name: sodiq-worker

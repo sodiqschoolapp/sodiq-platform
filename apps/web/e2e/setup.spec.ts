@@ -100,6 +100,28 @@ async function checkSuperAdminPages(page: Page): Promise<void> {
   await page.goto('/audit');
   await expect(heading(page, en.audit.title)).toBeVisible();
   await checkPage(page, 'audit-super-admin');
+  // Pull request #361: the Feedback reports list with the seeded report open in its side panel,
+  // and the System status page (the outside services not connected: no key in the browser tests).
+  await page.goto('/feedback-reports');
+  await expect(heading(page, en.feedbackReports.title)).toBeVisible();
+  await page
+    .getByRole('row')
+    .filter({ hasText: 'The list of rooms jumps' })
+    .getByRole('button')
+    .first()
+    .click();
+  await expect(page.getByRole('complementary')).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: en.feedbackReports.markHandled, exact: true }),
+  ).toBeVisible();
+  await checkPage(page, 'feedback-reports-record-super-admin');
+  await page.goto('/system-status');
+  await expect(heading(page, en.systemStatus.title)).toBeVisible();
+  await expect(page.getByRole('region', { name: en.systemStatus.own })).toBeVisible();
+  await expect(
+    page.getByRole('region', { name: en.systemStatus.grafana.title }).getByText(/^Not connected/),
+  ).toBeVisible();
+  await checkPage(page, 'system-status-super-admin');
   // Task 2.7c-2a: the lists only the Super Admin adds to, with the new record
   // in the side panel. Nothing is saved.
   // In the branch of the pages test, which keeps an active floor: the floor

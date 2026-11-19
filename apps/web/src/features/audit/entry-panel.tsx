@@ -45,6 +45,8 @@ const RECORD_TYPES = [
   'day_template',
   'vacancy',
   'audit_entry',
+  // Pull request #361: the handled mark of a feedback report.
+  'feedback_report',
 ] as const;
 
 /** The name of a kind of record; a kind the list does not hold shows as stored. */

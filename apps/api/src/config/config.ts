@@ -97,6 +97,27 @@ const environmentSchema = z.object({
       .optional(),
   ),
   GRAFANA_TOKEN: z.preprocess(emptyAsUnset, z.string().min(1).optional()),
+  // The System status page of the Super Admin (pull request #361; docs/monitoring.md, step 11):
+  // read-only keys of the outside services, read by `status-providers.ts` only, never answered
+  // or logged; on `sodiq-api` only. Each group is all or none; none: its panel says "Not connected".
+  STATUS_UPTIMEROBOT_KEY: z.preprocess(
+    emptyAsUnset,
+    z
+      .string()
+      .regex(/^[A-Za-z0-9-]{10,200}$/)
+      .optional(),
+  ),
+  STATUS_GRAFANA_URL: z.preprocess(emptyAsUnset, z.url({ protocol: /^https$/ }).optional()),
+  STATUS_GRAFANA_TOKEN: z.preprocess(emptyAsUnset, z.string().min(1).max(500).optional()),
+  STATUS_SENTRY_TOKEN: z.preprocess(emptyAsUnset, z.string().min(1).max(500).optional()),
+  // https://sentry.io, or https://de.sentry.io for an organisation in the EU.
+  STATUS_SENTRY_URL: z.preprocess(
+    emptyAsUnset,
+    z.url({ protocol: /^https$/ }).default('https://sentry.io'),
+  ),
+  // The organisation of the source maps (docs/monitoring.md, step 2), also read at run time by
+  // the System status page with STATUS_SENTRY_TOKEN.
+  SENTRY_ORG: z.preprocess(emptyAsUnset, z.string().min(1).max(100).optional()),
   // Set by Render on each instance of a service: which server a number came from.
   RENDER_INSTANCE_ID: z.preprocess(emptyAsUnset, z.string().max(100).optional()),
   // The demo clock (task 10.5): `1` on the test environment only (render.yaml), so that the
@@ -195,6 +216,17 @@ const PROBLEM: Record<VariableName, string> = {
   GRAFANA_LOGS_USER:
     'GRAFANA_LOGS_USER must be the number of the logs user, set with the four other GRAFANA variables',
   GRAFANA_TOKEN: 'GRAFANA_TOKEN must be set with the four other GRAFANA variables',
+  STATUS_UPTIMEROBOT_KEY:
+    'STATUS_UPTIMEROBOT_KEY must be the read-only API key of UptimeRobot, or unset',
+  STATUS_GRAFANA_URL:
+    'STATUS_GRAFANA_URL must be the https:// address of the Grafana stack, set with STATUS_GRAFANA_TOKEN',
+  STATUS_GRAFANA_TOKEN:
+    'STATUS_GRAFANA_TOKEN must be the token of a Viewer service account, set with STATUS_GRAFANA_URL',
+  STATUS_SENTRY_TOKEN:
+    'STATUS_SENTRY_TOKEN must be the token of a read-only Sentry integration, or unset',
+  STATUS_SENTRY_URL: 'STATUS_SENTRY_URL must be the https:// address of Sentry, or unset',
+  SENTRY_ORG:
+    'SENTRY_ORG must be the slug of the Sentry organisation, and is needed with STATUS_SENTRY_TOKEN',
   RENDER_INSTANCE_ID: 'RENDER_INSTANCE_ID must be the name of an instance',
   DEMO_CLOCK:
     'DEMO_CLOCK must be 0 or 1, and 1 only on the test environment (SENTRY_ENVIRONMENT test or development, never the production address)',
@@ -227,6 +259,8 @@ export interface AppConfig {
   unscheduledJobs: readonly string[];
   /** Where the numbers and the logs go (task 10.2a), or nowhere. */
   monitoring: MonitoringConfig;
+  /** The read-only keys of the System status page (pull request #361); each undefined when unset. */
+  statusProviders: StatusProvidersConfig;
   /** Task 10.5: whether the demo clock runs (the test environment only). */
   demoClock: boolean;
   /** Task 11.1: the public name of the school's Telegram bot for the parents' slips, or none. */
@@ -258,6 +292,15 @@ export interface MonitoringConfig {
     | undefined;
   /** The instance of the service on Render, `local` elsewhere. */
   instance: string;
+}
+
+/** Only `status-providers.ts` reads the keys. Never answered, never logged. */
+export interface StatusProvidersConfig {
+  uptimeRobotKey: string | undefined;
+  grafana: { url: string; token: string } | undefined;
+  sentry: { url: string; org: string; token: string; environment: string } | undefined;
+  /** For the link to the Sentry issues, also without the token. */
+  sentryOrg: string | undefined;
 }
 
 export interface MailConfig {
@@ -308,6 +351,15 @@ export function loadConfig(environment: Record<string, string | undefined>): App
   const grafanaSet = GRAFANA_VARIABLES.filter((name) => data[name] !== undefined);
   if (grafanaSet.length > 0 && grafanaSet.length < GRAFANA_VARIABLES.length) {
     wrong.push(...GRAFANA_VARIABLES.filter((name) => data[name] === undefined));
+  }
+  // Pull request #361: the System status page's keys, each group all or none.
+  if ((data.STATUS_GRAFANA_URL === undefined) !== (data.STATUS_GRAFANA_TOKEN === undefined)) {
+    wrong.push(
+      data.STATUS_GRAFANA_URL === undefined ? 'STATUS_GRAFANA_URL' : 'STATUS_GRAFANA_TOKEN',
+    );
+  }
+  if (data.STATUS_SENTRY_TOKEN !== undefined && data.SENTRY_ORG === undefined) {
+    wrong.push('SENTRY_ORG');
   }
   if (data.PHOTOS_IN_MEMORY === '1' && r2Set.length > 0) {
     wrong.push('PHOTOS_IN_MEMORY');
@@ -370,6 +422,23 @@ export function loadConfig(environment: Record<string, string | undefined>): App
             }
           : undefined,
       instance: data.RENDER_INSTANCE_ID ?? 'local',
+    },
+    statusProviders: {
+      uptimeRobotKey: data.STATUS_UPTIMEROBOT_KEY,
+      grafana:
+        data.STATUS_GRAFANA_URL !== undefined && data.STATUS_GRAFANA_TOKEN !== undefined
+          ? { url: data.STATUS_GRAFANA_URL.replace(/\/+$/, ''), token: data.STATUS_GRAFANA_TOKEN }
+          : undefined,
+      sentry:
+        data.STATUS_SENTRY_TOKEN !== undefined && data.SENTRY_ORG !== undefined
+          ? {
+              url: data.STATUS_SENTRY_URL.replace(/\/+$/, ''),
+              org: data.SENTRY_ORG,
+              token: data.STATUS_SENTRY_TOKEN,
+              environment: data.SENTRY_ENVIRONMENT,
+            }
+          : undefined,
+      sentryOrg: data.SENTRY_ORG,
     },
     demoClock: data.DEMO_CLOCK === '1',
     parentBotUsername: data.PARENT_BOT_USERNAME ?? null,

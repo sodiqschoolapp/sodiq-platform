@@ -25,9 +25,9 @@ export function rolesOfReport(assignments: readonly CurrentAssignment[]): Role[]
  * Feedback reports about the app (docs/spec/14-quality-plan.md, Whole system,
  * Monitoring: "A feedback button on every page sends a report with the page
  * and role attached"). A report names the account and the roles of the
- * session that sent it, never anything the body claims. The owner reads the
- * table until a screen exists; no audit entry is written (both decided by the
- * owner, task 0.8b-3).
+ * session that sent it, never anything the body claims. No audit entry is
+ * written (decided by the owner, task 0.8b-3). The Super Admin reads the reports
+ * on the Feedback reports page (`FeedbackList`, pull request #361).
  */
 @Injectable()
 export class FeedbackReports {

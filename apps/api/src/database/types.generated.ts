@@ -642,6 +642,8 @@ export interface FeedbackReports {
   account_id: string;
   app_version: number | null;
   created_at: Timestamp;
+  handled_at: Timestamp | null;
+  handled_by: string | null;
   id: Generated<string>;
   page: string;
   request_id: string | null;

@@ -744,6 +744,14 @@ describe('a frozen permission table', () => {
     }
   });
 
+  it('gives the Super Admin alone the feedback reports and the system status (pull request #361, the owner on 19 November 2026)', () => {
+    for (const role of ROLES) {
+      expect(PERMISSIONS.monitoring[role], role).toEqual(
+        role === 'super_admin' ? ['view', 'edit'] : [],
+      );
+    }
+  });
+
   it('gives the Super Admin alone the changes of branches, buildings, floors, rooms, divisions and departments', () => {
     expect(Object.keys(PERMISSIONS).sort()).toEqual([
       'absence_reasons',
@@ -777,6 +785,7 @@ describe('a frozen permission table', () => {
       'journal_orphans',
       'journal_support',
       'journal_unlocks',
+      'monitoring',
       'parent_accounts',
       'personal_data_report',
       'plan_masters',

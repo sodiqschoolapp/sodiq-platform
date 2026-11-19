@@ -133,6 +133,19 @@ export function SetupPage() {
       title: t('setup.forcedDeletesLink'),
       area: 'forced_deletes',
     },
+    {
+      // The Super Admin's feedback reports and system status (pull request #361).
+      key: 'feedbackReports',
+      to: '/feedback-reports',
+      title: t('setup.feedbackReportsLink'),
+      area: 'monitoring',
+    },
+    {
+      key: 'systemStatus',
+      to: '/system-status',
+      title: t('setup.systemStatusLink'),
+      area: 'monitoring',
+    },
   ];
   const showsChecklist = role !== null && permits(PERMISSIONS, role, 'settings', 'view');
   const links = all.filter(

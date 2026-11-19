@@ -10,6 +10,25 @@ Not a task of the build plan: the owner found, preparing the teachers' tutorial,
 - The run's summary says what it did: the window's quarter and dates per branch or why it was not opened, and the date of the locked lesson or why there is none.
 - Tests: `dates.test.ts` (the run of 19 November, a Sunday, the day off, a young year, a quarter's end, and every day the seed accepts).
 
+## 19 November 2026: the Super Admin's Feedback reports and System status pages
+
+Not a task of the build plan: the owner asked for a page with the feedback people send and a status page with the health of the app in one place, "too many emails in my inbox so I might miss alerts" (19 November 2026; pull request #361, decisions in `docs/decisions.md`). The owner approved the area `monitoring` (Super Admin alone) in the session.
+
+- **Feedback reports** (Setup → Feedback reports, `/feedback-reports`): every new report and the newest 1,000 handled ones, newest first, with the sender (staff name through `audit_names`, "No name" without a record), roles, page, sent, state; filters by state and role. The side panel shows the text, the app version and who handled it, and marks it handled or new again (`POST`/`DELETE /api/feedback-reports/:id/handled`), audited in the school-wide log (`feedback.handled`, `feedback.reopened`, never the text). Migration `0173`: `handled_at`, `handled_by`, both or neither; `sodiq_app` may update those two columns only.
+- **System status** (Setup → System status, `/system-status`): `GET /api/system-status` answers the own checks at once (background jobs from the last completed `monitoring.counts` run, failed jobs of the last hour, new feedback, and per branch the nightly check, the daily work, failed exports and refused saves), with the limits of the alert rules, the hidden Monitoring branch left out. `GET /api/system-status/providers` reads UptimeRobot, Grafana's alert rules and Sentry's issues of 24 hours on the server with read-only keys (5 s each, kept 60 s); without its key a panel says "Not connected". Refresh reads both again; nothing on a timer.
+- Configuration on `sodiq-api` only (`render.production.yaml`): `STATUS_UPTIMEROBOT_KEY`, `STATUS_GRAFANA_URL` + `STATUS_GRAFANA_TOKEN`, `STATUS_SENTRY_TOKEN` with `SENTRY_ORG` (+ `STATUS_SENTRY_URL` for an EU organisation).
+- Tests: `feedback.database.test.ts` (column privileges from the catalog, the pair check), `feedback-list.test.ts`, `system-status.test.ts` (limits at exactly 10 minutes and 26 hours and 1 ms after), `status-providers.test.ts` (fake network: connected, not connected, unreachable on 500, refusal, other shape, timeout, no key in answers or logs, the cache), `config.test.ts`, `render-blueprint.test.ts`, the route harness and lists; web: `feedback-reports-page.test.tsx`, `system-status-page.test.tsx`, `feedback-index.test.ts`, the Setup links; browser: both pages in the Super Admin test of `setup.spec.ts`, one report seeded.
+
+Left out:
+
+- The live provider panels wait for the owner's three read-only keys (`docs/monitoring.md`, step 11; stop-list item 1).
+- A home tile or banner for the Super Admin when a check needs attention, a reply to a sender, an export of the reports: later, if the owner asks.
+
+The next sessions must know:
+
+- The page and the alert rules share their limits (`DAILY_LATE_MS`, `WORKER_SILENT_MS` in `packages/shared/src/system-status.ts`; `alert-rules.ts` reads `DAILY_LATE_MS`). Change a limit in one place.
+- The provider answers' shapes were written without network access to the providers' documentation; the parsers refuse any other shape and the panel then says "Could not read …". Check each panel once the owner sets its key.
+
 ## 19 November 2026: the digest names the kind of every score
 
 The owner asked for the kind in the parents' digest too, as in the portal (19 November 2026; the review of pull request #359 noted it).

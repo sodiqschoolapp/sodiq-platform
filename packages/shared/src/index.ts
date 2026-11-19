@@ -244,13 +244,20 @@ export {
   type ErrorDetail,
 } from './errors.js';
 export {
+  FEEDBACK_HANDLED_LISTED,
   FEEDBACK_PAGE_FORMAT,
   FEEDBACK_PAGE_MAX_LENGTH,
   FEEDBACK_REPORTS_PER_DAY,
   FEEDBACK_TEXT_MAX_LENGTH,
   FEEDBACK_WINDOW_MS,
+  feedbackReportEntrySchema,
+  feedbackReportListSchema,
+  feedbackReportParamsSchema,
   feedbackReportSchema,
   type FeedbackReport,
+  type FeedbackReportEntry,
+  type FeedbackReportList,
+  type FeedbackReportParams,
 } from './feedback.js';
 export { healthResponseSchema, type HealthResponse } from './health.js';
 export {
@@ -2599,3 +2606,21 @@ export * from './digest.js';
 export * from './announcements.js';
 export * from './load-import.js';
 export * from './pattern-import.js';
+export {
+  CHECK_STATUSES,
+  DAILY_LATE_MS,
+  FAILURE_WINDOW_MS,
+  GRAFANA_RULE_HEALTHS,
+  GRAFANA_RULE_STATES,
+  PROVIDER_CACHE_MS,
+  PROVIDER_TIMEOUT_MS,
+  REFUSED_SAVES_WINDOW_MS,
+  UPTIME_MONITOR_STATES,
+  WORKER_SILENT_MS,
+  checkStatusSchema,
+  statusProvidersSchema,
+  systemStatusSchema,
+  type CheckStatus,
+  type StatusProviders,
+  type SystemStatus,
+} from './system-status.js';

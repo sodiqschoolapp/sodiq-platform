@@ -26,6 +26,8 @@ import { PHOTO_STORE, type PhotoStore } from '../modules/people/photo-store.js';
 import { TELEGRAM_FETCH, type TelegramFetch } from '../modules/portal/telegram/bot-api.js';
 import type { Fetch } from '../monitoring/grafana.js';
 import { MONITORING_FETCH } from '../monitoring/monitoring.service.js';
+import type { StatusFetch } from '../monitoring/status-providers.js';
+import { STATUS_FETCH } from '../monitoring/system-status.service.js';
 import type { StopBeforeHandler } from './route-harness.js';
 import { FixedClock } from './fixed-clock.js';
 // From database-server.ts, which needs no vitest: the second API process of the speed run's load
@@ -78,6 +80,8 @@ export interface TestAppOptions {
   mailer?: Mailer;
   /** What the pushes to Grafana are sent through (task 10.2a), with `config.monitoring` set. */
   monitoringFetch?: Fetch;
+  /** Pull request #361: what the System status page's calls go through, with `config.statusProviders` set. */
+  statusFetch?: StatusFetch;
   /** Task 11.4: what the calls to the Bot API are sent through, with `config.telegram` set. */
   telegramFetch?: TelegramFetch;
 }
@@ -146,6 +150,9 @@ export async function createTestApp(options: TestAppOptions = {}): Promise<NestE
   }
   if (options.monitoringFetch !== undefined) {
     builder.overrideProvider(MONITORING_FETCH).useValue(options.monitoringFetch);
+  }
+  if (options.statusFetch !== undefined) {
+    builder.overrideProvider(STATUS_FETCH).useValue(options.statusFetch);
   }
   if (options.telegramFetch !== undefined) {
     builder.overrideProvider(TELEGRAM_FETCH).useValue(options.telegramFetch);

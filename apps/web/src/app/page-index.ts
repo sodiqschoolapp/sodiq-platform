@@ -47,6 +47,9 @@ export const SETUP_PAGES: readonly (IndexedPage & { area?: string; action?: Acti
   { titleKey: 'setup.subjects.title', to: '/setup/subjects' },
   // Task 5.8b: the Super Admin's deleted lessons.
   { titleKey: 'forcedDeletes.title', to: '/forced-deletes', area: 'forced_deletes' },
+  // Pull request #361: the Super Admin's feedback reports and system status.
+  { titleKey: 'feedbackReports.title', to: '/feedback-reports', area: 'monitoring' },
+  { titleKey: 'systemStatus.title', to: '/system-status', area: 'monitoring' },
 ];
 
 /** The pages under "People" (task 2.2a), each with the area the role must view. */
