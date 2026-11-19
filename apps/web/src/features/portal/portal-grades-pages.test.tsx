@@ -167,7 +167,7 @@ async function openRow(id: string): Promise<HTMLElement> {
 describe('the portal grades', () => {
   it('shows the result and grade in the row, "provisional" on an open quarter, and the figures, scores and comments when opened', async () => {
     portal();
-    renderApp(`/portal/${ANVAR}/grades`);
+    renderApp(`/portal/${ANVAR}/grades?view=quarter`);
     await screen.findByText(en.portal.grades.provisional);
     const closedRow = document.querySelector(`[data-subject-row="${maths.id}"]`);
     // The result out of 100 and the grade in words, never two bare numbers (owner, 19 November).
@@ -200,7 +200,7 @@ describe('the portal grades', () => {
 
   it('says "final" for a closed quarter and not "provisional"', async () => {
     portal('en', true);
-    renderApp(`/portal/${ANVAR}/grades`);
+    renderApp(`/portal/${ANVAR}/grades?view=quarter`);
     await screen.findByText(en.portal.grades.final);
     expect(screen.queryByText(en.portal.grades.provisional)).toBeNull();
   });
@@ -213,7 +213,7 @@ describe('the portal grades', () => {
         one.subject.id === maths.id ? { ...one, final: false } : one,
       ),
     });
-    renderApp(`/portal/${ANVAR}/grades`);
+    renderApp(`/portal/${ANVAR}/grades?view=quarter`);
     const card = await openRow(maths.id);
     expect(within(card).getByText(en.portal.grades.reopenedShort)).toBeDefined();
     expect(within(card).getByText(en.portal.grades.reopened)).toBeDefined();
@@ -224,11 +224,73 @@ describe('the portal grades', () => {
 
   it('speaks the parent’s language', async () => {
     portal('ru');
-    renderApp(`/portal/${ANVAR}/grades`, 'ru');
+    renderApp(`/portal/${ANVAR}/grades?view=quarter`, 'ru');
     await screen.findByText(ru.portal.grades.provisional);
     const row = document.querySelector(`[data-subject-row="${maths.id}"]`);
     expect(row?.querySelector('[data-grade]')?.textContent).toBe('Оценка 4');
     expect(screen.getByRole('link', { name: ru.portal.attendance.title })).toBeDefined();
+  });
+});
+
+describe('the daily view of the grades', () => {
+  it('opens first and lists every score by its lesson date, the newest day first, with the comment', async () => {
+    const calls = portal();
+    const { router } = renderApp(`/portal/${ANVAR}/grades`);
+    await screen.findByRole('region', { name: 'Monday, 19 October' });
+    expect(
+      [...document.querySelectorAll('[data-scores-day]')].map((one) =>
+        one.getAttribute('data-scores-day'),
+      ),
+    ).toEqual(['2026-10-19', '2026-10-12']);
+    const twelfth = screen.getByRole('region', { name: 'Monday, 12 October' });
+    const row = within(twelfth).getByText('Fractions test').closest('[data-score-row]');
+    expect(row?.textContent).toContain('Mathematics');
+    expect(row?.querySelector('[data-score]')?.textContent).toBe('12/3040%');
+    expect(row?.textContent).toContain('Good start');
+    // "Homework 2", a work without a title, on the 19th.
+    const nineteenth = screen.getByRole('region', { name: 'Monday, 19 October' });
+    expect(within(nineteenth).getByText('Homework 2')).toBeDefined();
+    // An attendance-only subject has no score to list; no subject rows in this view.
+    expect(document.querySelector('[data-subject-row]')).toBeNull();
+    // One read for both views: the quarter view draws from the same answer.
+    fireEvent.click(screen.getByRole('radio', { name: en.portal.grades.views.quarter }));
+    await waitFor(() => {
+      expect(router.state.location.search).toEqual({ view: 'quarter' });
+    });
+    expect(document.querySelector(`[data-subject-row="${maths.id}"]`)).not.toBeNull();
+    expect(
+      calls.filter((call) => call.route === `GET /api/portal/children/${ANVAR}/grades`),
+    ).toHaveLength(1);
+    // Back to the daily view: the address without `view`.
+    fireEvent.click(screen.getByRole('radio', { name: en.portal.grades.views.daily }));
+    await waitFor(() => {
+      expect(router.state.location.search).toEqual({});
+    });
+  });
+
+  it('keeps the view when another quarter is chosen', async () => {
+    const calls = portal();
+    const { router } = renderApp(`/portal/${ANVAR}/grades?view=quarter`);
+    await screen.findByText(en.portal.grades.provisional);
+    fireEvent.click(
+      screen.getByRole('radio', { name: en.results.quarterNumber.replace('{{number}}', '2') }),
+    );
+    await waitFor(() => {
+      expect(router.state.location.search).toEqual({ view: 'quarter', quarter: Q2 });
+    });
+    await waitFor(() => {
+      expect(calls.map((call) => call.query)).toContain(`?quarter=${Q2}`);
+    });
+  });
+
+  it('says so when the quarter has no score yet', async () => {
+    const open = GRADES(false);
+    portal('en', false, {
+      ...open,
+      subjects: open.subjects.map((one) => ({ ...one, scores: [] })),
+    });
+    renderApp(`/portal/${ANVAR}/grades`);
+    await screen.findByText(en.portal.grades.noScores);
   });
 });
 
@@ -257,7 +319,7 @@ describe('the row of a subject', () => {
             },
       ),
     });
-    renderApp(`/portal/${ANVAR}/grades`);
+    renderApp(`/portal/${ANVAR}/grades?view=quarter`);
     await screen.findByText(en.portal.grades.provisional);
     const row = document.querySelector(`[data-subject-row="${maths.id}"]`);
     expect(row?.querySelector('[data-result]')?.textContent).toBe('0/100Grade 2');
@@ -267,7 +329,7 @@ describe('the row of a subject', () => {
     cleanup();
     // A closed quarter's result: no second line.
     portal('en', true);
-    renderApp(`/portal/${ANVAR}/grades`);
+    renderApp(`/portal/${ANVAR}/grades?view=quarter`);
     await screen.findByText(en.portal.grades.final);
     const final = document.querySelector(`[data-subject-row="${maths.id}"]`);
     expect(final?.querySelector('[data-result]')?.textContent).toBe('71/100Grade 4');

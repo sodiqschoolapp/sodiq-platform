@@ -29,3 +29,18 @@ export const portalQuarterSearch = (search: Record<string, unknown>): { quarter?
     ? { quarter: parsed.data.quarter }
     : {};
 };
+
+/** The two views of the Grades page: each score by day, or the quarter's results by subject. */
+export const PORTAL_GRADES_VIEWS = ['daily', 'quarter'] as const;
+export type PortalGradesView = (typeof PORTAL_GRADES_VIEWS)[number];
+
+/**
+ * The Grades page's address: the quarter, and the view (19 November 2026); the daily view when
+ * left out. Anything else is dropped.
+ */
+export const portalGradesSearch = (
+  search: Record<string, unknown>,
+): { quarter?: string; view?: PortalGradesView } => ({
+  ...portalQuarterSearch(search),
+  ...(search.view === 'quarter' ? { view: 'quarter' as const } : {}),
+});

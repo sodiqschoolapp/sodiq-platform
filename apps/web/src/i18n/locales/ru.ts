@@ -2426,6 +2426,8 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       subjects: 'Предметы',
       gradeLabel: 'Оценка {{grade}}',
       outOf100: '{{shown}}/100',
+      view: 'Вид',
+      views: { daily: 'По дням', quarter: 'За четверть' },
       rowAttendanceOnly: 'только по посещаемости',
       attendanceOnlyShort: 'Только посещаемость',
       reopenedShort: 'Исправляется',

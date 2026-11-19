@@ -2308,6 +2308,8 @@ export const en = {
       subjects: 'Subjects',
       gradeLabel: 'Grade {{grade}}',
       outOf100: '{{shown}}/100',
+      view: 'View',
+      views: { daily: 'Daily', quarter: 'Quarter' },
       rowAttendanceOnly: 'from attendance only',
       attendanceOnlyShort: 'Attendance only',
       reopenedShort: 'Being corrected',

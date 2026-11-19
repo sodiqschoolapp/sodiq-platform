@@ -13,13 +13,17 @@ import { SubjectSwatch } from '@/features/setup/subject-colour';
 import { schoolDateText } from '@/lib/dates';
 import { cn } from '@/lib/utils';
 import { portalGradesQuery } from './portal-api';
+import { PORTAL_GRADES_VIEWS } from './portal-search';
+import { dayText } from './portal-week';
 import { languageOf, type Language } from './portal-lessons';
 import { PortalTitle } from './portal-shell';
 import { workTitle } from './portal-today-page';
 
 /**
- * The Grades page of the portal (task 11.3, pull request #296; `10`, What parents see): for the
- * quarter chosen, one row per subject with its result and grade, "provisional" until the
+ * The Grades page of the portal (task 11.3, pull request #296; `10`, What parents see), in two
+ * views (owner, 19 November 2026). "Daily", the first: every score of the quarter chosen, by its
+ * lesson date, the newest day first, each with its subject, the work's name, the score and the
+ * comment visible to parents. "Quarter": for the quarter chosen, one row per subject with its result and grade, "provisional" until the
  * quarter is closed; a row opens the subject's figures as the staff results page shows them (the
  * same labels, review decision 4), the year result when shown, the rating exam and each score
  * with the work's name, the lesson date and the comment visible to parents. Every figure comes
@@ -29,7 +33,7 @@ export function PortalGradesPage(): React.JSX.Element {
   const { t, i18n } = useTranslation();
   const language = languageOf(i18n.language);
   const { studentId } = useParams({ from: '/portal/$studentId/grades' });
-  const { quarter } = useSearch({ from: '/portal/$studentId/grades' });
+  const { quarter, view = 'daily' } = useSearch({ from: '/portal/$studentId/grades' });
   const navigate = useNavigate({ from: '/portal/$studentId/grades' });
   const grades = useQuery(portalGradesQuery(studentId, quarter));
   const title = <PortalTitle>{t('portal.grades.title')}</PortalTitle>;
@@ -65,6 +69,27 @@ export function PortalGradesPage(): React.JSX.Element {
         </section>
       ) : (
         <>
+          <Segmented
+            label={t('portal.grades.view')}
+            className="w-full [&>label]:flex-1"
+            options={PORTAL_GRADES_VIEWS.map((one) => ({
+              value: one,
+              label: t(`portal.grades.views.${one}`),
+            }))}
+            value={view}
+            onChange={(next) => {
+              void navigate({
+                // The daily view is the page without `view` in its address.
+                search: (old) =>
+                  next === 'quarter'
+                    ? { ...old, view: next }
+                    : old.quarter === undefined
+                      ? {}
+                      : { quarter: old.quarter },
+                replace: true,
+              });
+            }}
+          />
           <div className="flex flex-wrap items-center justify-between gap-3">
             <Segmented
               label={t('portal.grades.quarter')}
@@ -74,7 +99,7 @@ export function PortalGradesPage(): React.JSX.Element {
               }))}
               value={shown.id}
               onChange={(next) => {
-                void navigate({ search: { quarter: next } });
+                void navigate({ search: (old) => ({ ...old, quarter: next }) });
               }}
             />
             <p
@@ -85,7 +110,9 @@ export function PortalGradesPage(): React.JSX.Element {
               {shown.closed ? t('portal.grades.final') : t('portal.grades.provisional')}
             </p>
           </div>
-          {answer.subjects.length === 0 ? (
+          {view === 'daily' ? (
+            <DailyScores subjects={answer.subjects} language={language} />
+          ) : answer.subjects.length === 0 ? (
             <section className={PANEL}>
               <EmptyState text={t('portal.grades.empty')} />
             </section>
@@ -105,6 +132,89 @@ export function PortalGradesPage(): React.JSX.Element {
           )}
         </>
       )}
+    </>
+  );
+}
+
+/**
+ * Every score of the quarter by its lesson date, the newest day first: the parent's "what marks
+ * this week" without opening each subject. Within a day, by subject, then by work. The scores are
+ * the server's; this only orders them.
+ */
+function DailyScores({
+  subjects,
+  language,
+}: {
+  subjects: readonly PortalSubjectGrades[];
+  language: Language;
+}): React.JSX.Element {
+  const { t } = useTranslation();
+  const scores = subjects.flatMap((subject) => subject.scores.map((score) => ({ subject, score })));
+  if (scores.length === 0) {
+    return (
+      <section className={PANEL}>
+        <EmptyState text={t('portal.grades.noScores')} />
+      </section>
+    );
+  }
+  const days = [...new Set(scores.map(({ score }) => score.date))].sort().reverse();
+  return (
+    <>
+      {days.map((day) => (
+        <section
+          key={day}
+          className={PANEL}
+          aria-labelledby={`scores-${day}`}
+          data-scores-day={day}
+        >
+          <h2 id={`scores-${day}`} className={cn(SECTION_TITLE, 'mb-2')}>
+            {dayText(day, language)}
+          </h2>
+          <ul>
+            {scores
+              .filter(({ score }) => score.date === day)
+              .sort(
+                (a, b) =>
+                  a.subject.subject.names[language].localeCompare(
+                    b.subject.subject.names[language],
+                    language,
+                  ) ||
+                  a.score.kind.localeCompare(b.score.kind) ||
+                  a.score.position - b.score.position,
+              )
+              .map(({ subject, score }) => (
+                <li
+                  key={`${subject.subject.id}-${score.kind}-${String(score.position)}`}
+                  className="grid gap-1 border-b border-border py-3 last:border-b-0 last:pb-0"
+                  data-score-row=""
+                >
+                  <span className="flex items-center justify-between gap-3">
+                    <span className="grid min-w-0 gap-0.5">
+                      <span className="flex min-w-0 items-baseline gap-2 font-semibold">
+                        <SubjectSwatch colour={subject.subject.colour} />
+                        <span className="min-w-0 break-words">
+                          {subject.subject.names[language]}
+                        </span>
+                      </span>
+                      <span className="text-sm text-muted-foreground">{workTitle(score, t)}</span>
+                    </span>
+                    <span className="shrink-0 text-right tabular-nums" data-score="">
+                      <span className="block font-bold">
+                        {t('portal.grades.outOf', { score: score.score, total: score.total })}
+                      </span>
+                      <span className="text-sm text-muted-foreground">
+                        {t('portal.grades.percent', { percent: score.percent })}
+                      </span>
+                    </span>
+                  </span>
+                  {score.comment !== null && (
+                    <span className="text-sm text-muted-foreground italic">{score.comment}</span>
+                  )}
+                </li>
+              ))}
+          </ul>
+        </section>
+      ))}
     </>
   );
 }

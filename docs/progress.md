@@ -2,6 +2,16 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 19 November 2026: the portal's Grades page in a daily and a quarter view
+
+Not a task of the build plan: the owner noticed the Grades page was really the quarter's results, and a parent had to open each subject to see the week's marks (19 November 2026). Agreed: one Baholar tab with two views; the homework page stays as it is.
+
+- **Kunlik** (daily, the first view): every classwork and homework score of the quarter chosen, by its lesson date, the newest day first; each with its subject, the work's name, the score with its percent and the comment visible to parents. The scores are the server's; the page only orders them.
+- **Choraklik** (quarter): the subject rows of before.
+- The view is in the address (`?view=quarter`; the daily view has none), kept when another quarter is chosen; both views read the one grades answer. `portalGradesSearch` in `portal-search.ts`.
+- No spec change: `10`, Grades already puts "each score" and the quarter results on one page. No server change.
+- Tests: `portal-grades-pages.test.tsx` (the daily view first, newest day first, one read for both views, the view kept with the quarter, no score yet); `portal.spec.ts` reads the score in the daily view and then the quarter view.
+
 ## 19 November 2026: the portal's grade rows say what their numbers are
 
 Not a task of the build plan: the owner asked what "0 2" on a Grades row meant (19 November 2026, the test environment in Telegram). The two bare numbers were the result and the grade.

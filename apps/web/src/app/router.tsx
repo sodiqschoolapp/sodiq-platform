@@ -60,6 +60,7 @@ import { AnnouncementsManagePage } from '@/features/announcements/announcements-
 import { PortalHomeworkPage } from '@/features/portal/portal-homework-page';
 import { PortalIndexPage } from '@/features/portal/portal-index-page';
 import {
+  portalGradesSearch,
   portalQuarterSearch,
   portalSearch,
   portalTargetSearch,
@@ -327,7 +328,7 @@ const portalHomeworkRoute = createRoute({
 const portalGradesRoute = createRoute({
   getParentRoute: () => portalRoute,
   path: '$studentId/grades',
-  validateSearch: portalQuarterSearch,
+  validateSearch: portalGradesSearch,
   component: PortalGradesPage,
 });
 

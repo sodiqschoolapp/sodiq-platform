@@ -2341,6 +2341,8 @@ export const uz: Texts<'one' | 'other'> = {
       subjects: 'Fanlar',
       gradeLabel: 'Baho {{grade}}',
       outOf100: '{{shown}}/100',
+      view: 'Koʻrinish',
+      views: { daily: 'Kunlik', quarter: 'Choraklik' },
       rowAttendanceOnly: 'faqat davomat boʻyicha',
       attendanceOnlyShort: 'Faqat davomat',
       reopenedShort: 'Tuzatilmoqda',
