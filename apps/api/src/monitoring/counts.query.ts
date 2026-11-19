@@ -35,6 +35,8 @@ export async function branchCounts(
   timeZone: string,
   now: Date,
   today: string,
+  /** `false`: the five weeks of first-slot lessons are not read, and count 0 (the System status page shows none). */
+  options: { firstSlot?: boolean } = {},
 ): Promise<BranchCounts> {
   const refused = await transaction
     .selectFrom('journal_save_refusals')
@@ -73,7 +75,10 @@ export async function branchCounts(
     .select((eb) => eb.fn.max('enqueued_at').as('newest'))
     .where('branch_id', '=', branchId)
     .executeTakeFirst();
-  const { rows } = await sql<{ today: boolean; lessons: string; marked: string }>`
+  const { rows } =
+    options.firstSlot === false
+      ? { rows: [] }
+      : await sql<{ today: boolean; lessons: string; marked: string }>`
     with days as (
       select (${today}::date - step * 7) as day
       from generate_series(0, 4) as step
@@ -148,4 +153,34 @@ export async function failedJobs(
     order by job.name, 2
   `.execute(transaction);
   return rows.map((row) => ({ name: row.name, branch: row.branch, failed: Number(row.failed) }));
+}
+
+/**
+ * The System status page (pull request #361): the jobs failed in the hour before `now`, per job
+ * name, each job once whatever the branches its envelope names; a job whose branches are all
+ * `hidden` (the Monitoring branch) is left out, as in the counts pushed to Grafana.
+ */
+export async function failedJobsByName(
+  transaction: Transaction,
+  now: Date,
+  hidden: readonly string[],
+): Promise<{ name: string; failed: number }[]> {
+  const { rows } = await sql<{ name: string; failed: string }>`
+    select job.name, count(*) as failed
+    from pgboss.job job
+    where job.state = 'failed'
+      and job.completed_on > ${new Date(now.getTime() - 60 * 60_000)}
+      and job.completed_on <= ${now}
+      and (
+        jsonb_typeof(job.data -> 'branchIds') is distinct from 'array'
+        or jsonb_array_length(job.data -> 'branchIds') = 0
+        or exists (
+          select 1 from jsonb_array_elements_text(job.data -> 'branchIds') as branch(id)
+          where branch.id <> all(${[...hidden]}::text[])
+        )
+      )
+    group by job.name
+    order by job.name
+  `.execute(transaction);
+  return rows.map((row) => ({ name: row.name, failed: Number(row.failed) }));
 }

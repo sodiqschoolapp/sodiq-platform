@@ -13,6 +13,8 @@ Every value in angle brackets is yours: none goes into a file of the repository,
 | **UptimeRobot** | An outside check of `https://app.sodiqschool.uz/`, `/api/health` and the certificate's expiry, independent of Grafana, so a broken Grafana is still noticed. | Step 7 |
 | **The Backup workflow** | Every night at 02:30 Tashkent (and by hand): makes a branch of production at that moment with a read-only compute, dumps it and deletes it (task 10.2b), restores the dump into an empty PostgreSQL to prove it, stores it in the R2 bucket `sodiq-backups`, and tells Grafana. A failed run is emailed by GitHub; the rule "a backup older than 24 hours" fires the next day if no run succeeded. | Steps 5 and 6 |
 
+**Where to look in the app**: the Super Admin's System status page (Setup → System status, pull request #361) shows the app's own checks (background jobs, failed jobs, and per branch the nightly check, the daily work, failed exports and refused saves) with the same limits as the alert rules, and, once the read-only keys of step 11 are set, UptimeRobot's monitors, Grafana's alert rules and Sentry's errors of the last 24 hours in one place. The Feedback reports page beside it lists what people sent with the feedback button.
+
 **Who receives the alerts**: the owner, by email, the on-call person of school days until the school names another (`edge/system-behaviour`, "A named person is on call on school days"). Telegram comes later (answer 8): one contact point added in Grafana, nothing else changes.
 
 **What leaves the servers.** The numbers carry the route's pattern (`/api/journal/lessons/:lessonId/attendance`), the method, the status class, the branch id and the server's instance; never a query, a body, a name or a record's id. A request's log line has its request id, method, pattern, path without the query, status, milliseconds and branch id. The other log lines are the ones the services already write (an error's name, message and stack, as the error reports). The backup log on GitHub (public) prints sizes, table names and "match" or "differs", never a row.
@@ -119,6 +121,24 @@ The year ends on `--year-end`. After it the check fails until the year is closed
 
 The script signs in, reads today's lesson from the teacher's home page and the first student's cell from the journal, switches it between present and late, and signs out. A step that fails, or a save slower than 0.3 s, fails the run. It logs nothing of an answer.
 
+### 11. The System status page: three read-only keys (optional)
+
+The Super Admin's **System status** page (Setup → System status; pull request #361) shows the app's own checks without any key. Its three panels of the outside services (UptimeRobot, Grafana, Sentry) say "Not connected" until their keys are set; each key only **reads**, and the API reads them from the server, so nothing changes in the browser's security settings. Do one, two or all three; each works on its own.
+
+1. **UptimeRobot**: at uptimerobot.com, Integrations & API, API, **Read-Only API Key**: create it and copy it. Not the Main API key, which can change monitors.
+2. **Grafana**: in the stack's Grafana, Administration, Users and access, **Service accounts**, Add service account `sodiq-status` with the role **Viewer**, then Add service account token (no expiry, or a year and a reminder). Note the stack's address, `https://<stack>.grafana.net`. Never give it Editor or Admin: Viewer reads the alert rules.
+3. **Sentry**: Settings, Developer Settings, **Custom Integrations**, Create New Integration, **Internal Integration** `sodiq-status`, permissions **Issue & Event: Read** and every other one **No Access**; save and copy its token. The organisation token of step 2 cannot read issues (it is for the build only).
+4. **Render**, `sodiq-api` only (Environment), the values you have:
+   - `STATUS_UPTIMEROBOT_KEY`: the key of point 1;
+   - `STATUS_GRAFANA_URL` and `STATUS_GRAFANA_TOKEN`: the address and the token of point 2, both or neither;
+   - `STATUS_SENTRY_TOKEN`: the token of point 3 (it reads `SENTRY_ORG` of step 3, already set);
+   - `STATUS_SENTRY_URL` only when the Sentry organisation is in the EU: `https://de.sentry.io`.
+
+   Half a group (a Grafana address without its token, a Sentry token without `SENTRY_ORG`) stops the service at its start and names the missing variable. `sodiq-worker` takes none of them.
+5. **Check**, after the next deploy: Setup, System status. Each panel you set up lists its rows and says when it read them. "Could not read …" means the service refused the key or did not answer within 5 seconds: check the key and its role or scope. Each answer is kept for a minute; Refresh reads again after that.
+
+The page is a second place to look, not a replacement for the alert emails: Grafana still sends every alert (step 4), and the page reads nothing on a timer.
+
 ## When an alert comes
 
 | Alert | What it means | First thing to do |
@@ -137,3 +157,4 @@ The script signs in, reads today's lesson from the teacher's home page and the f
 | ApiSilent, WorkerSilent, CountsSilent | No numbers from the API, the worker or the counts for 10 minutes. | Render: the service's state and log. If Render is fine, the push to Grafana (its token) is the problem. |
 | SignInSaveFailing | The test teacher could not sign in and save a cell twice in a row (07:00 to 20:00 Tashkent). | Synthetic Monitoring, the check's newest run: which step failed (sign-in, home, journal, save). A failed save: is CellSavesFailing firing too? A failed sign-in: Render and Sentry. After `--year-end`: step 9. |
 | UptimeRobot: down | The address does not answer from outside. | Render's status and the service; Cloudflare/the registrar's DNS. |
+| System status page: "Needs attention" | A check of the page is past the limit of the alert of the same subject (the page and the rules share their limits), or an outside service could not be read. | The line names the check: the row of its alert above. "Could not read" a service: step 11, its key. |

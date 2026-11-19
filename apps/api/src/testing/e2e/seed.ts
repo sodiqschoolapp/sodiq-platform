@@ -100,6 +100,18 @@ try {
     }),
   );
   seeded.superAdmin = { login: superAdmin.login, password: superAdmin.firstPassword };
+  // Pull request #361: one feedback report, so the Super Admin's Feedback reports page opens
+  // with a record in its side panel (setup.spec.ts, checkSuperAdminPages). Invented text.
+  await migrator
+    .insertInto('feedback_reports')
+    .values({
+      account_id: superAdmin.id,
+      roles: ['super_admin'],
+      page: '/setup/rooms',
+      text: 'The list of rooms jumps when the rows arrive.',
+      created_at: new Date('2026-11-19T09:00:00+05:00'),
+    })
+    .execute();
 
   // The Super Admin of the divisions test (task 1.2): the same, one account per test.
   const divisions = await create('Gulnora', 'Yusupova');

@@ -469,6 +469,8 @@ export const AUDIT_ACTION_GROUPS = {
     'announcement.archive',
     'announcement.restore',
   ],
+  // Pull request #361: the Super Admin's handled mark of a feedback report, and its taking back.
+  feedback: ['feedback.handled', 'feedback.reopened'],
   shows: [
     // Task 8.9: the support view of a student, journal and date (decision 14).
     'journal.support_view',

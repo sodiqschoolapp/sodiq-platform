@@ -14,6 +14,8 @@ import { AccountPage } from '@/features/auth/account-page';
 import { AuditPage } from '@/features/audit/audit-page';
 import { auditSearch } from '@/features/audit/audit-search';
 import { ForcedDeletesPage } from '@/features/audit/forced-deletes-page';
+import { FeedbackReportsPage } from '@/features/feedback/feedback-reports-page';
+import { SystemStatusPage } from '@/features/feedback/system-status-page';
 import { CodePage } from '@/features/auth/code-page';
 import { ForgotPasswordPage } from '@/features/auth/forgot-password-page';
 import { ResetPasswordPage } from '@/features/auth/reset-password-page';
@@ -860,6 +862,20 @@ const forcedDeletesRoute = createRoute({
   component: guarded('forced_deletes', ForcedDeletesPage),
 });
 
+// The Super Admin's feedback reports and system status (pull request #361), school-wide.
+const feedbackReportsRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/feedback-reports',
+  validateSearch: listSearch,
+  component: guarded('monitoring', FeedbackReportsPage),
+});
+
+const systemStatusRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/system-status',
+  component: guarded('monitoring', SystemStatusPage),
+});
+
 /** The accounts never used of the branch, a section of People (task 2.3c-1). */
 const neverUsedRoute = createRoute({
   getParentRoute: () => appRoute,
@@ -1084,6 +1100,8 @@ const routeTree = rootRoute.addChildren([
     announcementsManageRoute,
     auditRoute,
     forcedDeletesRoute,
+    feedbackReportsRoute,
+    systemStatusRoute,
     personalDataRoute,
     patternsRoute,
   ]),

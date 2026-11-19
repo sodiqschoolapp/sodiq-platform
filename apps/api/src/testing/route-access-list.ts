@@ -987,6 +987,13 @@ export const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
   'POST /api/timetable/lessons/:id/forced-delete': { branch: 'request', roles: ['super_admin'] },
   'GET /api/forced-deletes': { branch: 'request', roles: ['super_admin'] },
   'POST /api/forced-deletes/:id/restore': { branch: 'request', roles: ['super_admin'] },
+  // Pull request #361 (owner, 19 November 2026): the Feedback reports page and its handled mark,
+  // and the System status page, school-wide, the Super Admin's alone (monitoring).
+  'GET /api/feedback-reports': { branch: 'none', roles: ['super_admin'] },
+  'POST /api/feedback-reports/:id/handled': { branch: 'none', roles: ['super_admin'] },
+  'DELETE /api/feedback-reports/:id/handled': { branch: 'none', roles: ['super_admin'] },
+  'GET /api/system-status': { branch: 'none', roles: ['super_admin'] },
+  'GET /api/system-status/providers': { branch: 'none', roles: ['super_admin'] },
   // Task 5.8c: the forced delete of a building, floor or room (forced_deletes).
   'POST /api/setup/buildings/:id/forced-delete': { branch: 'request', roles: ['super_admin'] },
   'POST /api/setup/floors/:id/forced-delete': { branch: 'request', roles: ['super_admin'] },

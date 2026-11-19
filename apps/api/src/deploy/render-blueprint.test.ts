@@ -107,6 +107,12 @@ describe('the production Blueprint', () => {
       ['TELEGRAM_BOT_TOKEN', [api, worker]],
       ['TELEGRAM_WEBHOOK_SECRET', [api]],
       ['PARENT_BOT_USERNAME', [api]],
+      // Pull request #361: the read-only keys of the System status page, on the API only.
+      ['STATUS_UPTIMEROBOT_KEY', [api]],
+      ['STATUS_GRAFANA_URL', [api]],
+      ['STATUS_GRAFANA_TOKEN', [api]],
+      ['STATUS_SENTRY_TOKEN', [api]],
+      ['STATUS_SENTRY_URL', [api]],
     ];
     for (const [secret, services] of secrets) {
       for (const service of services) {
@@ -118,6 +124,8 @@ describe('the production Blueprint', () => {
     );
     // The worker never takes the webhook's secret: only the API answers Telegram's calls.
     expect(worker).not.toContain('TELEGRAM_WEBHOOK_SECRET');
+    // Nor a key of the System status page: only the API reads the outside services.
+    expect(worker).not.toContain('STATUS_');
     expect(production).not.toMatch(/postgres:\/\//);
     expect(production).not.toMatch(/https:\/\/[0-9a-f]+@/);
   });

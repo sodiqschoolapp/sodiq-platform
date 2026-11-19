@@ -43,7 +43,7 @@ const SCHOOL_WIDE_TABLES: Record<string, string> = {
   sign_in_throttle:
     'Failed sign-ins are counted before any branch is known, also for logins that do not exist; a row holds hashes, a count and moments.',
   feedback_reports:
-    'A report about the app belongs to an account, which has no branch; a row holds ids, the roles of the session, the path of a page, a text and a moment. The owner reads it until a screen exists (task 0.8b-3).',
+    'A report about the app belongs to an account, which has no branch; a row holds ids, the roles of the session, the path of a page, a text, a moment and the handled mark. The Super Admin reads it on the Feedback reports page (task 0.8b-3; pull request #361).',
   notifications:
     'A notification belongs to an account, which has no branch, and names the branch of its event as a label; a row holds ids, a kind, the data of its text and moments. Every route reads the rows of the account of the session only (task 0.9, decided by the owner).',
   divisions:

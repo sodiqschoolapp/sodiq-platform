@@ -25,7 +25,14 @@ export type IdKind = 'branch' | 'school' | 'own' | 'none';
  * school (`docs/decisions.md`, answers for tasks 2.1 to 2.6, answer 3; `subjects`
  * has no branch column).
  */
-export const SCHOOL_RECORDS: readonly string[] = ['branch', 'division', 'department', 'subject'];
+export const SCHOOL_RECORDS: readonly string[] = [
+  'branch',
+  'division',
+  'department',
+  'subject',
+  // Pull request #361 (decision 6, Look first): a report about the app belongs to an account (0011).
+  'feedback report',
+];
 
 /** One id of a route. */
 export interface IdLine {

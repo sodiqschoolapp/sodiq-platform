@@ -381,6 +381,15 @@ export const PERMISSIONS = freezeTable({
   demo_clock: rows({
     super_admin: ['view', 'edit'],
   }),
+  /**
+   * `monitoring` (pull request #361): the Feedback reports page and its handled mark, and the
+   * System status page, school-wide, for the Super Admin alone. A new area for new routes,
+   * approved by the owner in the session of 19 November 2026 (stop-list item 5; `docs/decisions.md`);
+   * no role is widened.
+   */
+  monitoring: rows({
+    super_admin: ['view', 'edit'],
+  }),
   subjects: rows({
     super_admin: ['view', 'create', 'edit', 'archive', 'export'],
     principal: ['view', 'export'],

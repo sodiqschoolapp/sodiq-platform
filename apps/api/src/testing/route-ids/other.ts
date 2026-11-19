@@ -34,6 +34,12 @@ const ANNOUNCEMENT_KEY = `${N} > keeps a used key to its account, its branch and
 const ANNOUNCEMENT_CHILD = `${N} > answers 404 for another family’s child, a link off, an unlinked relative and a child who left`;
 const ANNOUNCEMENT_RULE = '.claude/rules/api.md, task 1.3; build plan 11.7';
 
+// Pull request #361 (decision 6): a feedback report has no branch (0011), so another branch's id
+// cannot exist; the test sends an unknown one.
+const REPORT =
+  'src/modules/feedback/feedback-list.test.ts > answers 404 for an unknown report, and writes nothing';
+const REPORT_RULE = 'db/migrations/0011: a report is school-wide, it belongs to an account';
+
 const OWN_RULE = '.claude/rules/api.md, @AnySignedIn: never on one named in the request';
 
 const line = (
@@ -127,6 +133,12 @@ export const OTHER_IDS: RouteIds = {
       [RESTORE_LESSON, RESTORE_PLACE],
       [RESTORE_KEY],
     ),
+  ],
+  'POST /api/feedback-reports/:id/handled': [
+    line('path:id', 'feedback report', 'school', REPORT_RULE, [REPORT]),
+  ],
+  'DELETE /api/feedback-reports/:id/handled': [
+    line('path:id', 'feedback report', 'school', REPORT_RULE, [REPORT]),
   ],
   'POST /api/notifications/:id/read': [
     line('path:id', 'notification', 'own', OWN_RULE, [NOTIFICATION]),
