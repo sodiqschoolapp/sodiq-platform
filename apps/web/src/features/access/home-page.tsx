@@ -22,7 +22,8 @@ import {
 } from './home-cards';
 import { NoClassTile } from './no-class-tile';
 import { NoValidPhoneTile } from './no-valid-phone-tile';
-import { useView } from './use-view';
+import { SystemStatusCard } from '@/features/feedback/system-status-card';
+import { useMayView, useView } from './use-view';
 
 /**
  * The first screen of the active role (`08`, Home pages by role). Each later
@@ -62,7 +63,7 @@ export function HomePage() {
       ) : kind === 'attendance_overview' ? (
         <AttendanceOverview />
       ) : kind === 'branch_summary' ? (
-        <BranchSummary />
+        <BranchSummaryHome />
       ) : (
         <EmptyState
           title={t('home.emptyTitle')}
@@ -70,6 +71,23 @@ export function HomePage() {
         />
       )}
     </section>
+  );
+}
+
+/**
+ * The home of the Principal and the Super Admin (`08`, last row): the branch summary. For a role
+ * that views `monitoring` (the Super Admin alone), the system status card above it (pull
+ * request #363); the Principal neither sees it nor makes its calls.
+ */
+function BranchSummaryHome() {
+  const monitors = useMayView('monitoring');
+  return monitors ? (
+    <div className="grid gap-6">
+      <SystemStatusCard />
+      <BranchSummary />
+    </div>
+  ) : (
+    <BranchSummary />
   );
 }
 

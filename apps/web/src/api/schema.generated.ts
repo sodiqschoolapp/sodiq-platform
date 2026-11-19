@@ -205562,7 +205562,9 @@ export interface operations {
     };
     SystemStatusController_providers: {
         parameters: {
-            query?: never;
+            query?: {
+                period?: "24h" | "7d" | "14d";
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -205575,6 +205577,8 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
+                        /** @enum {string} */
+                        period: "24h" | "7d" | "14d";
                         uptimeRobot: {
                             /** @enum {string} */
                             state: "not_connected";
@@ -205600,8 +205604,24 @@ export interface operations {
                                 url: string;
                                 /** @enum {string} */
                                 state: "up" | "down" | "seems_down" | "paused" | "not_checked";
-                                uptime7d: string | null;
+                                uptime: string | null;
                             }[];
+                            history: {
+                                /** @enum {string} */
+                                state: "read";
+                                items: {
+                                    monitor: string;
+                                    /** Format: date-time */
+                                    startedAt: string;
+                                    /** Format: date-time */
+                                    endedAt: string | null;
+                                    reason: string | null;
+                                }[];
+                                cut: boolean;
+                            } | {
+                                /** @enum {string} */
+                                state: "unreadable";
+                            };
                         };
                         grafana: {
                             /** @enum {string} */
@@ -205630,6 +205650,23 @@ export interface operations {
                                 /** @enum {string} */
                                 health: "ok" | "no_data" | "error";
                             }[];
+                            history: {
+                                /** @enum {string} */
+                                state: "read";
+                                items: {
+                                    rule: string;
+                                    branch: string | null;
+                                    detail: string | null;
+                                    /** Format: date-time */
+                                    firedAt: string | null;
+                                    /** Format: date-time */
+                                    resolvedAt: string | null;
+                                }[];
+                                cut: boolean;
+                            } | {
+                                /** @enum {string} */
+                                state: "unreadable";
+                            };
                         };
                         sentry: {
                             /** @enum {string} */
@@ -205660,6 +205697,7 @@ export interface operations {
                                 /** Format: uri */
                                 link: string | null;
                             }[];
+                            cut: boolean;
                         };
                     };
                 };

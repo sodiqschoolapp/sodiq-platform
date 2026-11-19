@@ -1,5 +1,5 @@
 import type { StatusProviders, SystemStatus } from '@sodiq/shared';
-import { fireEvent, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { en } from '@/i18n/locales/en';
 import { fakeApi, json, NORTH, renderApp, sessionOf } from '@/testing/render-app';
@@ -30,6 +30,7 @@ const own = (fields: Partial<SystemStatus> = {}): SystemStatus => ({
 });
 
 const NOT_CONNECTED: StatusProviders = {
+  period: '24h',
   uptimeRobot: {
     state: 'not_connected',
     dashboardUrl: 'https://dashboard.uptimerobot.com/monitors',
@@ -39,20 +40,39 @@ const NOT_CONNECTED: StatusProviders = {
 };
 
 const CONNECTED: StatusProviders = {
+  period: '24h',
   uptimeRobot: {
     state: 'connected',
     checkedAt: CHECKED,
     attention: 1,
     dashboardUrl: 'https://dashboard.uptimerobot.com/monitors',
     monitors: [
-      { name: 'app', url: 'https://app.sodiqschool.uz/', state: 'up', uptime7d: '99.982' },
+      { name: 'app', url: 'https://app.sodiqschool.uz/', state: 'up', uptime: '99.982' },
       {
         name: 'api health',
         url: 'https://app.sodiqschool.uz/api/health',
         state: 'down',
-        uptime7d: null,
+        uptime: null,
       },
     ],
+    history: {
+      state: 'read',
+      cut: false,
+      items: [
+        {
+          monitor: 'api health',
+          startedAt: '2026-11-19T02:00:00.000Z',
+          endedAt: null,
+          reason: 'Keyword Not Found',
+        },
+        {
+          monitor: 'app',
+          startedAt: '2026-11-18T22:14:00.000Z',
+          endedAt: '2026-11-18T22:32:00.000Z',
+          reason: 'Connection Timeout',
+        },
+      ],
+    },
   },
   grafana: {
     state: 'connected',
@@ -64,6 +84,26 @@ const CONNECTED: StatusProviders = {
       { name: 'CellSavesSlow', state: 'normal', health: 'ok' },
       { name: 'JobsFailing', state: 'normal', health: 'ok' },
     ],
+    history: {
+      state: 'read',
+      cut: false,
+      items: [
+        {
+          rule: 'CellSavesFailing',
+          branch: NORTH.id,
+          detail: '/api/journal/cells',
+          firedAt: '2026-11-19T03:05:00.000Z',
+          resolvedAt: '2026-11-19T03:31:00.000Z',
+        },
+        {
+          rule: 'JobsFailing',
+          branch: 'an-unknown-branch',
+          detail: null,
+          firedAt: null,
+          resolvedAt: '2026-11-19T01:00:00.000Z',
+        },
+      ],
+    },
   },
   sentry: {
     state: 'connected',
@@ -79,6 +119,7 @@ const CONNECTED: StatusProviders = {
         link: 'https://sodiq.sentry.io/issues/10/',
       },
     ],
+    cut: false,
   },
 };
 
@@ -267,5 +308,208 @@ describe('the system status', () => {
     fail = false;
     fireEvent.click(screen.getByRole('button', { name: en.problems.retry }));
     await panel(en.systemStatus.own);
+  });
+});
+
+// Pull request #363 (owner, 20 November 2026): the outside services' history of 24 hours, 7 or
+// 14 days, chosen in the address; the summary stays "now".
+describe('the history of the period', () => {
+  it('reads the period from the address, asks the server with it, and changes it with the switch', async () => {
+    const calls = fakeApi({
+      'GET /api/auth/session': () => json(session()),
+      'GET /api/system-status': () => json(own()),
+      'GET /api/system-status/providers': () => json({ ...CONNECTED, period: '7d' }),
+    });
+    renderApp('/system-status?period=7d', 'en');
+    const switcher = await screen.findByRole('radiogroup', { name: en.systemStatus.period });
+    await waitFor(() => {
+      expect(
+        calls
+          .filter((call) => call.route === 'GET /api/system-status/providers')
+          .map((call) => call.query),
+      ).toEqual(['?period=7d']);
+    });
+    expect(
+      within(switcher).getByRole<HTMLInputElement>('radio', { name: en.systemStatus.period_7d })
+        .checked,
+    ).toBe(true);
+
+    fireEvent.click(within(switcher).getByRole('radio', { name: en.systemStatus.period_14d }));
+    await waitFor(() => {
+      expect(calls.map((call) => call.query)).toContain('?period=14d');
+    });
+    // 24 hours is the default: no period in the address and none sent.
+    fireEvent.click(within(switcher).getByRole('radio', { name: en.systemStatus.period_24h }));
+    await waitFor(() => {
+      expect(
+        calls.filter(
+          (call) => call.route === 'GET /api/system-status/providers' && call.query === undefined,
+        ),
+      ).toHaveLength(1);
+    });
+  });
+
+  it('lists the down periods and the alerts that fired, each alert under its branch by name', async () => {
+    fakeApi({
+      'GET /api/auth/session': () => json(session()),
+      'GET /api/system-status': () => json(own()),
+      'GET /api/system-status/providers': () => json(CONNECTED),
+    });
+    renderApp('/system-status', 'en');
+    const downs = await screen.findByRole('list', { name: en.systemStatus.uptimeRobot.downs });
+    const downLines = within(downs)
+      .getAllByRole('listitem')
+      .map((one) => one.textContent);
+    expect(downLines[0]).toContain('api health: down since');
+    expect(downLines[0]).toContain('Keyword Not Found');
+    expect(downLines[1]).toContain('app: down');
+    expect(downLines[1]).toContain('Connection Timeout');
+
+    const fired = screen.getByRole('list', { name: en.systemStatus.grafana.fired });
+    const [first, second] = within(fired)
+      .getAllByRole('listitem')
+      .map((one) => one.textContent);
+    expect(first).toContain('CellSavesFailing · North · /api/journal/cells');
+    expect(first).toContain('Fired');
+    // A branch the own checks do not know is named by its id, never left blank.
+    expect(second).toContain('JobsFailing · an-unknown-branch');
+    expect(second).toContain('Fired before this period');
+  });
+
+  it('says a history could not be read and keeps the current rows', async () => {
+    fakeApi({
+      'GET /api/auth/session': () => json(session()),
+      'GET /api/system-status': () => json(own()),
+      'GET /api/system-status/providers': () =>
+        json({
+          ...CONNECTED,
+          grafana: { ...CONNECTED.grafana, history: { state: 'unreadable' } },
+        }),
+    });
+    renderApp('/system-status', 'en');
+    const grafana = await panel(en.systemStatus.grafana.title);
+    await waitFor(() => {
+      expect(grafana.textContent).toContain(en.systemStatus.historyUnreadable);
+    });
+    expect(within(grafana).getByText('BackupOld')).toBeDefined();
+  });
+
+  it('keeps the summary "now" whatever the period', async () => {
+    for (const address of ['/system-status', '/system-status?period=14d']) {
+      fakeApi({
+        'GET /api/auth/session': () => json(session()),
+        'GET /api/system-status': () => json(own()),
+        'GET /api/system-status/providers': () => json(CONNECTED),
+      });
+      renderApp(address, 'en');
+      const summary = await panel(en.systemStatus.summary);
+      await waitFor(() => {
+        // 1 monitor down, 1 rule firing, 1 error now: never the history lines.
+        expect(within(summary).getByRole('status').textContent).toBe(
+          en.systemStatus.needAttention_other.replace('{{count}}', '3'),
+        );
+      });
+      cleanup();
+    }
+  });
+});
+
+describe('the system status card of the home page', () => {
+  const principal = () =>
+    sessionOf({ assignments: [{ role: 'principal', branchId: NORTH.id }], branches: [NORTH] });
+
+  it('shows the Super Admin what needs attention now, the last 24 hours and the new feedback', async () => {
+    const calls = fakeApi({
+      'GET /api/auth/session': () => json(session()),
+      'GET /api/system-status': () => json(own()),
+      'GET /api/system-status/providers': () => json(CONNECTED),
+    });
+    renderApp('/', 'en');
+    const card = await screen.findByRole('region', { name: en.home.status.title });
+    await waitFor(() => {
+      expect(within(card).getByRole('status').textContent).toBe(
+        en.systemStatus.needAttention_other.replace('{{count}}', '3'),
+      );
+    });
+    // The same lines the page lists: 2 down periods, 2 alerts fired, 1 error.
+    expect(card.textContent).toContain(
+      en.home.status.lastDay.replace(
+        '{{list}}',
+        [
+          en.home.status.downs_other.replace('{{count}}', '2'),
+          en.home.status.firings_other.replace('{{count}}', '2'),
+          en.home.status.errors_one.replace('{{count}}', '1'),
+        ].join(', '),
+      ),
+    );
+    expect(
+      within(card)
+        .getByRole('link', { name: en.systemStatus.newFeedback_other.replace('{{count}}', '3') })
+        .getAttribute('href'),
+    ).toBe('/feedback-reports');
+    expect(within(card).getByRole('link', { name: en.home.status.open }).getAttribute('href')).toBe(
+      '/system-status',
+    );
+    // The home card reads the last 24 hours, whatever the page last chose.
+    expect(
+      calls
+        .filter((call) => call.route === 'GET /api/system-status/providers')
+        .map((call) => call.query),
+    ).toEqual([undefined]);
+  });
+
+  it('names a service not read, never counting it as 0', async () => {
+    fakeApi({
+      'GET /api/auth/session': () => json(session()),
+      'GET /api/system-status': () => json(own()),
+      'GET /api/system-status/providers': () =>
+        json({
+          ...CONNECTED,
+          uptimeRobot: { ...CONNECTED.uptimeRobot, history: { state: 'unreadable' } },
+          sentry: { state: 'not_connected', dashboardUrl: null },
+        }),
+    });
+    renderApp('/', 'en');
+    const card = await screen.findByRole('region', { name: en.home.status.title });
+    await waitFor(() => {
+      expect(card.textContent).toContain(en.home.status.notRead.replace('{{name}}', 'UptimeRobot'));
+    });
+    expect(card.textContent).toContain(en.home.status.notRead.replace('{{name}}', 'Sentry'));
+    expect(card.textContent).toContain(en.home.status.firings_other.replace('{{count}}', '2'));
+    expect(card.textContent).not.toContain(en.home.status.downs_other.replace('{{count}}', '0'));
+  });
+
+  it('shows a failure of the own checks with a retry', async () => {
+    let fail = true;
+    fakeApi({
+      'GET /api/auth/session': () => json(session()),
+      'GET /api/system-status': () =>
+        fail
+          ? json({ error: { code: 'internal_error', message: 'Failed.', requestId: 'r1' } }, 500)
+          : json(own()),
+      'GET /api/system-status/providers': () => json(CONNECTED),
+    });
+    renderApp('/', 'en');
+    const card = await screen.findByRole('region', { name: en.home.status.title });
+    await within(card).findByRole('alert');
+    fail = false;
+    fireEvent.click(within(card).getByRole('button', { name: en.problems.retry }));
+    await waitFor(() => {
+      expect(within(card).getByRole('status').textContent).toBe(
+        en.systemStatus.needAttention_other.replace('{{count}}', '3'),
+      );
+    });
+  });
+
+  it('is neither drawn nor read for the Principal, who shares the branch summary', async () => {
+    const calls = fakeApi({ 'GET /api/auth/session': () => json(principal()) });
+    renderApp('/', 'en');
+    await screen.findByRole('heading', { name: en.home.title });
+    // The branch summary's own call has been made by now.
+    await waitFor(() => {
+      expect(calls.some((call) => call.route === 'GET /api/results/branch-summary')).toBe(true);
+    });
+    expect(screen.queryByRole('region', { name: en.home.status.title })).toBeNull();
+    expect(calls.filter((call) => call.route.startsWith('GET /api/system-status'))).toEqual([]);
   });
 });

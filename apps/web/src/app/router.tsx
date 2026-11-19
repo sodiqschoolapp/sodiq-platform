@@ -873,6 +873,9 @@ const feedbackReportsRoute = createRoute({
 const systemStatusRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '/system-status',
+  // Pull request #363: the period of the outside services' history; 24 hours when left out.
+  validateSearch: (search: Record<string, unknown>): { period?: '7d' | '14d' } =>
+    search.period === '7d' || search.period === '14d' ? { period: search.period } : {},
   component: guarded('monitoring', SystemStatusPage),
 });
 

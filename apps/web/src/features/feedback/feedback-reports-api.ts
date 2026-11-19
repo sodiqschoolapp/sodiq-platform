@@ -3,6 +3,7 @@ import {
   feedbackReportListSchema,
   statusProvidersSchema,
   systemStatusSchema,
+  type StatusPeriod,
 } from '@sodiq/shared';
 import { queryOptions } from '@tanstack/react-query';
 import { api } from '@/api/client';
@@ -37,10 +38,16 @@ export const systemStatusQuery = () =>
     queryFn: async () => systemStatusSchema.parse(await answerOf(api.GET('/api/system-status'))),
   });
 
-/** UptimeRobot, Grafana and Sentry, read on the server; up to 5 s each. */
-export const statusProvidersQuery = () =>
+/** UptimeRobot, Grafana and Sentry with their history of the period, read on the server; up to 5 s each. */
+export const statusProvidersQuery = (period: StatusPeriod) =>
   queryOptions({
-    queryKey: [...SYSTEM_STATUS_KEY, 'providers'],
+    queryKey: [...SYSTEM_STATUS_KEY, 'providers', period],
     queryFn: async () =>
-      statusProvidersSchema.parse(await answerOf(api.GET('/api/system-status/providers'))),
+      statusProvidersSchema.parse(
+        await answerOf(
+          api.GET('/api/system-status/providers', {
+            params: { query: period === '24h' ? {} : { period } },
+          }),
+        ),
+      ),
   });

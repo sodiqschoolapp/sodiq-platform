@@ -341,6 +341,23 @@ describe('the own checks of the System status page', () => {
     expect((await read()).newFeedback).toBe(2);
   });
 
+  // Pull request #363: the period of the outside services' history, 24 hours unless named.
+  it('takes the period of 7 or 14 days, and refuses another period or another field with 400', async () => {
+    for (const period of ['7d', '14d'] as const) {
+      const answer = statusProvidersSchema.parse(
+        ok(await kit.get(`/api/system-status/providers?period=${period}`, admin)),
+      );
+      expect(answer.period).toBe(period);
+    }
+    expect(
+      statusProvidersSchema.parse(ok(await kit.get('/api/system-status/providers', admin))).period,
+    ).toBe('24h');
+    for (const query of ['period=30d', 'period=24h&days=7', 'days=7']) {
+      const response = await kit.get(`/api/system-status/providers?${query}`, admin);
+      expect(response.status, query).toBe(400);
+    }
+  });
+
   it('answers the outside services as "not connected" without their keys', async () => {
     const providers = statusProvidersSchema.parse(
       ok(await kit.get('/api/system-status/providers', admin)),

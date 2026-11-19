@@ -1,11 +1,13 @@
 import { Controller, Get } from '@nestjs/common';
 import {
+  statusProvidersQuerySchema,
   statusProvidersSchema,
   systemStatusSchema,
   type StatusProviders,
+  type StatusProvidersQuery,
   type SystemStatus,
 } from '@sodiq/shared';
-import { Returns } from '../http/schemas.js';
+import { Returns, ValidQuery } from '../http/schemas.js';
 import { Requires } from '../modules/access/access.decorators.js';
 import { CurrentAccess, type Access } from '../modules/access/permission.guard.js';
 import { SystemStatusReader } from './system-status.service.js';
@@ -26,11 +28,16 @@ export class SystemStatusController {
     return this.status.own(access);
   }
 
-  /** UptimeRobot, Grafana and Sentry, read on the server with read-only keys; up to 5 s each. */
+  /**
+   * UptimeRobot, Grafana and Sentry, read on the server with read-only keys, up to 5 s each, with
+   * their history of the period (pull request #363): 24 hours unless the query names 7 or 14 days.
+   */
   @Get('providers')
   @Requires('monitoring', 'view', { branch: 'none' })
   @Returns(statusProvidersSchema)
-  providers(): Promise<StatusProviders> {
-    return this.status.providers();
+  providers(
+    @ValidQuery(statusProvidersQuerySchema) query: StatusProvidersQuery,
+  ): Promise<StatusProviders> {
+    return this.status.providers(query.period ?? '24h');
   }
 }
