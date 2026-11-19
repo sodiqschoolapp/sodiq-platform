@@ -26,8 +26,7 @@ import { StudentResultsService } from '../../results/student-results.service.js'
 import { childSpans } from '../portal-scope.js';
 import { TelegramBot } from '../telegram/bot-api.js';
 import {
-  digestText,
-  splitText,
+  digestMessages,
   type AttendanceSummary,
   type ChildPart,
   type ListedComment,
@@ -335,6 +334,8 @@ export class DigestService {
         // Review correction 1: the end is taken before the journal is read.
         until: now,
         from: previous?.period_until ?? link.linked_at,
+        /** No digest before: it covers what was saved since the chat was linked. */
+        first: previous === undefined,
         language: isLanguage(account.language) ? account.language : 'uz',
       };
     });
@@ -385,14 +386,19 @@ export class DigestService {
           .execute();
         return;
       }
-      const text = digestText(start.language, start.digestDate, parts.map(partOf));
-      const messages = splitText(text);
+      const messages = digestMessages(
+        start.language,
+        start.digestDate,
+        parts.map(partOf),
+        start.first,
+      );
       const button = this.button(start.language);
       for (const [index, message] of messages.entries()) {
         const outcome = await this.bot.sendMessage(
           link.telegram_user_id,
           message,
           index === messages.length - 1 ? button : undefined,
+          { html: true },
         );
         if (outcome === 'blocked') {
           const now = await transactionMoment(transaction);

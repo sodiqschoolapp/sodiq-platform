@@ -2,6 +2,20 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 18 November 2026: the parents' digest laid out for reading
+
+Not a task of the build plan: the owner found the digest message hard to read (screenshot, 18 November 2026). The content is unchanged (`10`, What it holds); only its layout and wording.
+
+- The message is sent as Telegram HTML (`parse_mode: HTML`, digest only; announcements and the move notice stay plain text). Each section heading is bold, sections are parted by a blank line, the child's name is bold with the class beside it, and a score is bold. Every value a person typed (a name, a class, a comment) is escaped (`escapeHtml`).
+- No school name (owner, 18 November 2026: the message comes from the school's own bot). The first line is the digest and its date in bold ("Xabarnoma, 17-noyabr"); the second says what it covers: "since the previous digest", or "since Telegram was connected" for the first one, so a lesson of an earlier date listed because it was entered late reads as such.
+- One sign before each section heading, the same in every language (`SECTION_SIGNS`: 📅 attendance, 📝 grades, 💬 comments; owner, 18 November 2026: "a couple of emoji if necessary"). No other emoji.
+- The attendance summary sits under the "Attendance" heading with its absences and late arrivals below it, so there is no separate "Absences and late arrivals" heading. Each list line starts with the date ("• 10-noy, Geografiya — kelmagan"), in the order the list is sorted.
+- Comments of the same lesson (date and subject) are grouped under one line, each on its own line in italics; a teacher's line breaks become one space.
+- The summary says one lesson in the singular ("Darsga keldi, lekin kechikdi", not "barcha 1 ta darsga"); Russian counts take their plural form (`ruPlural`); Russian statuses are neutral nouns ("отсутствие", "опоздание") in place of "отсутствовал(а)".
+- With two or more children, a thin rule stands above every child's name after the first.
+- The split at 4096 characters (`splitDigest`, decision 13 of task 11.5) works on the children's parts, not on the text: whole parts first; a part that does not fit one message is cut between its sections, then at line ends, and every message of it opens with the child's name (a section cut at a line end repeats its heading). No message opens with the rule, closes on a name or a heading alone, or cuts a tag or an entity (a line over the limit loses its italics). Found by the review of pull request #355: a name could close one message and its sections open the next.
+- Tests: `digest-message.test.ts` (layout, plurals, escaping, the rule; splitting checked at many limits, each line read below its own child's name); `digest.database.test.ts` reads list lines by `listed(date, value)` and checks `parse_mode`.
+
 ## 18 November 2026: design review step 2, a record's actions in its side panel's header
 
 Not a task of the build plan: the last building block of step 2 (owner, 17 November 2026; the look approved from screenshots of the student record on 18 November).
