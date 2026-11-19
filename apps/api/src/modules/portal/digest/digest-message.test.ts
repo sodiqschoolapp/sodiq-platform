@@ -123,7 +123,7 @@ describe('the text of the digest', () => {
       '',
       '📝 <b>Grades</b>',
       '• 3 Nov, Mathematics, Classwork 1 — <b>8/10</b>',
-      '• 3 Nov, Mathematics, Fractions — <b>5/5</b> (corrected)',
+      '• 3 Nov, Mathematics, Homework · Fractions — <b>5/5</b> (corrected)',
       '',
       '💬 <b>Teachers’ comments</b>',
       '• 3 Nov, Mathematics',
@@ -189,6 +189,42 @@ describe('the text of the digest', () => {
     expect(text.split(CHILD_RULE).length).toBe(2);
     expect(text).toContain(`\n\n${CHILD_RULE}\n<b>Laylo</b> · 3-B\n`);
     expect(digestText('en', '2026-11-04', [part])).not.toContain(CHILD_RULE);
+  });
+
+  // Owner, 19 November 2026: a title alone ("10-mashq") does not say whether the work was done
+  // in class or at home.
+  it('names the kind of every work, a titled one too, in each language', () => {
+    const titled = (kind: 'classwork' | 'homework', title: string | null): ChildPart => ({
+      ...part,
+      marks: [],
+      comments: [],
+      scores: [
+        {
+          date: '2026-11-17',
+          subject: maths,
+          work: { kind, position: 2, title },
+          score: 9,
+          total: 10,
+          state: 'new',
+        },
+      ],
+    });
+    const line = (language: 'uz' | 'ru' | 'en', one: ChildPart) =>
+      childText(language, one)
+        .split('\n')
+        .find((row) => row.startsWith('• '));
+    expect(line('uz', titled('classwork', '10-mashq'))).toBe(
+      '• 17-noy, Matematika, Sinf ishi · 10-mashq — <b>9/10</b>',
+    );
+    expect(line('uz', titled('homework', '10-mashq'))).toBe(
+      '• 17-noy, Matematika, Uy vazifasi · 10-mashq — <b>9/10</b>',
+    );
+    expect(line('ru', titled('homework', '10-mashq'))).toContain('Домашняя работа · 10-mashq');
+    expect(line('en', titled('classwork', '10-mashq'))).toContain('Classwork · 10-mashq');
+    // A work without a title keeps its kind and number.
+    expect(line('uz', titled('homework', null))).toContain('Uy vazifasi 2');
+    // A typed title is escaped like every value.
+    expect(line('en', titled('classwork', 'A & <b>'))).toContain('Classwork · A &amp; &lt;b&gt;');
   });
 
   it('writes every text in each of the three languages', () => {

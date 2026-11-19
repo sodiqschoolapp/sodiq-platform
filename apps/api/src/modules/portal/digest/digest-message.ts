@@ -163,10 +163,11 @@ export function childBlocks(language: Language, part: ChildPart): ChildBlocks {
       const work =
         one.work.kind === 'rating'
           ? texts.ratingExam
-          : (one.work.title ??
-            (one.work.kind === 'homework'
+          : one.work.title === null
+            ? one.work.kind === 'homework'
               ? texts.homework(one.work.position)
-              : texts.classwork(one.work.position)));
+              : texts.classwork(one.work.position)
+            : texts.kindTitle(one.work.kind, one.work.title);
       const where = head(shortDate(texts, one.date), subjectText(one.subject, language), work);
       const value = bold(`${String(one.score ?? '')}/${String(one.total ?? '')}`);
       grades.push(item(where, withState(texts, value, one.state)));
