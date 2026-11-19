@@ -2453,6 +2453,8 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       noScores: 'В этой четверти баллов пока нет.',
       classworkN: 'Классная работа {{n}}',
       homeworkN: 'Домашнее задание {{n}}',
+      kinds: { classwork: 'Классная работа', homework: 'Домашнее задание' },
+      kindTitle: '{{kind}} · {{title}}',
       score: '{{score}} из {{total}} · {{percent}}%',
       outOf: '{{score}}/{{total}}',
       percent: '{{percent}}%',

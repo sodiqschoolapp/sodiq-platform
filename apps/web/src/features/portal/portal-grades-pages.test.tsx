@@ -176,14 +176,14 @@ describe('the portal grades', () => {
     // Provisional is said once, above the list, not on every row.
     expect(closedRow?.querySelector('[data-row-note]')).toBeNull();
     // The scores are in the row only once it is opened.
-    expect(screen.queryByText('Fractions test')).toBeNull();
+    expect(screen.queryByText('Classwork · Fractions test')).toBeNull();
     const card = await openRow(maths.id);
     // The staff page's labels (review decision 4).
     expect(within(card).getByText(new RegExp(en.results.labels.provisional))).toBeDefined();
     expect(card.querySelector('[data-figure="attendance"]')?.textContent).toBe(
       `${en.results.columns.attendance}75`,
     );
-    expect(within(card).getByText('Fractions test')).toBeDefined();
+    expect(within(card).getByText('Classwork · Fractions test')).toBeDefined();
     expect(within(card).getByText('12/30')).toBeDefined();
     expect(within(card).getByText('40%')).toBeDefined();
     expect(within(card).getByText('Good start')).toBeDefined();
@@ -243,7 +243,7 @@ describe('the daily view of the grades', () => {
       ),
     ).toEqual(['2026-10-19', '2026-10-12']);
     const twelfth = screen.getByRole('region', { name: 'Monday, 12 October' });
-    const row = within(twelfth).getByText('Fractions test').closest('[data-score-row]');
+    const row = within(twelfth).getByText('Classwork · Fractions test').closest('[data-score-row]');
     expect(row?.textContent).toContain('Mathematics');
     expect(row?.querySelector('[data-score]')?.textContent).toBe('12/3040%');
     expect(row?.textContent).toContain('Good start');

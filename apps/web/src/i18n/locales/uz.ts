@@ -2368,6 +2368,8 @@ export const uz: Texts<'one' | 'other'> = {
       noScores: 'Bu chorakda hozircha ballar yoʻq.',
       classworkN: '{{n}}-sinf ishi',
       homeworkN: '{{n}}-uy vazifasi',
+      kinds: { classwork: 'Sinf ishi', homework: 'Uy vazifasi' },
+      kindTitle: '{{kind}} · {{title}}',
       score: '{{total}} dan {{score}} · {{percent}}%',
       outOf: '{{score}}/{{total}}',
       percent: '{{percent}}%',

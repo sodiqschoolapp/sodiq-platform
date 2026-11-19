@@ -2335,6 +2335,8 @@ export const en = {
       noScores: 'No scores in this quarter yet.',
       classworkN: 'Classwork {{n}}',
       homeworkN: 'Homework {{n}}',
+      kinds: { classwork: 'Classwork', homework: 'Homework' },
+      kindTitle: '{{kind}} · {{title}}',
       score: '{{score}} of {{total}} · {{percent}}%',
       outOf: '{{score}}/{{total}}',
       percent: '{{percent}}%',

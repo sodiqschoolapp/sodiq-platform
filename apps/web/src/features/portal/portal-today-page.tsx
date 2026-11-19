@@ -317,14 +317,21 @@ function ScoresSection({
   );
 }
 
-/** The title of a work: its own, or "Classwork n" / "Homework n". */
+/**
+ * The name of a work, always with its kind: "Classwork · 10-mashq", "Homework · 10-mashq", or
+ * "Classwork 1" for a work without a title. A title alone ("10-mashq") does not say whether it
+ * was done in class or at home (owner, 19 November 2026); the kind is the server's.
+ */
 export function workTitle(score: PortalScore, t: TFunction): string {
-  return (
-    score.title ??
-    t(score.kind === 'classwork' ? 'portal.grades.classworkN' : 'portal.grades.homeworkN', {
+  if (score.title === null) {
+    return t(score.kind === 'classwork' ? 'portal.grades.classworkN' : 'portal.grades.homeworkN', {
       n: score.position,
-    })
-  );
+    });
+  }
+  return t('portal.grades.kindTitle', {
+    kind: t(`portal.grades.kinds.${score.kind}`),
+    title: score.title,
+  });
 }
 
 /**
