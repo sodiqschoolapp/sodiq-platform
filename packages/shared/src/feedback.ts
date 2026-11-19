@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { roleSchema } from './roles.js';
 
 /**
  * A feedback report about the app (docs/spec/14-quality-plan.md, Whole system,
@@ -37,3 +38,47 @@ export const feedbackReportSchema = z.object({
 });
 
 export type FeedbackReport = z.infer<typeof feedbackReportSchema>;
+
+/**
+ * The Feedback reports page of the Super Admin (pull request #361; owner, 19 November 2026):
+ * every new report, and the newest `FEEDBACK_HANDLED_LISTED` handled ones, so a new report is
+ * never out of reach whatever its age.
+ */
+export const FEEDBACK_HANDLED_LISTED = 1000;
+
+const reader = z.object({
+  id: z.uuid(),
+  /** The staff name of the account in any branch; empty when the account has no staff record. */
+  name: z.string(),
+});
+
+/** One report as the page shows it. */
+export const feedbackReportEntrySchema = z.object({
+  id: z.uuid(),
+  sender: reader,
+  /** The roles of the session that sent it, each once, in the order of `ROLES`. */
+  roles: z.array(roleSchema),
+  page: z.string(),
+  text: z.string(),
+  /** The version of the page that sent it, when the request named one. */
+  appVersion: z.int().min(0).nullable(),
+  createdAt: z.iso.datetime({ offset: true }),
+  /** When and by whom the report was marked handled; both null for a new report. */
+  handledAt: z.iso.datetime({ offset: true }).nullable(),
+  handledBy: reader.nullable(),
+});
+
+export type FeedbackReportEntry = z.infer<typeof feedbackReportEntrySchema>;
+
+export const feedbackReportListSchema = z.object({
+  /** Newest first. */
+  entries: z.array(feedbackReportEntrySchema),
+  /** True when more handled reports exist than the newest `FEEDBACK_HANDLED_LISTED` answered. */
+  handledTruncated: z.boolean(),
+});
+
+export type FeedbackReportList = z.infer<typeof feedbackReportListSchema>;
+
+export const feedbackReportParamsSchema = z.strictObject({ id: z.uuid() });
+
+export type FeedbackReportParams = z.infer<typeof feedbackReportParamsSchema>;

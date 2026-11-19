@@ -10,7 +10,7 @@ For the owner to sign (`docs/spec/14-quality-plan.md`, Code review: "A change to
 - **Hand checks**: what no automated test can prove, done on the test environment before go-live.
 - To sign: tick each line you accept, and fill the line below in a commit, or say on issue #42 which lines you do not accept.
 
-Signed by the owner on: 29 October 2026, on issue #42 (https://github.com/sodiqschoolapp/sodiq-platform/issues/42#issuecomment-6494166619), at commit `8448e27`: every line accepted except the two hand checks, which were not done by hand (see "Hand checks" below). The areas 9.3b-2 added after that commit were approved by the owner on pull request #260.
+Signed by the owner on: 29 October 2026, on issue #42 (https://github.com/sodiqschoolapp/sodiq-platform/issues/42#issuecomment-6494166619), at commit `8448e27`: every line accepted except the two hand checks, which were not done by hand (see "Hand checks" below). The areas 9.3b-2 added after that commit were approved by the owner on pull request #260. The area `monitoring` (the Feedback reports and System status pages, the Super Admin alone, `view` and `edit`; no other role) was approved by the owner in the session of 19 November 2026, put on record in `docs/decisions.md` (pull request #361).
 
 ## Rules
 
@@ -133,11 +133,11 @@ Neither was done by hand (owner, 29 October 2026, issue #42). In their place: th
 
 ## The routes in numbers
 
-- Routes of the application: 531, each called by the role harness as the 15 roles, an account without a role, a Parent account (task 11.1) and nobody, in the own and in another branch.
-- Without sign-in: 5. For the own account: 24. The parent portal: 8. With a permission of the table: 494.
+- Routes of the application: 536, each called by the role harness as the 15 roles, an account without a role, a Parent account (task 11.1) and nobody, in the own and in another branch.
+- Without sign-in: 5. For the own account: 24. The parent portal: 8. With a permission of the table: 499.
 - Routes with a limit inside the route: 157.
-- Routes that take an id: 416, with 862 ids (branch 759, school 74, own 12, none 17).
-- Areas of the permission table: 63.
+- Routes that take an id: 418, with 864 ids (branch 759, school 76, own 12, none 17).
+- Areas of the permission table: 64.
 
 ## Routes without a role
 
@@ -578,6 +578,7 @@ For every id a route takes, in its path, its query or its body, the record it na
 | --- | --- | --- | --- | --- |
 | `DELETE /api/auth/trusted-devices/:id` | `path:id` | trusted device (session) | own | `src/modules/auth/trusted-devices.test.ts > but not by another account: its id is answered as not found and stays signed in` |
 | `DELETE /api/exemptions/:id/document` | `path:id` | exemption | branch | `src/modules/journal/exemption-files.test.ts > answers 404 for another branch’s and an unknown exemption, and 409 for a voided one` |
+| `DELETE /api/feedback-reports/:id/handled` | `path:id` | feedback report | school | `src/modules/feedback/feedback-list.test.ts > answers 404 for an unknown report, and writes nothing` |
 | `DELETE /api/journal/lessons/:lessonId/plan-works/:planWorkId` | `path:lessonId` | lesson | branch | `src/modules/journal/journal-works.test.ts > refuses another teacher, an attendance-only subject, another branch’s ids and unknown ones, leaving every row and the audit log as they were` |
 | `DELETE /api/journal/lessons/:lessonId/plan-works/:planWorkId` | `path:planWorkId` | plan work | branch | `src/modules/journal/journal-works.test.ts > refuses another teacher, an attendance-only subject, another branch’s ids and unknown ones, leaving every row and the audit log as they were` |
 | `DELETE /api/journal/lessons/:lessonId/works/:workId` | `path:lessonId` | lesson | branch | `src/modules/journal/journal-works.test.ts > refuses another teacher, an attendance-only subject, another branch’s ids and unknown ones, leaving every row and the audit log as they were` |
@@ -835,6 +836,7 @@ For every id a route takes, in its path, its query or its body, the record it na
 | `POST /api/exemptions/preview` | `body:subjectIds` | subject | school | `src/modules/journal/exemptions-other-branch-ids.test.ts > answers 404 for every id of another branch in the body of POST /api/exemptions and its preview` |
 | `POST /api/exemptions/preview` | `body:choices[].studentId` | student | branch | `src/modules/journal/exemptions-other-branch-ids.test.ts > answers 404 for every id of another branch in the body of POST /api/exemptions and its preview` |
 | `POST /api/exemptions/preview` | `body:choices[].lessonId` | lesson | branch | `src/modules/journal/exemptions-other-branch-ids.test.ts > answers 404 for every id of another branch in the body of POST /api/exemptions and its preview` |
+| `POST /api/feedback-reports/:id/handled` | `path:id` | feedback report | school | `src/modules/feedback/feedback-list.test.ts > answers 404 for an unknown report, and writes nothing` |
 | `POST /api/forced-deletes/:id/restore` | `path:id` | forced delete store row | branch | `src/modules/timetable/forced-deletes.test.ts > is refused to the Academic Vice Principal, the Principal and a Teacher (the harness tries every role), and answers 404 for another branch’s and an unknown id`<br>`src/modules/setup/place-forced-deletes.test.ts > is refused to the Academic Vice Principal, the Principal and a Teacher, and answers 404 for another branch’s and an unknown id`<br>`repeat: src/modules/timetable/forced-deletes.test.ts > keeps a used key to its account, its branch and its role (request keys)` |
 | `POST /api/groups` | `body:classIds` | class | branch | `src/modules/classes/groups.test.ts > answers a class, a subject or a year of another branch or unknown in the body 404, changing nothing` |
 | `POST /api/groups` | `body:academicYearId` | academic year | branch | `src/modules/classes/groups.test.ts > answers a class, a subject or a year of another branch or unknown in the body 404, changing nothing` |
@@ -1752,6 +1754,12 @@ Every area of `PERMISSIONS` (`packages/shared/src/permissions.ts`), the table th
 | senior_head_teacher | yes | yes | yes |  |  |
 | head_teacher | yes | yes | yes |  |  |
 | teacher | yes | yes |  |  |  |
+
+### `monitoring`
+
+| Role | view | create | edit | archive | export |
+| --- | :-: | :-: | :-: | :-: | :-: |
+| super_admin | yes |  | yes |  |  |
 
 ### `parent_accounts`
 

@@ -130,9 +130,10 @@ describe('feedback reports in the database', () => {
     });
   });
 
-  // The owner reads the table; the application only adds to it.
-  describe('are never changed or removed by the application', () => {
-    it('refuse the application user an update', async () => {
+  // The Super Admin reads the table on the Feedback reports page (pull request #361) and marks a
+  // report handled: the application may set the mark and nothing else of a report (0173).
+  describe('are never changed or removed by the application, but for the handled mark', () => {
+    it('refuse the application user an update of the text', async () => {
       await expect(asApp(`update feedback_reports set text = 'Changed.'`)).rejects.toMatchObject({
         code: INSUFFICIENT_PRIVILEGE,
       });
@@ -142,6 +143,63 @@ describe('feedback reports in the database', () => {
       await expect(asApp('delete from feedback_reports')).rejects.toMatchObject({
         code: INSUFFICIENT_PRIVILEGE,
       });
+    });
+
+    // Read from the catalog for every column the table has, so a column added later, or a
+    // grant widened to the table, fails here.
+    it('give the application user an update of the two columns of the mark and of no other', async () => {
+      const { rows } = await sql<{ column: string; updatable: boolean }>`
+        select attname as column,
+          has_column_privilege('sodiq_app', 'public.feedback_reports', attname, 'UPDATE') as updatable
+        from pg_attribute
+        where attrelid = 'public.feedback_reports'::regclass and attnum > 0 and not attisdropped
+        order by attname
+      `.execute(database.migrator);
+
+      expect(rows.length).toBeGreaterThan(8);
+      expect(rows.filter((row) => row.updatable).map((row) => row.column)).toEqual([
+        'handled_at',
+        'handled_by',
+      ]);
+      const table = await sql<{ updatable: boolean; deletable: boolean }>`
+        select has_table_privilege('sodiq_app', 'public.feedback_reports', 'UPDATE') as updatable,
+          has_table_privilege('sodiq_app', 'public.feedback_reports', 'DELETE') as deletable
+      `.execute(database.migrator);
+      expect(table.rows[0]).toEqual({ updatable: false, deletable: false });
+    });
+
+    it('let the application user set and clear the mark together', async () => {
+      await insert('{teacher}', '/', 'To be handled.');
+      await expect(
+        asApp(
+          `update feedback_reports set handled_at = '${MOMENT}', handled_by = '${accountId}' where text = 'To be handled.'`,
+        ),
+      ).resolves.toBeDefined();
+      await expect(
+        asApp(
+          `update feedback_reports set handled_at = null, handled_by = null where text = 'To be handled.'`,
+        ),
+      ).resolves.toBeDefined();
+    });
+
+    it.each(['handled_at', 'handled_by'] as const)(
+      'refuse one half of the mark alone: %s',
+      async (column) => {
+        await insert('{teacher}', '/', 'Half a mark.');
+        const value = column === 'handled_at' ? MOMENT : accountId;
+        await expect(
+          asApp(`update feedback_reports set ${column} = '${value}' where text = 'Half a mark.'`),
+        ).rejects.toMatchObject({ code: CHECK_VIOLATION });
+      },
+    );
+
+    it('refuse a mark by an account that does not exist', async () => {
+      await insert('{teacher}', '/', 'Nobody marks.');
+      await expect(
+        asApp(
+          `update feedback_reports set handled_at = '${MOMENT}', handled_by = '${NOBODY}' where text = 'Nobody marks.'`,
+        ),
+      ).rejects.toMatchObject({ code: FOREIGN_KEY_VIOLATION });
     });
   });
 });

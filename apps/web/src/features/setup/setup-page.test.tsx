@@ -194,6 +194,24 @@ describe('the School setup entry', () => {
     expect(link?.getAttribute('href') ?? null).toBe(shown ? '/forced-deletes' : null);
   });
 
+  // Pull request #361: the feedback reports and the system status are the Super Admin's (monitoring).
+  it.each([
+    ['super_admin', true],
+    ['principal', false],
+    ['academic_vice_principal', false],
+  ] as const)(
+    'links the feedback reports and the system status for the %s: %s',
+    async (role, shown) => {
+      fakeApi({ 'GET /api/auth/session': () => json(sessionAs(role)) });
+      renderApp('/setup');
+      await screen.findByRole('heading', { name: en.setup.title });
+      const feedback = screen.queryByRole('link', { name: en.setup.feedbackReportsLink });
+      const status = screen.queryByRole('link', { name: en.setup.systemStatusLink });
+      expect(feedback?.getAttribute('href') ?? null).toBe(shown ? '/feedback-reports' : null);
+      expect(status?.getAttribute('href') ?? null).toBe(shown ? '/system-status' : null);
+    },
+  );
+
   it('says that a role without setup rights has no setup pages', async () => {
     fakeApi({ 'GET /api/auth/session': () => json(sessionAs('teacher')) });
     renderApp('/setup');

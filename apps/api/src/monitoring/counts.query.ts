@@ -35,6 +35,8 @@ export async function branchCounts(
   timeZone: string,
   now: Date,
   today: string,
+  /** `false`: the five weeks of first-slot lessons are not read, and count 0 (the System status page shows none). */
+  options: { firstSlot?: boolean } = {},
 ): Promise<BranchCounts> {
   const refused = await transaction
     .selectFrom('journal_save_refusals')
@@ -73,7 +75,10 @@ export async function branchCounts(
     .select((eb) => eb.fn.max('enqueued_at').as('newest'))
     .where('branch_id', '=', branchId)
     .executeTakeFirst();
-  const { rows } = await sql<{ today: boolean; lessons: string; marked: string }>`
+  const { rows } =
+    options.firstSlot === false
+      ? { rows: [] }
+      : await sql<{ today: boolean; lessons: string; marked: string }>`
     with days as (
       select (${today}::date - step * 7) as day
       from generate_series(0, 4) as step

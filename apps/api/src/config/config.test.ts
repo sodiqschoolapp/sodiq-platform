@@ -34,10 +34,73 @@ describe('loadConfig', () => {
       // Task 10.2a: nothing pushed without the Grafana variables.
       monitoring: { grafana: undefined, instance: 'local' },
       unscheduledJobs: [],
+      // Pull request #361: no key of the System status page.
+      statusProviders: {
+        uptimeRobotKey: undefined,
+        grafana: undefined,
+        sentry: undefined,
+        sentryOrg: undefined,
+      },
       // Task 10.5: off unless DEMO_CLOCK=1.
       demoClock: false,
       parentBotUsername: null,
       telegram: undefined,
+    });
+  });
+
+  // Pull request #361: the read-only keys of the System status page, each group all or none.
+  describe('the keys of the System status page', () => {
+    it('reads each group, without a slash at the end of an address', () => {
+      const config = loadConfig({
+        ...VALID,
+        STATUS_UPTIMEROBOT_KEY: 'ur1234567-abcdefabcdef',
+        STATUS_GRAFANA_URL: 'https://sodiq.grafana.net/',
+        STATUS_GRAFANA_TOKEN: 'glsa_invented',
+        STATUS_SENTRY_TOKEN: 'sntrys_invented',
+        STATUS_SENTRY_URL: 'https://de.sentry.io',
+        SENTRY_ORG: 'sodiq',
+        SENTRY_ENVIRONMENT: 'production',
+      });
+
+      expect(config.statusProviders).toEqual({
+        uptimeRobotKey: 'ur1234567-abcdefabcdef',
+        grafana: { url: 'https://sodiq.grafana.net', token: 'glsa_invented' },
+        sentry: {
+          url: 'https://de.sentry.io',
+          org: 'sodiq',
+          token: 'sntrys_invented',
+          environment: 'production',
+        },
+        sentryOrg: 'sodiq',
+      });
+    });
+
+    it('reads Sentry at sentry.io unless told otherwise, and the organisation alone for the link', () => {
+      expect(
+        loadConfig({ ...VALID, STATUS_SENTRY_TOKEN: 'sntrys_invented', SENTRY_ORG: 'sodiq' })
+          .statusProviders.sentry?.url,
+      ).toBe('https://sentry.io');
+      expect(loadConfig({ ...VALID, SENTRY_ORG: 'sodiq' }).statusProviders).toMatchObject({
+        sentry: undefined,
+        sentryOrg: 'sodiq',
+      });
+    });
+
+    it.each([
+      [{ STATUS_GRAFANA_URL: 'https://sodiq.grafana.net' }, 'STATUS_GRAFANA_TOKEN'],
+      [{ STATUS_GRAFANA_TOKEN: 'glsa_invented' }, 'STATUS_GRAFANA_URL'],
+      [{ STATUS_SENTRY_TOKEN: 'sntrys_invented' }, 'SENTRY_ORG'],
+    ])('stops the start with half a group (%o) and names %s', (set, missing) => {
+      expect(problemOf({ ...VALID, ...set })).toContain(`${missing} must`);
+    });
+
+    it.each([
+      ['STATUS_GRAFANA_URL', 'http://sodiq.grafana.net'],
+      ['STATUS_SENTRY_URL', 'http://sentry.io'],
+      ['STATUS_UPTIMEROBOT_KEY', 'a key with spaces'],
+      ['SENTRY_ORG', 'Not A Slug'],
+    ])('refuses %s = %s', (name, value) => {
+      expect(problemOf({ ...VALID, [name]: value })).toContain(`${name} must`);
     });
   });
 
