@@ -109,19 +109,22 @@ export function PortalGradesPage(): React.JSX.Element {
   );
 }
 
-/** The grade beside a result: the digit as a status label in its tint (This app, Status labels). */
+/**
+ * The grade beside a result: "Baho 4", a status label in its tint (This app, Status labels:
+ * "always the digit; colour only helps"), named in words so that "71 4" never reads as two
+ * numbers (owner, 19 November 2026).
+ */
 function GradeLabel({ grade }: { grade: number }): React.JSX.Element {
   const { t } = useTranslation();
   return (
     <span
       className={cn(
-        'inline-grid min-w-8 place-items-center rounded-md px-1.5 py-0.5 font-bold tabular-nums',
+        'inline-flex shrink-0 items-center rounded-md px-2 py-0.5 text-sm font-semibold whitespace-nowrap tabular-nums',
         GRADE_TINT[grade],
       )}
-      aria-label={t('portal.grades.gradeLabel', { grade })}
       data-grade={grade}
     >
-      {grade}
+      {t('portal.grades.gradeLabel', { grade })}
     </span>
   );
 }
@@ -146,10 +149,29 @@ function RowResult({ subject }: { subject: PortalSubjectGrades }): React.JSX.Ele
   }
   return (
     <span className="flex items-center gap-2" data-result="true">
-      <span className="text-[1.0625rem]/6 font-bold tabular-nums">
-        {outcomeText(figures.outcome, t)}
+      <span className="text-[1.0625rem]/6 font-bold whitespace-nowrap tabular-nums">
+        {t('portal.grades.outOf100', { shown: figures.outcome.shown })}
       </span>
       <GradeLabel grade={figures.outcome.grade} />
+    </span>
+  );
+}
+
+/**
+ * The row's second line when the result is not the whole story, in the staff page's own terms
+ * (`labelsOf`): "from attendance only" while attendance is the one part counted (the flag
+ * `attendance_only`), so a low result from attendance alone is read as such. "Provisional" is not
+ * repeated here: the line above the list says it for the open quarter, and the opened row gives
+ * the staff page's labels.
+ */
+function RowNote({ subject }: { subject: PortalSubjectGrades }): React.JSX.Element | null {
+  const { t } = useTranslation();
+  const outcome = subject.figures?.outcome;
+  if (outcome?.kind !== 'number') return null;
+  if (!outcome.flags.includes('attendance_only')) return null;
+  return (
+    <span className="text-sm font-normal text-muted-foreground" data-row-note="">
+      {t('portal.grades.rowAttendanceOnly')}
     </span>
   );
 }
@@ -185,14 +207,16 @@ function SubjectRow({
           }}
         >
           <span className="grid min-w-0 flex-1 gap-0.5">
-            <span className="flex min-w-0 items-center gap-2 font-semibold">
+            <span className="flex min-w-0 items-baseline gap-2 font-semibold">
               <SubjectSwatch colour={subject.subject.colour} />
-              <span className="truncate">{subject.subject.names[language]}</span>
+              <span className="min-w-0 break-words">{subject.subject.names[language]}</span>
             </span>
-            {reopened && (
-              <span className="text-sm text-warning" data-subject-state="provisional">
+            {reopened ? (
+              <span className="text-sm font-normal text-warning" data-subject-state="provisional">
                 {t('portal.grades.reopenedShort')}
               </span>
+            ) : (
+              <RowNote subject={subject} />
             )}
           </span>
           <RowResult subject={subject} />

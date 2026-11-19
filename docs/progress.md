@@ -2,6 +2,15 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 19 November 2026: the portal's grade rows say what their numbers are
+
+Not a task of the build plan: the owner asked what "0 2" on a Grades row meant (19 November 2026, the test environment in Telegram). The two bare numbers were the result and the grade.
+
+- A row now shows the result out of 100 ("87/100") and the grade in words as its status label ("Baho 5"; `portal.grades.gradeLabel`, visible, not only to a screen reader). The year result in an opened row uses the same label.
+- A result counted from attendance alone (the flag `attendance_only`) says so on the row's second line ("faqat davomat boʻyicha"), so a low result from attendance alone is read as such. "Provisional" is not repeated on each row: the line above the list says it while the quarter is open.
+- Long subject names wrap instead of being cut ("Tasviriy san'at").
+- Nothing is calculated: the number, the grade and the flag are the server's. Tests: `portal-grades-pages.test.tsx` (the row's words, the attendance-only line, none on a closed quarter).
+
 ## 19 November 2026: the parent portal redesigned for the phone
 
 Not a task of the build plan: the owner found the portal "quite bad and basic" and asked for a professional, simple one with the best UI and UX (19 November 2026). No route, schema, migration or permission changed; one field was added to an answer (`savedAt` of a portal score, below).

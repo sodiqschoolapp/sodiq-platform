@@ -2307,6 +2307,8 @@ export const en = {
       tab: 'Grades',
       subjects: 'Subjects',
       gradeLabel: 'Grade {{grade}}',
+      outOf100: '{{shown}}/100',
+      rowAttendanceOnly: 'from attendance only',
       attendanceOnlyShort: 'Attendance only',
       reopenedShort: 'Being corrected',
       yearShown: 'Year result: {{shown}}',

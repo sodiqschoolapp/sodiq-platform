@@ -2340,6 +2340,8 @@ export const uz: Texts<'one' | 'other'> = {
       tab: 'Baholar',
       subjects: 'Fanlar',
       gradeLabel: 'Baho {{grade}}',
+      outOf100: '{{shown}}/100',
+      rowAttendanceOnly: 'faqat davomat boʻyicha',
       attendanceOnlyShort: 'Faqat davomat',
       reopenedShort: 'Tuzatilmoqda',
       yearShown: 'Yillik natija: {{shown}}',

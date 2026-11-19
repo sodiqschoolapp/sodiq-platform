@@ -2425,6 +2425,8 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       tab: 'Оценки',
       subjects: 'Предметы',
       gradeLabel: 'Оценка {{grade}}',
+      outOf100: '{{shown}}/100',
+      rowAttendanceOnly: 'только по посещаемости',
       attendanceOnlyShort: 'Только посещаемость',
       reopenedShort: 'Исправляется',
       yearShown: 'Итог года: {{shown}}',

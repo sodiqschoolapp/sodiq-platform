@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import type { PortalAttendanceWeek, PortalChildren, PortalGrades } from '@sodiq/shared';
 import { describe, expect, it } from 'vitest';
 import { en } from '@/i18n/locales/en';
@@ -170,8 +170,11 @@ describe('the portal grades', () => {
     renderApp(`/portal/${ANVAR}/grades`);
     await screen.findByText(en.portal.grades.provisional);
     const closedRow = document.querySelector(`[data-subject-row="${maths.id}"]`);
-    expect(closedRow?.querySelector('[data-result]')?.textContent).toBe('714');
-    expect(closedRow?.querySelector('[data-grade]')?.getAttribute('aria-label')).toBe('Grade 4');
+    // The result out of 100 and the grade in words, never two bare numbers (owner, 19 November).
+    expect(closedRow?.querySelector('[data-result]')?.textContent).toBe('71/100Grade 4');
+    expect(closedRow?.querySelector('[data-grade]')?.textContent).toBe('Grade 4');
+    // Provisional is said once, above the list, not on every row.
+    expect(closedRow?.querySelector('[data-row-note]')).toBeNull();
     // The scores are in the row only once it is opened.
     expect(screen.queryByText('Fractions test')).toBeNull();
     const card = await openRow(maths.id);
@@ -224,8 +227,51 @@ describe('the portal grades', () => {
     renderApp(`/portal/${ANVAR}/grades`, 'ru');
     await screen.findByText(ru.portal.grades.provisional);
     const row = document.querySelector(`[data-subject-row="${maths.id}"]`);
-    expect(row?.querySelector('[data-grade]')?.getAttribute('aria-label')).toBe('Оценка 4');
+    expect(row?.querySelector('[data-grade]')?.textContent).toBe('Оценка 4');
     expect(screen.getByRole('link', { name: ru.portal.attendance.title })).toBeDefined();
+  });
+});
+
+describe('the row of a subject', () => {
+  it('says when a result comes from attendance alone, and says nothing for a final result', async () => {
+    const open = GRADES(false);
+    portal('en', false, {
+      ...open,
+      subjects: open.subjects.map((one) =>
+        one.figures === null
+          ? one
+          : {
+              ...one,
+              figures: {
+                ...one.figures,
+                classwork: null,
+                outcome: {
+                  kind: 'number',
+                  shown: 0,
+                  grade: 2,
+                  provisional: true,
+                  leftOut: ['classwork', 'homework'],
+                  flags: ['attendance_only'],
+                },
+              },
+            },
+      ),
+    });
+    renderApp(`/portal/${ANVAR}/grades`);
+    await screen.findByText(en.portal.grades.provisional);
+    const row = document.querySelector(`[data-subject-row="${maths.id}"]`);
+    expect(row?.querySelector('[data-result]')?.textContent).toBe('0/100Grade 2');
+    expect(row?.querySelector('[data-row-note]')?.textContent).toBe(
+      en.portal.grades.rowAttendanceOnly,
+    );
+    cleanup();
+    // A closed quarter's result: no second line.
+    portal('en', true);
+    renderApp(`/portal/${ANVAR}/grades`);
+    await screen.findByText(en.portal.grades.final);
+    const final = document.querySelector(`[data-subject-row="${maths.id}"]`);
+    expect(final?.querySelector('[data-result]')?.textContent).toBe('71/100Grade 4');
+    expect(final?.querySelector('[data-row-note]')).toBeNull();
   });
 });
 
