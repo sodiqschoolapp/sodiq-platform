@@ -12,7 +12,9 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { Database } from '../database/database.js';
 import type { DB } from '../database/types.generated.js';
 import { JobQueue } from '../jobs/job-queue.js';
+import { ActingKit } from '../testing/acting-kit.js';
 import { insertBranch } from '../testing/branch-filter-sql.js';
+import { ClassesKit } from '../testing/classes-kit.js';
 import { createTestApp } from '../testing/create-test-app.js';
 import { FixedClock } from '../testing/fixed-clock.js';
 import { signInKit, type SignInKit } from '../testing/sign-in-kit.js';
@@ -81,7 +83,12 @@ describe('the own checks of the System status page', () => {
   const clearJobs = () => sql`delete from pgboss.job`.execute(database.migrator);
 
   /** A branch with a nightly check finished and daily work enqueued `msAgo` before NOW. */
-  async function branchRunAgo(name: string, msAgo: number): Promise<string> {
+  async function branchRunAgo(
+    name: string,
+    msAgo: number,
+    /** Writes what the check found, before it finishes (a finished check takes no difference). */
+    found?: (branch: string, checkId: string, moment: Date) => Promise<void>,
+  ): Promise<string> {
     const branch = await insertBranch(database.migrator, name);
     const moment = new Date(NOW_MS - msAgo);
     const check = await asOf(database.migrator, moment, (transaction) =>
@@ -91,6 +98,7 @@ describe('the own checks of the System status page', () => {
         .returning('id')
         .executeTakeFirstOrThrow(),
     );
+    await found?.(branch, check.id, moment);
     await asOf(database.migrator, moment, (transaction) =>
       transaction
         .updateTable('result_checks')
@@ -194,6 +202,8 @@ describe('the own checks of the System status page', () => {
     await job(countsJob.name, 30_000, 'completed');
     await job('journal.branch_export', 10 * 60_000, 'failed', [north]);
     await job('journal.branch_export', 20 * 60_000, 'failed', [north]);
+    // One job of two branches is one failed job, not two.
+    await job('notifications.deliver', 15 * 60_000, 'failed', [north, hidden]);
     await job('results.prepare_totals', 5 * 60_000, 'failed', [hidden]);
     // Outside the hour.
     await job('notifications.deliver', 61 * 60_000, 'failed', [north]);
@@ -202,7 +212,10 @@ describe('the own checks of the System status page', () => {
 
     expect(status.failedJobs).toEqual({
       status: 'attention',
-      jobs: [{ name: 'journal.branch_export', failed: 2 }],
+      jobs: [
+        { name: 'journal.branch_export', failed: 2 },
+        { name: 'notifications.deliver', failed: 1 },
+      ],
     });
     expect(status.attention).toBe(1);
   });
@@ -229,6 +242,79 @@ describe('the own checks of the System status page', () => {
     });
     // The two of the late branch; North has nothing yet (unknown).
     expect(status.attention).toBe(2);
+  });
+
+  // The two per-branch checks that a stored row turns to attention: a failed export of the last
+  // hour, and a difference found by a nightly check on time.
+  it('needs attention for a failed export of the last hour and for a difference of the nightly check', async () => {
+    await clearJobs();
+    await job(countsJob.name, 30_000, 'completed');
+    const classes = new ClassesKit(database.migrator);
+    let year = '';
+    let quarter = '';
+    const branch = await branchRunAgo('Exports', 3_600_000, async (id, checkId, moment) => {
+      year = await classes.year(id);
+      quarter = (
+        await database.migrator
+          .selectFrom('quarters')
+          .select('id')
+          .where('academic_year_id', '=', year)
+          .where('number', '=', 1)
+          .executeTakeFirstOrThrow()
+      ).id;
+      const classId = await classes.schoolClass(id, year, { grade: 7 });
+      const subject = await classes.subject({ grades: [7] });
+      const journal = await new ActingKit(database.migrator).journal(id, year, classId, subject);
+      await asOf(database.migrator, moment, (transaction) =>
+        transaction
+          .insertInto('result_check_differences')
+          .values({
+            branch_id: id,
+            check_id: checkId,
+            quarter_id: quarter,
+            journal_id: journal,
+            kind: 'stored_module',
+            detail: JSON.stringify({ index: 0 }),
+          })
+          .execute(),
+      );
+    });
+    const account = await classes.account();
+    const assignment = await classes.role(account, branch, 'academic_vice_principal');
+    // 50 minutes ago (counted) and 70 minutes ago (outside the hour).
+    for (const msAgo of [50 * 60_000, 70 * 60_000]) {
+      const moment = new Date(NOW_MS - msAgo);
+      const row = await asOf(database.migrator, moment, (transaction) =>
+        transaction
+          .insertInto('journal_exports')
+          .values({
+            branch_id: branch,
+            account_id: account,
+            assignment_id: assignment,
+            quarter_id: quarter,
+            format: 'xlsx',
+            language: 'en',
+            requested_at: moment,
+          })
+          .returning('id')
+          .executeTakeFirstOrThrow(),
+      );
+      await asOf(database.migrator, moment, (transaction) =>
+        transaction
+          .updateTable('journal_exports')
+          .set({ status: 'failed', failure: 'journal_export_failed' })
+          .where('id', '=', row.id)
+          .execute(),
+      );
+    }
+
+    const status = await read();
+
+    expect(branchOf(status, branch)).toMatchObject({
+      nightlyCheck: { status: 'attention', differences: 1 },
+      dailyWork: { status: 'ok' },
+      failedExports: { status: 'attention', count: 1 },
+    });
   });
 
   it('counts the reports not handled yet', async () => {

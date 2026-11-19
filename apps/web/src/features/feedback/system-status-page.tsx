@@ -64,7 +64,11 @@ export function SystemStatusPage() {
           </section>
         ) : (
           <>
-            <Summary own={own.data} providers={providers.data} />
+            <Summary
+              own={own.data}
+              providers={providers.data}
+              providersFailed={providers.isError}
+            />
             <OwnChecks status={own.data} />
             <Branches status={own.data} />
           </>
@@ -164,29 +168,38 @@ function StatusWord({ status, text }: { status: CheckStatus; text: string }) {
 function Summary({
   own,
   providers,
+  providersFailed,
 }: {
   own: SystemStatus;
   providers: StatusProviders | undefined;
+  /** The read of the outside services failed: it counts as one that needs attention. */
+  providersFailed: boolean;
 }) {
   const { t, i18n } = useTranslation();
   const outside =
     providers === undefined
-      ? 0
+      ? providersFailed
+        ? 1
+        : 0
       : [providers.uptimeRobot, providers.grafana, providers.sentry].reduce(
           (sum, one) =>
             sum + (one.state === 'connected' ? one.attention : one.state === 'unreachable' ? 1 : 0),
           0,
         );
   const total = own.attention + outside;
+  // Never "all pass" before the outside services have answered.
+  const waiting = providers === undefined && !providersFailed && total === 0;
   return (
     <section className={PANEL} aria-label={t('systemStatus.summary')}>
       <p className="text-lg" role="status">
         <StatusWord
-          status={total === 0 ? 'ok' : 'attention'}
+          status={waiting ? 'unknown' : total === 0 ? 'ok' : 'attention'}
           text={
-            total === 0
-              ? t('systemStatus.allFine')
-              : t('systemStatus.needAttention', { count: total })
+            waiting
+              ? t('systemStatus.readingOutside')
+              : total === 0
+                ? t('systemStatus.allFine')
+                : t('systemStatus.needAttention', { count: total })
           }
         />
       </p>

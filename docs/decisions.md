@@ -82,7 +82,7 @@ Asked by the owner in a cloud session on 19 November 2026 ("Super admin should h
 | Two routes: the own checks answer at once, the outside services (`/providers`) fill their panels after; each provider's answer, a failure included, is kept 60 s per API process on the injected clock; Refresh reads again; nothing on a timer. | `12`, speed targets; UptimeRobot's free plan allows 10 calls a minute; web rule on timers. |
 | The list answers every new report and the newest 1,000 handled ones (`handledTruncated`). | A new report is never out of reach; the limit of 20 reports a day per account bounds the new ones. |
 | Both pages are linked from Setup and found with Ctrl+K, not a menu item; both live in the web feature `feedback`, the status routes in `src/monitoring/`. | At most three people use them; the standing list of feature names. |
-| No browser test: the browser tests' seed already holds the three Super Admins the school allows, each owned by one test, and a fourth is refused. The pages are covered by their render tests, and the routes by API tests and the role harness. | `edge/people-roles-accounts`: at most 3 Super Admins; one account per browser test. |
+| The browser test visits both pages in the Super Admin test of `setup.spec.ts` (`checkSuperAdminPages`), with one report seeded (`seed.ts`) and open in the side panel: the seed holds the three Super Admins the school allows, and the Super Admin's own pages are checked there. | `edge/people-roles-accounts`: at most 3 Super Admins; `pages.spec.ts` points there. |
 
 ## 17 November 2026: the design review, the brand palette stays (owner)
 

@@ -1261,6 +1261,7 @@ export const en = {
     refresh: 'Refresh',
     summary: 'Summary',
     allFine: 'All checks pass',
+    readingOutside: 'The app is fine; reading the outside services…',
     needAttention_one: '{{count}} check needs attention',
     needAttention_other: '{{count}} checks need attention',
     checkedAt: 'Checked {{moment}}',
@@ -1290,7 +1291,7 @@ export const en = {
     differences_other: '{{count}} differences found',
     failedExportsCount_one: '{{count}} failed',
     failedExportsCount_other: '{{count}} failed',
-    notConnected: 'Not connected: its read-only key is not set (docs/monitoring.md, step 11).',
+    notConnected: 'Not connected: its read-only key is not set on the server yet.',
     unreachable: 'Could not read {{name}} ({{moment}}).',
     open: 'Open {{name}}',
     uptimeRobot: {

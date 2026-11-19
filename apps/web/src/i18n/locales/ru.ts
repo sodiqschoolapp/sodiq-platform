@@ -1267,6 +1267,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
     refresh: 'Обновить',
     summary: 'Итог',
     allFine: 'Все проверки в порядке',
+    readingOutside: 'Приложение в порядке; читаем внешние сервисы…',
     needAttention_one: '{{count}} проверка требует внимания',
     needAttention_few: '{{count}} проверки требуют внимания',
     needAttention_many: '{{count}} проверок требуют внимания',
@@ -1306,7 +1307,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
     failedExportsCount_few: '{{count}} сбоя',
     failedExportsCount_many: '{{count}} сбоев',
     failedExportsCount_other: '{{count}} сбоя',
-    notConnected: 'Не подключено: ключ только для чтения не задан (docs/monitoring.md, шаг 11).',
+    notConnected: 'Не подключено: ключ только для чтения на сервере ещё не задан.',
     unreachable: 'Не удалось прочитать {{name}} ({{moment}}).',
     open: 'Открыть {{name}}',
     uptimeRobot: {

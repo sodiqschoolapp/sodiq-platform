@@ -1,5 +1,5 @@
 import { Logger } from '@nestjs/common';
-import { PROVIDER_CACHE_MS, statusProvidersSchema } from '@sodiq/shared';
+import { PROVIDER_CACHE_MS, statusProvidersSchema, type StatusProviders } from '@sodiq/shared';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { StatusProvidersConfig } from '../config/config.js';
 import { FixedClock } from '../testing/fixed-clock.js';
@@ -125,10 +125,25 @@ const happy = (url: string) =>
       ? { status: 200, body: GRAFANA_ANSWER }
       : { status: 200, body: SENTRY_ANSWER };
 
+/** The application's logger, which ships its lines to the sink and prints nothing in the tests. */
+class QuietLogger extends ShippingLogger {
+  override log(message: unknown, ...rest: unknown[]): void {
+    ShippingLogger.ship('info', message, rest);
+  }
+
+  override warn(message: unknown, ...rest: unknown[]): void {
+    ShippingLogger.ship('warn', message, rest);
+  }
+
+  override error(message: unknown, ...rest: unknown[]): void {
+    ShippingLogger.ship('error', message, rest);
+  }
+}
+
 /** The log lines written while `work` runs, through the application's logger. */
 async function logLinesOf(work: () => Promise<unknown>): Promise<string[]> {
   const lines: string[] = [];
-  Logger.overrideLogger(new ShippingLogger());
+  Logger.overrideLogger(new QuietLogger());
   ShippingLogger.sink = (_level, text) => {
     lines.push(text);
   };
@@ -165,6 +180,13 @@ describe('the outside services of the System status page', () => {
       state: 'not_connected',
       dashboardUrl: 'https://sodiq.sentry.io/issues/',
     });
+    // SENTRY_ORG is also the build's and is not checked at start: no link from a value that is no slug.
+    const odd = await new StatusProviderReader(
+      { ...NONE, sentryOrg: 'Sodiq School/x' },
+      new FixedClock(NOW),
+      fetcher,
+    ).read();
+    expect(odd.sentry).toEqual({ state: 'not_connected', dashboardUrl: null });
   });
 
   it('reads the three services with their read-only keys and counts what needs attention', async () => {
@@ -287,7 +309,12 @@ describe('the outside services of the System status page', () => {
 
   it('says "unreachable" when a service does not answer in time', async () => {
     const { fetcher } = fakeNetwork((url) => (url.includes('grafana') ? 'hang' : happy(url)));
-    const read = await new StatusProviderReader(CONNECTED, new FixedClock(NOW), fetcher, 50).read();
+    let read: StatusProviders | undefined;
+    const lines = await logLinesOf(async () => {
+      read = await new StatusProviderReader(CONNECTED, new FixedClock(NOW), fetcher, 50).read();
+    });
+    if (read === undefined) throw new Error('No answer.');
+    expect(lines).toEqual([expect.stringContaining('grafana panel')]);
 
     expect(read.grafana.state).toBe('unreachable');
     expect(read.uptimeRobot.state).toBe('connected');

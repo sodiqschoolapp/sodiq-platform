@@ -98,7 +98,6 @@ describe('loadConfig', () => {
       ['STATUS_GRAFANA_URL', 'http://sodiq.grafana.net'],
       ['STATUS_SENTRY_URL', 'http://sentry.io'],
       ['STATUS_UPTIMEROBOT_KEY', 'a key with spaces'],
-      ['SENTRY_ORG', 'Not A Slug'],
     ])('refuses %s = %s', (name, value) => {
       expect(problemOf({ ...VALID, [name]: value })).toContain(`${name} must`);
     });

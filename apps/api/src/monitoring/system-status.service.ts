@@ -16,7 +16,7 @@ import type { AppConfig } from '../config/config.js';
 import { Transactions, transactionMoment, type Transaction } from '../database/transactions.js';
 import type { Access } from '../modules/access/permission.guard.js';
 import { countsJob } from './counts.job.js';
-import { branchCounts, failedJobs } from './counts.query.js';
+import { branchCounts, failedJobsByName } from './counts.query.js';
 import { StatusProviderReader, type StatusFetch } from './status-providers.js';
 
 /** For the tests: what the calls to the outside services go through instead of the network. */
@@ -77,17 +77,22 @@ export class SystemStatusReader {
         .select((eb) => eb.fn.countAll().as('count'))
         .where('handled_at', 'is', null)
         .executeTakeFirst();
+      const branches = await transaction
+        .selectFrom('branches')
+        .select(['id', 'name', 'time_zone', 'purpose'])
+        .orderBy('name')
+        .orderBy('id')
+        .execute();
       return {
         now,
-        branches: await transaction
-          .selectFrom('branches')
-          .select(['id', 'name', 'time_zone', 'purpose'])
-          .orderBy('name')
-          .orderBy('id')
-          .execute(),
+        branches,
         lastRun: await lastCountsRun(transaction),
-        jobs: await failedJobs(transaction, now),
         newFeedback: Number(newFeedback?.count ?? 0),
+        jobs: await failedJobsByName(
+          transaction,
+          now,
+          branches.filter((branch) => branch.purpose !== null).map((branch) => branch.id),
+        ),
       };
     });
     const { now } = school;
@@ -95,14 +100,7 @@ export class SystemStatusReader {
     const hidden = new Set(
       school.branches.filter((branch) => branch.purpose !== null).map((branch) => branch.id),
     );
-    const failedByName = new Map<string, number>();
-    for (const job of school.jobs) {
-      if (hidden.has(job.branch)) continue;
-      failedByName.set(job.name, (failedByName.get(job.name) ?? 0) + job.failed);
-    }
-    const jobs = [...failedByName]
-      .map(([name, failed]) => ({ name, failed }))
-      .sort((one, other) => one.name.localeCompare(other.name));
+    const jobs = school.jobs;
 
     const branches: SystemStatus['branches'] = [];
     for (const branch of school.branches) {

@@ -219,7 +219,11 @@ export class StatusProviderReader {
 
   private sentry(): Promise<Sentry> {
     const org = this.config.sentry?.org ?? this.config.sentryOrg;
-    const dashboardUrl = org === undefined ? null : `https://${org}.sentry.io/issues/`;
+    // A link only for an organisation slug: SENTRY_ORG is also the build's, and is not checked.
+    const dashboardUrl =
+      org !== undefined && /^[a-z0-9][a-z0-9-]{0,63}$/.test(org)
+        ? `https://${org}.sentry.io/issues/`
+        : null;
     const sentry = this.config.sentry;
     if (sentry === undefined) return Promise.resolve({ state: 'not_connected', dashboardUrl });
     return this.cached(

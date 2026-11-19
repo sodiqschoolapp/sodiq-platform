@@ -208,6 +208,27 @@ describe('the system status', () => {
     await panel(en.systemStatus.own);
     const uptime = await panel(en.systemStatus.uptimeRobot.title);
     expect(within(uptime).getByRole('status').getAttribute('aria-busy')).toBe('true');
+    // Never "all pass" before the outside services have answered.
+    const summary = await panel(en.systemStatus.summary);
+    expect(within(summary).getByRole('status').textContent).toBe(en.systemStatus.readingOutside);
+  });
+
+  it('counts a failed read of the outside services, and offers a retry in their panels', async () => {
+    fakeApi({
+      'GET /api/auth/session': () => json(session()),
+      'GET /api/system-status': () => json(own()),
+      'GET /api/system-status/providers': () =>
+        json({ error: { code: 'internal_error', message: 'Failed.', requestId: 'r1' } }, 500),
+    });
+    renderApp('/system-status', 'en');
+    const summary = await panel(en.systemStatus.summary);
+    await waitFor(() => {
+      expect(within(summary).getByRole('status').textContent).toBe(
+        en.systemStatus.needAttention_one.replace('{{count}}', '1'),
+      );
+    });
+    const grafana = await panel(en.systemStatus.grafana.title);
+    expect(within(grafana).getByRole('button', { name: en.problems.retry })).toBeDefined();
   });
 
   it('reads both again on Refresh, and never on its own', async () => {

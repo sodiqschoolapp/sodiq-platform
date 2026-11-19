@@ -117,13 +117,7 @@ const environmentSchema = z.object({
   ),
   // The organisation of the source maps (docs/monitoring.md, step 2), also read at run time by
   // the System status page with STATUS_SENTRY_TOKEN.
-  SENTRY_ORG: z.preprocess(
-    emptyAsUnset,
-    z
-      .string()
-      .regex(/^[a-z0-9][a-z0-9_-]{0,63}$/)
-      .optional(),
-  ),
+  SENTRY_ORG: z.preprocess(emptyAsUnset, z.string().min(1).max(100).optional()),
   // Set by Render on each instance of a service: which server a number came from.
   RENDER_INSTANCE_ID: z.preprocess(emptyAsUnset, z.string().max(100).optional()),
   // The demo clock (task 10.5): `1` on the test environment only (render.yaml), so that the

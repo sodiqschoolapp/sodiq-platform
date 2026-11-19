@@ -1286,6 +1286,7 @@ export const uz: Texts<'one' | 'other'> = {
     refresh: 'Yangilash',
     summary: 'Xulosa',
     allFine: 'Barcha tekshiruvlar joyida',
+    readingOutside: 'Ilova joyida; tashqi xizmatlar oʻqilmoqda…',
     needAttention_one: '{{count}} ta tekshiruv eʼtibor talab qiladi',
     needAttention_other: '{{count}} ta tekshiruv eʼtibor talab qiladi',
     checkedAt: 'Tekshirildi: {{moment}}',
@@ -1315,8 +1316,7 @@ export const uz: Texts<'one' | 'other'> = {
     differences_other: '{{count}} ta farq topildi',
     failedExportsCount_one: '{{count}} tasi bajarilmadi',
     failedExportsCount_other: '{{count}} tasi bajarilmadi',
-    notConnected:
-      'Ulanmagan: uning faqat oʻqish uchun kaliti kiritilmagan (docs/monitoring.md, 11-qadam).',
+    notConnected: 'Ulanmagan: uning faqat oʻqish uchun kaliti serverda hali kiritilmagan.',
     unreachable: '{{name}} maʼlumotlarini oʻqib boʻlmadi ({{moment}}).',
     open: '{{name}}ni ochish',
     uptimeRobot: {

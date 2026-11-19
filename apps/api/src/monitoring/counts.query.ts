@@ -154,3 +154,33 @@ export async function failedJobs(
   `.execute(transaction);
   return rows.map((row) => ({ name: row.name, branch: row.branch, failed: Number(row.failed) }));
 }
+
+/**
+ * The System status page (pull request #361): the jobs failed in the hour before `now`, per job
+ * name, each job once whatever the branches its envelope names; a job whose branches are all
+ * `hidden` (the Monitoring branch) is left out, as in the counts pushed to Grafana.
+ */
+export async function failedJobsByName(
+  transaction: Transaction,
+  now: Date,
+  hidden: readonly string[],
+): Promise<{ name: string; failed: number }[]> {
+  const { rows } = await sql<{ name: string; failed: string }>`
+    select job.name, count(*) as failed
+    from pgboss.job job
+    where job.state = 'failed'
+      and job.completed_on > ${new Date(now.getTime() - 60 * 60_000)}
+      and job.completed_on <= ${now}
+      and (
+        jsonb_typeof(job.data -> 'branchIds') is distinct from 'array'
+        or jsonb_array_length(job.data -> 'branchIds') = 0
+        or exists (
+          select 1 from jsonb_array_elements_text(job.data -> 'branchIds') as branch(id)
+          where branch.id <> all(${[...hidden]}::text[])
+        )
+      )
+    group by job.name
+    order by job.name
+  `.execute(transaction);
+  return rows.map((row) => ({ name: row.name, failed: Number(row.failed) }));
+}
