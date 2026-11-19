@@ -2,6 +2,13 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 19 November 2026: every score in the portal names its kind
+
+Not a task of the build plan: the owner asked whether a parent can tell classwork from homework when a work's title is only "10-mashq" (19 November 2026). Before, a work with a title showed the title alone.
+
+- `workTitle` (`portal-today-page.tsx`) puts the kind before a title: "Sinf ishi · 10-mashq", "Uy vazifasi · 10-mashq" (`portal.grades.kinds`, `portal.grades.kindTitle`); a work without a title stays "2-sinf ishi". It is the one name of a score on the daily view, in an opened subject and in Today's latest scores. The kind is the server's.
+- Tests: `portal-work-title.test.ts` (both kinds in the three languages, a title with `&` and `<`, a work without a title); the grades tests and `portal.spec.ts` read "Classwork · …".
+
 ## 19 November 2026: the portal's Grades page in a daily and a quarter view
 
 Not a task of the build plan: the owner noticed the Grades page was really the quarter's results, and a parent had to open each subject to see the week's marks (19 November 2026). Agreed: one Baholar tab with two views; the homework page stays as it is.

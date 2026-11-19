@@ -78,6 +78,7 @@ test('a parent opens the timetable and the homework of both children, then the g
   // The daily view first (19 November 2026): the score by its lesson date, with its comment.
   const score = page.locator('[data-score-row]').filter({ hasText: 'Cells and tissues' });
   await expect(score).toContainText('Biology');
+  await expect(score).toContainText(`${en.portal.grades.kinds.classwork} · Cells and tissues`);
   await expect(score.locator('[data-score]')).toHaveText('8/1080%');
   await expect(score.getByText('Well done on the diagram', { exact: true })).toBeVisible();
   // The quarter view: Biology's row opens on the same score.
@@ -88,7 +89,10 @@ test('a parent opens the timetable and the homework of both children, then the g
   await expect(page).toHaveURL(/view=quarter/);
   const biology = page.locator('[data-subject-row]').filter({ hasText: 'Biology' });
   await biology.getByRole('button').click();
-  await expect(biology.getByText('Cells and tissues', { exact: true })).toBeVisible();
+  // Every score names its kind before its title (owner, 19 November 2026).
+  await expect(
+    biology.getByText(`${en.portal.grades.kinds.classwork} · Cells and tissues`, { exact: true }),
+  ).toBeVisible();
   await expect(biology.getByText('8/10', { exact: true })).toBeVisible();
   await expect(biology.getByText('80%', { exact: true })).toBeVisible();
   await expect(biology.getByText('Well done on the diagram', { exact: true })).toBeVisible();
