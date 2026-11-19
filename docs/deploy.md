@@ -136,7 +136,8 @@ Asked for by the owner on 27 October 2026: the test environment filled with an i
 - Each branch's timetable placed by the rule engine and published from 2 September.
 - Every lesson of the first quarter has a plan item: a topic, a classwork, most a homework.
 - Every school day up to yesterday has its attendance and numbers, typed by the lesson's teacher after school that day. Absences come in whole days, some students are late, one student in twenty struggles (the early-warning list has someone to show), and the Tutors record most reasons of absence.
-- On purpose: one teacher forgot the last school day (the reminders and lesson statuses show it); one lesson ten school days back has its numbers missing and an unlock request waiting for the Academic Vice Principal; one student of 5 Oxford is excused from physical education from 12 to 23 October; the plan window of the second quarter is open.
+- On purpose: one teacher forgot the last school day (the reminders and lesson statuses show it); one lesson of the first quarter, already locked, has its numbers missing and an unlock request waiting for the Academic Vice Principal (the last school day locked before the run, `apps/api/src/testing/demo/dates.ts`); one student of 5 Oxford is excused from physical education from 12 to 23 October; a plan window is open from the day of the run for two weeks (the quarter of that day, or the next one during quarter 1 or a break; never past the quarter's end). The run's Summary names the dates it chose.
+- Only the first quarter has plans: the lessons of a later quarter held before the run have attendance only, and their headers say "No plan".
 - Today's lessons are left empty: take the attendance yourself.
 
 **How to run it.**

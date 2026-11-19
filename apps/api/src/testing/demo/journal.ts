@@ -4,7 +4,16 @@ import { sql } from 'kysely';
 import type { Database } from '../../database/database.js';
 import type { FixedClock } from '../fixed-clock.js';
 import { codeOf } from './caller.js';
-import { QUARTERS, seededRandom, DAY_OFF } from './data.js';
+import { QUARTERS, seededRandom } from './data.js';
+import {
+  addDays,
+  isSchoolDay,
+  lockedDayOf,
+  planWindowOf,
+  quarterIndexOf,
+  schoolDayOnOrBefore,
+  weekdayOf,
+} from './dates.js';
 import { SignIns, type DemoAccount } from './people.js';
 import type { DemoBranchBuilt, DemoSchool, DemoTeacher, Say } from './school.js';
 
@@ -185,17 +194,6 @@ function pool(size: number): Pool {
 
 const at = (date: string, time: string) => `${date}T${time}:00+05:00`;
 
-function addDays(date: string, days: number): string {
-  const moment = new Date(`${date}T12:00:00Z`);
-  moment.setUTCDate(moment.getUTCDate() + days);
-  return moment.toISOString().slice(0, 10);
-}
-
-function weekdayOf(date: string): number {
-  const day = new Date(`${date}T12:00:00Z`).getUTCDay();
-  return day === 0 ? 7 : day;
-}
-
 /**
  * The first quarter's plans and every school day's journal up to yesterday
  * (today in Tashkent, or `DEMO_TODAY`), entered by each teacher on the day
@@ -353,19 +351,16 @@ export async function fillJournals(input: {
   const workers = pool(6);
   /** A lesson left without entries on purpose, for the reminders and an unlock request. */
   let skipped: { branch: DemoBranchBuilt; teacher: DemoTeacher; lessonId: string } | null = null;
-  const skipDay = (() => {
-    // The last school day before today, and a day nine school days back.
-    let date = yesterday;
-    while (weekdayOf(date) > 5 || date === DAY_OFF.date) date = addDays(date, -1);
-    return date;
-  })();
-  const lockedDay = addDays(skipDay, -10);
+  // The last school day before today (one teacher forgets it), and a day of
+  // the first quarter already locked, whose lesson keeps its numbers missing
+  // (`dates.ts`: a fixed number of days back can fall on a weekend or a break).
+  const skipDay = schoolDayOnOrBefore(yesterday);
+  const lockedDay = lockedDayOf(yesterday);
   let entered = 0;
   let marks = 0;
   for (let date: string = QUARTERS[0].startDate; date <= yesterday; date = addDays(date, 1)) {
-    if (weekdayOf(date) > 5 || date === DAY_OFF.date) continue;
-    const quarterIndex = QUARTERS.findIndex((one) => one.startDate <= date && date <= one.endDate);
-    if (quarterIndex === -1) continue;
+    if (!isSchoolDay(date)) continue;
+    const quarterIndex = quarterIndexOf(date);
     clock.set(at(date, '15:30'));
     for (const branch of school.branches) {
       const quarter = branch.quarterIds[quarterIndex] ?? '';
@@ -534,7 +529,13 @@ export async function fillJournals(input: {
     lessonId: string;
   } | null;
   clock.set(at(yesterday, '17:00'));
-  if (left !== null) {
+  if (left === null) {
+    say(
+      lockedDay === null
+        ? 'No locked lesson: the year is too young for one'
+        : `No locked lesson: no lesson with works on ${lockedDay}`,
+    );
+  } else {
     await signIns.again(left.teacher.account);
     try {
       await left.teacher.account.caller
@@ -543,7 +544,7 @@ export async function fillJournals(input: {
           reason: 'I was ill that day and could not enter the numbers of the classwork.',
         });
       say(
-        `An unlock request of ${left.teacher.account.name} waits for the Academic Vice Principal`,
+        `A lesson of ${String(lockedDay)} is locked incomplete; the unlock request of ${left.teacher.account.name} waits for the Academic Vice Principal`,
       );
     } catch (error) {
       say(`No unlock request (${codeOf(error) ?? String(error)})`);
@@ -579,19 +580,32 @@ export async function fillJournals(input: {
   }
   say(`${String(reasons)} reasons of absence recorded by the Tutors`);
 
-  // The second quarter's plan window is open now, so plans can be tried.
+  // A plan window is open on the day of the run, so plans can be tried
+  // (`dates.ts`: the quarter of today, or the next one). The confirmation is
+  // sent at once: lessons of the quarter may have been held without a plan.
+  const window = planWindowOf(today);
   clock.set(at(yesterday, '17:30'));
+  if (window === null) {
+    say('No plan window opened: the year has no quarter left');
+    return;
+  }
+  const quarterNumber = QUARTERS[window.quarterIndex]?.number ?? window.quarterIndex + 1;
   for (const branch of school.branches) {
     await signIns.again(branch.vice);
-    const quarter = branch.quarterIds[1] ?? '';
-    const start = today < '2026-10-26' ? '2026-10-26' : today;
+    const quarter = branch.quarterIds[window.quarterIndex] ?? '';
     try {
-      await branch.vice.caller
-        .in(branch.id)
-        .put(`/api/plans/windows/${quarter}`, { startDate: start, endDate: '2026-11-07' });
+      await branch.vice.caller.in(branch.id).put(`/api/plans/windows/${quarter}`, {
+        startDate: window.startDate,
+        endDate: window.endDate,
+        confirm: true,
+      });
+      say(
+        `${branch.name}: plan window of quarter ${String(quarterNumber)} open from ${window.startDate} to ${window.endDate}`,
+      );
     } catch (error) {
-      say(`${branch.name}: second quarter window not opened (${codeOf(error) ?? String(error)})`);
+      say(
+        `${branch.name}: plan window of quarter ${String(quarterNumber)} not opened (${codeOf(error) ?? String(error)})`,
+      );
     }
   }
-  say('Plan windows of the second quarter open until 7 November');
 }
