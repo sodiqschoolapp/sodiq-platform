@@ -5,23 +5,25 @@ import { api } from '@/api/client';
 import { answerOf } from '@/api/failure';
 import { useConfirm } from '@/components/confirm-dialog';
 import { FailureAlert } from '@/components/failure-alert';
-import { SECTION_TITLE } from '@/components/ui/control';
 import { momentText } from '@/lib/dates';
+import { LockIcon, LogoutIcon } from '@/components/icons';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { DIGEST_FREQUENCIES, digestFrequencySchema } from '@sodiq/shared';
-import { SelectField } from '@/components/field';
+import { CHECKBOX, QUICK } from '@/components/ui/control';
+import { cn } from '@/lib/utils';
 import { ErrorState, LoadingOutline } from '@/components/states';
 import { chooseDigestFrequency, digestFrequencyQuery } from '@/features/portal/digest-api';
+import { PortalShell, PortalTitle } from '@/features/portal/portal-shell';
+import { AccountSection } from './account/account-section';
 import { LanguageSection } from './account/language-section';
-import { AuthPage } from './auth-page';
 import { refreshSession, sessionQuery } from './session';
 import { useLeaveSignedOut, useSignOut } from './use-sign-out';
 
 /**
- * The frame of a parent session (task 11.1, decision 13): no staff menu and no branch, only
- * what the owner approved for the parent ("signs in and changes its own password and
- * language"): the language, the password change and sign-out. The parent pages come with
- * task 11.2.
+ * The parent's own account page (task 11.1, decision 13; inside the portal's frame since 19
+ * November 2026): no staff menu and no branch, only what the owner approved for the parent
+ * (`10`: "a parent changes only their own password, language and digest frequency"): the
+ * language, the digest, the Telegram link, the password change and sign-out.
  */
 export function ParentHomePage(): React.JSX.Element {
   const { data: session } = useQuery(sessionQuery);
@@ -54,10 +56,7 @@ function TelegramSection({ linkedAt }: { linkedAt: string | null }): React.JSX.E
     },
   });
   return (
-    <section className="grid gap-2" aria-labelledby="parent-telegram">
-      <h2 id="parent-telegram" className={SECTION_TITLE}>
-        {t('parent.telegram')}
-      </h2>
+    <AccountSection title={t('parent.telegram')}>
       <p className="text-sm">
         {linkedAt === null
           ? t('parent.telegramNone')
@@ -92,7 +91,7 @@ function TelegramSection({ linkedAt }: { linkedAt: string | null }): React.JSX.E
         </div>
       )}
       <FailureAlert error={unlink.error} />
-    </section>
+    </AccountSection>
   );
 }
 
@@ -124,32 +123,40 @@ function DigestSection(): React.JSX.Element {
     body = <LoadingOutline />;
   } else {
     body = (
-      <div className="max-w-xs">
-        <SelectField
-          label={t('digest.parent.frequency')}
-          name="digest-frequency"
-          value={frequency.data.frequency}
-          disabled={choose.isPending}
-          options={DIGEST_FREQUENCIES.map((value) => ({
-            value,
-            label: t(`digest.parent.frequencies.${value}`),
-          }))}
-          onChange={(event) => {
-            const chosen = digestFrequencySchema.safeParse(event.target.value);
-            if (chosen.success) choose.mutate(chosen.data);
-          }}
-        />
-      </div>
+      // One row per choice, so the whole of each one is read at phone width (the select cut
+      // "Twice a week, Wednesday and Saturday at 19:00" short).
+      <fieldset className="grid gap-1" disabled={choose.isPending}>
+        <legend className="mb-1 text-sm font-semibold">{t('digest.parent.frequency')}</legend>
+        {DIGEST_FREQUENCIES.map((value) => (
+          <label
+            key={value}
+            className={cn(
+              'flex min-h-11 cursor-pointer items-center gap-3 rounded-lg px-3 py-2 hover:bg-accent has-[:checked]:bg-muted',
+              QUICK,
+            )}
+          >
+            <input
+              type="radio"
+              name="digest-frequency"
+              value={value}
+              className={CHECKBOX}
+              checked={frequency.data.frequency === value}
+              onChange={(event) => {
+                const chosen = digestFrequencySchema.safeParse(event.target.value);
+                if (chosen.success) choose.mutate(chosen.data);
+              }}
+            />
+            <span>{t(`digest.parent.frequencies.${value}`)}</span>
+          </label>
+        ))}
+      </fieldset>
     );
   }
   return (
-    <section className="grid gap-2" aria-labelledby="parent-digest">
-      <h2 id="parent-digest" className={SECTION_TITLE}>
-        {t('digest.parent.title')}
-      </h2>
+    <AccountSection title={t('digest.parent.title')}>
       {body}
       <FailureAlert error={choose.error} />
-    </section>
+    </AccountSection>
   );
 }
 
@@ -164,15 +171,14 @@ function ParentFrame({
 }): React.JSX.Element {
   const { t } = useTranslation();
   return (
-    <AuthPage title={t('parent.title')} text={name}>
-      <div className="grid gap-6">
-        <LanguageSection />
-        {children}
+    <PortalShell studentId={undefined} ownPage>
+      <PortalTitle {...(name === '' ? {} : { fact: name })}>{t('parent.title')}</PortalTitle>
+      <LanguageSection />
+      {children}
+      <AccountSection title={t('parent.access')}>
         <div className="flex flex-wrap gap-2">
-          <Link to="/portal" className={buttonVariants({ variant: 'default' })}>
-            {t('parent.portal')}
-          </Link>
           <Link to="/parent/password" className={buttonVariants({ variant: 'secondary' })}>
+            <LockIcon />
             {t('parent.password')}
           </Link>
           <Button
@@ -182,11 +188,12 @@ function ParentFrame({
               signOut.mutate();
             }}
           >
+            <LogoutIcon />
             {t('parent.signOut')}
           </Button>
         </div>
         <FailureAlert error={signOut.error} />
-      </div>
-    </AuthPage>
+      </AccountSection>
+    </PortalShell>
   );
 }

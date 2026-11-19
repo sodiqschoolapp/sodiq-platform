@@ -14,24 +14,41 @@ const PARENT = sessionOf({
   branches: [],
 });
 
+const CHILD = '0190a000-0000-7000-8000-00000000000a';
+
 describe('the frame of a parent', () => {
-  it('opens as the account page, with language, password, sign-out and the way back to the portal', async () => {
+  it('opens as the account page in the portal’s frame, with language, password, sign-out and the child’s pages', async () => {
     const calls = fakeApi({
       'GET /api/auth/session': () => json(PARENT),
       'GET /api/auth/digest-frequency': () => json({ frequency: 'twice_weekly', chosen: false }),
+      'GET /api/portal/children': () =>
+        json({
+          children: [{ id: CHILD, firstName: 'Anvar', lastName: 'Karimov', className: '7 Oxford' }],
+        }),
     });
     renderApp('/parent');
     await screen.findByRole('heading', { name: en.parent.title });
     expect(screen.getByText('Dilfuza Karimova')).toBeDefined();
     expect(screen.getByRole('link', { name: en.parent.password })).toBeDefined();
     expect(screen.getByRole('button', { name: en.parent.signOut })).toBeDefined();
-    expect(screen.getByRole('link', { name: en.parent.portal })).toBeDefined();
-    // No staff menu, and no call of a staff route: the own digest frequency only (task 11.5).
+    // The portal's menu keeps to the child: its pages one tap away.
+    const [menu] = await screen.findAllByRole('navigation', { name: en.portal.pages });
+    await waitFor(() => {
+      expect(
+        within(menu as HTMLElement)
+          .getByRole('link', { name: en.portal.today.title })
+          .getAttribute('href'),
+      ).toBe(`/portal/${CHILD}/today`);
+    });
+    // No staff menu, and no call of a staff route: the own digest frequency and children only.
     expect(screen.queryByRole('navigation', { name: en.layout.menu })).toBeNull();
     await waitFor(() => {
       expect(
-        calls.filter((call) => call.route !== 'GET /api/auth/session').map((call) => call.route),
-      ).toEqual(['GET /api/auth/digest-frequency']);
+        calls
+          .filter((call) => call.route !== 'GET /api/auth/session')
+          .map((call) => call.route)
+          .sort(),
+      ).toEqual(['GET /api/auth/digest-frequency', 'GET /api/portal/children']);
     });
   });
 
@@ -55,6 +72,7 @@ describe('the frame of a parent', () => {
       },
     });
     renderApp('/parent');
+    // The list of children did not answer (no route): the account page is drawn all the same.
     const section = await screen.findByRole('region', { name: en.parent.telegram });
     expect(section.textContent).toContain(
       en.parent.telegramLinked.replace('{{date}}', '2 November 2026'),

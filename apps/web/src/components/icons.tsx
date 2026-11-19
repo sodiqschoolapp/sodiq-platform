@@ -41,6 +41,14 @@ import ViewColumnSvg from '@material-symbols/svg-500/rounded/view_column-fill.sv
 import WarningSvg from '@material-symbols/svg-500/rounded/warning-fill.svg?react';
 import ContentCopySvg from '@material-symbols/svg-500/rounded/content_copy-fill.svg?react';
 import UndoSvg from '@material-symbols/svg-500/rounded/undo-fill.svg?react';
+import AccountCircleSvg from '@material-symbols/svg-500/rounded/account_circle-fill.svg?react';
+import AttachFileSvg from '@material-symbols/svg-500/rounded/attach_file-fill.svg?react';
+import CampaignSvg from '@material-symbols/svg-500/rounded/campaign-fill.svg?react';
+import EventSvg from '@material-symbols/svg-500/rounded/event-fill.svg?react';
+import GradingSvg from '@material-symbols/svg-500/rounded/grading-fill.svg?react';
+import FactCheckSvg from '@material-symbols/svg-500/rounded/fact_check-fill.svg?react';
+import LeaderboardSvg from '@material-symbols/svg-500/rounded/leaderboard-fill.svg?react';
+import ScheduleSvg from '@material-symbols/svg-500/rounded/schedule-fill.svg?react';
 
 /** What an icon takes: the props of an `svg` without children. */
 export type IconProps = Omit<ComponentProps<'svg'>, 'children'>;
@@ -111,3 +119,11 @@ export const ViewColumnIcon = icon(ViewColumnSvg);
 export const WarningIcon = icon(WarningSvg);
 export const ContentCopyIcon = icon(ContentCopySvg);
 export const UndoIcon = icon(UndoSvg);
+export const AccountCircleIcon = icon(AccountCircleSvg);
+export const AttachFileIcon = icon(AttachFileSvg);
+export const CampaignIcon = icon(CampaignSvg);
+export const EventIcon = icon(EventSvg);
+export const FactCheckIcon = icon(FactCheckSvg);
+export const GradingIcon = icon(GradingSvg);
+export const LeaderboardIcon = icon(LeaderboardSvg);
+export const ScheduleIcon = icon(ScheduleSvg);

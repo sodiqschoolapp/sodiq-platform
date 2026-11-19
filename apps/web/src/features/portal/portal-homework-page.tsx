@@ -3,23 +3,22 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { useNavigate, useParams, useSearch } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { FailureAlert } from '@/components/failure-alert';
+import { AttachFileIcon, EventIcon } from '@/components/icons';
 import { EmptyState, ErrorState, LoadingOutline } from '@/components/states';
+import { Button } from '@/components/ui/button';
 import { PANEL, SECTION_TITLE } from '@/components/ui/control';
-import { cn } from '@/lib/utils';
 import { SubjectSwatch } from '@/features/setup/subject-colour';
-import { schoolDateText, weekdayName } from '@/lib/dates';
-import { downloadPortalFile, portalHomeworkQuery, weekdayOfDate } from './portal-api';
-import { PortalWeekBar } from './portal-week-bar';
-
-type Language = 'uz' | 'ru' | 'en';
-const languageOf = (language: string): Language =>
-  language === 'ru' || language === 'en' ? language : 'uz';
+import { cn } from '@/lib/utils';
+import { downloadPortalFile, portalHomeworkQuery, weekOf } from './portal-api';
+import { languageOf, type Language } from './portal-lessons';
+import { PortalTitle } from './portal-shell';
+import { WeekNav, dayText } from './portal-week';
 
 /**
  * The homework page of the portal (task 11.2; `10`: "Tasks by date and subject, with their
  * titles and files"): the homework given at the held lessons of the week, by the date it was
- * given, each with the lesson's topic, its title (or "HW n" for a work added by hand before
- * 10.6), its text, the day it is checked and the files of the plan item.
+ * given, each with the subject and the lesson's topic, its title (or "HW n" for a work added by
+ * hand before 10.6), its text, the day it is checked and the files of the plan item.
  */
 export function PortalHomeworkPage(): React.JSX.Element {
   const { t, i18n } = useTranslation();
@@ -27,31 +26,42 @@ export function PortalHomeworkPage(): React.JSX.Element {
   const { studentId } = useParams({ from: '/portal/$studentId/homework' });
   const { date } = useSearch({ from: '/portal/$studentId/homework' });
   const navigate = useNavigate({ from: '/portal/$studentId/homework' });
-  const week = useQuery(portalHomeworkQuery(studentId, date));
+  const week = useQuery(portalHomeworkQuery(studentId, weekOf(date)));
   const download = useMutation({
     mutationFn: ({ id, name }: { id: string; name: string }) =>
       downloadPortalFile(studentId, id, name),
   });
+  const title = <PortalTitle>{t('portal.homework.title')}</PortalTitle>;
   if (week.isError) {
     return (
-      <ErrorState
-        error={week.error}
-        onRetry={() => {
-          void week.refetch();
-        }}
-      />
+      <>
+        {title}
+        <ErrorState
+          error={week.error}
+          onRetry={() => {
+            void week.refetch();
+          }}
+        />
+      </>
     );
   }
-  if (week.data === undefined) return <LoadingOutline lines={6} />;
-  const dates = [...new Set(week.data.homework.map((one) => one.givenOn))];
+  if (week.data === undefined) {
+    return (
+      <>
+        {title}
+        <LoadingOutline lines={6} />
+      </>
+    );
+  }
+  const today = week.data.today;
+  // The newest day first: a parent looks for what was given last.
+  const dates = [...new Set(week.data.homework.map((one) => one.givenOn))].sort().reverse();
   return (
     <>
-      <h1 className="text-[1.75rem]/[2.125rem] font-bold tracking-[-0.01em]">
-        {t('portal.homework.title')}
-      </h1>
-      <PortalWeekBar
+      {title}
+      <WeekNav
         monday={week.data.monday}
-        today={week.data.today}
+        today={today}
         onDate={(next) => {
           void navigate({ search: next === undefined ? {} : { date: next } });
         }}
@@ -64,12 +74,10 @@ export function PortalHomeworkPage(): React.JSX.Element {
       ) : (
         dates.map((given) => (
           <section key={given} className={PANEL} aria-labelledby={`given-${given}`}>
-            <h3 id={`given-${given}`} className={cn(SECTION_TITLE, 'mb-3')}>
-              {t('portal.homework.givenOn', {
-                date: `${weekdayName(language, weekdayOfDate(given))}, ${schoolDateText(given, language, false)}`,
-              })}
-            </h3>
-            <ul className="grid gap-4">
+            <h2 id={`given-${given}`} className={cn(SECTION_TITLE, 'mb-2')}>
+              {t('portal.homework.givenOn', { date: dayText(given, language) })}
+            </h2>
+            <ul>
               {week.data.homework
                 .filter((one) => one.givenOn === given)
                 // `10`: "Tasks by date and subject".
@@ -83,6 +91,8 @@ export function PortalHomeworkPage(): React.JSX.Element {
                     key={`${one.subject.id}-${String(one.number)}-${one.title ?? ''}`}
                     homework={one}
                     language={language}
+                    today={today}
+                    pending={download.isPending}
                     onFile={(id, name) => {
                       download.mutate({ id, name });
                     }}
@@ -99,19 +109,25 @@ export function PortalHomeworkPage(): React.JSX.Element {
 function HomeworkRow({
   homework,
   language,
+  today,
+  pending,
   onFile,
 }: {
   homework: PortalHomework;
   language: Language;
+  today: string;
+  pending: boolean;
   onFile: (id: string, name: string) => void;
 }): React.JSX.Element {
   const { t } = useTranslation();
   return (
-    <li className="grid gap-1">
-      <span className="flex items-center gap-2 text-sm text-muted-foreground">
+    <li className="grid gap-1.5 border-b border-border py-4 first:pt-1 last:border-b-0 last:pb-0">
+      <span className="flex min-w-0 items-center gap-2 text-sm text-muted-foreground">
         <SubjectSwatch colour={homework.subject.colour} />
-        {homework.subject.names[language]}
-        {homework.topic !== null && <> · {homework.topic}</>}
+        <span className="truncate">
+          {homework.subject.names[language]}
+          {homework.topic !== null && <> · {homework.topic}</>}
+        </span>
       </span>
       <span className="font-semibold">
         {homework.title ?? t('portal.homework.numbered', { n: homework.number })}
@@ -120,23 +136,34 @@ function HomeworkRow({
         <p className="whitespace-pre-line">{homework.description}</p>
       )}
       {homework.dueOn !== null && (
-        <span className="text-sm">
-          {t('portal.homework.dueOn', { date: schoolDateText(homework.dueOn, language, false) })}
+        <span
+          className={cn(
+            'flex items-center gap-1.5 text-sm',
+            homework.dueOn === today ? 'font-semibold' : 'text-muted-foreground',
+          )}
+        >
+          <EventIcon aria-hidden className="size-4 shrink-0" />
+          {homework.dueOn === today
+            ? t('portal.today.dueToday')
+            : t('portal.homework.dueOn', { date: dayText(homework.dueOn, language) })}
         </span>
       )}
       {homework.files.length > 0 && (
-        <ul className="flex flex-wrap gap-x-4 gap-y-1">
+        <ul className="mt-1 flex flex-wrap gap-2">
           {homework.files.map((file) => (
-            <li key={file.id}>
-              <button
-                type="button"
-                className="text-link font-semibold hover:underline"
+            <li key={file.id} className="min-w-0 max-w-full">
+              <Button
+                variant="secondary"
+                size="sm"
+                className="max-w-full"
+                disabled={pending}
                 onClick={() => {
                   onFile(file.id, file.name);
                 }}
               >
-                {file.name}
-              </button>
+                <AttachFileIcon />
+                <span className="truncate">{file.name}</span>
+              </Button>
             </li>
           ))}
         </ul>

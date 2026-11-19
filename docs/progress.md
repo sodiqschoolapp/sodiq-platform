@@ -2,6 +2,20 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 19 November 2026: the parent portal redesigned for the phone
+
+Not a task of the build plan: the owner found the portal "quite bad and basic" and asked for a professional, simple one with the best UI and UX (19 November 2026). The data and the routes are unchanged; no API, schema or permission changed.
+
+- **Frame** (`portal-shell.tsx`): a white top bar with the child (round avatar with initials, name, class); with two or more children it is a menu that keeps the page open. Below 640 px a navy tab bar (Today, Timetable, Homework, Grades, More: Attendance, Rating, Announcements, Account); from 640 px the navy menu at the left, as the staff app. The six buttons of the old header are gone.
+- **Today** (new first page, `/portal/$studentId/today`): today's lessons with the child's mark on each one marked, or the next school day of the week when today has none; the homework still to hand in, nearest first; the five newest scores. Each section links to its full page. `/portal` opens it for the child last opened in the tab (`sodiq.portalChild` in session storage), else the first.
+- **Timetable**: a compact week bar (the week's days, previous and next week as icon buttons, "This week" when another week is open) and a row of day buttons; one day open at a time, today by default, kept in the address (`?date=`). The week is read by its Monday (`weekOf`), so choosing another day of the week reads nothing new.
+- **Grades**: one row per subject with its result and the grade as a status label (`GRADE_TINT`, moved to `components/grade-tint.ts` so the portal does not load the journal's grid); a row opens the figures, the staff page's labels, the year result, the rating exam and the scores.
+- **Attendance**: the week's count of each mark (present, late, absent always; the others when the week has them: a count of the rows shown, nothing calculated), then the days.
+- **Homework**: the newest day first; the due date with its icon ("Due today" in weight); files as buttons.
+- **Account**: inside the portal's frame, each part in a panel; the digest frequency is a list of three choices (the select cut the longest one); password and sign-out under "Sign-in and security". The page is drawn even when the list of children fails.
+- Texts in the three languages: the tabs, the Today page, short weekdays, "Due …" ("Topshirish: …", "Сдать: …"), the week count with Russian plural forms. Removed: `portal.child`, `portal.childWithClass`, `portal.week`, `parent.portal`; `portal.today` (the word) is `portal.todayWord`.
+- Tests: `portal-pages.test.tsx` (frame, Today, day view, child menu, tab bar and More), `portal-grades-pages.test.tsx` (rows that open, the week count), the account and digest tests; browser tests `portal.spec.ts`, `parent-slips.spec.ts` and `announcements.spec.ts` use `openPortalPage`, `openPortalAccount` and `portalChild` of `e2e/steps.ts`.
+
 ## 18 November 2026: the parents' digest laid out for reading
 
 Not a task of the build plan: the owner found the digest message hard to read (screenshot, 18 November 2026). The content is unchanged (`10`, What it holds); only its layout and wording.

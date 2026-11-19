@@ -121,18 +121,21 @@ describe('the frequency of a parent', () => {
     });
     renderApp('/parent');
     const section = await screen.findByRole('region', { name: en.digest.parent.title });
-    const select = await within(section).findByRole('combobox', {
+    const group = await within(section).findByRole('group', {
       name: en.digest.parent.frequency,
     });
-    expect((select as HTMLSelectElement).value).toBe('twice_weekly');
-    fireEvent.change(select, { target: { value: 'daily' } });
+    const choice = (value: 'daily' | 'twice_weekly' | 'weekly') =>
+      within(group).getByRole('radio', { name: en.digest.parent.frequencies[value] });
+    expect(within(group).getAllByRole('radio')).toHaveLength(3);
+    expect((choice('twice_weekly') as HTMLInputElement).checked).toBe(true);
+    fireEvent.click(choice('daily'));
     await waitFor(() => {
       expect(calls.find((call) => call.route === 'PUT /api/auth/digest-frequency')?.body).toEqual({
         frequency: 'daily',
       });
     });
     await waitFor(() => {
-      expect((select as HTMLSelectElement).value).toBe('daily');
+      expect((choice('daily') as HTMLInputElement).checked).toBe(true);
     });
   });
 });

@@ -2,7 +2,14 @@ import { createHmac } from 'node:crypto';
 import { expect, test } from '@playwright/test';
 import { en } from '../src/i18n/locales/en';
 import { accountOf } from './accounts';
-import { changeFirstPassword, languageChooser, signIn } from './steps';
+import {
+  changeFirstPassword,
+  languageChooser,
+  openPortalAccount,
+  openPortalPage,
+  portalChild,
+  signIn,
+} from './steps';
 
 // Task 11.2, pull request #294 (`10`, What parents see; `12`, Devices: "Phone: ... the portal"):
 // at phone width a mother of two children signs in, sees the first child's week, opens the
@@ -19,24 +26,29 @@ test('a parent opens the timetable and the homework of both children, then the g
   await signIn(page, en, account.login, account.password);
   await changeFirstPassword(page, en, account);
 
-  const child = page.getByRole('combobox', { name: en.portal.child, exact: true });
-  await expect(child).toBeVisible();
-  await expect(child.locator('option')).toHaveText([
-    'Kamron Usmonov, 7 Seeded',
-    'Nilufar Usmonova, 8 Seeded',
+  // Since 19 November 2026 a parent lands on the Today page of the first child, named at the top.
+  const kamron = portalChild(page, 'Kamron', 'Usmonov');
+  await expect(kamron).toBeVisible();
+  await expect(kamron).toContainText('7 Seeded');
+  await expect(page).toHaveURL(/\/portal\/[0-9a-f-]+\/today$/);
+  await kamron.click();
+  await expect(page.getByRole('menuitemradio')).toHaveText([
+    /Kamron Usmonov7 Seeded$/,
+    /Nilufar Usmonova8 Seeded$/,
   ]);
-  await expect(page).toHaveURL(/\/portal\/[0-9a-f-]+\/timetable$/);
-  // Kamron's Biology, every day of the seeded fortnight, at 08:00.
-  await expect(page.getByText('Biology').first()).toBeVisible();
-  await expect(page.getByText('08:00–08:45').first()).toBeVisible();
+  await page.keyboard.press('Escape');
   // No page wider than the phone.
   const wide = await page.evaluate<boolean>(
     '(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)()',
   );
   expect(wide).toBe(false);
 
-  await page.getByRole('link', { name: en.portal.homework.title, exact: true }).click();
-  await expect(page).toHaveURL(/\/homework$/);
+  // Kamron's Biology, every day of the seeded fortnight, at 08:00: the day open shows it.
+  await openPortalPage(page, 'timetable');
+  await expect(page.getByText('Biology').first()).toBeVisible();
+  await expect(page.getByText('08:00', { exact: true }).first()).toBeVisible();
+
+  await openPortalPage(page, 'homework');
   // The homework given two days ago: this week, or the week before on a Monday or Tuesday.
   const homework = page.getByText('Read pages 20 to 24', { exact: true });
   await expect(
@@ -48,23 +60,26 @@ test('a parent opens the timetable and the homework of both children, then the g
   await expect(homework).toBeVisible();
 
   // The other child, on the same page; then its timetable.
-  await child.selectOption({ label: 'Nilufar Usmonova, 8 Seeded' });
-  await expect(child.locator('option:checked')).toHaveText('Nilufar Usmonova, 8 Seeded');
-  await expect(page).toHaveURL(/\/homework$/);
-  await page.getByRole('link', { name: en.portal.timetable.title, exact: true }).click();
-  await expect(page).toHaveURL(/\/timetable$/);
+  await kamron.click();
+  await page.getByRole('menuitemradio', { name: /Nilufar Usmonova/ }).click();
+  await expect(portalChild(page, 'Nilufar', 'Usmonova')).toBeVisible();
+  await expect(page).toHaveURL(/\/homework(\?.*)?$/);
+  await openPortalPage(page, 'timetable');
   // Nilufar's class has no lesson: her week shows none of Kamron's.
   await expect(page.getByRole('button', { name: en.portal.nextWeek, exact: true })).toBeVisible();
   await expect(page.getByText('Biology')).toHaveCount(0);
   await expect(page.getByRole('navigation', { name: en.layout.menu })).toHaveCount(0);
 
   // Task 11.3: Kamron's grades: yesterday's classwork with its comment visible to parents.
-  await child.selectOption({ label: 'Kamron Usmonov, 7 Seeded' });
-  await page.getByRole('link', { name: en.portal.grades.title, exact: true }).click();
-  await expect(page).toHaveURL(/\/grades$/);
-  const biology = page.getByRole('region', { name: 'Biology' });
+  await portalChild(page, 'Nilufar', 'Usmonova').click();
+  await page.getByRole('menuitemradio', { name: /Kamron Usmonov/ }).click();
+  await expect(kamron).toBeVisible();
+  await openPortalPage(page, 'grades');
+  const biology = page.locator('[data-subject-row]').filter({ hasText: 'Biology' });
+  await biology.getByRole('button').click();
   await expect(biology.getByText('Cells and tissues', { exact: true })).toBeVisible();
-  await expect(biology.getByText('8 of 10 · 80%', { exact: true })).toBeVisible();
+  await expect(biology.getByText('8/10', { exact: true })).toBeVisible();
+  await expect(biology.getByText('80%', { exact: true })).toBeVisible();
   await expect(biology.getByText('Well done on the diagram', { exact: true })).toBeVisible();
   await expect(page.getByText(en.portal.grades.provisional, { exact: true })).toBeVisible();
   await expect(page.getByText(/Staff only/)).toHaveCount(0);
@@ -77,24 +92,22 @@ test('a parent opens the timetable and the homework of both children, then the g
   // Attendance: late yesterday (this week, or the week before on a Monday); no staff comment.
   // On a Monday this week holds no lesson before 08:45 Tashkent time (the empty line) and
   // today's unmarked lesson after it (the seed has a lesson every day at 08:00).
-  await page.getByRole('link', { name: en.portal.attendance.title, exact: true }).click();
-  await expect(page).toHaveURL(/\/attendance$/);
-  const late = page.getByText(en.portal.attendance.marks.late, { exact: true });
+  await openPortalPage(page, 'attendance');
+  const late = page.locator('li [data-mark="late"]');
   await expect(
     late
       .or(page.getByText(en.portal.attendance.empty, { exact: true }))
-      .or(page.getByText(en.portal.attendance.marks.unmarked, { exact: true }))
+      .or(page.locator('li [data-mark="unmarked"]'))
       .first(),
   ).toBeVisible();
-  if (!(await late.isVisible())) {
+  if (!(await late.first().isVisible())) {
     await page.getByRole('button', { name: en.portal.previousWeek, exact: true }).click();
   }
-  await expect(late).toBeVisible();
+  await expect(late.first()).toBeVisible();
   await expect(page.getByText(/Staff only/)).toHaveCount(0);
 
   // Task 11.6: Kamron's own place in the class and the class average, no other student.
-  await page.getByRole('link', { name: en.portal.rating.title, exact: true }).click();
-  await expect(page).toHaveURL(/\/rating$/);
+  await openPortalPage(page, 'rating');
   const place = page.getByRole('region', { name: /^Place \d+ in 7 Seeded$/ });
   await expect(place).toBeVisible();
   await expect(place.locator('[data-figure="own"]')).toHaveText(/^\d+\.\d$/);
@@ -139,18 +152,18 @@ test('a father opens the portal from Telegram: once with the password, then with
   await languageChooser(page).selectOption('en');
   await signIn(page, en, account.login, account.password);
   await changeFirstPassword(page, en, account);
-  await expect(page).toHaveURL(/\/portal\/[0-9a-f-]+\/timetable$/);
+  await expect(page).toHaveURL(/\/portal\/[0-9a-f-]+\/today$/);
   await expect(page.getByText('Biology').first()).toBeVisible();
 
   // The next opening from the same chat, in a fresh web view: no password asked.
   await page.context().clearCookies();
   await page.goto(address);
-  await expect(page).toHaveURL(/\/portal\/[0-9a-f-]+\/timetable$/);
+  await expect(page).toHaveURL(/\/portal\/[0-9a-f-]+\/today$/);
   await expect(page.getByText('Biology').first()).toBeVisible();
   await expect(page.getByLabel(en.signIn.password, { exact: true })).toHaveCount(0);
 
   // The Account page names the link; a sign-out in the mini app ends it.
-  await page.getByRole('link', { name: en.portal.account, exact: true }).click();
+  await openPortalAccount(page);
   await expect(page.getByRole('region', { name: en.parent.telegram })).toContainText(
     en.parent.telegramLinked.replace('{{date}}', ''),
   );

@@ -1,3 +1,4 @@
+import { GRADE_TINT } from '@/components/grade-tint';
 import type {
   AttendanceMark,
   JournalBottom,
@@ -94,13 +95,8 @@ const MARK_TINT: Record<number, string> = {
   3: 'bg-destructive-bg text-destructive',
 };
 
-/** The tint of a grade: 2 danger, 3 warning, 4 info, 5 success. */
-export const GRADE_TINT: Record<number, string> = {
-  2: 'bg-destructive-bg text-destructive',
-  3: 'bg-warning-bg text-warning',
-  4: 'bg-info-bg text-info',
-  5: 'bg-success-bg text-success',
-};
+/** The tint of a grade: 2 danger, 3 warning, 4 info, 5 success (`components/grade-tint.ts`). */
+export { GRADE_TINT };
 
 /** The grid's look from the design tokens of `index.css`, light and dark alike. */
 const THEME = themeQuartz.withParams({
