@@ -75,6 +75,17 @@ test('a parent opens the timetable and the homework of both children, then the g
   await page.getByRole('menuitemradio', { name: /Kamron Usmonov/ }).click();
   await expect(kamron).toBeVisible();
   await openPortalPage(page, 'grades');
+  // The daily view first (19 November 2026): the score by its lesson date, with its comment.
+  const score = page.locator('[data-score-row]').filter({ hasText: 'Cells and tissues' });
+  await expect(score).toContainText('Biology');
+  await expect(score.locator('[data-score]')).toHaveText('8/1080%');
+  await expect(score.getByText('Well done on the diagram', { exact: true })).toBeVisible();
+  // The quarter view: Biology's row opens on the same score.
+  // The switch's label covers its radio, as in journal.spec.ts (lesson mode).
+  await page
+    .getByRole('radio', { name: en.portal.grades.views.quarter, exact: true })
+    .check({ force: true });
+  await expect(page).toHaveURL(/view=quarter/);
   const biology = page.locator('[data-subject-row]').filter({ hasText: 'Biology' });
   await biology.getByRole('button').click();
   await expect(biology.getByText('Cells and tissues', { exact: true })).toBeVisible();

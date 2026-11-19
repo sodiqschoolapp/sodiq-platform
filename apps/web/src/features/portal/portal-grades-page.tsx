@@ -13,13 +13,17 @@ import { SubjectSwatch } from '@/features/setup/subject-colour';
 import { schoolDateText } from '@/lib/dates';
 import { cn } from '@/lib/utils';
 import { portalGradesQuery } from './portal-api';
+import { PORTAL_GRADES_VIEWS } from './portal-search';
+import { dayText } from './portal-week';
 import { languageOf, type Language } from './portal-lessons';
 import { PortalTitle } from './portal-shell';
 import { workTitle } from './portal-today-page';
 
 /**
- * The Grades page of the portal (task 11.3, pull request #296; `10`, What parents see): for the
- * quarter chosen, one row per subject with its result and grade, "provisional" until the
+ * The Grades page of the portal (task 11.3, pull request #296; `10`, What parents see), in two
+ * views (owner, 19 November 2026). "Daily", the first: every score of the quarter chosen, by its
+ * lesson date, the newest day first, each with its subject, the work's name, the score and the
+ * comment visible to parents. "Quarter": for the quarter chosen, one row per subject with its result and grade, "provisional" until the
  * quarter is closed; a row opens the subject's figures as the staff results page shows them (the
  * same labels, review decision 4), the year result when shown, the rating exam and each score
  * with the work's name, the lesson date and the comment visible to parents. Every figure comes
@@ -29,7 +33,7 @@ export function PortalGradesPage(): React.JSX.Element {
   const { t, i18n } = useTranslation();
   const language = languageOf(i18n.language);
   const { studentId } = useParams({ from: '/portal/$studentId/grades' });
-  const { quarter } = useSearch({ from: '/portal/$studentId/grades' });
+  const { quarter, view = 'daily' } = useSearch({ from: '/portal/$studentId/grades' });
   const navigate = useNavigate({ from: '/portal/$studentId/grades' });
   const grades = useQuery(portalGradesQuery(studentId, quarter));
   const title = <PortalTitle>{t('portal.grades.title')}</PortalTitle>;
@@ -65,6 +69,27 @@ export function PortalGradesPage(): React.JSX.Element {
         </section>
       ) : (
         <>
+          <Segmented
+            label={t('portal.grades.view')}
+            className="w-full [&>label]:flex-1"
+            options={PORTAL_GRADES_VIEWS.map((one) => ({
+              value: one,
+              label: t(`portal.grades.views.${one}`),
+            }))}
+            value={view}
+            onChange={(next) => {
+              void navigate({
+                // The daily view is the page without `view` in its address.
+                search: (old) =>
+                  next === 'quarter'
+                    ? { ...old, view: next }
+                    : old.quarter === undefined
+                      ? {}
+                      : { quarter: old.quarter },
+                replace: true,
+              });
+            }}
+          />
           <div className="flex flex-wrap items-center justify-between gap-3">
             <Segmented
               label={t('portal.grades.quarter')}
@@ -74,7 +99,7 @@ export function PortalGradesPage(): React.JSX.Element {
               }))}
               value={shown.id}
               onChange={(next) => {
-                void navigate({ search: { quarter: next } });
+                void navigate({ search: (old) => ({ ...old, quarter: next }) });
               }}
             />
             <p
@@ -85,7 +110,9 @@ export function PortalGradesPage(): React.JSX.Element {
               {shown.closed ? t('portal.grades.final') : t('portal.grades.provisional')}
             </p>
           </div>
-          {answer.subjects.length === 0 ? (
+          {view === 'daily' ? (
+            <DailyScores subjects={answer.subjects} language={language} />
+          ) : answer.subjects.length === 0 ? (
             <section className={PANEL}>
               <EmptyState text={t('portal.grades.empty')} />
             </section>
@@ -109,19 +136,105 @@ export function PortalGradesPage(): React.JSX.Element {
   );
 }
 
-/** The grade beside a result: the digit as a status label in its tint (This app, Status labels). */
+/**
+ * Every score of the quarter by its lesson date, the newest day first: the parent's "what marks
+ * this week" without opening each subject. Within a day, by subject, then by work. The scores are
+ * the server's; this only orders them.
+ */
+function DailyScores({
+  subjects,
+  language,
+}: {
+  subjects: readonly PortalSubjectGrades[];
+  language: Language;
+}): React.JSX.Element {
+  const { t } = useTranslation();
+  const scores = subjects.flatMap((subject) => subject.scores.map((score) => ({ subject, score })));
+  if (scores.length === 0) {
+    return (
+      <section className={PANEL}>
+        <EmptyState text={t('portal.grades.noScores')} />
+      </section>
+    );
+  }
+  const days = [...new Set(scores.map(({ score }) => score.date))].sort().reverse();
+  return (
+    <>
+      {days.map((day) => (
+        <section
+          key={day}
+          className={PANEL}
+          aria-labelledby={`scores-${day}`}
+          data-scores-day={day}
+        >
+          <h2 id={`scores-${day}`} className={cn(SECTION_TITLE, 'mb-2')}>
+            {dayText(day, language)}
+          </h2>
+          <ul>
+            {scores
+              .filter(({ score }) => score.date === day)
+              .sort(
+                (a, b) =>
+                  a.subject.subject.names[language].localeCompare(
+                    b.subject.subject.names[language],
+                    language,
+                  ) ||
+                  a.score.kind.localeCompare(b.score.kind) ||
+                  a.score.position - b.score.position,
+              )
+              .map(({ subject, score }) => (
+                <li
+                  key={`${subject.subject.id}-${score.kind}-${String(score.position)}`}
+                  className="grid gap-1 border-b border-border py-3 last:border-b-0 last:pb-0"
+                  data-score-row=""
+                >
+                  <span className="flex items-center justify-between gap-3">
+                    <span className="grid min-w-0 gap-0.5">
+                      <span className="flex min-w-0 items-baseline gap-2 font-semibold">
+                        <SubjectSwatch colour={subject.subject.colour} />
+                        <span className="min-w-0 break-words">
+                          {subject.subject.names[language]}
+                        </span>
+                      </span>
+                      <span className="text-sm text-muted-foreground">{workTitle(score, t)}</span>
+                    </span>
+                    <span className="shrink-0 text-right tabular-nums" data-score="">
+                      <span className="block font-bold">
+                        {t('portal.grades.outOf', { score: score.score, total: score.total })}
+                      </span>
+                      <span className="text-sm text-muted-foreground">
+                        {t('portal.grades.percent', { percent: score.percent })}
+                      </span>
+                    </span>
+                  </span>
+                  {score.comment !== null && (
+                    <span className="text-sm text-muted-foreground italic">{score.comment}</span>
+                  )}
+                </li>
+              ))}
+          </ul>
+        </section>
+      ))}
+    </>
+  );
+}
+
+/**
+ * The grade beside a result: "Baho 4", a status label in its tint (This app, Status labels:
+ * "always the digit; colour only helps"), named in words so that "71 4" never reads as two
+ * numbers (owner, 19 November 2026).
+ */
 function GradeLabel({ grade }: { grade: number }): React.JSX.Element {
   const { t } = useTranslation();
   return (
     <span
       className={cn(
-        'inline-grid min-w-8 place-items-center rounded-md px-1.5 py-0.5 font-bold tabular-nums',
+        'inline-flex shrink-0 items-center rounded-md px-2 py-0.5 text-sm font-semibold whitespace-nowrap tabular-nums',
         GRADE_TINT[grade],
       )}
-      aria-label={t('portal.grades.gradeLabel', { grade })}
       data-grade={grade}
     >
-      {grade}
+      {t('portal.grades.gradeLabel', { grade })}
     </span>
   );
 }
@@ -146,10 +259,29 @@ function RowResult({ subject }: { subject: PortalSubjectGrades }): React.JSX.Ele
   }
   return (
     <span className="flex items-center gap-2" data-result="true">
-      <span className="text-[1.0625rem]/6 font-bold tabular-nums">
-        {outcomeText(figures.outcome, t)}
+      <span className="text-[1.0625rem]/6 font-bold whitespace-nowrap tabular-nums">
+        {t('portal.grades.outOf100', { shown: figures.outcome.shown })}
       </span>
       <GradeLabel grade={figures.outcome.grade} />
+    </span>
+  );
+}
+
+/**
+ * The row's second line when the result is not the whole story, in the staff page's own terms
+ * (`labelsOf`): "from attendance only" while attendance is the one part counted (the flag
+ * `attendance_only`), so a low result from attendance alone is read as such. "Provisional" is not
+ * repeated here: the line above the list says it for the open quarter, and the opened row gives
+ * the staff page's labels.
+ */
+function RowNote({ subject }: { subject: PortalSubjectGrades }): React.JSX.Element | null {
+  const { t } = useTranslation();
+  const outcome = subject.figures?.outcome;
+  if (outcome?.kind !== 'number') return null;
+  if (!outcome.flags.includes('attendance_only')) return null;
+  return (
+    <span className="text-sm font-normal text-muted-foreground" data-row-note="">
+      {t('portal.grades.rowAttendanceOnly')}
     </span>
   );
 }
@@ -185,14 +317,16 @@ function SubjectRow({
           }}
         >
           <span className="grid min-w-0 flex-1 gap-0.5">
-            <span className="flex min-w-0 items-center gap-2 font-semibold">
+            <span className="flex min-w-0 items-baseline gap-2 font-semibold">
               <SubjectSwatch colour={subject.subject.colour} />
-              <span className="truncate">{subject.subject.names[language]}</span>
+              <span className="min-w-0 break-words">{subject.subject.names[language]}</span>
             </span>
-            {reopened && (
-              <span className="text-sm text-warning" data-subject-state="provisional">
+            {reopened ? (
+              <span className="text-sm font-normal text-warning" data-subject-state="provisional">
                 {t('portal.grades.reopenedShort')}
               </span>
+            ) : (
+              <RowNote subject={subject} />
             )}
           </span>
           <RowResult subject={subject} />
