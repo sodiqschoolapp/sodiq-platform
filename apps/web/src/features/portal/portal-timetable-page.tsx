@@ -1,25 +1,19 @@
-import { timeText, type PortalExam, type PortalLesson } from '@sodiq/shared';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate, useParams, useSearch } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
-import { EditIcon } from '@/components/icons';
 import { EmptyState, ErrorState, LoadingOutline } from '@/components/states';
 import { PANEL, SECTION_TITLE } from '@/components/ui/control';
 import { cn } from '@/lib/utils';
-import { SubjectSwatch } from '@/features/setup/subject-colour';
-import { schoolDateText, weekdayName } from '@/lib/dates';
-import { portalWeekQuery, weekdayOfDate } from './portal-api';
-import { PortalWeekBar } from './portal-week-bar';
-
-type Language = 'uz' | 'ru' | 'en';
-const languageOf = (language: string): Language =>
-  language === 'ru' || language === 'en' ? language : 'uz';
+import { portalWeekQuery, weekOf } from './portal-api';
+import { ExamRow, LessonRow, dayItems, languageOf } from './portal-lessons';
+import { PortalTitle } from './portal-shell';
+import { DayStrip, WeekNav, dayText, openDay, stripDays } from './portal-week';
 
 /**
  * The timetable page of the portal (task 11.2; `10`: "The child's week, with rooms and teachers,
- * and changes marked"). Day by day for a phone: lessons and exams in time order, each with its
- * subject in its colour, teacher and room; "Changed", "Cancelled" and "Exam" in words with the
- * mark, never by colour alone (`12`).
+ * and changes marked"). Phone first: the week's school days in one row and one day open at a
+ * time, today when it is in the week; each lesson and exam in time order with its subject in its
+ * colour, teacher and room, "Changed" and "Cancelled" in words. The day open is in the address.
  */
 export function PortalTimetablePage(): React.JSX.Element {
   const { t, i18n } = useTranslation();
@@ -27,152 +21,99 @@ export function PortalTimetablePage(): React.JSX.Element {
   const { studentId } = useParams({ from: '/portal/$studentId/timetable' });
   const { date } = useSearch({ from: '/portal/$studentId/timetable' });
   const navigate = useNavigate({ from: '/portal/$studentId/timetable' });
-  const week = useQuery(portalWeekQuery(studentId, date));
+  const week = useQuery(portalWeekQuery(studentId, weekOf(date)));
+  const title = <PortalTitle>{t('portal.timetable.title')}</PortalTitle>;
   if (week.isError) {
     return (
-      <ErrorState
-        error={week.error}
-        onRetry={() => {
-          void week.refetch();
-        }}
-      />
+      <>
+        {title}
+        <ErrorState
+          error={week.error}
+          onRetry={() => {
+            void week.refetch();
+          }}
+        />
+      </>
     );
   }
-  if (week.data === undefined) return <LoadingOutline lines={6} />;
-  const { days, lessons, exams } = week.data;
-  const shown = days.filter((day) => !day.outsideYear);
+  if (week.data === undefined) {
+    return (
+      <>
+        {title}
+        <LoadingOutline lines={6} />
+      </>
+    );
+  }
+  const { days, lessons, exams, monday, today } = week.data;
+  const busy = new Set([...lessons.map((one) => one.date), ...exams.map((one) => one.date)]);
+  const strip = stripDays(monday, busy);
+  const selected = openDay(strip, date, today);
+  const day = days.find((one) => one.date === selected);
+  const items = dayItems(selected, lessons, exams);
+  const quiet = new Set(
+    days.filter((one) => one.dayOff !== null || one.outsideYear).map((one) => one.date),
+  );
   return (
     <>
-      <h1 className="text-[1.75rem]/[2.125rem] font-bold tracking-[-0.01em]">
-        {t('portal.timetable.title')}
-      </h1>
-      <PortalWeekBar
-        monday={week.data.monday}
-        today={week.data.today}
+      {title}
+      <WeekNav
+        monday={monday}
+        today={today}
         onDate={(next) => {
           void navigate({ search: next === undefined ? {} : { date: next } });
         }}
       />
-      {shown.length === 0 ? (
+      {days.every((one) => one.outsideYear) ? (
         <section className={PANEL}>
           <EmptyState text={t('portal.timetable.outsideYear')} />
         </section>
       ) : (
-        shown.map((day) => {
-          const items = [
-            ...lessons
-              .filter((one) => one.date === day.date)
-              .map((lesson) => ({ start: lesson.start, lesson, exam: null })),
-            ...exams
-              .filter((one) => one.date === day.date)
-              .map((exam) => ({ start: exam.start, lesson: null, exam })),
-          ].sort((a, b) => a.start - b.start);
-          return (
-            <section key={day.date} className={PANEL} aria-labelledby={`day-${day.date}`}>
-              <h3 id={`day-${day.date}`} className={cn(SECTION_TITLE, 'mb-3')}>
-                {weekdayName(language, weekdayOfDate(day.date))},{' '}
-                {schoolDateText(day.date, language, false)}
-                {day.date === week.data.today && <> · {t('portal.today')}</>}
-              </h3>
-              {day.dayOff !== null ? (
-                <p>{t('portal.timetable.dayOff', { name: day.dayOff })}</p>
-              ) : items.length === 0 ? (
-                <p className="text-muted-foreground">{t('portal.timetable.noLessons')}</p>
-              ) : (
-                <ul className="grid gap-3">
-                  {items.map((item) =>
-                    item.lesson === null ? (
-                      <ExamRow
-                        key={`exam-${String(item.start)}`}
-                        exam={item.exam}
-                        language={language}
-                      />
-                    ) : (
-                      <LessonRow
-                        key={`lesson-${String(item.start)}-${item.lesson.subject.id}`}
-                        lesson={item.lesson}
-                        language={language}
-                      />
-                    ),
-                  )}
-                </ul>
+        <>
+          <DayStrip
+            days={strip}
+            selected={selected}
+            today={today}
+            quiet={quiet}
+            onSelect={(next) => {
+              void navigate({ search: { date: next }, replace: true });
+            }}
+          />
+          <section className={PANEL} aria-labelledby="portal-day" data-open-day={selected}>
+            <h2 id="portal-day" className={cn(SECTION_TITLE, 'mb-4')}>
+              {dayText(selected, language)}
+              {selected === today && (
+                <span className="font-normal text-muted-foreground">
+                  {' '}
+                  · {t('portal.todayWord')}
+                </span>
               )}
-            </section>
-          );
-        })
+            </h2>
+            {day?.dayOff !== null && day?.dayOff !== undefined ? (
+              <p>{t('portal.timetable.dayOff', { name: day.dayOff })}</p>
+            ) : items.length === 0 ? (
+              <p className="text-muted-foreground">{t('portal.timetable.noLessons')}</p>
+            ) : (
+              <ul>
+                {items.map((item) =>
+                  item.lesson === null ? (
+                    <ExamRow
+                      key={`exam-${String(item.start)}`}
+                      exam={item.exam}
+                      language={language}
+                    />
+                  ) : (
+                    <LessonRow
+                      key={`lesson-${String(item.start)}-${item.lesson.subject.id}`}
+                      lesson={item.lesson}
+                      language={language}
+                    />
+                  ),
+                )}
+              </ul>
+            )}
+          </section>
+        </>
       )}
     </>
-  );
-}
-
-function LessonRow({
-  lesson,
-  language,
-}: {
-  lesson: PortalLesson;
-  language: Language;
-}): React.JSX.Element {
-  const { t } = useTranslation();
-  const cancelled = lesson.state === 'cancelled';
-  return (
-    <li className="grid grid-cols-[4.5rem_1fr] gap-x-3">
-      <span className="text-sm text-muted-foreground tabular-nums">
-        {lesson.lessonNumber === null ? null : (
-          <>
-            {t('portal.timetable.lesson', { n: lesson.lessonNumber })}
-            <br />
-          </>
-        )}
-        {timeText(lesson.start)}–{timeText(lesson.end)}
-      </span>
-      <span className="min-w-0">
-        <span
-          className={
-            cancelled
-              ? 'flex items-center gap-2 line-through'
-              : 'flex items-center gap-2 font-semibold'
-          }
-        >
-          <SubjectSwatch colour={lesson.subject.colour} />
-          {lesson.subject.names[language]}
-        </span>
-        <span className="block text-sm text-muted-foreground">
-          {lesson.teacher ?? t('portal.timetable.teacherToCome')} ·{' '}
-          {lesson.room ?? t('portal.timetable.roomToCome')}
-        </span>
-        {cancelled && (
-          <span className="block text-sm font-semibold">
-            {lesson.exam ? t('portal.timetable.replacedByExam') : t('portal.timetable.cancelled')}
-          </span>
-        )}
-        {lesson.changed && (
-          <span className="flex items-center gap-1 text-sm font-semibold">
-            <EditIcon aria-hidden className="size-4" />
-            {t('portal.timetable.changed')}
-          </span>
-        )}
-      </span>
-    </li>
-  );
-}
-
-function ExamRow({ exam, language }: { exam: PortalExam; language: Language }): React.JSX.Element {
-  const { t } = useTranslation();
-  return (
-    <li className="grid grid-cols-[4.5rem_1fr] gap-x-3">
-      <span className="text-sm text-muted-foreground tabular-nums">
-        {timeText(exam.start)}–{timeText(exam.end)}
-      </span>
-      <span className="min-w-0">
-        <span className="flex items-center gap-2 font-semibold">
-          {exam.subject !== null && <SubjectSwatch colour={exam.subject.colour} />}
-          {t('portal.timetable.exam', { title: exam.title })}
-        </span>
-        <span className="block text-sm text-muted-foreground">
-          {exam.subject === null ? null : <>{exam.subject.names[language]} · </>}
-          {exam.room ?? t('portal.timetable.roomToCome')}
-        </span>
-      </span>
-    </li>
   );
 }

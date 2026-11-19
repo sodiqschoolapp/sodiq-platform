@@ -1,4 +1,4 @@
-import { screen, within } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import type { PortalAttendanceWeek, PortalChildren, PortalGrades } from '@sodiq/shared';
 import { describe, expect, it } from 'vitest';
 import { en } from '@/i18n/locales/en';
@@ -85,6 +85,7 @@ const GRADES = (closed: boolean): PortalGrades => ({
           total: 30,
           percent: 40,
           comment: 'Good start',
+          savedAt: '2026-10-12T13:00:00.000Z',
         },
         {
           date: '2026-10-19',
@@ -95,6 +96,7 @@ const GRADES = (closed: boolean): PortalGrades => ({
           total: 5,
           percent: 80,
           comment: null,
+          savedAt: null,
         },
       ],
       rating: { kind: 'score', score: 77 },
@@ -148,23 +150,48 @@ function portal(language: 'en' | 'ru' = 'en', closed = false, grades = GRADES(cl
   });
 }
 
+/** The row of a subject, opened: its figures and scores below it. */
+async function openRow(id: string): Promise<HTMLElement> {
+  const row = await waitFor(() => {
+    const found = document.querySelector<HTMLElement>(`[data-subject-row="${id}"]`);
+    if (found === null) throw new Error('no row yet');
+    return found;
+  });
+  const button = within(row).getByRole('button');
+  expect(button.getAttribute('aria-expanded')).toBe('false');
+  fireEvent.click(button);
+  expect(button.getAttribute('aria-expanded')).toBe('true');
+  return row;
+}
+
 describe('the portal grades', () => {
-  it('shows the result and grade, the figures, "provisional" on an open quarter, the scores and comments', async () => {
+  it('shows the result and grade in the row, "provisional" on an open quarter, and the figures, scores and comments when opened', async () => {
     portal();
     renderApp(`/portal/${ANVAR}/grades`);
-    const card = await screen.findByRole('region', { name: 'Mathematics' });
-    expect(within(card).getByText('71 · grade 4')).toBeDefined();
-    expect(screen.getByText(en.portal.grades.provisional)).toBeDefined();
+    await screen.findByText(en.portal.grades.provisional);
+    const closedRow = document.querySelector(`[data-subject-row="${maths.id}"]`);
+    expect(closedRow?.querySelector('[data-result]')?.textContent).toBe('714');
+    expect(closedRow?.querySelector('[data-grade]')?.getAttribute('aria-label')).toBe('Grade 4');
+    // The scores are in the row only once it is opened.
+    expect(screen.queryByText('Fractions test')).toBeNull();
+    const card = await openRow(maths.id);
     // The staff page's labels (review decision 4).
     expect(within(card).getByText(new RegExp(en.results.labels.provisional))).toBeDefined();
+    expect(card.querySelector('[data-figure="attendance"]')?.textContent).toBe(
+      `${en.results.columns.attendance}75`,
+    );
     expect(within(card).getByText('Fractions test')).toBeDefined();
-    expect(within(card).getByText('12 of 30 · 40%')).toBeDefined();
+    expect(within(card).getByText('12/30')).toBeDefined();
+    expect(within(card).getByText('40%')).toBeDefined();
     expect(within(card).getByText('Good start')).toBeDefined();
     expect(within(card).getByText('Homework 2')).toBeDefined();
     expect(within(card).getByText('Rating exam: 77')).toBeDefined();
     expect(within(card).getByText('Exam on Friday')).toBeDefined();
-    const only = screen.getByRole('region', { name: 'Spiritual hour' });
-    expect(within(only).getByText(en.portal.grades.attendanceOnly)).toBeDefined();
+    const only = await openRow(assembly.id);
+    expect(within(only).getByText(en.portal.grades.attendanceOnlyShort)).toBeDefined();
+    expect(only.querySelector('[data-figure="attendance"]')?.textContent).toBe(
+      `${en.results.columns.attendance}50`,
+    );
     expect(within(only).queryByText(en.portal.grades.scores)).toBeNull();
   });
 
@@ -184,17 +211,20 @@ describe('the portal grades', () => {
       ),
     });
     renderApp(`/portal/${ANVAR}/grades`);
-    const card = await screen.findByRole('region', { name: 'Mathematics' });
+    const card = await openRow(maths.id);
+    expect(within(card).getByText(en.portal.grades.reopenedShort)).toBeDefined();
     expect(within(card).getByText(en.portal.grades.reopened)).toBeDefined();
-    const other = screen.getByRole('region', { name: 'Spiritual hour' });
+    const other = await openRow(assembly.id);
+    expect(within(other).queryByText(en.portal.grades.reopenedShort)).toBeNull();
     expect(within(other).queryByText(en.portal.grades.reopened)).toBeNull();
   });
 
   it('speaks the parent’s language', async () => {
     portal('ru');
     renderApp(`/portal/${ANVAR}/grades`, 'ru');
-    await screen.findByText('71 · оценка 4');
-    expect(screen.getByText(ru.portal.grades.provisional)).toBeDefined();
+    await screen.findByText(ru.portal.grades.provisional);
+    const row = document.querySelector(`[data-subject-row="${maths.id}"]`);
+    expect(row?.querySelector('[data-grade]')?.getAttribute('aria-label')).toBe('Оценка 4');
     expect(screen.getByRole('link', { name: ru.portal.attendance.title })).toBeDefined();
   });
 });
@@ -212,6 +242,19 @@ describe('the portal attendance', () => {
     expect(within(monday).getByText('08:00–08:45')).toBeDefined();
   });
 
+  it('counts the week’s marks, the exempt lesson as exempt and none as absent', async () => {
+    portal();
+    renderApp(`/portal/${ANVAR}/attendance`);
+    const count = await screen.findByRole('region', { name: 'This week: 2 lessons' });
+    const tile = (mark: string) => count.querySelector(`[data-count="${mark}"] dd`)?.textContent;
+    expect(tile('present')).toBe('0');
+    expect(tile('late')).toBe('1');
+    expect(tile('absent')).toBe('0');
+    expect(tile('exempt')).toBe('1');
+    // A mark the week has none of, other than the three always named, is left out.
+    expect(tile('skipped')).toBeUndefined();
+  });
+
   it('says so for a week with no lesson', async () => {
     fakeApi({
       'GET /api/auth/session': () => json(PARENT()),
@@ -225,6 +268,7 @@ describe('the portal attendance', () => {
   it('speaks the parent’s language', async () => {
     portal('ru');
     renderApp(`/portal/${ANVAR}/attendance`, 'ru');
-    await screen.findByText(ru.portal.attendance.marks.exempt);
+    const monday = await screen.findByRole('region', { name: /Понедельник/ });
+    expect(within(monday).getByText(ru.portal.attendance.marks.exempt)).toBeDefined();
   });
 });

@@ -311,3 +311,53 @@ export async function allPanelActions(panel: Locator): Promise<string[]> {
   await expect(panel).toBeVisible();
   return [...names, ...items];
 }
+
+/** A page of the parent portal by its menu name (19 November 2026: the tab bar and "More"). */
+type PortalPageName =
+  'today' | 'timetable' | 'homework' | 'grades' | 'attendance' | 'rating' | 'announcements';
+
+/**
+ * Opens a page of the parent portal as a parent does: its tab of the tab bar at phone width,
+ * the page under "More" for the rest, or the navy menu from 640 px.
+ */
+export async function openPortalPage(page: Page, name: PortalPageName): Promise<void> {
+  const nav = page.getByRole('navigation', { name: en.portal.pages }).filter({ visible: true });
+  const tab = nav.getByRole('link', { name: en.portal[name].tab, exact: true });
+  const item = nav.getByRole('link', { name: en.portal[name].title, exact: true });
+  if ((await tab.count()) > 0) {
+    await tab.click();
+  } else if ((await item.count()) > 0) {
+    await item.click();
+  } else {
+    await nav.getByRole('button', { name: en.portal.more, exact: true }).click();
+    await page
+      .getByRole('dialog', { name: en.portal.more })
+      .getByRole('link', { name: en.portal[name].title, exact: true })
+      .click();
+  }
+  await expect(page).toHaveURL(new RegExp(`/${name}(\\?.*)?$`));
+}
+
+/** The parent's own account page, from "More" at phone width or the menu's foot. */
+export async function openPortalAccount(page: Page): Promise<void> {
+  const nav = page.getByRole('navigation', { name: en.portal.pages }).filter({ visible: true });
+  const more = nav.getByRole('button', { name: en.portal.more, exact: true });
+  if ((await more.count()) > 0) {
+    await more.click();
+    await page
+      .getByRole('dialog', { name: en.portal.more })
+      .getByRole('link', { name: en.portal.account, exact: true })
+      .click();
+  } else {
+    await page.getByRole('link', { name: en.portal.account, exact: true }).click();
+  }
+  await expect(page).toHaveURL(/\/parent$/);
+}
+
+/** The child switcher at the top of the portal, named for the child shown. */
+export function portalChild(page: Page, first: string, last: string): Locator {
+  return page.getByRole('button', {
+    name: en.portal.switchChild.replace('{{first}}', first).replace('{{last}}', last),
+    exact: true,
+  });
+}

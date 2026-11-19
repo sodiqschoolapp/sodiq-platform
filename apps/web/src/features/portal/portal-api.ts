@@ -119,3 +119,16 @@ export function weekdayOfDate(date: string): 1 | 2 | 3 | 4 | 5 | 6 | 7 {
   const day = new Date(Date.parse(`${date}T00:00:00Z`)).getUTCDay();
   return (day === 0 ? 7 : day) as 1 | 2 | 3 | 4 | 5 | 6 | 7;
 }
+
+/** The Monday of a school date's week (`12`: the week starts on Monday). */
+export function mondayOf(date: string): string {
+  return datePlus(date, 1 - weekdayOfDate(date));
+}
+
+/**
+ * The week a page asks the server for: the Monday of the date in the address, so that a day
+ * chosen inside the week reads the week already read.
+ */
+export function weekOf(date: string | undefined): string | undefined {
+  return date === undefined ? undefined : mondayOf(date);
+}

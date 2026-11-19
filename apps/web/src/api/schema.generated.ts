@@ -199407,6 +199407,8 @@ export interface operations {
                                 total: number;
                                 percent: number;
                                 comment: string | null;
+                                /** Format: date-time */
+                                savedAt: string | null;
                             }[];
                             rating: ({
                                 /** @enum {string} */

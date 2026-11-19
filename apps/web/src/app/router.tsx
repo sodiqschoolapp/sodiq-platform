@@ -65,6 +65,7 @@ import {
   portalTargetSearch,
 } from '@/features/portal/portal-search';
 import { PortalTimetablePage } from '@/features/portal/portal-timetable-page';
+import { PortalTodayPage } from '@/features/portal/portal-today-page';
 import { TelegramStartPage } from '@/features/portal/telegram-start-page';
 import { ResetEntriesPage, resetEntriesSearch } from '@/features/people/reset-entries-page';
 import { PeoplePage } from '@/features/people/people-page';
@@ -299,6 +300,13 @@ const portalIndexRoute = createRoute({
   path: '/',
   validateSearch: portalTargetSearch,
   component: PortalIndexPage,
+});
+
+/** The first page of a child (19 November 2026): today's lessons, homework and scores. */
+const portalTodayRoute = createRoute({
+  getParentRoute: () => portalRoute,
+  path: '$studentId/today',
+  component: PortalTodayPage,
 });
 
 const portalTimetableRoute = createRoute({
@@ -991,6 +999,7 @@ const routeTree = rootRoute.addChildren([
   telegramStartRoute,
   portalRoute.addChildren([
     portalIndexRoute,
+    portalTodayRoute,
     portalTimetableRoute,
     portalHomeworkRoute,
     portalGradesRoute,

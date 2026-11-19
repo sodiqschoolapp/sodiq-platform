@@ -3,9 +3,10 @@ import { Navigate, useSearch } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { EmptyState, LoadingOutline } from '@/components/states';
 import { portalChildrenQuery } from './portal-api';
+import { childOfMenu } from './portal-shell';
 
 /**
- * `/portal`: the timetable of the first child. A parent with no child in scope has no session
+ * `/portal`: the Today page of the child last opened in this tab, else of the first child. A parent with no child in scope has no session
  * (`parent_account_blocked`), so the empty line is only a guard for a moment between two
  * requests (review should-fix 9).
  */
@@ -24,5 +25,11 @@ export function PortalIndexPage(): React.JSX.Element {
       <Navigate to="/portal/$studentId/announcements" params={{ studentId: named.id }} replace />
     );
   }
-  return <Navigate to="/portal/$studentId/timetable" params={{ studentId: first.id }} replace />;
+  return (
+    <Navigate
+      to="/portal/$studentId/today"
+      params={{ studentId: childOfMenu(children.data.children, undefined) ?? first.id }}
+      replace
+    />
+  );
 }

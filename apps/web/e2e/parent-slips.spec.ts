@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { en } from '../src/i18n/locales/en';
 import { accountOf } from './accounts';
-import { changeFirstPassword, heading, languageChooser, signIn } from './steps';
+import { changeFirstPassword, heading, languageChooser, signIn, openPortalAccount } from './steps';
 import { codeNow } from './totp';
 
 // Task 11.1, pull request #292 (`10`, Signing in; `edge/close-relatives`, first passwords): an
@@ -67,12 +67,12 @@ test('an Academic Vice Principal prints the parent slips of a class, and a paren
   await languageChooser(parent).selectOption('en');
   await signIn(parent, en, login, password);
   await changeFirstPassword(parent, en, { login, password });
-  // Task 11.2: a parent lands on the portal, on the child's timetable.
-  const child = parent.getByRole('combobox', { name: en.portal.child, exact: true });
+  // Task 11.2: a parent lands on the portal, on the child's page; one child is named, not a menu.
+  const child = parent.locator('[data-child]');
   await expect(child).toBeVisible();
-  await expect(child.locator('option:checked')).toHaveText('Laylo Yoqubova, 7 Seeded');
+  await expect(child).toHaveText(/Laylo Yoqubova7 Seeded$/);
   await expect(parent.getByRole('navigation', { name: en.layout.menu })).toHaveCount(0);
-  await parent.getByRole('link', { name: en.portal.account, exact: true }).click();
+  await openPortalAccount(parent);
   await expect(heading(parent, en.parent.title)).toBeVisible();
   await expect(parent.getByText('Nigora Yoqubova')).toBeVisible();
   // A staff page sends the parent back to the portal.

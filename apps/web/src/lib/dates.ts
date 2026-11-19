@@ -87,6 +87,25 @@ export function schoolDateText(date: string, language: string, withYear = true):
   }).format(new Date(Date.UTC(year ?? 1970, (month ?? 1) - 1, day ?? 1)));
 }
 
+/**
+ * The days of a week, short: "16–22 November", "16–22-noyabr", "30 November – 6 December" (the
+ * parent portal's week, 19 November 2026). Two school dates, read as days of the calendar.
+ */
+export function weekRangeText(first: string, last: string, language: string): string {
+  if (language === 'uz') {
+    const sameMonth = first.slice(0, 7) === last.slice(0, 7);
+    return sameMonth
+      ? `${String(Number(first.slice(8)))}–${schoolDateText(last, 'uz', false)}`
+      : `${schoolDateText(first, 'uz', false)} – ${schoolDateText(last, 'uz', false)}`;
+  }
+  const format = new Intl.DateTimeFormat(intlLocale(language), {
+    day: 'numeric',
+    month: 'long',
+    timeZone: 'UTC',
+  });
+  return format.formatRange(new Date(`${first}T00:00:00Z`), new Date(`${last}T00:00:00Z`));
+}
+
 /** The name of a month as a label, with a capital: "September", "Sentabr". */
 function monthLabel(date: string, language: string): string {
   const [year, month] = date.split('-').map(Number);

@@ -70,6 +70,29 @@ async function parentsComments(
 }
 
 /**
+ * When each score of the child on the lessons given was last saved (review of pull request #356):
+ * the cell's `changed_at`, keyed by lesson and work. Read in the child's present branch; a cell
+ * the row filter does not show there is left out, and its score has no moment (`null`).
+ */
+async function scoresSaved(
+  transaction: Transaction,
+  studentId: string,
+  lessonIds: readonly string[],
+): Promise<Map<string, string>> {
+  if (lessonIds.length === 0) return new Map();
+  const rows = await transaction
+    .selectFrom('journal_cells')
+    .select(['lesson_id', 'work_id', 'changed_at'])
+    .where('student_id', '=', studentId)
+    .where('work_id', 'is not', null)
+    .where('lesson_id', 'in', [...lessonIds])
+    .execute();
+  return new Map(
+    rows.map((row) => [`${row.lesson_id}|${row.work_id ?? ''}`, row.changed_at.toISOString()]),
+  );
+}
+
+/**
  * The Grades and Attendance pages of the parent portal (task 11.3, pull request #296; `10`,
  * What parents see). The child scope first, on every request (`portal-scope.ts`, 404 for any
  * refusal); then every figure, score and mark from the one staff reader
@@ -99,6 +122,7 @@ export class PortalGradesService {
     const lessonIds = found.lessons.flatMap((one) => one.lessons.map((lesson) => lesson.lessonId));
     const comments = await this.transactions.run([child.branchId], async (transaction) => ({
       lessons: await parentsComments(transaction, child.id, lessonIds),
+      saved: await scoresSaved(transaction, child.id, lessonIds),
       rating:
         quarterShown === null
           ? []
@@ -147,6 +171,7 @@ export class PortalGradesService {
               total: work.total,
               percent: work.percent,
               comment: workComment.get(`${lesson.lessonId}|${work.workId}`) ?? null,
+              savedAt: comments.saved.get(`${lesson.lessonId}|${work.workId}`) ?? null,
             });
           }
         }

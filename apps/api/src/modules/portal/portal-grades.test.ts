@@ -100,9 +100,16 @@ describe('the portal grades and attendance', () => {
 
   const saveOn = async (
     date: string,
-    cells: { lessonId: string; studentId: string; workId?: string; value: number }[],
+    cells: {
+      lessonId: string;
+      studentId: string;
+      workId?: string;
+      value: number;
+      version?: number;
+    }[],
+    time = '18:00:00',
   ) => {
-    t.clock.set(`${date}T18:00:00+05:00`);
+    t.clock.set(`${date}T${time}+05:00`);
     try {
       const writer = await load.classes.account();
       await t.app.get(Transactions).run([s.branch], (transaction) =>
@@ -115,7 +122,7 @@ describe('the portal grades and attendance', () => {
             studentId: cell.studentId,
             workId: cell.workId ?? null,
             value: cell.value,
-            version: null,
+            version: cell.version ?? null,
           })),
         ),
       );
@@ -602,6 +609,8 @@ describe('the portal grades and attendance', () => {
         total: 30,
         percent: 40,
         comment: 'Good start, parents',
+        // Saved the evening of the lesson (`saveOn`, 18:00 Tashkent).
+        savedAt: '2026-10-12T13:00:00.000Z',
       },
       {
         date: '2026-10-19',
@@ -613,9 +622,45 @@ describe('the portal grades and attendance', () => {
         percent: 80,
         // The staff-only comment on this score is not sent.
         comment: null,
+        savedAt: '2026-10-19T13:00:00.000Z',
       },
     ]);
     expect(maths?.ratingComments).toEqual(['Exam on Friday, parents']);
+  });
+
+  // Review of pull request #356: the Today page lists the newest saved scores first, so a score
+  // saved late for an older lesson must carry the moment of its save, not its lesson's date.
+  it('gives each score the moment its cell was last saved, a later save of an old lesson included', async () => {
+    const cell = () =>
+      t.database.migrator
+        .selectFrom('journal_cells')
+        .select('version')
+        .where('lesson_id', '=', lessons.l12)
+        .where('student_id', '=', child)
+        .where('work_id', '=', works.cw12)
+        .executeTakeFirstOrThrow();
+    const resave = async (value: number, time: string) => {
+      const { version } = await cell();
+      await saveOn(
+        '2026-10-26',
+        [{ lessonId: lessons.l12, studentId: child, workId: works.cw12, value, version }],
+        time,
+      );
+    };
+    // The teacher corrects the score of the 12th on the 26th: a late save of an old lesson.
+    await resave(13, '09:30:00');
+    try {
+      const maths = (await gradesOf(child)).subjects.find((one) => one.subject.id === s.subject);
+      const twelfth = maths?.scores.find((one) => one.date === '2026-10-12');
+      const nineteenth = maths?.scores.find((one) => one.date === '2026-10-19');
+      expect(twelfth?.score).toBe(13);
+      // Now the newest saved, although its lesson is the oldest.
+      expect(twelfth?.savedAt).toBe('2026-10-26T04:30:00.000Z');
+      expect(nineteenth?.savedAt).toBe('2026-10-19T13:00:00.000Z');
+    } finally {
+      // The score as it was, for the tests after this one.
+      await resave(12, '09:31:00');
+    }
   });
 
   it('never sends a staff-only comment, another student’s, an exemption’s reason or a Tutor’s reason', async () => {

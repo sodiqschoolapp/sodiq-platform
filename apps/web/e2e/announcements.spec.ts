@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { en } from '../src/i18n/locales/en';
 import { accountOf } from './accounts';
-import { changeFirstPassword, languageChooser, signIn } from './steps';
+import { changeFirstPassword, languageChooser, signIn, openPortalPage } from './steps';
 
 // Task 11.7, pull request #306 (`11`, Announcements and events): the Vice Principal for
 // Spiritual and Moral Education of the portal branch writes an event for "7 Seeded", for staff
@@ -54,8 +54,7 @@ test('an event for a class reaches the calendar of staff and the portal of the c
   await languageChooser(phone).selectOption('en');
   await signIn(phone, en, parent.login, parent.password);
   await changeFirstPassword(phone, en, parent);
-  await phone.getByRole('link', { name: en.portal.announcements.title, exact: true }).click();
-  await expect(phone).toHaveURL(/\/announcements$/);
+  await openPortalPage(phone, 'announcements');
   await expect(phone.getByRole('heading', { name: 'Science fair' })).toBeVisible();
   await expect(phone.getByText('Main hall', { exact: false })).toBeVisible();
   const wide = await phone.evaluate<boolean>(
