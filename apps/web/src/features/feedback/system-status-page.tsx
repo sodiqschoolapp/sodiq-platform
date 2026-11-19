@@ -48,7 +48,7 @@ export function SystemStatusPage() {
           </Button>
         }
       />
-      <div className="grid max-w-5xl gap-6">
+      <div className="grid max-w-5xl grid-cols-[minmax(0,1fr)] gap-6">
         {own.isError ? (
           <section className={PANEL}>
             <ErrorState
@@ -96,7 +96,7 @@ export function SystemStatusPage() {
                         text={t(`systemStatus.uptimeRobot.state_${monitor.state}`)}
                       />
                     </span>
-                    <span className="text-sm text-muted-foreground">
+                    <span className="text-sm break-all text-muted-foreground">
                       {monitor.uptime7d === null
                         ? monitor.url
                         : t('systemStatus.uptimeRobot.uptime', {
