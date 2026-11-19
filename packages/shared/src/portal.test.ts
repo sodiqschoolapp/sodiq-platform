@@ -79,8 +79,11 @@ describe('the portal schemas of grades and attendance (task 11.3)', () => {
       total: 30,
       percent: 40,
       comment: null,
+      savedAt: '2026-10-12T10:15:00.000+05:00',
     };
     expect(portalScoreSchema.safeParse(score).success).toBe(true);
+    expect(portalScoreSchema.safeParse({ ...score, savedAt: null }).success).toBe(true);
+    expect(portalScoreSchema.safeParse({ ...score, savedAt: '12 October' }).success).toBe(false);
     expect(portalScoreSchema.safeParse({ ...score, workId: ID }).success).toBe(false);
     expect(portalScoreSchema.safeParse({ ...score, visibility: 'staff' }).success).toBe(false);
     const grades = {

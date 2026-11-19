@@ -220,6 +220,12 @@ export const portalScoreSchema = z.strictObject({
   percent: z.int().min(0).max(100),
   /** The comment "visible to parents" on this score, or `null` (decision 8). */
   comment: z.string().nullable(),
+  /**
+   * When the score was last saved (the cell's `changed_at`): the Today page lists the newest
+   * saved first, so a score entered late for an older lesson is still among them (review of pull
+   * request #356). `null` when the cell is not readable in the child's present branch.
+   */
+  savedAt: z.iso.datetime({ offset: true }).nullable(),
 });
 
 export type PortalScore = z.infer<typeof portalScoreSchema>;

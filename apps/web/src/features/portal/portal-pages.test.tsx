@@ -9,7 +9,7 @@ import type {
 import { describe, expect, it } from 'vitest';
 import { en } from '@/i18n/locales/en';
 import { ru } from '@/i18n/locales/ru';
-import { fakeApi, json, NORTH, renderApp, sessionOf } from '@/testing/render-app';
+import { fakeApi, json, NORTH, renderApp, sessionOf, type ApiCall } from '@/testing/render-app';
 
 // Task 11.2, pull request #294: the parent portal (`10`, What parents see); its frame, the Today
 // page and the timetable of one day at a time since the redesign of 19 November 2026. All names
@@ -104,6 +104,34 @@ const HOMEWORK: PortalHomeworkWeek = {
   ],
 };
 
+/** The week before: given on Friday for today (listed on Today), and one due before today (not). */
+const LAST_WEEK: PortalHomeworkWeek = {
+  today: '2026-10-26',
+  monday: '2026-10-19',
+  homework: [
+    {
+      givenOn: '2026-10-23',
+      subject: maths,
+      topic: null,
+      title: 'Essay on autumn',
+      number: 1,
+      description: null,
+      dueOn: '2026-10-26',
+      files: [],
+    },
+    {
+      givenOn: '2026-10-19',
+      subject: maths,
+      topic: null,
+      title: 'Old exercise',
+      number: 1,
+      description: null,
+      dueOn: '2026-10-23',
+      files: [],
+    },
+  ],
+};
+
 const ATTENDANCE: PortalAttendanceWeek = {
   today: '2026-10-26',
   monday: '2026-10-26',
@@ -120,7 +148,7 @@ const ATTENDANCE: PortalAttendanceWeek = {
   ],
 };
 
-const score = (date: string, title: string, value: number) => ({
+const score = (date: string, title: string, value: number, savedAt = `${date}T13:00:00.000Z`) => ({
   date,
   kind: 'classwork' as const,
   title,
@@ -129,6 +157,7 @@ const score = (date: string, title: string, value: number) => ({
   total: 10,
   percent: value * 10,
   comment: null,
+  savedAt,
 });
 
 const GRADES: PortalGrades = {
@@ -154,7 +183,8 @@ const GRADES: PortalGrades = {
       year: null,
       // Older first, as the server lists them: the Today page shows the newest first.
       scores: [
-        score('2026-10-05', 'Test 1', 6),
+        // The oldest lesson, its score saved on the morning of today: the newest saved.
+        score('2026-10-05', 'Test 1', 6, '2026-10-26T04:00:00.000Z'),
         score('2026-10-12', 'Test 2', 7),
         score('2026-10-14', 'Test 3', 8),
         score('2026-10-19', 'Test 4', 9),
@@ -168,16 +198,19 @@ const GRADES: PortalGrades = {
 };
 
 function portal(language: 'en' | 'ru' = 'en', lessons = [LESSON]) {
-  return fakeApi({
+  // The homework of the week of the address: the week before for `?date=2026-10-19`.
+  const calls: ApiCall[] = fakeApi({
     'GET /api/auth/session': () => json(PARENT(language)),
     'GET /api/portal/children': () => json(CHILDREN),
     [`GET /api/portal/children/${ANVAR}/timetable`]: () => json(week(lessons)),
     [`GET /api/portal/children/${MALIKA}/timetable`]: () =>
       json({ ...week([]), exams: [] } satisfies PortalWeek),
-    [`GET /api/portal/children/${ANVAR}/homework`]: () => json(HOMEWORK),
+    [`GET /api/portal/children/${ANVAR}/homework`]: () =>
+      json(calls.at(-1)?.query === '?date=2026-10-19' ? LAST_WEEK : HOMEWORK),
     [`GET /api/portal/children/${ANVAR}/attendance`]: () => json(ATTENDANCE),
     [`GET /api/portal/children/${ANVAR}/grades`]: () => json(GRADES),
   });
+  return calls;
 }
 
 const switcher = (child: { first: string; last: string }) =>
@@ -216,17 +249,23 @@ describe('the parent portal', () => {
     expect(await within(homework).findByText('Exercise 5')).toBeDefined();
     expect(within(homework).getByText('Due Friday, 30 October')).toBeDefined();
     expect(within(homework).getByText('Homework 2')).toBeDefined();
+    // Given last Friday for today: listed first, "due today"; last week's one due before today: not.
+    const rows = [...homework.querySelectorAll('li')].map((row) => row.textContent);
+    expect(rows[0]).toBe(`Mathematics${'Essay on autumn'}${en.portal.today.dueToday}`);
+    expect(within(homework).queryByText('Old exercise')).toBeNull();
     const scores = screen.getByRole('region', { name: en.portal.today.latestScores });
     await waitFor(() => {
       expect(
         [...scores.querySelectorAll('li')].map((row) => row.textContent.includes('Test 6')),
       ).toHaveLength(5);
     });
-    // The newest first; the oldest of six is left for the Grades page.
-    const rows = [...scores.querySelectorAll('li')].map((row) => row.textContent);
-    expect(rows[0]).toContain('Test 6');
-    expect(rows[4]).toContain('Test 2');
-    expect(rows.some((row) => row.includes('Test 1'))).toBe(false);
+    // The last saved first: the score of the oldest lesson, saved this morning, leads; then by
+    // the moment saved, and the earliest saved of six is left for the Grades page.
+    const listed = [...scores.querySelectorAll('li')].map((row) => row.textContent);
+    expect(listed[0]).toContain('Test 1');
+    expect(listed[1]).toContain('Test 6');
+    expect(listed[4]).toContain('Test 3');
+    expect(listed.some((row) => row.includes('Test 2'))).toBe(false);
   });
 
   it('names the next school day when today has no lessons', async () => {
@@ -250,7 +289,7 @@ describe('the parent portal', () => {
     expect(within(next).getByText('Day off: Teachers’ day')).toBeDefined();
     expect(within(next).getByText('Mathematics')).toBeDefined();
     const homework = screen.getByRole('region', { name: en.portal.today.homework });
-    expect(within(homework).getByText(en.portal.today.noHomework)).toBeDefined();
+    expect(await within(homework).findByText(en.portal.today.noHomework)).toBeDefined();
   });
 
   it('shows today with the changed mark and the exam in words, and another day when chosen', async () => {

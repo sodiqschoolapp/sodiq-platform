@@ -85,6 +85,7 @@ const GRADES = (closed: boolean): PortalGrades => ({
           total: 30,
           percent: 40,
           comment: 'Good start',
+          savedAt: '2026-10-12T13:00:00.000Z',
         },
         {
           date: '2026-10-19',
@@ -95,6 +96,7 @@ const GRADES = (closed: boolean): PortalGrades => ({
           total: 5,
           percent: 80,
           comment: null,
+          savedAt: null,
         },
       ],
       rating: { kind: 'score', score: 77 },

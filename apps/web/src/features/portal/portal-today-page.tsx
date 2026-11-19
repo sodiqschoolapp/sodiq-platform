@@ -9,6 +9,7 @@ import { SubjectSwatch } from '@/features/setup/subject-colour';
 import { schoolDateText } from '@/lib/dates';
 import { cn } from '@/lib/utils';
 import {
+  datePlus,
   portalAttendanceQuery,
   portalGradesQuery,
   portalHomeworkQuery,
@@ -161,7 +162,11 @@ function LessonsSection({
   );
 }
 
-/** The homework of the week still to hand in (checked today or later), the nearest first. */
+/**
+ * The homework still to hand in (checked today or later), the nearest first: of this week and of
+ * the week before, so that a homework given on Friday for Monday is on Monday's page (review of
+ * pull request #356).
+ */
 function HomeworkSection({
   studentId,
   language,
@@ -171,26 +176,32 @@ function HomeworkSection({
 }): React.JSX.Element {
   const { t } = useTranslation();
   const week = useQuery(portalHomeworkQuery(studentId, undefined));
+  const previousMonday = week.data === undefined ? undefined : datePlus(week.data.monday, -7);
+  const before = useQuery({
+    ...portalHomeworkQuery(studentId, previousMonday ?? ''),
+    enabled: previousMonday !== undefined,
+  });
   const link = (
     <Link to="/portal/$studentId/homework" params={{ studentId }} className={LINK}>
       {t('portal.today.allHomework')}
     </Link>
   );
   let body: React.ReactNode;
-  if (week.isError) {
+  const failed = week.isError ? week : before.isError ? before : null;
+  if (failed !== null) {
     body = (
       <ErrorState
-        error={week.error}
+        error={failed.error}
         onRetry={() => {
-          void week.refetch();
+          void failed.refetch();
         }}
       />
     );
-  } else if (week.data === undefined) {
+  } else if (week.data === undefined || before.data === undefined) {
     body = <LoadingOutline lines={3} />;
   } else {
     const today = week.data.today;
-    const due = week.data.homework
+    const due = [...before.data.homework, ...week.data.homework]
       .filter((one) => (one.dueOn === null ? one.givenOn === today : one.dueOn >= today))
       .sort(
         (a, b) =>
@@ -316,12 +327,22 @@ export function workTitle(score: PortalScore, t: TFunction): string {
   );
 }
 
-/** The newest scores across the subjects: the order of dates, as the server dated them. */
+/**
+ * When a score was saved, as the server answers it (the cell's last save); the start of its
+ * lesson's day when the server has no moment for it.
+ */
+const savedOf = (score: PortalScore): number =>
+  Date.parse(score.savedAt ?? `${score.date}T00:00:00Z`);
+
+/**
+ * The newest scores across the subjects: the last saved first, so a score entered late for an
+ * older lesson is among them (review of pull request #356); the lesson date between equals.
+ */
 function latestScores(
   subjects: readonly PortalSubjectGrades[],
 ): { subject: PortalSubjectGrades; score: PortalScore }[] {
   return subjects
     .flatMap((subject) => subject.scores.map((score) => ({ subject, score })))
-    .sort((a, b) => b.score.date.localeCompare(a.score.date))
+    .sort((a, b) => savedOf(b.score) - savedOf(a.score) || b.score.date.localeCompare(a.score.date))
     .slice(0, LATEST_SCORES);
 }
