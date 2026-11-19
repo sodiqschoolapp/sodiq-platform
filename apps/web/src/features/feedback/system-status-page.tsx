@@ -7,7 +7,7 @@ import { CheckCircleIcon, InfoIcon, WarningIcon } from '@/components/icons';
 import { PageHeader } from '@/components/page-header';
 import { ErrorState, LoadingOutline } from '@/components/states';
 import { Button } from '@/components/ui/button';
-import { PANEL } from '@/components/ui/control';
+import { PANEL, SECTION_TITLE } from '@/components/ui/control';
 import { formatMoment } from '@/lib/dates';
 import { SYSTEM_STATUS_KEY, statusProvidersQuery, systemStatusQuery } from './feedback-reports-api';
 
@@ -216,7 +216,7 @@ function OwnChecks({ status }: { status: SystemStatus }) {
   const statusText = (one: CheckStatus) => t(`systemStatus.status_${one}`);
   return (
     <section className={PANEL} aria-labelledby="system-status-own">
-      <h2 id="system-status-own" className="mb-3 text-lg font-semibold">
+      <h2 id="system-status-own" className={`mb-3 ${SECTION_TITLE}`}>
         {t('systemStatus.own')}
       </h2>
       <dl className="grid gap-x-6 gap-y-3 sm:grid-cols-[auto_1fr]">
@@ -267,7 +267,7 @@ function Branches({ status }: { status: SystemStatus }) {
     moment === null ? none : formatMoment(i18n.language, moment);
   return (
     <section className={PANEL} aria-labelledby="system-status-branches">
-      <h2 id="system-status-branches" className="mb-3 text-lg font-semibold">
+      <h2 id="system-status-branches" className={`mb-3 ${SECTION_TITLE}`}>
         {t('systemStatus.branches')}
       </h2>
       <div className="overflow-x-auto">
@@ -354,7 +354,7 @@ function ProviderPanel<P extends Provider>({
       aria-labelledby={id}
       aria-busy={provider === undefined && !query.isError}
     >
-      <h2 id={id} className="mb-3 text-lg font-semibold">
+      <h2 id={id} className={`mb-3 ${SECTION_TITLE}`}>
         {title}
       </h2>
       {query.isError ? (
