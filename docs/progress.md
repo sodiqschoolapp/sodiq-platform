@@ -2,6 +2,13 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 19 November 2026: the digest names the kind of every score
+
+The owner asked for the kind in the parents' digest too, as in the portal (19 November 2026; the review of pull request #359 noted it).
+
+- A score of a work with its own title reads "Sinf ishi · 10-mashq" / "Uy vazifasi · 10-mashq" in the grades list (`DIGEST_TEXTS.kindTitle` in `packages/shared/src/digest.ts`, the digest's own words in the three languages); a work without a title stays "Sinf ishi 2"; the rating exam is unchanged. The title is escaped like every value.
+- Tests: `digest-message.test.ts` (both kinds in uz, ru and en, a work without a title, an escaped title), `digest.database.test.ts` ("Sinf ishi · Fractions quiz" in the Uzbek digest).
+
 ## 19 November 2026: every score in the portal names its kind
 
 Not a task of the build plan: the owner asked whether a parent can tell classwork from homework when a work's title is only "10-mashq" (19 November 2026). Before, a work with a title showed the title alone.

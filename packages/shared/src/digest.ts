@@ -144,6 +144,11 @@ export interface DigestTexts {
   present: string;
   classwork: (position: number) => string;
   homework: (position: number) => string;
+  /**
+   * A work with its own title, always with its kind: "Sinf ishi · 10-mashq". A title alone does
+   * not say whether the work was done in class or at home (owner, 19 November 2026).
+   */
+  kindTitle: (kind: 'classwork' | 'homework', title: string) => string;
   ratingExam: string;
   corrected: string;
   removed: string;
@@ -222,6 +227,7 @@ const uz: DigestTexts = {
   present: 'kelgan',
   classwork: (position) => `Sinf ishi ${String(position)}`,
   homework: (position) => `Uy vazifasi ${String(position)}`,
+  kindTitle: (kind, title) => `${kind === 'classwork' ? 'Sinf ishi' : 'Uy vazifasi'} · ${title}`,
   ratingExam: 'Reyting imtihoni',
   corrected: 'tuzatildi',
   removed: 'oʻchirildi',
@@ -289,6 +295,8 @@ const ru: DigestTexts = {
   present: 'присутствие',
   classwork: (position) => `Классная работа ${String(position)}`,
   homework: (position) => `Домашняя работа ${String(position)}`,
+  kindTitle: (kind, title) =>
+    `${kind === 'classwork' ? 'Классная работа' : 'Домашняя работа'} · ${title}`,
   ratingExam: 'Рейтинговый экзамен',
   corrected: 'исправлено',
   removed: 'удалено',
@@ -357,6 +365,7 @@ const en: DigestTexts = {
   present: 'present',
   classwork: (position) => `Classwork ${String(position)}`,
   homework: (position) => `Homework ${String(position)}`,
+  kindTitle: (kind, title) => `${kind === 'classwork' ? 'Classwork' : 'Homework'} · ${title}`,
   ratingExam: 'Rating exam',
   corrected: 'corrected',
   removed: 'removed',

@@ -438,7 +438,8 @@ describe('the parents digest', () => {
     expect(text).toContain('<b>Xabarnoma, 19-oktabr</b>');
     expect(text).toContain('12/30');
     expect(text).toContain('4/5');
-    expect(text).toContain('Fractions quiz');
+    // The work's kind before its title, in Uzbek (owner, 19 November 2026).
+    expect(text).toContain('Sinf ishi · Fractions quiz');
     expect(text).toContain('kechikkan');
     expect(text).toContain('Good start, parents');
   });
