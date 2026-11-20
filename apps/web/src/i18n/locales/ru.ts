@@ -1350,6 +1350,10 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       normal_few: '{{count}} правила в норме',
       normal_many: '{{count}} правил в норме',
       normal_other: '{{count}} правила в норме',
+      missing_one: 'В Grafana только {{found}} из {{count}} правила школы',
+      missing_few: 'В Grafana только {{found}} из {{count}} правил школы',
+      missing_many: 'В Grafana только {{found}} из {{count}} правил школы',
+      missing_other: 'В Grafana только {{found}} из {{count}} правила школы',
     },
     sentry: {
       title: 'Ошибки',

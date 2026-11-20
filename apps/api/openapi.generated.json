@@ -1141731,6 +1141731,26 @@
                                   "additionalProperties": false
                                 }
                               ]
+                            },
+                            "schoolRules": {
+                              "type": "object",
+                              "properties": {
+                                "found": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 9007199254740991
+                                },
+                                "of": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 9007199254740991
+                                }
+                              },
+                              "required": [
+                                "found",
+                                "of"
+                              ],
+                              "additionalProperties": false
                             }
                           },
                           "required": [
@@ -1141739,7 +1141759,8 @@
                             "attention",
                             "dashboardUrl",
                             "rules",
-                            "history"
+                            "history",
+                            "schoolRules"
                           ],
                           "additionalProperties": false
                         }

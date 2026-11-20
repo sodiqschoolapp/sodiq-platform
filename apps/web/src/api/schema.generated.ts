@@ -205667,6 +205667,10 @@ export interface operations {
                                 /** @enum {string} */
                                 state: "unreadable";
                             };
+                            schoolRules: {
+                                found: number;
+                                of: number;
+                            };
                         };
                         sentry: {
                             /** @enum {string} */

@@ -12,6 +12,7 @@ import {
 } from '@sodiq/shared';
 import { z } from 'zod';
 import type { StatusProvidersConfig } from '../config/config.js';
+import { ALERT_RULES } from './alert-rules.js';
 
 /**
  * What the calls to the outside services are sent through: the network, or a fake in the tests.
@@ -32,6 +33,14 @@ const UPTIMEROBOT_MONITORS = 'https://api.uptimerobot.com/v2/getMonitors';
 
 /** The most lines of Grafana's history read for a period; at the limit, the list says it is cut. */
 export const GRAFANA_HISTORY_LIMIT = 500;
+
+/**
+ * The names of the school's own Grafana rules, the ones the owner imported (`alert-rules.ts`,
+ * docs/monitoring.md step 4). The panel reads only these: a rule Grafana or an app of it adds to
+ * the stack (Asserts' `asserts_up`, which fires for ever by design) is left out of the rows, the
+ * history and the attention count (owner, 20 November 2026; pull request #364).
+ */
+const SCHOOL_RULES: ReadonlySet<string> = new Set(ALERT_RULES.map((rule) => rule.alert));
 
 /** The most issues Sentry answers for a period. */
 const SENTRY_LIMIT = 10;
@@ -451,10 +460,13 @@ export class StatusProviderReader {
         const historyAnswer: unknown =
           historyCall.status === 'fulfilled' ? historyCall.value : undefined;
         const answer = grafanaAnswer.parse(rulesAnswer);
-        // A recording rule raises nothing.
+        // A recording rule raises nothing; a rule that is not the school's is not read.
         const alerting = answer.data.groups
           .flatMap((group) => group.rules)
-          .filter((rule) => rule.type === undefined || rule.type === 'alerting');
+          .filter(
+            (rule) =>
+              (rule.type === undefined || rule.type === 'alerting') && SCHOOL_RULES.has(rule.name),
+          );
         const rules = alerting
           .map((rule) => {
             const state = (rule.state ?? '').toLowerCase();
@@ -485,19 +497,20 @@ export class StatusProviderReader {
           if (firings === null) {
             this.warn('grafana', 'its history is of another shape');
           } else {
+            const ours = firings.items.filter((firing) => SCHOOL_RULES.has(firing.rule));
             const before = stillFiring(
               alerting.map((rule) => ({
                 name: rule.name,
                 state: rule.state ?? '',
                 alerts: rule.alerts,
               })),
-              firings.items,
+              ours,
               from * 1000,
             );
             history = {
               state: 'read',
               // The ones that fired earlier and still fire, after those of the period.
-              items: [...firings.items, ...before].sort((one, other) =>
+              items: [...ours, ...before].sort((one, other) =>
                 newestFirst(one.firedAt, other.firedAt),
               ),
               cut: firings.lines >= GRAFANA_HISTORY_LIMIT,
@@ -512,6 +525,10 @@ export class StatusProviderReader {
           dashboardUrl,
           rules,
           history,
+          schoolRules: {
+            found: new Set(rules.map((rule) => rule.name)).size,
+            of: SCHOOL_RULES.size,
+          },
         };
       },
       dashboardUrl,

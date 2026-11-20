@@ -1332,6 +1332,9 @@ export const en = {
       health_error: 'Its check fails',
       normal_one: '{{count}} rule normal',
       normal_other: '{{count}} rules normal',
+      // Fewer of the school's rules than the repository defines (pull request #364).
+      missing_one: "Only {{found}} of the school's {{count}} rule is in Grafana",
+      missing_other: "Only {{found}} of the school's {{count}} rules are in Grafana",
     },
     sentry: {
       title: 'Errors',

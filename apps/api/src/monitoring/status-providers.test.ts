@@ -132,6 +132,26 @@ const GRAFANA_ANSWER = {
           { name: 'requests:rate', type: 'recording', health: 'ok' },
         ],
       },
+      // Grafana Cloud's Asserts app adds a rule of its own whose query is the constant 1: it fires
+      // for ever by design and is not the school's (owner, 20 November 2026; pull request #364).
+      {
+        name: 'AssertsHealth',
+        rules: [
+          {
+            name: 'asserts_up',
+            type: 'alerting',
+            state: 'firing',
+            health: 'error',
+            alerts: [
+              {
+                labels: { alertname: 'asserts_up' },
+                state: 'Alerting',
+                activeAt: '2026-11-19T04:50:00Z',
+              },
+            ],
+          },
+        ],
+      },
     ],
   },
 };
@@ -210,6 +230,8 @@ const GRAFANA_HISTORY = frame([
       'JobsFailing',
     ),
   ],
+  // Not the school's rule: left out of the history (pull request #364).
+  [NOW_MS - 10 * MIN_MS, line('Normal', 'Alerting', {}, 'asserts_up')],
 ]);
 
 const SENTRY_ANSWER = [
@@ -348,8 +370,8 @@ describe('the outside services of the System status page', () => {
         { name: 'old', url: 'https://old.example.org/', state: 'paused', uptime: null },
       ],
     });
-    // Firing first, then pending, then normal; the recording rule left out; a firing rule and a
-    // rule whose evaluation fails need attention, a pending one not yet.
+    // Firing first, then pending, then normal; the recording rule and Asserts' `asserts_up` left
+    // out; a firing rule and a rule whose evaluation fails need attention, a pending one not yet.
     expect(read.grafana).toMatchObject({
       state: 'connected',
       checkedAt,
@@ -362,7 +384,10 @@ describe('the outside services of the System status page', () => {
         { name: 'CellSavesSlow', state: 'normal', health: 'ok' },
         { name: 'JobsFailing', state: 'normal', health: 'no_data' },
       ],
+      // Five of the school's 20 rules are in this answer.
+      schoolRules: { found: 5, of: 20 },
     });
+    expect(read.grafana.state === 'connected' && read.grafana.rules).toHaveLength(5);
     expect(read.sentry).toEqual({
       state: 'connected',
       checkedAt,
@@ -529,6 +554,55 @@ describe('the outside services of the System status page', () => {
       });
       // A firing that recovered already never raises the count: still the 2 rules of now.
       expect(read.grafana.attention).toBe(2);
+    });
+
+    // Pull request #364 (owner, 20 November 2026): Grafana Cloud's Asserts app added
+    // `asserts_up`, which fires for ever, so the page said "needs attention" for good.
+    it("reads only the school's rules: another is no row, no line and no attention, each found once", async () => {
+      const answer = {
+        status: 'success',
+        data: {
+          groups: [
+            {
+              name: 'AssertsHealth',
+              rules: [
+                {
+                  name: 'asserts_up',
+                  type: 'alerting',
+                  state: 'firing',
+                  health: 'error',
+                  alerts: [{ labels: {}, state: 'Alerting', activeAt: '2026-11-19T04:50:00Z' }],
+                },
+                { name: 'BackupOld', type: 'alerting', state: 'inactive', health: 'ok' },
+              ],
+            },
+            // The same rule imported twice, into two folders: one rule found.
+            {
+              name: 'sodiq-production',
+              rules: [{ name: 'BackupOld', type: 'alerting', state: 'inactive', health: 'ok' }],
+            },
+          ],
+        },
+      };
+      const history = frame([
+        [NOW_MS - 40 * MIN_MS, line('Normal', 'Alerting', {}, 'asserts_up')],
+        [NOW_MS - 30 * MIN_MS, line('Alerting', 'Normal', {}, 'asserts_up')],
+        [NOW_MS - 10 * MIN_MS, line('Normal', 'Alerting', {}, 'asserts_up')],
+      ]);
+      const { fetcher } = fakeNetwork((url) =>
+        url.includes('/api/v1/rules/history')
+          ? { status: 200, body: history }
+          : url.includes('grafana')
+            ? { status: 200, body: answer }
+            : happy(url),
+      );
+      const read = await new StatusProviderReader(CONNECTED, new FixedClock(NOW), fetcher).read();
+      if (read.grafana.state !== 'connected') throw new Error('Not read.');
+
+      expect(read.grafana.rules.map((rule) => rule.name)).toEqual(['BackupOld', 'BackupOld']);
+      expect(read.grafana.attention).toBe(0);
+      expect(read.grafana.history).toEqual({ state: 'read', cut: false, items: [] });
+      expect(read.grafana.schoolRules).toEqual({ found: 1, of: 20 });
     });
 
     it.each([
