@@ -65,7 +65,10 @@ test('a teacher opens the journal from today’s lesson on the home page and rea
   const work = page.getByRole('button', { name: /^Work: / }).last();
   await expect(work).toBeVisible();
   const column = await work.locator('xpath=ancestor::*[@col-id][1]').getAttribute('col-id');
-  const workName = ((await work.getAttribute('aria-label')) ?? '').replace(/^Work: /, '');
+  // The header names a work added by hand "… · unplanned"; the editor by its name alone.
+  const workName = ((await work.getAttribute('aria-label')) ?? '')
+    .replace(/^Work: /, '')
+    .replace(` · ${en.journal.works.unplanned}`, '');
   // The owner, 20 November 2026: the work's header opens the lesson editor at its total.
   await work.click();
   const dialog = page.getByRole('dialog');

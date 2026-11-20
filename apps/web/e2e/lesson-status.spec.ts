@@ -9,7 +9,7 @@ import { currentPage, changeFirstPassword, heading, languageChooser, signIn } fr
 // can set those cells to 'not graded' in one click, which completes the lesson" (task 8.7).
 // The "Status browser test branch" holds one lesson today at 00:05 with a classwork of total
 // 10 and two students. All names are invented.
-test('a teacher completes today’s lesson with "Not graded", and the journal and the home page agree', async ({
+test('a teacher completes today’s lesson with a "-" for not graded, and the journal and the home page agree', async ({
   page,
 }) => {
   test.setTimeout(60_000);

@@ -52,5 +52,8 @@ test('the teacher writes the topic and gives a homework in the lesson editor and
   await expect(row).toHaveCount(1);
   await row.getByRole('button').first().click();
   const panel = page.getByRole('complementary', { name: 'Row' });
-  await expect(panel.getByText('Measure the route', { exact: true })).toBeVisible();
+  // The work added in the journal is marked so in the row ("· added in the journal").
+  const homework = panel.locator('li').filter({ hasText: 'Measure the route' });
+  await expect(homework).toHaveCount(1);
+  await expect(homework).toContainText(en.plans.plan.addedInJournal);
 });

@@ -8,7 +8,7 @@ import { currentPage, changeFirstPassword, heading, languageChooser, signIn } fr
 // the class": "the next lesson gets no column for a homework not given" (task 8.8, Done when).
 // The "Plans in the journal browser test branch" holds a lesson yesterday and one today at
 // 00:05, with the homework "Read the map" given yesterday. All names are invented.
-test('a teacher marks a homework "not given" on the lesson card, and the next lesson loses its column', async ({
+test('a teacher deletes a homework given at a lesson in the lesson editor, and the next lesson loses its column', async ({
   page,
 }) => {
   test.setTimeout(60_000);
