@@ -3,6 +3,7 @@ import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { en } from '@/i18n/locales/en';
 import { fakeApi, json, NORTH, refusal, renderApp, sessionOf, SOUTH } from '@/testing/render-app';
+import { setWindowWidth } from '@/testing/window-width';
 
 const uid = (n: number): string => `0199a000-0000-7000-8000-${String(n).padStart(12, '0')}`;
 
@@ -560,5 +561,80 @@ describe('the teaching home page', () => {
       });
       expect(calls.filter((call) => call.route === 'GET /api/timetable/home')).toHaveLength(asked);
     });
+  });
+});
+
+// Owner, 20 November 2026: on a phone the table of today scrolled sideways to its journal button,
+// "an exact copy of the laptop version". A card a lesson, and the week as a list by day.
+describe('the teaching home page on a phone', () => {
+  const PHONE_DAY = [
+    lesson(1, { journalId: uid(900), lessonNumber: 1 }),
+    lesson(2, {
+      start: 540,
+      end: 585,
+      startsAt: '2026-10-19T04:00:00.000Z',
+      endsAt: '2026-10-19T04:45:00.000Z',
+      journalId: uid(901),
+      lessonNumber: 2,
+      unit: { kind: 'class', id: uid(102), name: '8 Yale' },
+    }),
+    lesson(3, {
+      date: '2026-10-20',
+      today: false,
+      startsAt: '2026-10-20T03:00:00.000Z',
+      endsAt: '2026-10-20T03:45:00.000Z',
+    }),
+  ];
+
+  it('lists today as cards with a full-width journal button, the lesson happening now marked', async () => {
+    setWindowWidth(390);
+    const calls = openHome(() =>
+      json(homeOf({ now: '2026-10-19T04:10:00.000Z', lessons: PHONE_DAY, busy: [busy] })),
+    );
+    const list = await waitFor(() => {
+      const found = document.querySelector('[data-home-today-list]');
+      expect(found).not.toBeNull();
+      return found as HTMLElement;
+    });
+    expect(document.querySelector('[data-home-today] table')).toBeNull();
+    const cards = [...list.querySelectorAll<HTMLElement>('[data-lesson]')];
+    expect(cards.map((one) => one.getAttribute('data-lesson'))).toEqual([uid(301), uid(302)]);
+    expect(cards[0]?.textContent).toContain('lesson 1 · 08:00–08:45');
+    expect(cards[0]?.textContent).toContain('7 Oxford · Mathematics');
+    expect(cards[0]?.textContent).toContain(`${en.timetable.day.room} Room 12`);
+    expect(list.querySelector('[data-busy]')?.textContent).toContain('Busy in East');
+    // The lesson happening now: the today fill, named the current time, its button pulsing.
+    expect(cards[1]?.getAttribute('aria-current')).toBe('time');
+    expect(cards[1]?.className).toContain('bg-today');
+    expect(cards[0]?.getAttribute('aria-current')).toBeNull();
+    const nowButton = cards[1]?.querySelector('button');
+    expect(nowButton?.className.split(/\s+/)).toEqual(
+      expect.arrayContaining(['w-full', 'motion-safe:animate-now-pulse']),
+    );
+    expect(cards[0]?.querySelector('button')?.className).not.toContain('animate-now-pulse');
+    fireEvent.click(cards[0]?.querySelector('button') as HTMLButtonElement);
+    await waitFor(() => {
+      expect(calls.some((call) => call.route === `GET /api/journal/journals/${uid(900)}`)).toBe(
+        true,
+      );
+    });
+  });
+
+  it('lists the week by day, without a table', async () => {
+    setWindowWidth(390);
+    openHome(() => json(homeOf({ lessons: PHONE_DAY })));
+    const week = await waitFor(() => {
+      const found = document.querySelector('[data-home-week-list]');
+      expect(found).not.toBeNull();
+      return found as HTMLElement;
+    });
+    expect(document.querySelector('[data-home-week] table')).toBeNull();
+    expect([...week.querySelectorAll('h3')].map((one) => one.textContent)).toEqual([
+      'Monday, 19 October',
+      'Tuesday, 20 October',
+    ]);
+    expect(week.querySelectorAll('li')[0]?.textContent).toBe(
+      '08:00–08:45Mathematics · 7 Oxford · Room 12',
+    );
   });
 });

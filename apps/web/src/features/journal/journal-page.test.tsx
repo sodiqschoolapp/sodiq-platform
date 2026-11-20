@@ -6,6 +6,7 @@ import { en } from '@/i18n/locales/en';
 import { fakeApi, json, NORTH, refusal, renderApp, sessionOf } from '@/testing/render-app';
 import { showEveryJournalColumn } from '@/testing/journal-columns';
 import { OPEN_LOCK } from '@/testing/edit-lock';
+import { setWindowWidth } from '@/testing/window-width';
 
 const uid = (n: number): string => `0199e000-0000-7000-8000-${String(n).padStart(12, '0')}`;
 
@@ -1096,5 +1097,89 @@ describe('the export of a journal', () => {
       expect(document.querySelector('[data-journal-header="true"]')).not.toBeNull();
     });
     expect(screen.queryByRole('button', { name: en.timetable.views.excel })).toBeNull();
+  });
+});
+
+// Owner, 20 November 2026: today's lesson could not be told from the others, and the header of a
+// lesson with attendance only showed "Complet…" and "No. 2 · R…".
+describe("today's lesson and the short header of an attendance-only lesson", () => {
+  const groupOf = (words: string) =>
+    [...document.querySelectorAll<HTMLElement>('.ag-header-group-cell')].find((one) =>
+      (one.textContent ?? '').includes(words),
+    );
+  const withStatus = (today: string): JournalGrid => ({
+    ...GRID,
+    today,
+    lessons: GRID.lessons.map((one) =>
+      one.id === uid(61)
+        ? { ...one, status: 'complete' as const, number: 2, topic: 'Rivers' }
+        : one,
+    ),
+  });
+
+  it('heads an attendance-only lesson with "Mon, 19.10" over "lesson 1", the status as an icon', async () => {
+    open(withStatus('2026-10-27'));
+    const header = await waitFor(() => {
+      const found = groupOf('19 October');
+      expect(found).toBeDefined();
+      return found as HTMLElement;
+    });
+    const compact = header.querySelector('[data-lesson-header="compact"]');
+    expect(compact).not.toBeNull();
+    const shown = [...(compact?.querySelectorAll(':scope > [aria-hidden="true"]') ?? [])].map(
+      (one) => one.textContent,
+    );
+    expect(shown).toEqual(['Mon, 19.10', 'lesson 1']);
+    expect(compact?.querySelector('[data-status-icon="complete"]')).not.toBeNull();
+    // The whole text for a screen reader and in the tooltip: date, status, number and topic.
+    expect(compact?.querySelector('.sr-only')?.textContent).toBe(
+      `19 October, Monday · lesson 1 · ${en.journal.lessonStatus.complete} · No. 2 · Rivers`,
+    );
+    expect(compact?.getAttribute('title')).toContain(en.journal.lessonStatus.complete);
+    // A lesson with works keeps the long header.
+    expect(groupOf('12 October, Monday')?.querySelector('[data-lesson-header]')).toBeNull();
+    expect(compact?.getAttribute('aria-current')).toBeNull();
+  });
+
+  it("marks today's lesson: Today on the orange header and its cells in the today fill", async () => {
+    open(withStatus('2026-10-19'));
+    const header = await waitFor(() => {
+      const found = document.querySelector('.ag-header-group-cell [aria-current="date"]');
+      expect(found).not.toBeNull();
+      return found as HTMLElement;
+    });
+    expect(header.querySelector('[aria-hidden="true"]')?.textContent).toBe(en.journal.grid.today);
+    expect(header.closest('.ag-header-group-cell')?.className).toContain('bg-primary');
+    expect(cellOf(uid(101), `${uid(61)}:a`)?.className).toContain('bg-today');
+    expect(document.querySelector(`.ag-header-cell[col-id="${uid(61)}:a"]`)?.className).toContain(
+      'bg-today',
+    );
+    // Another day's lesson keeps its look.
+    expect(cellOf(uid(101), `${uid(60)}:a`)?.className).not.toContain('bg-today');
+    expect(document.querySelectorAll('[aria-current="date"]')).toHaveLength(1);
+  });
+});
+
+// Owner, 20 November 2026: on a phone the selectors filled the screen above the lesson.
+describe('the journal on a phone', () => {
+  it('folds the selectors under one line and shows lesson mode, without its switch', async () => {
+    setWindowWidth(390);
+    open(GRID, `/journal/${JOURNAL}?date=2026-10-19`);
+    await waitFor(() => {
+      expect(document.querySelector(`[data-lesson-mode="${uid(61)}"]`)).not.toBeNull();
+    });
+    const folded = document.querySelector<HTMLDetailsElement>('[data-journal-choose]');
+    expect(folded?.open).toBe(false);
+    expect(folded?.querySelector('summary')?.textContent).toBe(en.journal.lessonMode.choose);
+    // The selectors are inside it; the grid and the mode switch are not drawn.
+    expect(folded?.querySelector('select')).not.toBeNull();
+    expect(screen.queryByRole('radio', { name: en.journal.page.lessonMode })).toBeNull();
+    expect(document.querySelector('[data-journal-grid]')).toBeNull();
+  });
+
+  it('keeps the selectors as they are on a wider screen', async () => {
+    open(GRID);
+    await screen.findByRole('radio', { name: en.journal.page.lessonMode });
+    expect(document.querySelector('[data-journal-choose]')).toBeNull();
   });
 });

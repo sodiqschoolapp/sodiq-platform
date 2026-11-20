@@ -18,6 +18,35 @@ Not written yet for most of the journal: the journal grid, attendance, marks, wo
 
 The exported and printed journal uses the same labels, under the heading **Sinf jurnali** in its language.
 
+## Today's lesson and the short headers
+
+<!-- Sources: spec 07 (Opening a journal; Layout, Lessons row: "A lesson with no classwork and no homework is one narrow attendance column"); design-system (--today); the owner's request of 20 November 2026 -->
+
+**What it is.** In the journal grid, today's lesson stands out from the others: its header is orange and says **Bugun** (**Сегодня**, **Today**), and its whole column is in the light "today" colour. A lesson with attendance only is one narrow column, so its header is short: the weekday and the date, "Du, 16.11", over the lesson of the day, "3-dars", with the status as a small sign: a tick for Complete, a clock for In progress, a lock for Locked incomplete and an empty circle for Nothing entered.
+
+**How it works.**
+
+1. The journal opens at the lesson nearest to today, as before; today's lesson is the orange one.
+2. Resting the pointer on a short header shows its whole text: date, weekday, lesson of the day, status, lesson number and topic. A screen reader reads the whole text too.
+3. A lesson with classwork or homework keeps its long header, "16-noyabr, Dushanba · 3-dars", with the status in words.
+
+## The journal on a phone
+
+<!-- Sources: spec 07 (Lesson mode), spec 12 (Devices: "Phone: lesson mode for the journal"), spec 06 (Views and outputs: teacher home page); the owner's request of 20 November 2026 -->
+
+**What it is.** On a phone, the journal shows one lesson at a time, as a list of students (lesson mode). The selectors (class, subject, year, quarter, month, search and filter) are folded under one line, **Sinf, fan va davr**, so the lesson is near the top of the screen.
+
+**How it works.**
+
+1. The arrows beside the lesson's date go to the lesson before and after. Today's lesson says **Bugun** in place of the weekday.
+2. A lesson with classwork or homework is entered one column at a time, in this order: attendance, then each classwork, then each homework. The buttons above the list choose the column: **Davomat**, then each work by its tag and title.
+3. In **Davomat**, each student has the four large buttons 1, 0, 2 and 3, and **Hammasi keldi** marks every student not yet marked. A mark being saved makes only that student's buttons wait; the next student can be marked at once.
+4. In a work's column, each student has one large number field, with the student's attendance mark under the name and the percent beside the field once it is saved. The button above the list shows the work's total and opens the work to set or change it. The keyboard's **Next** (Enter) saves the number and goes to the next student. A number above the total, or not whole, stays in its field outlined in red and is not saved until it is corrected.
+5. **Keyingisi: …** at the end of the list goes on to the next column.
+6. A lesson the person may only read shows each student's mark and numbers on one row.
+
+**The teaching home on a phone.** Today's lessons are a list of cards: the lesson of the day and the time, the class or group and the subject, the room, the status, and **Jurnalni ochish** across the card. The lesson happening now has the light "today" colour, and its button is orange and pulses gently. The week is a list by day.
+
 ## Lesson status
 
 <!-- Sources: spec 07 (Lesson status, Exemptions), edge/journal (Entering, rows 1 to 3 and 15; Locks), edge/00-definitions (Held lesson, Data on a lesson, Expected student, Lock moment); task 8.7, decisions 2, 7 and 8 -->

@@ -327,3 +327,55 @@ describe('attendance entry in lesson mode', () => {
     expect(screen.queryByRole('button', { name: en.journal.entry.allPresent })).toBeNull();
   });
 });
+
+// Owner, 20 November 2026: on a phone, marks tapped one after another were lost while the first
+// was saved, as every button waited for it.
+describe('attendance entry in lesson mode while a mark is saved', () => {
+  it("keeps the other students' buttons free and only the saved student's waiting", async () => {
+    fakeApi({
+      'GET /api/auth/session': () =>
+        json(sessionOf({ assignments: [{ role: 'teacher', branchId: NORTH.id }] })),
+      [`GET /api/journal/journals/${JOURNAL}`]: () => json(GRID),
+      // The first save never answers: it stays on its way.
+      [`POST /api/journal/lessons/${LESSON}/attendance`]: () => new Promise<Response>(() => {}),
+    });
+    renderApp(`/journal/${JOURNAL}?mode=lesson&date=2026-10-27`);
+    const rowOf = (id: string) =>
+      waitFor(() => {
+        const found = document.querySelector<HTMLElement>(`[data-student="${id}"]`);
+        expect(found).not.toBeNull();
+        return found as HTMLElement;
+      });
+    const first = await rowOf(uid(101));
+    fireEvent.click(within(first).getByRole('button', { name: `0: ${en.journal.marks.absent}` }));
+    await waitFor(() => {
+      expect(
+        within(first)
+          .getAllByRole('button')
+          .every((one) => (one as HTMLButtonElement).disabled),
+      ).toBe(true);
+    });
+    const second = await rowOf(uid(102));
+    expect(
+      within(second)
+        .getAllByRole('button')
+        .every((one) => !(one as HTMLButtonElement).disabled),
+    ).toBe(true);
+  });
+
+  it('makes every button wait while "All present" is on its way', async () => {
+    fakeApi({
+      'GET /api/auth/session': () =>
+        json(sessionOf({ assignments: [{ role: 'teacher', branchId: NORTH.id }] })),
+      [`GET /api/journal/journals/${JOURNAL}`]: () => json(GRID),
+      [`POST /api/journal/lessons/${LESSON}/all-present`]: () => new Promise<Response>(() => {}),
+    });
+    renderApp(`/journal/${JOURNAL}?mode=lesson&date=2026-10-27`);
+    fireEvent.click(await screen.findByRole('button', { name: en.journal.entry.allPresent }));
+    await waitFor(() => {
+      const buttons = [...document.querySelectorAll<HTMLButtonElement>('[data-student] button')];
+      expect(buttons.length).toBe(8);
+      expect(buttons.every((one) => one.disabled)).toBe(true);
+    });
+  });
+});

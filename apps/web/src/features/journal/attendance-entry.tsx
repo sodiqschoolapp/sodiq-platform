@@ -72,6 +72,12 @@ export interface AttendanceEntry {
   stateOf: (lessonId: string, studentId: string) => SaveState | undefined;
   /** A save or "all present" is on its way. */
   busy: boolean;
+  /**
+   * "All present" or "copy attendance" is on its way: every cell of the lesson waits. A single
+   * mark leaves the other students' buttons free, so marks tapped one after another on a phone
+   * are not lost while the first is saved (owner, 20 November 2026).
+   */
+  bulk: boolean;
 }
 
 interface Notice {
@@ -278,6 +284,7 @@ export function useAttendanceEntry(
       },
       stateOf: (lessonId, studentId) => states.get(cellKey(lessonId, studentId)),
       busy: saving || filling || copying,
+      bulk: filling || copying,
     }),
     [grid.lessons, saveMark, fillAll, copyMarks, states, saving, filling, copying],
   );

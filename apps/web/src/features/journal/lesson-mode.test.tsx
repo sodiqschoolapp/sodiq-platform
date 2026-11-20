@@ -171,6 +171,14 @@ const rowOf = async () =>
     return found as HTMLElement;
   });
 
+/**
+ * Lesson mode enters one column at a time on a phone (owner, 20 November 2026): the work's column
+ * is chosen first (requirement changed: the fields stood on every row at once).
+ */
+const chooseWork = () => {
+  fireEvent.click(screen.getByRole('button', { name: 'Classwork: Test' }));
+};
+
 // Task 10.7: the field's name says the work's kind in full (requirement changed).
 const fieldName = en.journal.lessonMode.score
   .replace('{{work}}', 'Classwork: Test')
@@ -181,10 +189,17 @@ const fieldName = en.journal.lessonMode.score
 describe('the numbers of works in lesson mode', () => {
   it('saves a number typed for a work when the field is left, on the version read', async () => {
     const calls = open('2026-10-27');
+    await rowOf();
+    chooseWork();
     const row = await rowOf();
     const field = within(row).getByRole('textbox', { name: fieldName });
-    // Task 10.7: the field of a work carries the tag of its kind.
-    expect(row.querySelector('[data-work-kind="classwork"]')?.textContent).toBe('C');
+    // Task 10.7: the column of a work carries the tag of its kind (on its button since the
+    // one-column layout of 20 November 2026; the row holds the field).
+    expect(
+      screen
+        .getByRole('button', { name: 'Classwork: Test' })
+        .querySelector('[data-work-kind="classwork"]')?.textContent,
+    ).toBe('C');
     fireEvent.change(field, { target: { value: '7' } });
     fireEvent.blur(field);
     await waitFor(() => {
@@ -196,6 +211,8 @@ describe('the numbers of works in lesson mode', () => {
 
   it('refuses a number over the total and sends nothing', async () => {
     const calls = open('2026-10-27');
+    await rowOf();
+    chooseWork();
     const row = await rowOf();
     const field = within(row).getByRole('textbox', { name: fieldName });
     fireEvent.change(field, { target: { value: '12' } });
@@ -208,6 +225,8 @@ describe('the numbers of works in lesson mode', () => {
 
   it('asks for the total first: no field, a button that opens the work', async () => {
     open('2026-10-27', null);
+    await rowOf();
+    chooseWork();
     const row = await rowOf();
     expect(within(row).queryByRole('textbox')).toBeNull();
     fireEvent.click(
@@ -230,5 +249,110 @@ describe('the numbers of works in lesson mode', () => {
       // Task 10.7: the kind in full and the work's title (requirement changed: it was "CW 1").
       within(row).getByLabelText('Classwork: Test'),
     ).not.toBeNull();
+  });
+});
+
+// Owner, 20 November 2026: lesson mode on a phone, one column at a time, Enter going on to the
+// next student, and the lessons before and after a tap away.
+describe('lesson mode on a phone', () => {
+  function openTwo() {
+    const grid = { ...gridOf(10), students: [student(1, 'Zokirov'), student(2, 'Yusupov')] };
+    const calls = fakeApi({
+      'GET /api/auth/session': () =>
+        json(sessionOf({ assignments: [{ role: 'teacher', branchId: NORTH.id }] })),
+      [`GET /api/journal/journals/${JOURNAL}`]: () => json(grid),
+      [SCORES]: (body) => {
+        const saves = (body as { saves: { studentId: string; score: number | null }[] }).saves;
+        return json({
+          cells: saves.map((one) => ({
+            studentId: one.studentId,
+            workId: WORK,
+            score: one.score,
+            percent: one.score === null ? null : one.score * 10,
+            version: 2,
+          })),
+          works: [],
+        });
+      },
+    });
+    renderApp(`/journal/${JOURNAL}?mode=lesson&date=2026-10-27`);
+    return calls;
+  }
+
+  const fieldOf = (name: string) =>
+    screen.getByRole('textbox', {
+      name: en.journal.lessonMode.score
+        .replace('{{work}}', 'Classwork: Test')
+        .replace('{{name}}', name),
+    });
+
+  it('saves once on Enter and goes on to the next student of the same work', async () => {
+    const calls = openTwo();
+    await rowOf();
+    chooseWork();
+    const first = fieldOf('Zokirov Ali');
+    first.focus();
+    fireEvent.change(first, { target: { value: '7' } });
+    fireEvent.keyDown(first, { key: 'Enter' });
+    // The focus moved on, which also blurs the first field: still one save.
+    expect(document.activeElement).toBe(fieldOf('Yusupov Ali'));
+    fireEvent.blur(first);
+    await waitFor(() => {
+      expect(calls.filter((call) => call.route === SCORES)).toHaveLength(1);
+    });
+    expect(calls.filter((call) => call.route === SCORES)[0]?.body).toMatchObject({
+      saves: [{ studentId: uid(101), score: 7 }],
+    });
+  });
+
+  it('keeps a refused number in its field, marked, and stays on it', async () => {
+    const calls = openTwo();
+    await rowOf();
+    chooseWork();
+    const first = fieldOf('Zokirov Ali');
+    first.focus();
+    fireEvent.change(first, { target: { value: '12' } });
+    fireEvent.keyDown(first, { key: 'Enter' });
+    expect(document.activeElement).toBe(first);
+    expect((first as HTMLInputElement).value).toBe('12');
+    expect(first.getAttribute('aria-invalid')).toBe('true');
+    expect(calls.filter((call) => call.route === SCORES)).toEqual([]);
+    fireEvent.change(first, { target: { value: '9' } });
+    expect(first.getAttribute('aria-invalid')).toBeNull();
+  });
+
+  it('starts at attendance and goes on to each work with "Next"', async () => {
+    open('2026-10-27');
+    const row = await rowOf();
+    expect(within(row).queryByRole('textbox')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Attendance' }).getAttribute('aria-pressed')).toBe(
+      'true',
+    );
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: en.journal.lessonMode.next.replace('{{column}}', 'Test'),
+      }),
+    );
+    expect(within(await rowOf()).getByRole('textbox', { name: fieldName })).not.toBeNull();
+    // The last column has no "Next".
+    expect(screen.queryByRole('button', { name: /^Next: / })).toBeNull();
+  });
+
+  it("says Today on today's lesson and moves to the lessons before and after", async () => {
+    open('2026-10-27');
+    await rowOf();
+    const heading = () => document.querySelector('[data-lesson-mode] h2')?.textContent;
+    expect(heading()).toBe(`${en.journal.grid.today}, 27 October`);
+    expect(document.querySelector('[data-lesson-mode-today]')?.getAttribute('aria-current')).toBe(
+      'date',
+    );
+    const previous = screen.getByRole('button', { name: en.journal.lessonMode.previousLesson });
+    expect((previous as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(screen.getByRole('button', { name: en.journal.lessonMode.nextLesson }));
+    await waitFor(() => {
+      expect(document.querySelector(`[data-lesson-mode="${OLD}"]`)).not.toBeNull();
+    });
+    expect(heading()).toBe('Tuesday, 20 October');
+    expect(document.querySelector('[data-lesson-mode-today]')).toBeNull();
   });
 });

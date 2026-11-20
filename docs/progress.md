@@ -2,6 +2,21 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 20 November 2026: today's lesson in the journal, short headers, the journal and the teaching home on a phone
+
+Not a task of the build plan: the owner's four findings on the test site (decisions in `docs/decisions.md`; handbook `06-journal.md`, "Today's lesson and the short headers" and "The journal on a phone"). Web only.
+
+- **Today in the grid**: the orange header "Today, …" and the column in `--today`; before, nothing told it apart.
+- **Attendance-only lessons**: a short header "Mon, 16.11" over "lesson 3" with the status as an icon; the whole text in the tooltip and for a screen reader.
+- **Lesson mode (phone)**: no sideways scroll; one column at a time (attendance, each classwork, each homework) with "Next: …"; arrows to the lessons before and after; large number fields that are never switched off while another number saves (the cause of "impossible to write the number"), Enter going on to the next student, one save per entry, a refused number kept and marked; attendance buttons wait only for their own student. The selectors fold under one line on a phone.
+- **Teaching home (phone)**: today's lessons as cards with a full-width journal button, the week as a list by day.
+- Tests: `lesson-mode.test.tsx` (one column at a time, Enter, a refused number, the arrows, Today), `attendance-entry.test.tsx` (a save in flight and "All present"), `journal-page.test.tsx` (the short header, today's lesson, the folded selectors), `teaching-home.test.tsx` (cards and the week list at 390 px); browser: the end of `journal.spec.ts` at 390 px (no sideways scroll on the journal and the home).
+
+The next sessions must know:
+
+- A new column of a lesson in the grid takes `todayFill` in its `cellClass`, or today's column has a gap.
+- Lesson mode keeps the chosen column and lesson in its own state; another `date` in the address starts it again (`key`).
+
 ## 20 November 2026: System status reads Sentry's whole period and only the school's Grafana rules
 
 Not a task of the build plan: two faults of #363 the owner found on production (pull request #364; decisions in `docs/decisions.md`).

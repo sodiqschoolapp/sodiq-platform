@@ -3701,6 +3701,16 @@ export const uz: Texts<'one' | 'other'> = {
       '6': 'shanba',
       '7': 'yakshanba',
     },
+    // The short weekday of a narrow journal column ("Du, 16.11"; owner, 20 November 2026).
+    weekdaysShort: {
+      '1': 'Du',
+      '2': 'Se',
+      '3': 'Ch',
+      '4': 'Pa',
+      '5': 'Ju',
+      '6': 'Sh',
+      '7': 'Ya',
+    },
   },
   period: {
     // Task 10.5: the demo time of the test environment, beside the period.
@@ -7324,7 +7334,6 @@ export const uz: Texts<'one' | 'other'> = {
       },
       otherYear: '{{year}} jurnallari',
       noLessons: 'Bu chorakda hali dars yoʻq.',
-      lessonOf: '{{date}}, {{time}} darsi',
       journalColumn: 'Jurnal',
     },
     // Task 8.6: oʻquvchi kartasidagi ketishdagi natijalar (edge/calculation).
@@ -7336,6 +7345,8 @@ export const uz: Texts<'one' | 'other'> = {
       lastDay: '{{date}} gacha',
     },
     grid: {
+      // The lesson of today in the grid (owner, 20 November 2026).
+      today: 'Bugun',
       lessonNumber: '№ {{number}}',
       notDeliveredShort: 'oʻtilmadi',
       // Task 8.6: oʻquvchiga ergashadigan natijalar (07, Transfers; edge/calculation).
@@ -7531,6 +7542,13 @@ export const uz: Texts<'one' | 'other'> = {
       line: '{{text}} · {{who}} · {{when}}',
     },
     lessonMode: {
+      // Lesson mode on a phone, one column at a time (owner, 20 November 2026).
+      enter: 'Nimani kiritish',
+      next: 'Keyingisi: {{column}}',
+      previousLesson: 'Oldingi dars',
+      nextLesson: 'Keyingi dars',
+      // The selectors of the journal, folded on a phone.
+      choose: 'Sinf, fan va davr',
       score: '{{work}}, {{name}}',
       outOf: '{{total}} dan',
       total: '{{work}}: jami {{total}}',
