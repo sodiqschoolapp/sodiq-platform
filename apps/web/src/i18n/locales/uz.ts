@@ -1357,6 +1357,8 @@ export const uz: Texts<'one' | 'other'> = {
       health_error: 'Tekshiruvi xato bermoqda',
       normal_one: '{{count}} ta qoida meʼyorda',
       normal_other: '{{count}} ta qoida meʼyorda',
+      missing_one: 'Grafanada maktabning {{count}} ta qoidasidan faqat {{found}} tasi bor',
+      missing_other: 'Grafanada maktabning {{count}} ta qoidasidan faqat {{found}} tasi bor',
     },
     sentry: {
       title: 'Xatolar',

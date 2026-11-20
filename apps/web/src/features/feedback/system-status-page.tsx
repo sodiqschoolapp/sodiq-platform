@@ -166,7 +166,9 @@ export function SystemStatusPage() {
           query={providers}
           pick={(all) => all.grafana}
           rows={(provider) =>
-            provider.state === 'connected' && <GrafanaRules rules={provider.rules} />
+            provider.state === 'connected' && (
+              <GrafanaRules rules={provider.rules} schoolRules={provider.schoolRules} />
+            )
           }
           history={
             history !== undefined && (
@@ -463,15 +465,34 @@ function ProviderPanel<P extends Provider>({
   );
 }
 
-type GrafanaRule = Extract<StatusProviders['grafana'], { state: 'connected' }>['rules'][number];
+type ConnectedGrafana = Extract<StatusProviders['grafana'], { state: 'connected' }>;
+type GrafanaRule = ConnectedGrafana['rules'][number];
 
-/** The rules that fire or wait first, then a count of the normal ones. */
-function GrafanaRules({ rules }: { rules: readonly GrafanaRule[] }) {
+/**
+ * The rules that fire or wait first, then a count of the normal ones; the school's rules only,
+ * with a line when Grafana holds fewer of them than the repository defines (pull request #364).
+ */
+function GrafanaRules({
+  rules,
+  schoolRules,
+}: {
+  rules: readonly GrafanaRule[];
+  schoolRules: ConnectedGrafana['schoolRules'];
+}) {
   const { t } = useTranslation();
   const shown = rules.filter((rule) => rule.state !== 'normal' || rule.health !== 'ok');
   const normal = rules.length - shown.length;
   return (
     <div className="grid gap-2">
+      {schoolRules.found < schoolRules.of && (
+        <StatusWord
+          status="unknown"
+          text={t('systemStatus.grafana.missing', {
+            count: schoolRules.of,
+            found: schoolRules.found,
+          })}
+        />
+      )}
       {shown.length > 0 && (
         <ul aria-label={t('systemStatus.grafana.title')} className="grid gap-1">
           {shown.map((rule) => (

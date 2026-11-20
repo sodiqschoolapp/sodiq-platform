@@ -169,7 +169,11 @@ export const statusProvidersSchema = z.object({
     history: history(uptimeDownPeriodSchema),
   }),
   grafana: provider({
-    /** Firing first, then pending, then normal; by name within each. */
+    /**
+     * Firing first, then pending, then normal; by name within each. Only the school's own rules
+     * (`ALERT_RULES` of the API), never one Grafana or an app of it adds (`asserts_up`; pull
+     * request #364).
+     */
     rules: z.array(
       z.object({
         name: z.string(),
@@ -178,6 +182,11 @@ export const statusProvidersSchema = z.object({
       }),
     ),
     history: history(grafanaFiringSchema),
+    /** How many of the school's rules Grafana holds, of how many there are (pull request #364). */
+    schoolRules: z.object({
+      found: z.number().int().nonnegative(),
+      of: z.number().int().nonnegative(),
+    }),
   }),
   sentry: provider({
     /** Unresolved issues last seen in the period, the newest first, at most 10. */

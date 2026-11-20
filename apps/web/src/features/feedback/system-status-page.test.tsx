@@ -104,6 +104,7 @@ const CONNECTED: StatusProviders = {
         },
       ],
     },
+    schoolRules: { found: 20, of: 20 },
   },
   sentry: {
     state: 'connected',
@@ -206,12 +207,36 @@ describe('the system status', () => {
     expect(grafana.textContent).toContain(
       en.systemStatus.grafana.normal_other.replace('{{count}}', '2'),
     );
+    // Every school rule is in Grafana: no "has only … of" line.
+    expect(grafana.textContent).not.toContain(
+      en.systemStatus.grafana.missing_other.split('{{found}}')[0],
+    );
     const sentry = await panel(en.systemStatus.sentry.title);
     expect(
       within(sentry)
         .getByRole('link', { name: 'TypeError in the journal grid' })
         .getAttribute('href'),
     ).toBe('https://sodiq.sentry.io/issues/10/');
+  });
+
+  // Pull request #364: a school rule missing from Grafana is seen on the page.
+  it('says when Grafana holds fewer of the school rules than there are', async () => {
+    fakeApi({
+      'GET /api/auth/session': () => json(session()),
+      'GET /api/system-status': () => json(own()),
+      'GET /api/system-status/providers': () =>
+        json({
+          ...CONNECTED,
+          grafana: { ...CONNECTED.grafana, schoolRules: { found: 18, of: 20 } },
+        }),
+    });
+    renderApp('/system-status', 'en');
+    const grafana = await panel(en.systemStatus.grafana.title);
+    await waitFor(() => {
+      expect(grafana.textContent).toContain(
+        en.systemStatus.grafana.missing_other.replace('{{found}}', '18').replace('{{count}}', '20'),
+      );
+    });
   });
 
   it('says a service could not be read, and counts it', async () => {
