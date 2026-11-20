@@ -2,6 +2,29 @@
 
 Not written yet for most of the plans: plans and their items, shared plans, the window, edit requests and master plans (tasks 7.1a to 7.3) have no page here yet. This page holds the parts that tasks 5.19, 8.8, 9.2d and 10.3a added.
 
+## Switching plan windows off
+
+<!-- Sources: the owner, 20 November 2026 ("a toggle for the admin to turn it off completely so that anyone can fully edit their plans anytime"); migration 0174 -->
+
+**What it is.** A switch in **Setup → Settings → Lesson plan windows** (**Dars rejasi oynalari**), for each branch. **On** (the default) keeps the windows and edit requests as described below. **Off** makes plans independent: every teacher changes their own plan at any time while the quarter is open.
+
+**Who can use it.** The Academic Vice Principal and the Super Admin change it; the Principal sees it.
+
+**When it is off.**
+
+- No window is needed: the plan page says "off, the plan can be changed at any time".
+- No edit request is asked, prepared or reminded of; the request part and the window extension are not shown.
+- No plan is "overdue", and none shows "window not opened".
+- No reminder of a window ending or missing is sent.
+- The **Plan windows** page says the windows are off, with a link to Settings.
+- When lessons move (a day off, a cancellation), items still move along by themselves and the teacher is told, but no request is prepared.
+
+**Rules.**
+
+- Nothing stored is lost: windows, extensions and requests stay, and switching back on brings them back as they were.
+- A closed quarter stays closed: switching off never opens the plans of a closed quarter.
+- Each switch is in the audit log.
+
 ## A quarter whose timetable starts in the middle
 
 <!-- Sources: 09 (The plan window), edge/lesson-plans (The window and requests, "A branch's first timetable is published from the eighth school day of quarter 2"), edge/academic-year ("The school goes live in the middle of the year"); spec change of 18 November 2026; task 5.19 -->

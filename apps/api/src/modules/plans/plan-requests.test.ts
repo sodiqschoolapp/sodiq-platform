@@ -696,6 +696,54 @@ describe('the plan window and edit requests', () => {
   });
 
   describe('nothing opens without the window or an approved request', () => {
+    // The owner, 20 November 2026 (migration 0174): the switch of Settings.
+    it('with the plan windows switched off, takes writes before any window and after its end, flags nothing and prepares no request, and is back as stored when switched on', async () => {
+      const x = await scene();
+      const switchTo = (on: boolean) =>
+        t.database.migrator
+          .updateTable('branch_settings')
+          .set({ plan_windows: on })
+          .where('branch_id', '=', x.s.branch)
+          .execute();
+      await switchTo(false);
+      const plan = await planOf(x, OCT27);
+      expect(plan.window).toEqual({ state: 'open', startDate: null, endDate: null, off: true });
+      expect(plan.flag).toBeNull();
+      expect(plan.rows.every((row) => row.open === 'all')).toBe(true);
+      const early = planItemSchema.parse(
+        ok(await at(OCT27, async () => create(x, plan, 1)), 201).body,
+      );
+      // A window stored meanwhile is kept, not used.
+      ok(await openWindow(x));
+      const late = ok(await at(AFTER_END, async () => save(x, early, 'After the end')));
+      expect(planItemSchema.parse(late.body).topic).toBe('After the end');
+      const after = await planOf(x, AFTER_END);
+      expect(after.window.off).toBe(true);
+      expect(after.flag).toBeNull();
+      expect(after.request).toBeNull();
+      expect(after.rows.every((row) => row.open === 'all')).toBe(true);
+      // Asking for a request needs none.
+      expect(
+        codeOf(
+          await at(AFTER_END, async () =>
+            ask(x, { kind: 'text', lessonIds: [after.rows[0]?.lessonId ?? ''], reason: 'Fix' }),
+          ),
+        ),
+      ).toBe('plan_request_window_open');
+      // Switched on again, the window stored decides as before.
+      await switchTo(true);
+      const stored = await planOf(x, AFTER_END);
+      expect(stored.window).toEqual({
+        state: 'ended',
+        startDate: '2026-10-28',
+        endDate: '2026-11-10',
+        off: false,
+      });
+      expect(
+        codeOf(await at(AFTER_END, async () => save(x, planItemSchema.parse(late.body), 'Again'))),
+      ).toBe('plan_window_closed');
+    });
+
     it('refuses every write before any window, takes them inside it to 23:59 of its last day, and refuses them three minutes later', async () => {
       const x = await scene();
       const plan = await planOf(x, OCT27);
@@ -718,6 +766,7 @@ describe('the plan window and edit requests', () => {
         state: 'ended',
         startDate: '2026-10-28',
         endDate: '2026-11-10',
+        off: false,
       });
       expect(after.flag).toBe('overdue');
       expect(after.rows.every((row) => row.open === 'none')).toBe(true);

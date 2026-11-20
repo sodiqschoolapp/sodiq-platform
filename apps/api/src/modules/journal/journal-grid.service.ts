@@ -1244,6 +1244,8 @@ export class JournalGridReader {
           shape === 'attendance'
             ? []
             : (columnsOf.get(lesson.id)?.given ?? []).map((one) => ({
+                workId: one.workId,
+                planWorkId: one.planWorkId,
                 title: one.title,
                 checkAt: one.checkAt,
                 ungraded: one.ungraded,

@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { planWindowsOn } from '../../plans/plan-gate.js';
 import { ABOUT_TO_LOCK_HOURS, schoolDateOf } from '@sodiq/shared';
 import { addDays } from '@sodiq/timetable-rules';
 import { sql } from 'kysely';
@@ -270,6 +271,9 @@ export class DailyWork {
    * owner on days 1, 3, 7, then weekly (`edge/lesson-plans`).
    */
   async planReminders(transaction: Transaction, branchId: string): Promise<void> {
+    // The owner, 20 November 2026: a branch with its plan windows off has no window to remind
+    // of and no request to send (migration 0174); read at each run, as every stored setting.
+    if (!(await planWindowsOn(transaction, branchId))) return;
     const { today, timeZone } = await clockIn(transaction, branchId);
     const years = await transaction
       .selectFrom('academic_years')

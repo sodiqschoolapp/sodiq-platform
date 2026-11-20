@@ -10,6 +10,8 @@ import {
   EDIT_DAYS_MIN,
   editDaysRecordSchema,
   INSTRUCTION_LANGUAGES,
+  planWindowsRecordSchema,
+  type PlanWindowsRecord,
   PERMISSIONS,
   permits,
   type AttendanceValuesRecord,
@@ -25,7 +27,7 @@ import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, branchHeader } from '@/api/client';
 import { answerOf } from '@/api/failure';
-import { NumberField } from '@/components/field';
+import { NumberField, SelectField } from '@/components/field';
 import { wholeNumber } from '@/components/form/form-messages';
 import { RecordForm } from '@/components/form/record-form';
 import { SaveCancelled } from '@/components/form/save-cancelled';
@@ -42,6 +44,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { useView } from '@/features/access/use-view';
+import { invalidatePlans } from '@/features/plans/plans-api';
 import { DigestSettingsSection } from './digest-settings-section';
 import { attendanceValuesQuery, invalidateSettings, settingsQuery } from './settings-api';
 import { cn } from 'cn';
@@ -156,6 +159,50 @@ function ClassDailySection({
             ],
           ]}
         />
+      )}
+    </Section>
+  );
+}
+
+/**
+ * The plan windows switch (the owner, 20 November 2026: "a toggle for the admin to turn it off
+ * completely so that anyone can fully edit their plans anytime"). Off, teachers edit their plans
+ * at any time while the quarter is open: no window, no edit request, no "overdue".
+ */
+function PlanWindowsSection({
+  settings,
+  canEdit,
+  onSave,
+}: {
+  settings: BranchSettings;
+  canEdit: boolean;
+  onSave: (record: PlanWindowsRecord) => Promise<void>;
+}) {
+  const { t } = useTranslation();
+  const form = useRecordForm({
+    schema: planWindowsRecordSchema,
+    initial: { planWindows: settings.planWindows ? 'on' : 'off' },
+    read: (typed) => ({ planWindows: typed.planWindows === 'on' }),
+    save: onSave,
+  });
+  const word = (on: boolean) =>
+    on ? t('setup.settings.planWindowsOn') : t('setup.settings.planWindowsOff');
+  return (
+    <Section title={t('setup.settings.planWindowsTitle')}>
+      {canEdit ? (
+        <RecordForm form={form} label={t('setup.settings.planWindowsTitle')}>
+          <SelectField
+            label={t('setup.settings.planWindows')}
+            note={t('setup.settings.planWindowsNote')}
+            options={[
+              { value: 'on', label: word(true) },
+              { value: 'off', label: word(false) },
+            ]}
+            {...form.bind('planWindows')}
+          />
+        </RecordForm>
+      ) : (
+        <Values rows={[[t('setup.settings.planWindows'), word(settings.planWindows)]]} />
       )}
     </Section>
   );
@@ -425,6 +472,20 @@ export function SettingsPage() {
       ),
     onSuccess: saved,
   });
+  const savePlanWindows = useMutation({
+    mutationFn: (record: PlanWindowsRecord) =>
+      answerOf(
+        api.PUT('/api/setup/settings/plan-windows', {
+          params: { header: branchHeader() },
+          body: record,
+        }),
+      ),
+    onSuccess: async (answer) => {
+      await saved(answer);
+      // The plans and their windows read the switch.
+      await invalidatePlans(queryClient);
+    },
+  });
   const saveEarlyWarning = useMutation({
     mutationFn: (record: EarlyWarningRecord) =>
       answerOf(
@@ -464,6 +525,14 @@ export function SettingsPage() {
           canEdit={canEdit}
           onSave={async (record) => {
             await saveClassDaily.mutateAsync(record);
+          }}
+        />
+        <PlanWindowsSection
+          key={`plan-windows-${branchId}`}
+          settings={settings.data}
+          canEdit={canEdit}
+          onSave={async (record) => {
+            await savePlanWindows.mutateAsync(record);
           }}
         />
         <AttendanceValuesSection key={branchId} branchId={branchId} canEdit={canEdit} />

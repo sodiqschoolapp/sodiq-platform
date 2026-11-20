@@ -30,8 +30,9 @@ import { commentHistoryQuery, invalidateJournal, saveComment } from './journal-a
  * Comments: "A comment can be attached to any attendance mark or score, and a
  * general note to a student for a lesson. Each comment is either 'staff only'
  * or 'visible to parents'"; Keyboard: "a key opens the comment"). The grid
- * opens the dialog of a cell with the key at `KeyC` (decision 11); a lesson's
- * cell also shows the student's note of the lesson. The server decides who
+ * opens the dialog of a cell with the key at `KeyC` (decision 11); the attendance
+ * cell also shows the student's note of the lesson, a work's cell only its own
+ * comment, and a new comment is "visible to parents" (the owner, 20 November 2026). The server decides who
  * may write (decision 10: whoever may enter the target). Task 8.4: a comment
  * saved while its lesson or the rating exam is being corrected carries the
  * correction (code review 1, finding 2).
@@ -156,11 +157,12 @@ function CommentsDialog({
   const student = grid.students.find((one) => one.id === cell.studentId);
   const name = student === undefined ? '' : `${student.lastName} ${student.firstName}`;
   const title = t('journal.comments.title', { student: name });
-  // A lesson's cell shows the student's note of the lesson beside its own comment.
+  // The owner, 20 November 2026: the attendance cell shows the student's note of the lesson
+  // beside its own comment; a classwork or homework cell shows its own comment only.
   const cells: CommentCell[] =
-    cell.target === 'rating' || cell.target === 'note'
-      ? [cell]
-      : [cell, { target: 'note', lessonId: cell.lessonId, studentId: cell.studentId }];
+    cell.target === 'mark'
+      ? [cell, { target: 'note', lessonId: cell.lessonId, studentId: cell.studentId }]
+      : [cell];
   return (
     <Dialog
       open
@@ -208,7 +210,10 @@ function CommentSection({
   const { branchId } = useView();
   const queryClient = useQueryClient();
   const [body, setBody] = useState(comment?.body ?? '');
-  const [visibility, setVisibility] = useState<CommentVisibility>(comment?.visibility ?? 'staff');
+  const [visibility, setVisibility] = useState<CommentVisibility>(
+    // The owner, 20 November 2026: a new comment is visible to parents unless chosen otherwise.
+    comment?.visibility ?? 'parents',
+  );
   const history = useQuery(commentHistoryQuery(branchId, historyQueryOf(grid, cell)));
   const save = useMutation({
     mutationFn: (text: string | null) =>

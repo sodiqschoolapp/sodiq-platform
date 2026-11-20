@@ -1,5 +1,7 @@
 import { planWindowSaveSchema, type PlanWindows, type PlanWindowSave } from '@sodiq/shared';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { Link } from '@tanstack/react-router';
+import { cn } from 'cn';
 import { useTranslation } from 'react-i18next';
 import { ApiFailure } from '@/api/failure';
 import { useConfirm } from '@/components/confirm-dialog';
@@ -47,6 +49,17 @@ export function PlanWindowsPage(): React.JSX.Element {
         />
       ) : data === undefined ? (
         <LoadingOutline />
+      ) : data.off ? (
+        // The owner, 20 November 2026: switched off in Settings, the windows are kept, not used.
+        <div className={cn(PANEL, 'grid gap-2')} data-plan-windows-off="true">
+          <p className="font-semibold">{t('plans.windows.offTitle')}</p>
+          <p>
+            {t('plans.windows.offText')}{' '}
+            <Link to="/setup/settings" className="text-link">
+              {t('setup.settings.title')}
+            </Link>
+          </p>
+        </div>
       ) : data.quarters.length === 0 ? (
         <EmptyState title={t('plans.windows.emptyTitle')} text={t('plans.windows.empty')} />
       ) : (

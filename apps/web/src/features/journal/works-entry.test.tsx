@@ -1,9 +1,9 @@
 import type { JournalGrid, JournalLesson, JournalStudent, JournalWork } from '@sodiq/shared';
-import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { en } from '@/i18n/locales/en';
 import { fakeApi, json, NORTH, renderApp, sessionOf } from '@/testing/render-app';
-import { typedScore } from './journal-grid';
+import { typedScore, typedWorkEntry } from './journal-grid';
 import { OPEN_LOCK } from '@/testing/edit-lock';
 
 const uid = (n: number): string => `0199e000-0000-7000-8000-${String(n).padStart(12, '0')}`;
@@ -176,6 +176,18 @@ function open(handlers: Record<string, (body: unknown) => Response> = {}) {
   return calls;
 }
 
+const EMPTY_SCORE = {
+  score: null,
+  percent: null,
+  version: null,
+  onAbsent: false,
+  marker: null,
+  notGraded: false,
+};
+
+const totalOf = (name: string) => en.journal.editor.totalOf.replace('{{name}}', name);
+const deleteOf = (name: string) => en.journal.editor.delete.replace('{{name}}', name);
+
 const sent = (calls: ReturnType<typeof fakeApi>, route: string) =>
   calls.filter((call) => call.route === route).map((call) => call.body);
 
@@ -192,15 +204,20 @@ describe('classwork and homework in the grid', () => {
     expect(typedScore('-1', 30)).toBeUndefined();
   });
 
-  it('heads a planned column with its title and opens its total with the last total offered', async () => {
+  // The owner, 20 November 2026: one lesson editor. A work's header opens it at its total.
+  it('heads a planned column with its title and opens the lesson editor at its total, the last total offered', async () => {
     const calls = open({
       [`PUT /api/journal/lessons/${PLANNED}/works/total`]: () => json(SAVED),
     });
     fireEvent.click(await screen.findByRole('button', { name: 'Work: Test' }));
-    const dialog = await screen.findByRole('dialog', { name: 'Work: Test' });
-    const field = within(dialog).getByLabelText(en.journal.works.total);
-    expect((field as HTMLInputElement).value).toBe('30');
-    fireEvent.click(within(dialog).getByRole('button', { name: en.journal.works.saveTotal }));
+    const dialog = await screen.findByRole('dialog');
+    const field = within(dialog).getByLabelText(totalOf('Test'));
+    expect((field as HTMLInputElement).placeholder).toBe('30');
+    await waitFor(() => {
+      expect(document.activeElement).toBe(field);
+    });
+    fireEvent.change(field, { target: { value: '30' } });
+    fireEvent.keyDown(field, { key: 'Enter' });
     await waitFor(() => {
       expect(sent(calls, `PUT /api/journal/lessons/${PLANNED}/works/total`)).toEqual([
         {
@@ -241,11 +258,10 @@ describe('classwork and homework in the grid', () => {
       },
     });
     fireEvent.click(await screen.findByRole('button', { name: 'Work: Test' }));
-    const dialog = await screen.findByRole('dialog', { name: 'Work: Test' });
-    fireEvent.change(within(dialog).getByLabelText(en.journal.works.total), {
-      target: { value: '100' },
-    });
-    fireEvent.click(within(dialog).getByRole('button', { name: en.journal.works.saveTotal }));
+    const dialog = await screen.findByRole('dialog');
+    const field = within(dialog).getByLabelText(totalOf('Test'));
+    fireEvent.change(field, { target: { value: '100' } });
+    fireEvent.blur(field);
     const question = await screen.findByRole('alertdialog');
     expect(question.textContent).toContain('Zokirov Ali: 12, 40% → 12%');
     fireEvent.click(
@@ -263,20 +279,178 @@ describe('classwork and homework in the grid', () => {
   it('refuses a total that is not a whole number from 1 to 1000 in the field', async () => {
     const calls = open();
     fireEvent.click(await screen.findByRole('button', { name: 'Work: Test' }));
-    const dialog = await screen.findByRole('dialog', { name: 'Work: Test' });
-    fireEvent.change(within(dialog).getByLabelText(en.journal.works.total), {
-      target: { value: '1001' },
-    });
-    expect(
-      within(dialog).getByRole<HTMLButtonElement>('button', { name: en.journal.works.saveTotal })
-        .disabled,
-    ).toBe(true);
-    expect(dialog.textContent).toContain('Type a whole number from 0 to 1000.');
+    const dialog = await screen.findByRole('dialog');
+    const field = within(dialog).getByLabelText(totalOf('Test'));
+    for (const value of ['1001', '0', '2.5']) {
+      fireEvent.change(field, { target: { value } });
+      fireEvent.keyDown(field, { key: 'Enter' });
+      expect(field.getAttribute('aria-invalid')).toBe('true');
+    }
     expect(sent(calls, `PUT /api/journal/lessons/${PLANNED}/works/total`)).toEqual([]);
   });
 
-  // Code review round 1, finding 1: a homework given by hand is a column of its check lesson.
-  it('removes an empty homework given by hand from the lesson that shows it', async () => {
+  it('saves the topic of the lesson on the topic read', async () => {
+    const calls = open({
+      [`PUT /api/journal/lessons/${PLANNED}/topic`]: () =>
+        json({ itemId: uid(90), topic: 'Fractions' }),
+    });
+    fireEvent.click(await screen.findByRole('button', { name: 'Work: Test' }));
+    const dialog = await screen.findByRole('dialog');
+    fireEvent.change(within(dialog).getByLabelText(en.journal.card.topic), {
+      target: { value: '  Fractions ' },
+    });
+    fireEvent.click(within(dialog).getByRole('button', { name: en.journal.editor.saveTopic }));
+    await waitFor(() => {
+      expect(sent(calls, `PUT /api/journal/lessons/${PLANNED}/topic`)).toEqual([
+        { topic: 'Fractions', baseTopic: '' },
+      ]);
+    });
+  });
+
+  it('adds a classwork and gives a homework, keeping the typed title when the server refuses', async () => {
+    let refuse = true;
+    const calls = open({
+      [`POST /api/journal/lessons/${PLANNED}/works`]: (body) => {
+        if (refuse) {
+          refuse = false;
+          return json(
+            {
+              error: {
+                code: 'journal_works_limit',
+                message: 'ENGLISH TEXT FOR THE DEVELOPER',
+                requestId: 'test-request',
+              },
+            },
+            409,
+          );
+        }
+        const kind = (body as { kind: 'classwork' | 'homework' }).kind;
+        return json({ planWorkId: uid(91), itemId: uid(90), kind, title: 'Reading' });
+      },
+    });
+    fireEvent.click(await screen.findByRole('button', { name: 'Work: Test' }));
+    const dialog = await screen.findByRole('dialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: en.journal.editor.addClasswork }));
+    const title = within(dialog).getByLabelText(en.journal.works.classworkTitle);
+    fireEvent.change(title, { target: { value: 'Dictation' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: en.journal.works.add }));
+    expect(await within(dialog).findByText(en.errors.journal_works_limit)).not.toBeNull();
+    expect(
+      within(dialog).getByLabelText<HTMLInputElement>(en.journal.works.classworkTitle).value,
+    ).toBe('Dictation');
+    fireEvent.click(within(dialog).getByRole('button', { name: en.journal.works.cancel }));
+    fireEvent.click(within(dialog).getByRole('button', { name: en.journal.editor.addHomework }));
+    fireEvent.change(within(dialog).getByLabelText(en.journal.works.homeworkTitle), {
+      target: { value: 'Reading' },
+    });
+    fireEvent.click(within(dialog).getByRole('button', { name: en.journal.works.add }));
+    await waitFor(() => {
+      expect(sent(calls, `POST /api/journal/lessons/${PLANNED}/works`)).toEqual([
+        { kind: 'classwork', title: 'Dictation' },
+        { kind: 'homework', title: 'Reading' },
+      ]);
+    });
+  });
+
+  it('renames a planned work on the title read', async () => {
+    const calls = open({
+      [`PUT /api/journal/lessons/${PLANNED}/plan-works/${uid(70)}/title`]: () =>
+        json({ planWorkId: uid(70), itemId: uid(90), kind: 'classwork', title: 'Quiz' }),
+    });
+    fireEvent.click(await screen.findByRole('button', { name: 'Work: Test' }));
+    const dialog = await screen.findByRole('dialog');
+    fireEvent.click(
+      within(dialog).getByRole('button', {
+        name: en.journal.editor.rename.replace('{{name}}', 'Test'),
+      }),
+    );
+    fireEvent.change(within(dialog).getByLabelText(en.journal.works.titleLabel), {
+      target: { value: 'Quiz' },
+    });
+    fireEvent.click(within(dialog).getByRole('button', { name: en.journal.works.rename }));
+    await waitFor(() => {
+      expect(
+        sent(calls, `PUT /api/journal/lessons/${PLANNED}/plan-works/${uid(70)}/title`),
+      ).toEqual([{ title: 'Quiz', baseTitle: 'Test' }]);
+    });
+  });
+
+  it('deletes an empty work from the plan at once', async () => {
+    const calls = open({
+      [`DELETE /api/journal/lessons/${PLANNED}/plan-works/${uid(70)}`]: () =>
+        new Response(null, { status: 204 }),
+    });
+    fireEvent.click(await screen.findByRole('button', { name: 'Work: Test' }));
+    const dialog = await screen.findByRole('dialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: deleteOf('Test') }));
+    await waitFor(() => {
+      expect(
+        calls.some(
+          (call) => call.route === `DELETE /api/journal/lessons/${PLANNED}/plan-works/${uid(70)}`,
+        ),
+      ).toBe(true);
+    });
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+  });
+
+  it('asks before deleting a work with numbers, naming the count, and keeps it out of the journal with its numbers in the history', async () => {
+    const grid: JournalGrid = {
+      ...GRID,
+      students: GRID.students.map((one, index) =>
+        index > 0
+          ? one
+          : {
+              ...one,
+              cells: [
+                {
+                  ...(one.cells[0] as JournalStudent['cells'][number]),
+                  works: [
+                    {
+                      score: 5,
+                      percent: 50,
+                      version: 1,
+                      onAbsent: false,
+                      marker: null,
+                      notGraded: false,
+                    },
+                  ],
+                },
+                one.cells[1] as JournalStudent['cells'][number],
+              ],
+            },
+      ),
+    };
+    const calls = fakeApi({
+      'GET /api/auth/session': () =>
+        json(sessionOf({ assignments: [{ role: 'teacher', branchId: NORTH.id }] })),
+      [`GET /api/journal/journals/${JOURNAL}`]: () => json(grid),
+      [`PUT /api/journal/lessons/${PLANNED}/works/not-held`]: () =>
+        json({ ...SAVED, notHeld: true }),
+    });
+    renderApp(`/journal/${JOURNAL}`);
+    fireEvent.click(await screen.findByRole('button', { name: 'Work: Test' }));
+    const dialog = await screen.findByRole('dialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: deleteOf('Test') }));
+    const question = await screen.findByRole('alertdialog');
+    expect(question.textContent).toContain(
+      en.journal.editor.deleteNumbers_one.replace('{{count}}', '1'),
+    );
+    fireEvent.click(within(question).getByRole('button', { name: en.journal.editor.deleteAction }));
+    await waitFor(() => {
+      expect(sent(calls, `PUT /api/journal/lessons/${PLANNED}/works/not-held`)).toEqual([
+        {
+          column: { planWorkId: uid(70), sourceLessonId: PLANNED },
+          notHeld: true,
+          version: null,
+          confirm: true,
+        },
+      ]);
+    });
+    expect(calls.some((call) => call.route.startsWith('DELETE'))).toBe(false);
+  });
+
+  // Code review round 1 of task 8.1: a homework given by hand is a column of its check lesson.
+  it('deletes an empty homework given by hand from the lesson that shows it, and one given here at its check lesson when it holds a total there', async () => {
     const given: JournalWork = {
       ...TEST,
       id: uid(81),
@@ -286,11 +460,30 @@ describe('classwork and homework in the grid', () => {
       title: null,
       unplanned: true,
     };
+    const planned: JournalWork = {
+      ...TEST,
+      planWorkId: uid(72),
+      kind: 'homework',
+      title: 'Read',
+      total: 5,
+    };
     const grid: JournalGrid = {
       ...GRID,
       lessons: [
-        GRID.lessons[0] as JournalLesson,
-        { ...(GRID.lessons[1] as JournalLesson), works: [given] },
+        {
+          ...(GRID.lessons[0] as JournalLesson),
+          given: [
+            {
+              workId: null,
+              planWorkId: uid(72),
+              title: 'Read',
+              checkAt: NO_PLAN,
+              ungraded: null,
+              notGiven: false,
+            },
+          ],
+        },
+        { ...(GRID.lessons[1] as JournalLesson), works: [given, planned] },
       ],
       students: GRID.students.map((one) => ({
         ...one,
@@ -298,16 +491,7 @@ describe('classwork and homework in the grid', () => {
           one.cells[0] as JournalStudent['cells'][number],
           {
             ...(one.cells[1] as JournalStudent['cells'][number]),
-            works: [
-              {
-                score: null,
-                percent: null,
-                version: null,
-                onAbsent: false,
-                marker: null,
-                notGraded: false,
-              },
-            ],
+            works: [EMPTY_SCORE, EMPTY_SCORE],
           },
         ],
       })),
@@ -318,11 +502,13 @@ describe('classwork and homework in the grid', () => {
       [`GET /api/journal/journals/${JOURNAL}`]: () => json(grid),
       [`DELETE /api/journal/lessons/${NO_PLAN}/works/${uid(81)}`]: () =>
         new Response(null, { status: 204 }),
+      [`PUT /api/journal/lessons/${NO_PLAN}/works/not-held`]: () =>
+        json({ ...SAVED, kind: 'homework', notHeld: true }),
     });
     renderApp(`/journal/${JOURNAL}`);
     fireEvent.click(await screen.findByRole('button', { name: 'Work: HW 1 · unplanned' }));
-    const dialog = await screen.findByRole('dialog', { name: 'Work: HW 1' });
-    fireEvent.click(within(dialog).getByRole('button', { name: en.journal.works.remove }));
+    const checking = await screen.findByRole('dialog');
+    fireEvent.click(within(checking).getByRole('button', { name: deleteOf('HW 1') }));
     await waitFor(() => {
       expect(
         calls.some(
@@ -330,226 +516,32 @@ describe('classwork and homework in the grid', () => {
         ),
       ).toBe(true);
     });
-  });
-
-  // Task 10.8 (`edge/journal`, "A lesson is held with no plan item"; plan decision 8): a work
-  // added in the journal is a planned column; while its item has no topic it is renamed and
-  // removed in the journal, through its plan work.
-  it('renames and removes a work added in the journal through its plan work while the item has no topic', async () => {
-    const added: JournalWork = {
-      ...TEST,
-      planWorkId: uid(90),
-      sourceLessonId: NO_PLAN,
-      title: 'Dictation',
-    };
-    const lessons = (planItem: boolean): JournalLesson[] => [
-      GRID.lessons[0] as JournalLesson,
-      {
-        ...(GRID.lessons[1] as JournalLesson),
-        planItem,
-        addedInJournal: [uid(90)],
-        works: [added],
-      },
-    ];
-    const gridOf = (planItem: boolean): JournalGrid => ({
-      ...GRID,
-      lessons: lessons(planItem),
-      students: GRID.students.map((one) => ({
-        ...one,
-        cells: [
-          one.cells[0] as JournalStudent['cells'][number],
-          {
-            ...(one.cells[1] as JournalStudent['cells'][number]),
-            works: [
-              {
-                score: null,
-                percent: null,
-                version: null,
-                onAbsent: false,
-                marker: null,
-                notGraded: false,
-              },
-            ],
-          },
-        ],
-      })),
-    });
-    let withTopic = false;
-    const calls = fakeApi({
-      'GET /api/auth/session': () =>
-        json(sessionOf({ assignments: [{ role: 'teacher', branchId: NORTH.id }] })),
-      [`GET /api/journal/journals/${JOURNAL}`]: () => json(gridOf(withTopic)),
-      [`PUT /api/journal/lessons/${NO_PLAN}/plan-works/${uid(90)}/title`]: () =>
-        json({ planWorkId: uid(90), itemId: uid(91), kind: 'classwork', title: 'Quiz' }),
-      [`DELETE /api/journal/lessons/${NO_PLAN}/plan-works/${uid(90)}`]: () =>
-        new Response(null, { status: 204 }),
-    });
-    renderApp(`/journal/${JOURNAL}`);
-    fireEvent.click(await screen.findByRole('button', { name: /^Work: Dictation/ }));
-    let dialog = await screen.findByRole('dialog', { name: 'Work: Dictation' });
-    fireEvent.change(within(dialog).getByLabelText(en.journal.works.titleLabel), {
-      target: { value: 'Quiz' },
-    });
-    fireEvent.click(within(dialog).getByRole('button', { name: en.journal.works.rename }));
+    fireEvent.click(within(checking).getByRole('button', { name: en.journal.entry.close }));
+    // At the lesson it was given at, "Read" holds a total at its check lesson: kept out there.
+    fireEvent.click(await screen.findByRole('button', { name: 'Work: Test' }));
+    const giving = await screen.findByRole('dialog');
+    fireEvent.click(within(giving).getByRole('button', { name: deleteOf('Read') }));
+    const question = await screen.findByRole('alertdialog');
+    fireEvent.click(within(question).getByRole('button', { name: en.journal.editor.deleteAction }));
     await waitFor(() => {
-      expect(
-        sent(calls, `PUT /api/journal/lessons/${NO_PLAN}/plan-works/${uid(90)}/title`),
-      ).toEqual([{ title: 'Quiz', baseTitle: 'Dictation' }]);
-    });
-    fireEvent.click(within(dialog).getByRole('button', { name: en.journal.works.remove }));
-    await waitFor(() => {
-      expect(
-        calls.some(
-          (call) => call.route === `DELETE /api/journal/lessons/${NO_PLAN}/plan-works/${uid(90)}`,
-        ),
-      ).toBe(true);
-    });
-    // Once the owner wrote the topic, the work is the plan's: no rename and no remove here.
-    withTopic = true;
-    cleanup();
-    renderApp(`/journal/${JOURNAL}`);
-    fireEvent.click(await screen.findByRole('button', { name: /^Work: Dictation/ }));
-    dialog = await screen.findByRole('dialog', { name: 'Work: Dictation' });
-    expect(within(dialog).queryByRole('button', { name: en.journal.works.rename })).toBeNull();
-    expect(within(dialog).queryByRole('button', { name: en.journal.works.remove })).toBeNull();
-  });
-
-  // Task 10.6: a work added by hand before 10.6 shows "HW 1" and is renamed in its dialog; a
-  // planned work has no rename.
-  it('renames a work added by hand from its dialog, shows a refusal there, and offers no rename for a planned work', async () => {
-    let renames = 0;
-    const given: JournalWork = {
-      ...TEST,
-      id: uid(81),
-      planWorkId: null,
-      sourceLessonId: PLANNED,
-      kind: 'homework',
-      title: null,
-      unplanned: true,
-      version: 1,
-    };
-    const grid: JournalGrid = {
-      ...GRID,
-      lessons: [
-        GRID.lessons[0] as JournalLesson,
-        { ...(GRID.lessons[1] as JournalLesson), works: [given] },
-      ],
-      students: GRID.students.map((one) => ({
-        ...one,
-        cells: [
-          one.cells[0] as JournalStudent['cells'][number],
-          {
-            ...(one.cells[1] as JournalStudent['cells'][number]),
-            works: [
-              {
-                score: null,
-                percent: null,
-                version: null,
-                onAbsent: false,
-                marker: null,
-                notGraded: false,
-              },
-            ],
-          },
-        ],
-      })),
-    };
-    const calls = fakeApi({
-      'GET /api/auth/session': () =>
-        json(sessionOf({ assignments: [{ role: 'teacher', branchId: NORTH.id }] })),
-      [`GET /api/journal/journals/${JOURNAL}`]: () => json(grid),
-      [`PUT /api/journal/lessons/${NO_PLAN}/works/${uid(81)}/title`]: () => {
-        renames += 1;
-        // The first rename is refused: the lesson is locked; the second is taken.
-        if (renames === 1) {
-          return json(
-            {
-              error: {
-                code: 'journal_locked',
-                message: 'ENGLISH TEXT FOR THE DEVELOPER',
-                requestId: 'test-request',
-              },
-            },
-            409,
-          );
-        }
-        return json({
-          ...SAVED,
-          id: uid(81),
-          kind: 'homework',
-          total: null,
-          title: 'Exercises',
-          version: 2,
-        });
-      },
-    });
-    renderApp(`/journal/${JOURNAL}`);
-    fireEvent.click(await screen.findByRole('button', { name: 'Work: HW 1 · unplanned' }));
-    const dialog = await screen.findByRole('dialog', { name: 'Work: HW 1' });
-    fireEvent.change(within(dialog).getByLabelText(en.journal.works.titleLabel), {
-      target: { value: 'Exercises' },
-    });
-    fireEvent.click(within(dialog).getByRole('button', { name: en.journal.works.rename }));
-    // Plan review, correction 2: the refusal is told inside the dialog.
-    expect(await within(dialog).findByText(en.errors.journal_locked)).toBeTruthy();
-    fireEvent.click(within(dialog).getByRole('button', { name: en.journal.works.rename }));
-    await waitFor(() => {
-      expect(
-        calls
-          .filter(
-            (call) => call.route === `PUT /api/journal/lessons/${NO_PLAN}/works/${uid(81)}/title`,
-          )
-          .map((call) => call.body),
-      ).toEqual([
-        { title: 'Exercises', version: 1 },
-        { title: 'Exercises', version: 1 },
+      expect(sent(calls, `PUT /api/journal/lessons/${NO_PLAN}/works/not-held`)).toEqual([
+        {
+          column: { planWorkId: uid(72), sourceLessonId: PLANNED },
+          notHeld: true,
+          version: null,
+          confirm: true,
+        },
       ]);
     });
-    fireEvent.click(within(dialog).getByRole('button', { name: en.journal.entry.close }));
-    // The planned column of the first lesson: its title comes from the plan.
-    fireEvent.click(await screen.findByRole('button', { name: /^Work: Test/ }));
-    const planned = await screen.findByRole('dialog', { name: 'Work: Test' });
-    expect(within(planned).queryByRole('button', { name: en.journal.works.rename })).toBeNull();
   });
 
-  // Task 10.6 (spec review of the code, must-fix 2): a lesson the person cannot enter offers no
-  // rename, the work added by hand included.
-  it('offers no rename of a work added by hand at a lesson the person cannot enter', async () => {
-    const given: JournalWork = {
-      ...TEST,
-      id: uid(81),
-      planWorkId: null,
-      sourceLessonId: PLANNED,
-      kind: 'homework',
-      title: 'Exercises',
-      unplanned: true,
-      version: 1,
-    };
+  it('is read only at a lesson the person cannot enter: no field, no add, no delete', async () => {
     const grid: JournalGrid = {
       ...GRID,
       lessons: [
-        GRID.lessons[0] as JournalLesson,
-        { ...(GRID.lessons[1] as JournalLesson), canEnterWorks: false, works: [given] },
+        { ...(GRID.lessons[0] as JournalLesson), canEnterWorks: false, topic: 'Fractions' },
+        GRID.lessons[1] as JournalLesson,
       ],
-      students: GRID.students.map((one) => ({
-        ...one,
-        cells: [
-          one.cells[0] as JournalStudent['cells'][number],
-          {
-            ...(one.cells[1] as JournalStudent['cells'][number]),
-            works: [
-              {
-                score: null,
-                percent: null,
-                version: null,
-                onAbsent: false,
-                marker: null,
-                notGraded: false,
-              },
-            ],
-          },
-        ],
-      })),
     };
     fakeApi({
       'GET /api/auth/session': () =>
@@ -557,118 +549,15 @@ describe('classwork and homework in the grid', () => {
       [`GET /api/journal/journals/${JOURNAL}`]: () => json(grid),
     });
     renderApp(`/journal/${JOURNAL}`);
-    fireEvent.click(await screen.findByRole('button', { name: 'Work: Exercises' }));
-    const dialog = await screen.findByRole('dialog', { name: 'Work: Exercises' });
-    expect(within(dialog).queryByRole('button', { name: en.journal.works.rename })).toBeNull();
-    expect(within(dialog).queryByLabelText(en.journal.works.titleLabel)).toBeNull();
-  });
-
-  // Task 10.6 (spec review of the code, should-fix 4): a refused add keeps the typed title and
-  // tells the refusal in the dialog.
-  it('keeps the typed title in the form when the add is refused, and tells why in the dialog', async () => {
-    const calls = open({
-      [`POST /api/journal/lessons/${NO_PLAN}/works`]: () =>
-        json(
-          {
-            error: {
-              code: 'journal_works_limit',
-              message: 'ENGLISH TEXT FOR THE DEVELOPER',
-              requestId: 'test-request',
-            },
-          },
-          409,
-        ),
-    });
-    const dialog = await worksOf(1);
-    fireEvent.click(within(dialog).getByRole('button', { name: en.journal.works.addClasswork }));
-    const field = within(dialog).getByLabelText(en.journal.works.classworkTitle);
-    fireEvent.change(field, { target: { value: 'Dictation' } });
-    fireEvent.click(within(dialog).getByRole('button', { name: en.journal.works.add }));
-    expect(await within(dialog).findByText(en.errors.journal_works_limit)).toBeTruthy();
-    expect(sent(calls, `POST /api/journal/lessons/${NO_PLAN}/works`)).toHaveLength(1);
+    fireEvent.click(await screen.findByRole('button', { name: 'Work: Test' }));
+    const dialog = await screen.findByRole('dialog');
+    expect(within(dialog).getByText('Fractions')).not.toBeNull();
+    expect(within(dialog).queryByLabelText(en.journal.card.topic)).toBeNull();
+    expect(within(dialog).getByLabelText<HTMLInputElement>(totalOf('Test')).disabled).toBe(true);
+    expect(within(dialog).queryByRole('button', { name: deleteOf('Test') })).toBeNull();
     expect(
-      within(dialog).getByLabelText<HTMLInputElement>(en.journal.works.classworkTitle).value,
-    ).toBe('Dictation');
-  });
-
-  /** Task 8.8: the lesson card of the lesson at `index`, then its works (the second lesson has no plan item). */
-  const worksOf = async (index: number): Promise<HTMLElement> => {
-    const cards = await screen.findAllByRole('button', { name: en.journal.card.open });
-    fireEvent.click(cards[index] as HTMLElement);
-    const card = await screen.findByRole('dialog');
-    fireEvent.click(within(card).getByRole('button', { name: en.journal.works.button }));
-    await waitFor(() => {
-      expect(screen.getByRole('dialog').getAttribute('aria-label')).not.toBe(
-        card.getAttribute('aria-label'),
-      );
-    });
-    return screen.getByRole('dialog');
-  };
-
-  it('tags each work of both kinds listed together in the works dialog (07, Layout; task 10.7)', async () => {
-    const lessons = GRID.lessons.map((one) =>
-      one.id === NO_PLAN
-        ? {
-            ...one,
-            given: [
-              {
-                title: 'Given work',
-                checkAt: null,
-                ungraded: 'year_end' as const,
-                notGiven: false,
-              },
-            ],
-            notHeldWorks: [{ ...TEST, id: uid(85), title: 'Not held work', notHeld: true }],
-          }
-        : one,
-    );
-    open({ [`GET /api/journal/journals/${JOURNAL}`]: () => json({ ...GRID, lessons }) });
-    const dialog = await worksOf(1);
-    expect(
-      [...dialog.querySelectorAll('[data-work-kind]')].map((one) => [
-        one.closest('li')?.textContent?.includes('Not held work') ?? false,
-        one.textContent,
-        one.getAttribute('title'),
-      ]),
-    ).toEqual([
-      [false, 'H', 'Homework'],
-      [true, 'C', 'Classwork'],
-    ]);
-  });
-
-  it('says "No plan" and adds a classwork by hand at a lesson with no plan item, named (task 10.6)', async () => {
-    const calls = open({
-      // Task 10.8: the add answers the plan work it wrote.
-      [`POST /api/journal/lessons/${NO_PLAN}/works`]: () =>
-        json({ planWorkId: uid(90), itemId: uid(91), kind: 'classwork', title: 'Dictation' }),
-    });
-    // Task 8.8: the works of a lesson open from its lesson card.
-    const dialog = await worksOf(1);
-    expect(dialog.textContent).toContain(en.journal.works.noPlan);
-    fireEvent.click(within(dialog).getByRole('button', { name: en.journal.works.addClasswork }));
-    const field = within(dialog).getByLabelText(en.journal.works.classworkTitle);
-    const add = within(dialog).getByRole('button', { name: en.journal.works.add });
-    // Task 10.6: the title is required, at most 60 characters, before anything is sent.
-    fireEvent.click(add);
-    expect(await within(dialog).findByText(en.journal.works.titleRequired)).toBeTruthy();
-    fireEvent.change(field, { target: { value: 'x'.repeat(61) } });
-    fireEvent.click(add);
-    expect(
-      within(dialog).getByText(en.journal.works.titleTooLong.replace('{{max}}', '60')),
-    ).toBeTruthy();
-    expect(sent(calls, `POST /api/journal/lessons/${NO_PLAN}/works`)).toEqual([]);
-    // Sixty emoji are sixty characters, as the server counts them.
-    fireEvent.change(field, { target: { value: '😀'.repeat(60) } });
-    expect(
-      within(dialog).queryByText(en.journal.works.titleTooLong.replace('{{max}}', '60')),
+      within(dialog).queryByRole('button', { name: en.journal.editor.addClasswork }),
     ).toBeNull();
-    fireEvent.change(field, { target: { value: '  Dictation ' } });
-    fireEvent.click(add);
-    await waitFor(() => {
-      expect(sent(calls, `POST /api/journal/lessons/${NO_PLAN}/works`)).toEqual([
-        { kind: 'classwork', title: 'Dictation' },
-      ]);
-    });
   });
 
   it('keeps the numbers by default when present becomes absent, and clears them on the choice', async () => {
@@ -718,71 +607,15 @@ describe('classwork and homework in the grid', () => {
     ).toEqual([undefined, 'keep']);
   });
 
-  it('sets the empty cells of present students "not graded" in one click, with the count asked and the answer told (task 8.7)', async () => {
-    const stored: JournalWork = { ...TEST, id: uid(80), total: 30, version: 2 };
-    const grid: JournalGrid = {
-      ...GRID,
-      lessons: [
-        lesson(PLANNED, '2026-10-19', { works: [stored], status: 'in_progress' }),
-        lesson(NO_PLAN, '2026-10-26', { planItem: false }),
-      ],
-      students: GRID.students.map((one, index) =>
-        index === 0
-          ? {
-              ...one,
-              cells: one.cells.map((cell, at) =>
-                at === 0
-                  ? {
-                      ...cell,
-                      works: [
-                        {
-                          score: 12,
-                          percent: 40,
-                          version: 1,
-                          onAbsent: false,
-                          marker: null,
-                          notGraded: false,
-                        },
-                      ],
-                    }
-                  : cell,
-              ),
-            }
-          : one,
-      ),
-    };
-    const calls = fakeApi({
-      'GET /api/auth/session': () =>
-        json(sessionOf({ assignments: [{ role: 'teacher', branchId: NORTH.id }] })),
-      [`GET /api/journal/journals/${JOURNAL}`]: () => json(grid),
-      [`POST /api/journal/lessons/${PLANNED}/not-graded`]: () =>
-        json({
-          filled: [{ studentId: uid(102), workId: uid(80), version: 1 }],
-          skipped: [{ studentId: uid(101), workId: uid(80) }],
-        }),
-    });
-    renderApp(`/journal/${JOURNAL}`);
-    // The lesson's status in its header (07: "in the journal header").
-    await waitFor(() => {
-      expect(document.body.textContent).toContain(en.journal.lessonStatus.in_progress);
-    });
-    const dialog = await worksOf(0);
-    fireEvent.click(within(dialog).getByRole('button', { name: en.journal.notGraded.button }));
-    const question = await screen.findByRole('alertdialog');
-    expect(question.textContent).toContain('1 empty cell of a present student');
-    fireEvent.click(
-      within(question).getByRole('button', { name: en.journal.notGraded.confirmAction }),
-    );
-    await waitFor(() => {
-      expect(sent(calls, `POST /api/journal/lessons/${PLANNED}/not-graded`)).toEqual([{}]);
-    });
-    const notice = await waitFor(() => {
-      const found = document.querySelector('[data-not-graded-notice]');
-      expect(found).not.toBeNull();
-      return found;
-    });
-    expect(notice?.textContent).toContain('1 cell set "not graded".');
-    expect(notice?.textContent).toContain('1 cell was typed meanwhile and kept.');
+  // The owner, 20 November 2026: a "-" typed in a work's cell is "not graded".
+  it('reads a "-" (or a dash a keyboard gives) as "not graded" in the cell of a work, and a number or empty as before', () => {
+    for (const dash of ['-', ' - ', '–', '—', '−']) {
+      expect(typedWorkEntry(dash, 30)).toBe('notGraded');
+    }
+    expect(typedWorkEntry('12', 30)).toBe(12);
+    expect(typedWorkEntry('', 30)).toBeNull();
+    expect(typedWorkEntry('--', 30)).toBeUndefined();
+    expect(typedWorkEntry('-1', 30)).toBeUndefined();
   });
 
   it('folds the journal’s reminders under their title, with the count of each kind (task 8.7, 07: "A panel on the journal")', async () => {

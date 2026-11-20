@@ -1742,6 +1742,12 @@ export const en = {
       classDailyNote:
         '{{min}} to {{max}}, or empty for no limit. A class with more lessons in a day is marked in the timetable.',
       classDailyNotSet: 'Not set',
+      planWindowsTitle: 'Lesson plan windows',
+      planWindows: 'Plan windows',
+      planWindowsOn: 'On: plans are written in the window, then changed by request',
+      planWindowsOff: 'Off: teachers change their plans at any time',
+      planWindowsNote:
+        'When off, there is no window, no edit request and no "overdue". Stored windows are kept.',
       earlyWarningTitle: 'Early-warning list',
       thresholds: {
         lowResult: 'Quarter result below',
@@ -4190,6 +4196,7 @@ export const en = {
         edit_days: 'Edit days changed',
         early_warning: 'Early warning settings changed',
         class_daily_lessons: 'Most lessons per day of a class changed',
+        plan_windows: 'Plan windows switched on or off',
       },
       subject: {
         create: 'Subject created',
@@ -4383,6 +4390,7 @@ export const en = {
         cells_undo: 'Last action undone',
         attendance_copy: 'Attendance copied from the first lesson of a double',
         work_add: 'Work added by hand',
+        topic: 'Topic of a lesson written in the journal',
         work_delete: 'Work added by hand removed',
         work_total: 'Total of a work set',
         work_not_held: 'Work marked not held, or the mark undone',
@@ -6584,6 +6592,7 @@ export const en = {
     },
     window: {
       label: 'Window:',
+      off: 'off, the plan can be changed at any time',
       state: {
         not_opened: 'not opened',
         before: 'opens {{start}}, ends {{end}}',
@@ -6677,6 +6686,9 @@ export const en = {
     },
     windows: {
       title: 'Plan windows',
+      offTitle: 'Plan windows are off',
+      offText:
+        'Teachers change their plans at any time. The stored windows are kept for when they are switched on again:',
       emptyTitle: 'No quarters',
       empty: 'The quarters of the academic year appear here once they are dated.',
       unpublished: 'The timetable of this quarter is not published yet.',
@@ -6908,6 +6920,25 @@ export const en = {
       stored: 'Stored: mark {{mark}}, numbers {{works}}',
       hiddenBy: 'hidden by a {{kind}} exemption {{from}} – {{until}}',
     },
+    editor: {
+      open: 'Edit lesson',
+      classworks: 'Classwork',
+      addClasswork: '+ Add classwork',
+      addHomework: '+ Give homework',
+      total: 'of',
+      totalOf: '{{name}}: total',
+      rename: 'Rename {{name}}',
+      delete: 'Delete {{name}}',
+      deleteTitle: 'Delete "{{name}}"?',
+      deleteNumbers_one: '{{count}} mark leaves the averages and stays in the history.',
+      deleteNumbers_other: '{{count}} marks leave the averages and stay in the history.',
+      deleteText: 'The work leaves the journal.',
+      deleteAction: 'Delete',
+      saveTopic: 'Save topic',
+      topicTooLong: 'At most {{max}} characters.',
+      extrasFailed: 'The plan’s objectives and materials could not be read.',
+      retry: 'Retry',
+    },
     card: {
       editPlan: 'Edit the plan of this lesson',
       askToEdit: 'Ask to edit this lesson',
@@ -6955,6 +6986,7 @@ export const en = {
       skipped_one: '{{count}} cell was typed meanwhile and kept.',
       skipped_other: '{{count}} cells were typed meanwhile and kept.',
       sign: 'Not graded',
+      typeFor: '{{name}}: not graded (-)',
       optional: 'Open until {{date}}',
     },
     reminders: {

@@ -32,6 +32,7 @@ export async function cellsAsSaved(
       'work_id',
       'mark_after',
       'score_after',
+      'not_graded_after',
     ])
     .where(
       'cell_id',
@@ -52,6 +53,7 @@ export async function cellsAsSaved(
             studentId: line.student_id,
             workId: line.work_id,
             value: line.work_id === null ? line.mark_after : line.score_after,
+            notGraded: line.not_graded_after,
             version: cell.version,
           },
         ];

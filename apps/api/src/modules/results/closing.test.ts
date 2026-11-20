@@ -4471,6 +4471,40 @@ describe('the closing checklist (07, Closing a quarter)', () => {
       expect(await noticesTo(admin, 'plans.window_missing', b.s.branch)).toHaveLength(1);
     });
 
+    // The owner, 20 November 2026 (migration 0174): no window to remind of with windows off.
+    it('sends no plan window reminder in a branch whose plan windows are switched off', async () => {
+      const b = await base();
+      const admin = await superAdmin();
+      const quarter2 = await quarterOf(b.s.year, 2);
+      const start = (
+        await t.database.migrator
+          .selectFrom('quarters')
+          .select(sql<string>`start_date::text`.as('start'))
+          .where('id', '=', quarter2)
+          .executeTakeFirstOrThrow()
+      ).start;
+      const fourteenBefore = new Date(
+        Date.parse(`${start}T07:00:00+05:00`) - 14 * 86_400_000,
+      ).toISOString();
+      const switchTo = (on: boolean) =>
+        t.database.migrator
+          .updateTable('branch_settings')
+          .set({ plan_windows: on })
+          .where('branch_id', '=', b.s.branch)
+          .execute();
+      await switchTo(false);
+      await job(b.s.branch, fourteenBefore, (transaction) =>
+        daily().planReminders(transaction, b.s.branch),
+      );
+      expect(await noticesTo(admin, 'plans.window_missing', b.s.branch)).toEqual([]);
+      // Switched on, the same day reminds.
+      await switchTo(true);
+      await job(b.s.branch, fourteenBefore, (transaction) =>
+        daily().planReminders(transaction, b.s.branch),
+      );
+      expect(await noticesTo(admin, 'plans.window_missing', b.s.branch)).toHaveLength(1);
+    });
+
     // 10: "Lesson about to lock with data missing | Teacher" (From 8.7), once per lesson.
     it('tells the teacher of an incomplete lesson within 48 hours of its lock, once', async () => {
       const teacher = await account();

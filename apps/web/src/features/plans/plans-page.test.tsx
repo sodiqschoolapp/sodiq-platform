@@ -158,7 +158,7 @@ const planOf = (canEdit: boolean, item: PlanItem | null = ITEM): Plan => ({
   canDrop: false,
   carryClosed: false,
   request: null,
-  window: { state: 'open', startDate: '2026-09-01', endDate: '2026-10-31' },
+  window: { state: 'open', startDate: '2026-09-01', endDate: '2026-10-31', off: false },
   flag: null,
   belowMinimum: null,
   requests: [],
@@ -788,7 +788,7 @@ describe('the outcomes of items not covered', () => {
 describe('the plan window and edit requests', () => {
   const ended = (plan: Plan): Plan => ({
     ...plan,
-    window: { state: 'ended', startDate: '2026-09-01', endDate: '2026-10-10' },
+    window: { state: 'ended', startDate: '2026-09-01', endDate: '2026-10-10', off: false },
     flag: 'overdue',
     rows: plan.rows.map((row) => ({ ...row, open: 'none' })),
   });
@@ -834,6 +834,46 @@ describe('the plan window and edit requests', () => {
         reason: 'Typos',
       });
     });
+  });
+
+  // The owner, 20 November 2026 (migration 0174): plan windows switched off in Settings.
+  it('says the plan is open at any time with windows off, with no request or extension', async () => {
+    open({
+      path: `/plans/${JOURNAL}`,
+      plan: {
+        ...planOf(true),
+        window: { state: 'open', startDate: null, endDate: null, off: true },
+        flag: null,
+      },
+    });
+    const line = await waitFor(() => {
+      const found = document.querySelector('[data-plan-window]');
+      expect(found).not.toBeNull();
+      return found as HTMLElement;
+    });
+    expect(line.textContent).toContain(en.plans.window.off);
+    await waitFor(() => {
+      expect(rows()).toHaveLength(3);
+    });
+    expect(screen.queryByRole('button', { name: en.plans.requests.ask })).toBeNull();
+  });
+
+  it('shows the windows page switched off, with the way to Settings', async () => {
+    open({
+      role: 'academic_vice_principal',
+      path: '/plans/windows',
+      routes: { 'GET /api/plans/windows': () => json({ ...WINDOWS, off: true }) },
+    });
+    const notice = await waitFor(() => {
+      const found = document.querySelector('[data-plan-windows-off]');
+      expect(found).not.toBeNull();
+      return found as HTMLElement;
+    });
+    expect(notice.textContent).toContain(en.plans.windows.offTitle);
+    expect(within(notice).getByRole('link', { name: en.setup.settings.title })).not.toBeNull();
+    expect(
+      screen.queryByRole('form', { name: en.plans.windows.formTitle.replace('{{number}}', '2') }),
+    ).toBeNull();
   });
 
   it('shows the date the timetable covers a quarter from, only when it starts inside the quarter (task 5.19)', async () => {
@@ -995,12 +1035,17 @@ describe('the plan window and edit requests', () => {
   it.each([
     {
       flag: 'window_not_opened' as const,
-      window: { state: 'not_opened' as const, startDate: null, endDate: null },
+      window: { state: 'not_opened' as const, startDate: null, endDate: null, off: false },
       text: 'not opened',
     },
     {
       flag: 'vacancy' as const,
-      window: { state: 'open' as const, startDate: '2026-09-01', endDate: '2026-10-31' },
+      window: {
+        state: 'open' as const,
+        startDate: '2026-09-01',
+        endDate: '2026-10-31',
+        off: false,
+      },
       text: 'open until',
     },
   ])('shows the window and the flag $flag on the plan page', async ({ flag, window, text }) => {
@@ -1272,6 +1317,7 @@ const REQUEST: PlanRequest = {
 const WINDOWS: PlanWindows = {
   yearId: uid(3),
   canEdit: true,
+  off: false,
   quarters: [
     {
       quarter: quarters[0] ?? { id: Q1, number: 1, startDate: '', endDate: '' },

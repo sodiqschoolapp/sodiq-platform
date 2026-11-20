@@ -61,10 +61,12 @@ export function WindowLine({ plan }: { plan: Plan }) {
     <div className="flex gap-1 text-sm" data-plan-window={plan.window.state}>
       <dt className="text-muted-foreground">{t('plans.window.label')}</dt>
       <dd>
-        {t(`plans.window.state.${plan.window.state}`, {
-          start: date(plan.window.startDate),
-          end: date(plan.window.endDate),
-        })}
+        {plan.window.off
+          ? t('plans.window.off')
+          : t(`plans.window.state.${plan.window.state}`, {
+              start: date(plan.window.startDate),
+              end: date(plan.window.endDate),
+            })}
         {plan.flag !== null && (
           <>
             {' · '}

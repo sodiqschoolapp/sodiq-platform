@@ -8,6 +8,7 @@ export const SETTINGS_COLUMNS = [
   'attendance_percent',
   'absences_in_row',
   'class_daily_lessons',
+  'plan_windows',
 ] as const;
 
 export interface SettingsRow {
@@ -17,6 +18,7 @@ export interface SettingsRow {
   attendance_percent: number;
   absences_in_row: number;
   class_daily_lessons: number | null;
+  plan_windows: boolean;
 }
 
 export const toSettings = (row: SettingsRow): BranchSettings => ({
@@ -26,4 +28,5 @@ export const toSettings = (row: SettingsRow): BranchSettings => ({
   attendancePercent: row.attendance_percent,
   absencesInRow: row.absences_in_row,
   classDailyLessons: row.class_daily_lessons,
+  planWindows: row.plan_windows,
 });

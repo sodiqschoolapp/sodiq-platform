@@ -6,7 +6,7 @@ import type {
   Role,
   TravelTimeList,
 } from '@sodiq/shared';
-import { fireEvent, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { en } from '@/i18n/locales/en';
 import { ru } from '@/i18n/locales/ru';
@@ -27,6 +27,7 @@ const SETTINGS: BranchSettings = {
   attendancePercent: 80,
   absencesInRow: 3,
   classDailyLessons: null,
+  planWindows: true,
 };
 
 const QUARTER_ID = '0199b000-0000-7000-8000-000000000011';
@@ -252,6 +253,32 @@ describe('the settings page', () => {
           ?.body,
       ).toEqual({ classDailyLessons: null });
     });
+  });
+
+  // The owner, 20 November 2026 (migration 0174): plan windows can be switched off.
+  it('switches the plan windows off and shows the choice to the Principal', async () => {
+    const calls = settingsApi('academic_vice_principal', {
+      'PUT /api/setup/settings/plan-windows': (body) => json({ ...SETTINGS, ...(body as object) }),
+    });
+    renderApp('/setup/settings');
+    const part = await section(en.setup.settings.planWindowsTitle);
+    const field = await part.findByLabelText(en.setup.settings.planWindows);
+    expect((field as HTMLSelectElement).value).toBe('on');
+    fireEvent.change(field, { target: { value: 'off' } });
+    fireEvent.click(part.getByRole('button', { name: en.form.save }));
+    await waitFor(() => {
+      expect(
+        calls
+          .filter((call) => call.route === 'PUT /api/setup/settings/plan-windows')
+          .map((call) => call.body),
+      ).toEqual([{ planWindows: false }]);
+    });
+    cleanup();
+    settingsApi('principal');
+    renderApp('/setup/settings');
+    const read = await section(en.setup.settings.planWindowsTitle);
+    expect(read.getByText(en.setup.settings.planWindowsOn)).not.toBeNull();
+    expect(read.queryByRole('button', { name: en.form.save })).toBeNull();
   });
 
   it('shows "Not set" for the most lessons per day of a class to the Principal', async () => {

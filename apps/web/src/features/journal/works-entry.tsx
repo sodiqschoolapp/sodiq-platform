@@ -1,8 +1,4 @@
 import {
-  WORK_TITLE_MAX,
-  WORK_TOTAL_MAX,
-  WORK_TOTAL_MIN,
-  workTitleLength,
   type JournalGrid,
   type JournalLesson,
   type JournalStudent,
@@ -15,17 +11,6 @@ import { useTranslation } from 'react-i18next';
 import { ApiFailure } from '@/api/failure';
 import { useConfirm } from '@/components/confirm-dialog';
 import { FailureAlert } from '@/components/failure-alert';
-import { Field, NumberField } from '@/components/field';
-import { wholeNumber } from '@/components/form/form-messages';
-import { Button } from '@/components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import { schoolDateText } from '@/lib/dates';
 import {
   StaleDialog,
   storedOf,
@@ -36,19 +21,19 @@ import {
 } from './cell-saves';
 import {
   addWork,
-  carryWork,
   invalidateJournal,
   removePlanWork,
   removeWork,
   renamePlanWork,
   renameWork,
+  saveLessonTopic,
   saveScores,
-  setNotGraded,
   setWorkNotHeld,
   setWorkTotal,
   showTyped,
 } from './journal-api';
-import { WorkKindTag } from './work-kind-tag';
+import type { WorkEntry } from './journal-grid';
+import { LessonEditor, type GivenWork } from './lesson-editor';
 
 /**
  * Classwork and homework in the journal (task 8.1, pull request #217; `07`,
@@ -73,12 +58,15 @@ export const workKey = (work: JournalWork) =>
 
 /** What the grid calls to enter numbers and open the dialogs. */
 export interface WorksEntry {
-  /** Saves a number (or clears the cell with `null`) on the version the grid read. */
+  /**
+   * Saves a number, "not graded" (a typed "-"), or clears the cell with `null`, on the version
+   * the grid read.
+   */
   score: (
     lesson: JournalLesson,
     work: JournalWork,
     student: JournalStudent,
-    score: number | null,
+    score: WorkEntry,
   ) => void;
   openLesson: (lesson: JournalLesson) => void;
   openWork: (lesson: JournalLesson, work: JournalWork) => void;
@@ -99,6 +87,8 @@ interface TypedNumber {
   kind: JournalWork['kind'];
   studentId: string;
   score: number | null;
+  /** A "-": the cell is "not graded" (`score` is `null`). */
+  notGraded: boolean;
   version: number | null;
   key: string;
 }
@@ -160,6 +150,7 @@ export function useWorksEntry(
               studentId: input.studentId,
               column: input.column,
               score: input.score,
+              ...(input.notGraded ? { notGraded: true as const } : {}),
               version: input.version,
             },
           ],
@@ -176,6 +167,7 @@ export function useWorksEntry(
         studentId: input.studentId,
         workIndex: input.workIndex,
         value: input.score,
+        notGraded: input.notGraded,
       });
       saves.set(signKey(input.lessonId, input.studentId, input.cell), 'saving');
       setInFlight((now) => new Set(now).add(signKey(input.lessonId, input.studentId, input.cell)));
@@ -232,28 +224,6 @@ export function useWorksEntry(
     },
   });
 
-  // Task 8.7 (`07`, Lesson status): "not graded" in one click, one action for the undo.
-  const [graded, setGraded] = useState<{ filled: number; skipped: number } | null>(null);
-  const notGraded = useMutation({
-    mutationFn: (lessonId: string) =>
-      setNotGraded(lessonId, {
-        ...(correctionOf(lessonId) === undefined ? {} : { correction: correctionOf(lessonId) }),
-      }).then((answer) => ({ lessonId, answer })),
-    onMutate: () => {
-      setFailure(null);
-      setGraded(null);
-    },
-    onSuccess: async ({ lessonId, answer }) => {
-      setGraded({ filled: answer.filled.length, skipped: answer.skipped.length });
-      record({ lessonId, cells: answer.filled });
-      await done();
-    },
-    onError: async (error) => {
-      setFailure(error);
-      await done();
-    },
-  });
-
   /** A change that may ask a confirmation first (a total with numbers, "not held" with numbers). */
   const change = useMutation({
     mutationFn: async (input: {
@@ -297,7 +267,8 @@ export function useWorksEntry(
           workIndex: at,
           kind: work.kind,
           studentId: student.id,
-          score: value,
+          score: value === 'notGraded' ? null : value,
+          notGraded: value === 'notGraded',
           version: student.cells[index]?.works[at]?.version ?? null,
           key: crypto.randomUUID(),
         });
@@ -307,7 +278,9 @@ export function useWorksEntry(
       openLesson: (lesson) => {
         setLessonOpen(lesson.id);
       },
+      // A work's header opens the lesson's editor at that work.
       openWork: (lesson, work) => {
+        setLessonOpen(lesson.id);
         setWorkOpen({ lessonId: lesson.id, key: workKey(work) });
       },
       busy: scoring || changing,
@@ -317,11 +290,19 @@ export function useWorksEntry(
     [grid.lessons, saveScore, scoring, changing, states, inFlight],
   );
 
-  const lesson = grid.lessons.find((one) => one.id === (workOpen?.lessonId ?? lessonOpen));
-  const work =
-    workOpen === null || lesson === undefined
-      ? undefined
-      : [...lesson.works, ...lesson.notHeldWorks].find((one) => workKey(one) === workOpen.key);
+  const lesson = grid.lessons.find((one) => one.id === lessonOpen);
+  const indexOf = (target: JournalLesson) => grid.lessons.findIndex((one) => one.id === target.id);
+
+  /** The numbers and "-" typed in a work's column at a lesson, as the grid holds them. */
+  const entriesIn = (target: JournalLesson, chosen: JournalWork): number => {
+    const index = indexOf(target);
+    const at = target.works.findIndex((one) => workKey(one) === workKey(chosen));
+    if (index < 0 || at < 0) return 0;
+    return grid.students.filter((student) => {
+      const typed = student.cells[index]?.works[at];
+      return typed !== undefined && (typed.score !== null || typed.notGraded);
+    }).length;
+  };
 
   const setTotal = (target: JournalLesson, chosen: JournalWork, total: number) => {
     run({
@@ -355,25 +336,92 @@ export function useWorksEntry(
     });
   };
 
-  const setNotHeld = (target: JournalLesson, chosen: JournalWork, notHeld: boolean) => {
-    run({
-      code: 'not_held_confirm',
-      run: (confirmed) =>
-        setWorkNotHeld(target.id, {
-          column: columnOf(chosen),
-          notHeld,
-          version: chosen.version,
-          confirm: confirmed,
-        }),
-      ask: (error) =>
-        confirm({
-          title: t('journal.works.confirmNotHeldTitle'),
-          text: t('journal.works.confirmNotHeldText', {
-            count: error.details?.[0]?.count ?? 0,
-          }),
-          action: t('journal.works.confirmNotHeldAction'),
-        }),
-    });
+  /**
+   * Deletes a work's column at the lesson that shows it (the owner, 20 November 2026). A work
+   * with a total or with numbers is kept out of the journal and its averages, its numbers kept in
+   * the history ("not held" underneath: records with data are archived, never deleted); an empty
+   * one is removed, from the plan too.
+   */
+  const deleteAt = (target: JournalLesson, chosen: JournalWork, name: string) => {
+    const count = entriesIn(target, chosen);
+    if (chosen.total !== null || count > 0) {
+      void confirm({
+        title: t('journal.editor.deleteTitle', { name }),
+        text:
+          count > 0 ? t('journal.editor.deleteNumbers', { count }) : t('journal.editor.deleteText'),
+        action: t('journal.editor.deleteAction'),
+        destructive: true,
+      }).then((sure) => {
+        if (!sure) return;
+        run({
+          run: () =>
+            setWorkNotHeld(target.id, {
+              column: columnOf(chosen),
+              notHeld: true,
+              version: chosen.version,
+              confirm: true,
+              ...(correctionOf(target.id) === undefined
+                ? {}
+                : { correction: correctionOf(target.id) }),
+            }),
+          ask: () => Promise.resolve(false),
+        });
+      });
+      return;
+    }
+    const planWorkId = chosen.planWorkId;
+    if (planWorkId !== null) {
+      run({ run: () => removePlanWork(target.id, planWorkId), ask: () => Promise.resolve(false) });
+      return;
+    }
+    const id = chosen.id;
+    if (id !== null)
+      run({ run: () => removeWork(target.id, id), ask: () => Promise.resolve(false) });
+  };
+
+  /** A homework given at the lesson: deleted at its check lesson when it holds data there. */
+  const deleteGiven = (target: JournalLesson, given: GivenWork, name: string) => {
+    const check = grid.lessons.find((one) => one.id === given.checkAt);
+    const column = check?.works.find(
+      (one) =>
+        (given.planWorkId !== null && one.planWorkId === given.planWorkId) ||
+        (given.workId !== null && one.id === given.workId),
+    );
+    if (check !== undefined && column !== undefined) {
+      deleteAt(check, column, name);
+      return;
+    }
+    const planWorkId = given.planWorkId;
+    if (planWorkId !== null) {
+      run({ run: () => removePlanWork(target.id, planWorkId), ask: () => Promise.resolve(false) });
+      return;
+    }
+    const id = given.workId;
+    if (id !== null)
+      run({ run: () => removeWork(target.id, id), ask: () => Promise.resolve(false) });
+  };
+
+  const rename = async (target: JournalLesson, chosen: JournalWork, title: string) => {
+    const planWorkId = chosen.planWorkId;
+    try {
+      if (planWorkId !== null) {
+        await runAsync({
+          run: () =>
+            renamePlanWork(target.id, planWorkId, { title, baseTitle: chosen.title ?? '' }),
+          ask: () => Promise.resolve(false),
+        });
+        return true;
+      }
+      if (chosen.id === null) return false;
+      const id = chosen.id;
+      await runAsync({
+        run: () => renameWork(target.id, id, { title, version: chosen.version ?? 1 }),
+        ask: () => Promise.resolve(false),
+      });
+      return true;
+    } catch {
+      return false;
+    }
   };
 
   const aboveTotal =
@@ -404,117 +452,70 @@ export function useWorksEntry(
           }}
         />
       )}
-      {graded !== null && (
-        <p className="text-sm" data-not-graded-notice="true">
-          {t('journal.notGraded.filled', { count: graded.filled })}
-          {graded.skipped > 0 && (
-            <span className="ml-1">
-              {t('journal.notGraded.skipped', { count: graded.skipped })}
-            </span>
-          )}
-        </p>
-      )}
       {aboveTotal.length > 0 && (
         <p className="text-sm" data-above-total="true">
           {t('journal.works.aboveTotal', { names: aboveTotal.join(', ') })}
         </p>
       )}
-      {lessonOpen !== null && lesson !== undefined && workOpen === null && (
-        <LessonWorksDialog
+      {lesson !== undefined && (
+        <LessonEditor
           lesson={lesson}
           grid={grid}
           language={i18n.language}
-          busy={changing || notGraded.isPending}
+          busy={changing}
           failure={failure}
+          focusKey={workOpen?.lessonId === lesson.id ? workOpen.key : null}
           nameOfWork={nameOfWork}
-          onAdd={(kind, title) =>
-            // Task 10.6 (spec review of the code, should-fix 4): the form stays with its title
-            // until the server took it; a refusal is shown in the dialog.
+          keyOf={workKey}
+          onTopic={(topic) =>
             runAsync({
-              run: () => addWork(lesson.id, { kind, title }),
+              run: () =>
+                saveLessonTopic(lesson.id, {
+                  topic,
+                  baseTopic: lesson.topic ?? '',
+                  ...(correctionOf(lesson.id) === undefined
+                    ? {}
+                    : { correction: correctionOf(lesson.id) }),
+                }),
               ask: () => Promise.resolve(false),
             }).then(
               () => true,
               () => false,
             )
           }
-          onUndo={(chosen) => {
-            setNotHeld(lesson, chosen, false);
+          onAdd={(kind, title) =>
+            // The form stays with its title until the server took it; a refusal is shown above it.
+            runAsync({
+              run: () =>
+                addWork(lesson.id, {
+                  kind,
+                  title,
+                  ...(correctionOf(lesson.id) === undefined
+                    ? {}
+                    : { correction: correctionOf(lesson.id) }),
+                }),
+              ask: () => Promise.resolve(false),
+            }).then(
+              () => true,
+              () => false,
+            )
+          }
+          onRename={(chosen, title) => rename(lesson, chosen, title)}
+          onTotal={(chosen, total) => {
+            setTotal(lesson, chosen, total);
           }}
-          waiting={waitingCells(grid, lesson)}
-          onNotGraded={() => {
-            const count = waitingCells(grid, lesson);
-            void confirm({
-              title: t('journal.notGraded.confirmTitle'),
-              text: t('journal.notGraded.confirmText', { count }),
-              action: t('journal.notGraded.confirmAction'),
-            }).then((yes) => {
-              if (!yes) return;
-              setLessonOpen(null);
-              notGraded.mutate(lesson.id);
-            });
+          onDelete={(chosen) => {
+            deleteAt(lesson, chosen, nameOfWork(chosen));
+          }}
+          onDeleteGiven={(given) => {
+            deleteGiven(
+              lesson,
+              given,
+              given.title ?? t('journal.grid.homeworkShort', { number: 1 }),
+            );
           }}
           onClose={() => {
             setLessonOpen(null);
-          }}
-        />
-      )}
-      {workOpen !== null && lesson !== undefined && work !== undefined && (
-        <WorkDialog
-          key={workKey(work)}
-          lesson={lesson}
-          work={work}
-          lastTotal={grid.lastTotal}
-          busy={changing}
-          failure={failure}
-          name={nameOfWork(work)}
-          onTotal={(total) => {
-            setTotal(lesson, work, total);
-          }}
-          onNotHeld={(notHeld) => {
-            setNotHeld(lesson, work, notHeld);
-          }}
-          onCarry={() => {
-            run({
-              run: () => carryWork(lesson.id, { column: columnOf(work), version: work.version }),
-              ask: () => Promise.resolve(false),
-            });
-          }}
-          inJournal={addedInJournal(grid, work)}
-          onRename={(title) => {
-            // Task 10.8: a work added in the journal is renamed in the plan, on the title read.
-            const planWorkId = work.planWorkId;
-            if (addedInJournal(grid, work) && planWorkId !== null) {
-              run({
-                run: () =>
-                  renamePlanWork(lesson.id, planWorkId, { title, baseTitle: work.title ?? '' }),
-                ask: () => Promise.resolve(false),
-              });
-              return;
-            }
-            if (work.id === null) return;
-            const id = work.id;
-            run({
-              run: () => renameWork(lesson.id, id, { title, version: work.version ?? 1 }),
-              ask: () => Promise.resolve(false),
-            });
-          }}
-          onRemove={() => {
-            const planWorkId = work.planWorkId;
-            if (addedInJournal(grid, work) && planWorkId !== null) {
-              run({
-                run: () => removePlanWork(lesson.id, planWorkId),
-                ask: () => Promise.resolve(false),
-              });
-              setWorkOpen(null);
-              return;
-            }
-            if (work.id === null) return;
-            const id = work.id;
-            run({ run: () => removeWork(lesson.id, id), ask: () => Promise.resolve(false) });
-            setWorkOpen(null);
-          }}
-          onClose={() => {
             setWorkOpen(null);
           }}
         />
@@ -523,397 +524,4 @@ export function useWorksEntry(
   );
 
   return { works, dialogs };
-}
-
-/**
- * The empty cells of the works with a total that a lesson waits for, as the grid shows
- * them (`07`: "A present student left without a number"): students marked 1 or 2, not
- * closed, not exempt. A count for the confirmation; the server decides which it fills.
- */
-export function waitingCells(grid: JournalGrid, lesson: JournalLesson): number {
-  const index = grid.lessons.findIndex((one) => one.id === lesson.id);
-  let count = 0;
-  for (const student of grid.students) {
-    const cell = student.cells[index];
-    if (cell === undefined || cell.closed || cell.exempt !== null) continue;
-    if (cell.mark !== 1 && cell.mark !== 2) continue;
-    lesson.works.forEach((work, at) => {
-      const typed = cell.works[at];
-      if (work.id !== null && work.total !== null && typed?.score === null && !typed.notGraded) {
-        count += 1;
-      }
-    });
-  }
-  return count;
-}
-
-/** The works of a lesson: added by hand, marked "not held", and the homeworks given. */
-function LessonWorksDialog({
-  lesson,
-  grid,
-  language,
-  busy,
-  failure,
-  nameOfWork,
-  onAdd,
-  onUndo,
-  waiting,
-  onNotGraded,
-  onClose,
-}: {
-  lesson: JournalLesson;
-  grid: JournalGrid;
-  language: string;
-  busy: boolean;
-  /** Task 10.6 (plan review, correction 2): a refused add is shown in the dialog. */
-  failure: unknown;
-  nameOfWork: (work: JournalWork) => string;
-  /** Answers whether the server took it. */
-  onAdd: (kind: 'classwork' | 'homework', title: string) => Promise<boolean>;
-  onUndo: (work: JournalWork) => void;
-  /** Task 8.7: the empty cells the lesson waits for, and "not graded" for them. */
-  waiting: number;
-  onNotGraded: () => void;
-  onClose: () => void;
-}) {
-  const { t } = useTranslation();
-  const dateOf = (id: string | null) => {
-    const found = grid.lessons.find((one) => one.id === id);
-    return found === undefined ? null : schoolDateText(found.date, language);
-  };
-  const title = t('journal.works.title', { date: schoolDateText(lesson.date, language) });
-  // Task 10.6: a work added by hand is named when it is added.
-  const [adding, setAdding] = useState<'classwork' | 'homework' | null>(null);
-  return (
-    <Dialog
-      open
-      onOpenChange={(open) => {
-        if (!open) onClose();
-      }}
-    >
-      <DialogContent aria-label={title}>
-        <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
-        </DialogHeader>
-        <div className="grid gap-4 text-sm">
-          <FailureAlert error={failure} />
-          {lesson.canEnterWorks && waiting > 0 && (
-            <div>
-              <Button variant="secondary" disabled={busy} onClick={onNotGraded}>
-                {t('journal.notGraded.button')}
-              </Button>
-            </div>
-          )}
-          {!lesson.planItem && (
-            <div className="grid gap-2" data-no-plan="true">
-              <p className="font-semibold">{t('journal.works.noPlan')}</p>
-              {lesson.canEnterWorks && adding === null && (
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    variant="secondary"
-                    disabled={busy}
-                    onClick={() => {
-                      setAdding('classwork');
-                    }}
-                  >
-                    {t('journal.works.addClasswork')}
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    disabled={busy}
-                    onClick={() => {
-                      setAdding('homework');
-                    }}
-                  >
-                    {t('journal.works.addHomework')}
-                  </Button>
-                </div>
-              )}
-              {lesson.canEnterWorks && adding !== null && (
-                <WorkTitleForm
-                  key={adding}
-                  initial=""
-                  label={
-                    adding === 'classwork'
-                      ? t('journal.works.classworkTitle')
-                      : t('journal.works.homeworkTitle')
-                  }
-                  action={t('journal.works.add')}
-                  busy={busy}
-                  onSave={(typed) => {
-                    void onAdd(adding, typed).then((taken) => {
-                      if (taken) setAdding(null);
-                    });
-                  }}
-                  onCancel={() => {
-                    setAdding(null);
-                  }}
-                />
-              )}
-            </div>
-          )}
-          {lesson.given.length > 0 && (
-            <div className="grid gap-1">
-              <p className="font-semibold">{t('journal.works.given')}</p>
-              <ul className="grid list-disc gap-1 pl-5">
-                {lesson.given.map((given, index) => (
-                  <li key={`${given.title ?? ''}:${String(index)}`}>
-                    <WorkKindTag kind="homework" className="mr-1 align-middle" />
-                    {given.title ?? t('journal.grid.homeworkShort', { number: index + 1 })}
-                    {' · '}
-                    {given.ungraded === null
-                      ? t('journal.works.checkedOn', { date: dateOf(given.checkAt) ?? '—' })
-                      : t(`journal.works.ungraded.${given.ungraded}`)}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-          {lesson.notHeldWorks.length > 0 && (
-            <div className="grid gap-1">
-              <p className="font-semibold">{t('journal.works.notHeldList')}</p>
-              <ul className="grid gap-2">
-                {lesson.notHeldWorks.map((work) => (
-                  <li key={workKey(work)} className="flex flex-wrap items-center gap-2">
-                    {/* Task 10.7: works of both kinds listed together carry their kind's tag. */}
-                    <span className="inline-flex items-center gap-1">
-                      <WorkKindTag kind={work.kind} />
-                      {nameOfWork(work)}
-                    </span>
-                    {lesson.canEnterWorks && (
-                      <Button
-                        variant="ghost"
-                        disabled={busy}
-                        onClick={() => {
-                          onUndo(work);
-                        }}
-                      >
-                        {t('journal.works.undoNotHeld')}
-                      </Button>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </div>
-        <DialogFooter>
-          <Button variant="ghost" onClick={onClose}>
-            {t('journal.entry.close')}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-/** One work: its total, "not held", the carry of a homework and the removal of an empty one. */
-/**
- * Task 10.8: the work was added in the journal and its plan item has no topic yet (`09`, In the
- * journal); the lesson it was given at says so (`addedInJournal`, `planItem`).
- */
-function addedInJournal(grid: JournalGrid, work: JournalWork): boolean {
-  if (work.planWorkId === null || work.sourceLessonId === null) return false;
-  const source = grid.lessons.find((one) => one.id === work.sourceLessonId);
-  return (
-    source !== undefined && !source.planItem && source.addedInJournal.includes(work.planWorkId)
-  );
-}
-
-function WorkDialog({
-  lesson,
-  work,
-  lastTotal,
-  busy,
-  failure,
-  name,
-  onTotal,
-  onNotHeld,
-  onCarry,
-  onRename,
-  onRemove,
-  onClose,
-  inJournal,
-}: {
-  lesson: JournalLesson;
-  work: JournalWork;
-  /**
-   * Task 10.8: a work added in the journal whose plan item has no topic yet; renamed and removed
-   * here like a work added by hand (`edge/journal`, "A lesson is held with no plan item").
-   */
-  inJournal: boolean;
-  lastTotal: number | null;
-  busy: boolean;
-  /** Task 10.6 (plan review, correction 2): a refused rename is shown in the dialog. */
-  failure: unknown;
-  name: string;
-  onTotal: (total: number) => void;
-  onNotHeld: (notHeld: boolean) => void;
-  onCarry: () => void;
-  /** Task 10.6: the new title of a work added by hand. */
-  onRename: (title: string) => void;
-  onRemove: () => void;
-  onClose: () => void;
-}) {
-  const { t } = useTranslation();
-  // `07`: "The last total the teacher used in that journal is offered for the next work."
-  const [typed, setTyped] = useState(String(work.total ?? lastTotal ?? ''));
-  const read = wholeNumber(typed);
-  const valid = typeof read === 'number' && read >= WORK_TOTAL_MIN && read <= WORK_TOTAL_MAX;
-  const enter = lesson.canEnterWorks;
-  const title = t('journal.works.workTitle', { name });
-  // A homework at its check lesson: "not checked" or "check at the next lesson" (once).
-  const checking = work.kind === 'homework';
-  return (
-    <Dialog
-      open
-      onOpenChange={(open) => {
-        if (!open) onClose();
-      }}
-    >
-      <DialogContent aria-label={title}>
-        <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
-        </DialogHeader>
-        <form
-          className="grid gap-3"
-          onSubmit={(event) => {
-            event.preventDefault();
-            if (valid) onTotal(read);
-          }}
-        >
-          <NumberField
-            label={t('journal.works.total')}
-            value={typed}
-            disabled={!enter || work.notHeld}
-            error={
-              typed === '' || valid
-                ? undefined
-                : t('journal.works.wholeNumber', { total: WORK_TOTAL_MAX })
-            }
-            onChange={(event) => {
-              setTyped(event.target.value);
-            }}
-          />
-          {enter && !work.notHeld && (
-            <div>
-              <Button type="submit" disabled={busy || !valid}>
-                {t('journal.works.saveTotal')}
-              </Button>
-            </div>
-          )}
-        </form>
-        <FailureAlert error={failure} />
-        {/* Task 10.6: a work added by hand is renamed while the lesson can be edited. */}
-        {enter && ((work.unplanned && work.id !== null) || inJournal) && (
-          <WorkTitleForm
-            initial={work.title ?? ''}
-            label={t('journal.works.titleLabel')}
-            action={t('journal.works.rename')}
-            busy={busy}
-            onSave={onRename}
-          />
-        )}
-        {enter && (
-          <div className="flex flex-wrap gap-2">
-            <Button
-              variant="secondary"
-              disabled={busy}
-              onClick={() => {
-                onNotHeld(!work.notHeld);
-              }}
-            >
-              {work.notHeld
-                ? t('journal.works.undoNotHeld')
-                : checking
-                  ? t('journal.works.notChecked')
-                  : t('journal.works.notHeld')}
-            </Button>
-            {checking && work.carriedFrom === null && !work.notHeld && (
-              <Button variant="secondary" disabled={busy} onClick={onCarry}>
-                {t('journal.works.carry')}
-              </Button>
-            )}
-            {((work.unplanned && work.id !== null) || inJournal) &&
-              work.total === null &&
-              !work.notHeld && (
-                <Button variant="ghost" disabled={busy} onClick={onRemove}>
-                  {t('journal.works.remove')}
-                </Button>
-              )}
-          </div>
-        )}
-        <DialogFooter>
-          <Button variant="ghost" onClick={onClose}>
-            {t('journal.entry.close')}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-/**
- * Task 10.6: the title of a work added by hand (`07`, Entering data: "each with a title the
- * teacher types when adding it (required, at most 60 characters)"), counted in characters as
- * the server counts them (`workTitleLength`); the server checks it again.
- */
-function WorkTitleForm({
-  initial,
-  label,
-  action,
-  busy,
-  onSave,
-  onCancel,
-}: {
-  initial: string;
-  label: string;
-  action: string;
-  busy: boolean;
-  onSave: (title: string) => void;
-  onCancel?: () => void;
-}) {
-  const { t } = useTranslation();
-  const [typed, setTyped] = useState(initial);
-  const [tried, setTried] = useState(false);
-  const title = typed.trim();
-  const length = workTitleLength(title);
-  const problem =
-    length === 0
-      ? t('journal.works.titleRequired')
-      : length > WORK_TITLE_MAX
-        ? t('journal.works.titleTooLong', { max: WORK_TITLE_MAX })
-        : undefined;
-  return (
-    <form
-      className="grid gap-2"
-      data-work-title-form="true"
-      onSubmit={(event) => {
-        event.preventDefault();
-        setTried(true);
-        if (problem === undefined && title !== initial) onSave(title);
-      }}
-    >
-      <Field
-        label={label}
-        value={typed}
-        autoComplete="off"
-        error={tried || length > WORK_TITLE_MAX ? problem : undefined}
-        note={t('journal.works.titleCount', { typed: length, max: WORK_TITLE_MAX })}
-        onChange={(event) => {
-          setTyped(event.target.value);
-        }}
-      />
-      <div className="flex flex-wrap gap-2">
-        <Button type="submit" disabled={busy || (initial !== '' && title === initial)}>
-          {action}
-        </Button>
-        {onCancel !== undefined && (
-          <Button type="button" variant="ghost" onClick={onCancel}>
-            {t('journal.works.cancel')}
-          </Button>
-        )}
-      </div>
-    </form>
-  );
 }

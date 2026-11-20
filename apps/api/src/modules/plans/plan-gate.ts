@@ -37,8 +37,64 @@ export async function dayMoments(
   return { startsAt: row.starts_at, endsAt: new Date(row.next_start.getTime() - 1) };
 }
 
-/** The window of a quarter with the extension in force for one person. */
+/**
+ * Whether the branch uses plan windows (the owner, 20 November 2026; migration 0174): off, every
+ * plan is open for its owner at any time, and no request is prepared or needed.
+ */
+export async function planWindowsOn(transaction: Transaction, branchId: string): Promise<boolean> {
+  const row = await transaction
+    .selectFrom('branch_settings')
+    .select('plan_windows')
+    .where('branch_id', '=', branchId)
+    .executeTakeFirst();
+  return row?.plan_windows ?? true;
+}
+
+/** The branch a quarter belongs to, for `planWindowsOn`. */
+async function windowsOnFor(transaction: Transaction, quarterId: string): Promise<boolean> {
+  const row = await transaction
+    .selectFrom('quarters')
+    .innerJoin('branch_settings', 'branch_settings.branch_id', 'quarters.branch_id')
+    .select('branch_settings.plan_windows')
+    .where('quarters.id', '=', quarterId)
+    .executeTakeFirst();
+  return row?.plan_windows ?? true;
+}
+
+/** The answer of the window readers for a branch whose plan windows are off. */
+const OFF_WINDOW = (quarterEndsAt: Date) => ({
+  id: '',
+  startsAt: new Date(0),
+  endsAt: quarterEndsAt,
+  quarterEndsAt,
+  extensionEndsAt: null,
+  off: true,
+  startDate: '',
+  endDate: '',
+});
+
+/**
+ * The window of a quarter with the extension in force for one person, as it decides a write: an
+ * "off" window, open at any time, when the branch switched its plan windows off.
+ */
 export async function storedWindowOf(
+  transaction: Transaction,
+  quarter: PlanQuarter,
+  staffId: string | null,
+  timeZone: string,
+): Promise<(StoredWindow & { readonly id: string; startDate: string; endDate: string }) | null> {
+  if (!(await windowsOnFor(transaction, quarter.id))) {
+    const { endsAt } = await dayMoments(transaction, quarter.endDate, quarter.endDate, timeZone);
+    return OFF_WINDOW(endsAt);
+  }
+  return storedWindowAsKept(transaction, quarter, staffId, timeZone);
+}
+
+/**
+ * The window of a quarter as stored, whatever the switch: the windows page and the extensions
+ * keep showing and changing what is stored, so switching back on brings it back.
+ */
+export async function storedWindowAsKept(
   transaction: Transaction,
   quarter: PlanQuarter,
   staffId: string | null,
@@ -101,6 +157,16 @@ export async function storedWindowsOf(
     (StoredWindow & { readonly id: string; startDate: string; endDate: string }) | null
   >();
   if (quarters.length === 0) return found;
+  const off = new Set<string>();
+  for (const quarter of quarters) {
+    if (!(await windowsOnFor(transaction, quarter.id))) {
+      off.add(quarter.id);
+      const { endsAt } = await dayMoments(transaction, quarter.endDate, quarter.endDate, timeZone);
+      for (const staffId of new Set(staffIds)) {
+        found.set(`${quarter.id}|${staffId ?? ''}`, OFF_WINDOW(endsAt));
+      }
+    }
+  }
   const windows = await transaction
     .selectFrom('lesson_plan_windows')
     .select([
@@ -140,6 +206,7 @@ export async function storedWindowsOf(
     if (!latest.has(key)) latest.set(key, one.ends_at);
   }
   for (const quarter of quarters) {
+    if (off.has(quarter.id)) continue;
     const window = windows.find((one) => one.quarter_id === quarter.id);
     for (const staffId of new Set(staffIds)) {
       found.set(`${quarter.id}|${staffId ?? ''}`, null);

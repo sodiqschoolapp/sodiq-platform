@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { correctionSchema } from './journal-correction.js';
 import { cellWorkKindSchema } from './reset-entries.js';
+import { PLAN_TOPIC_MAX_LENGTH } from './plans.js';
 
 /**
  * Classwork and homework in the journal (task 8.1, pull request #217; `07`,
@@ -121,6 +122,22 @@ export const planWorkRenameSchema = z.strictObject({
 
 export type PlanWorkRename = z.infer<typeof planWorkRenameSchema>;
 
+/**
+ * The owner, 20 November 2026: the topic of a lesson written in the journal, into its plan item
+ * (created for it when there is none), on the topic read (`baseTopic`); empty clears it.
+ */
+export const lessonTopicSchema = z.strictObject({
+  topic: z.string().max(PLAN_TOPIC_MAX_LENGTH),
+  baseTopic: z.string(),
+  correction: correctionSchema.optional(),
+});
+
+export type LessonTopic = z.infer<typeof lessonTopicSchema>;
+
+export const lessonTopicSavedSchema = z.object({ itemId: z.uuid(), topic: z.string() });
+
+export type LessonTopicSaved = z.infer<typeof lessonTopicSavedSchema>;
+
 /** Task 10.8: a work added in the journal, as the plan holds it. */
 export const workAddedSchema = z.object({
   planWorkId: z.uuid(),
@@ -154,6 +171,11 @@ export const scoresSaveSchema = z
           studentId: z.uuid(),
           column: workColumnSchema,
           score: z.int().min(0).max(WORK_TOTAL_MAX).nullable(),
+          /**
+           * The owner, 20 November 2026: a "-" typed in the cell, "not graded" (`07`, Lesson
+           * status). Only with `score: null`; a number or a clear ends it.
+           */
+          notGraded: z.literal(true).optional(),
           /** The version the number was typed on; `null` for a cell never saved. */
           version: z.int().min(1).nullable(),
         }),
@@ -166,6 +188,13 @@ export const scoresSaveSchema = z
   .superRefine((value, context) => {
     const seen = new Set<string>();
     value.saves.forEach((save, index) => {
+      if (save.notGraded === true && save.score !== null) {
+        context.addIssue({
+          code: 'custom',
+          path: ['saves', index, 'notGraded'],
+          message: 'A cell is a number or "not graded", never both.',
+        });
+      }
       const column =
         'workId' in save.column
           ? save.column.workId
@@ -192,6 +221,8 @@ export const scoresSavedSchema = z.object({
       score: z.int().min(0).nullable(),
       /** The percent shown (`packages/calc`), `null` when the cell is empty. */
       percent: z.int().min(0).max(100).nullable(),
+      /** The cell holds "not graded" (a "-"). */
+      notGraded: z.boolean(),
       version: z.int().min(1),
     }),
   ),

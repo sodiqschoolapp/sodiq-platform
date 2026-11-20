@@ -1,5 +1,9 @@
 import { Controller, Delete, HttpCode, Post, Put } from '@nestjs/common';
 import {
+  lessonTopicSavedSchema,
+  lessonTopicSchema,
+  type LessonTopic,
+  type LessonTopicSaved,
   journalLessonParamsSchema,
   notGradedAnswerSchema,
   notGradedSchema,
@@ -65,7 +69,23 @@ export class WorksController {
     return this.works.add(access, params.lessonId, input, requestId);
   }
 
-  /** Task 10.8: rename a work added in the journal while its plan item has no topic. */
+  /**
+   * The owner, 20 November 2026: the topic of the lesson, written in the journal into its plan
+   * item, by whoever may enter the lesson now (`WorksService.saveTopic`).
+   */
+  @Put(':lessonId/topic')
+  @Requires('journal', 'edit')
+  @Returns(lessonTopicSavedSchema)
+  saveTopic(
+    @CurrentAccess() access: Access,
+    @ValidParams(journalLessonParamsSchema) params: JournalLessonParams,
+    @ValidBody(lessonTopicSchema) input: LessonTopic,
+    @RequestId() requestId: string,
+  ): Promise<LessonTopicSaved> {
+    return this.works.saveTopic(access, params.lessonId, input, requestId);
+  }
+
+  /** Task 10.8, widened by the owner on 20 November 2026: rename a work of the lesson's plan item. */
   @Put(':lessonId/plan-works/:planWorkId/title')
   @Requires('journal', 'edit')
   @Returns(workAddedSchema)

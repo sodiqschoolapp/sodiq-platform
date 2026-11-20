@@ -1767,6 +1767,12 @@ export const uz: Texts<'one' | 'other'> = {
       classDailyNote:
         '{{min}} dan {{max}} gacha yoki cheklovsiz boʻlsa boʻsh. Kunida bundan koʻp darsi bor sinf dars jadvalida belgilanadi.',
       classDailyNotSet: 'Belgilanmagan',
+      planWindowsTitle: 'Dars rejasi oynalari',
+      planWindows: 'Reja oynalari',
+      planWindowsOn: 'Yoqilgan: rejalar oyna ichida, keyin soʻrov bilan oʻzgartiriladi',
+      planWindowsOff: 'Oʻchirilgan: oʻqituvchilar rejani istalgan vaqtda oʻzgartiradi',
+      planWindowsNote:
+        'Oʻchirilganda oyna, tahrirlash soʻrovlari va «muddati oʻtgan» belgisi ishlatilmaydi. Saqlangan oynalar oʻchmaydi.',
       earlyWarningTitle: 'Erta ogohlantirish roʻyxati',
       thresholds: {
         lowResult: 'Chorak natijasi quyidagidan past',
@@ -4234,6 +4240,7 @@ export const uz: Texts<'one' | 'other'> = {
         edit_days: 'Tahrirlash kunlari oʻzgartirildi',
         early_warning: 'Erta ogohlantirish sozlamalari oʻzgartirildi',
         class_daily_lessons: 'Sinfning kunlik eng koʻp darslari oʻzgartirildi',
+        plan_windows: 'Reja oynalari yoqildi yoki oʻchirildi',
       },
       subject: {
         create: 'Fan yaratildi',
@@ -4427,6 +4434,7 @@ export const uz: Texts<'one' | 'other'> = {
         cells_undo: 'Oxirgi amal bekor qilindi',
         attendance_copy: 'Davomat juft darsning birinchi darsidan nusxalandi',
         work_add: 'Ish qoʻlda qoʻshildi',
+        topic: 'Dars mavzusi jurnalda yozildi',
         work_delete: 'Qoʻlda qoʻshilgan ish olib tashlandi',
         work_total: 'Ishning jami belgilandi',
         work_not_held: 'Ish oʻtkazilmadi deb belgilandi yoki belgi bekor qilindi',
@@ -6650,6 +6658,7 @@ export const uz: Texts<'one' | 'other'> = {
     },
     window: {
       label: 'Oyna:',
+      off: 'oʻchirilgan, reja istalgan vaqtda oʻzgartiriladi',
       state: {
         not_opened: 'ochilmagan',
         before: '{{start}} da ochiladi, {{end}} da tugaydi',
@@ -6743,6 +6752,9 @@ export const uz: Texts<'one' | 'other'> = {
     },
     windows: {
       title: 'Reja oynalari',
+      offTitle: 'Reja oynalari oʻchirilgan',
+      offText:
+        'Oʻqituvchilar rejani istalgan vaqtda oʻzgartiradi. Saqlangan oynalar qayta yoqilganda ishlaydi:',
       emptyTitle: 'Choraklar yoʻq',
       empty: 'Oʻquv yili choraklari sanalari belgilangach shu yerda koʻrinadi.',
       unpublished: 'Bu chorak dars jadvali hali eʼlon qilinmagan.',
@@ -6975,6 +6987,25 @@ export const uz: Texts<'one' | 'other'> = {
       stored: 'Saqlangan: belgi {{mark}}, sonlar {{works}}',
       hiddenBy: '{{kind}} ozod qilish bilan yashirilgan {{from}} – {{until}}',
     },
+    editor: {
+      open: 'Darsni tahrirlash',
+      classworks: 'Sinf ishlari',
+      addClasswork: '+ Sinf ishi qoʻshish',
+      addHomework: '+ Uy vazifasi berish',
+      total: 'Soni',
+      totalOf: '{{name}}: jami (Soni)',
+      rename: '{{name}}: nomini oʻzgartirish',
+      delete: '{{name}}: oʻchirish',
+      deleteTitle: '«{{name}}» oʻchirilsinmi?',
+      deleteNumbers_one: '{{count}} ta baho oʻrtachalardan chiqadi va tarixda saqlanib qoladi.',
+      deleteNumbers_other: '{{count}} ta baho oʻrtachalardan chiqadi va tarixda saqlanib qoladi.',
+      deleteText: 'Ish jurnaldan olib tashlanadi.',
+      deleteAction: 'Oʻchirish',
+      saveTopic: 'Mavzuni saqlash',
+      topicTooLong: 'Koʻpi bilan {{max}} ta belgi.',
+      extrasFailed: 'Reja maqsadlari va materiallari yuklanmadi.',
+      retry: 'Qayta urinish',
+    },
     card: {
       editPlan: 'Bu dars rejasini oʻzgartirish',
       askToEdit: 'Bu darsni oʻzgartirishni soʻrash',
@@ -7022,6 +7053,7 @@ export const uz: Texts<'one' | 'other'> = {
       skipped_one: '{{count}} ta katak shu orada toʻldirildi va saqlandi.',
       skipped_other: '{{count}} ta katak shu orada toʻldirildi va saqlandi.',
       sign: 'Baholanmagan',
+      typeFor: '{{name}}: baholanmagan (-)',
       optional: '{{date}} gacha ochiq',
     },
     reminders: {

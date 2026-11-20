@@ -15,7 +15,7 @@ import { journalRows, type JournalRow } from '../journal/journal-grid.query.js';
 import { Notifications } from '../notifications/notifications.service.js';
 import { ownerFactsOf, ownerOn, type OwnerFacts } from '../timetable/journal-owners.js';
 import { lockJournals, movePlaces, planRows, planDateOf, type PlanQuarter } from './plan-read.js';
-import { storedWindowOf } from './plan-gate.js';
+import { planWindowsOn, storedWindowOf } from './plan-gate.js';
 import { clearUntouchedCopy } from './plan-copy-clear.js';
 import { separateJournal, unitKeysOf } from './plan-separate.js';
 import { windowStateOf } from './plan-window.js';
@@ -918,8 +918,15 @@ export class PlanFollow implements OnModuleInit {
       }
       let requested = false;
       if (plan.open && one.causes.length > 0) {
-        await this.prepare(transaction, branchId, plan, one.causes, now, actor, eventId);
-        requested = true;
+        requested = await this.prepare(
+          transaction,
+          branchId,
+          plan,
+          one.causes,
+          now,
+          actor,
+          eventId,
+        );
       }
       if (!plan.open || (result.moves.length === 0 && !requested)) continue;
       // Decision 8 as changed on #213; review correction 1: an `owner_changed`
@@ -1061,7 +1068,11 @@ export class PlanFollow implements OnModuleInit {
     );
   }
 
-  /** Prepares the plan's edit request or adds the causes to it (`edge`: "a later event adds to it"). */
+  /**
+   * Prepares the plan's edit request or adds the causes to it (`edge`: "a later event adds to
+   * it"). Nothing when the branch's plan windows are off (the owner, 20 November 2026): the
+   * owner edits the plan at any time, so no request is needed. Answers whether it prepared one.
+   */
   private async prepare(
     transaction: Transaction,
     branchId: string,
@@ -1070,7 +1081,8 @@ export class PlanFollow implements OnModuleInit {
     now: Date,
     actor: { actorId: string | null; assignmentId: string | null },
     eventId: string,
-  ): Promise<void> {
+  ): Promise<boolean> {
+    if (!(await planWindowsOn(transaction, branchId))) return false;
     const fromDate = causes.reduce(
       (min, cause) => (cause.onDate < min ? cause.onDate : min),
       causes[0]?.onDate ?? plan.quarter.startDate,
@@ -1152,6 +1164,7 @@ export class PlanFollow implements OnModuleInit {
         causes: causes.map((cause) => ({ ...cause })),
       },
     });
+    return true;
   }
 
   /** One notice per owner listing their plans, one per Head Teacher of the subject with counts. */

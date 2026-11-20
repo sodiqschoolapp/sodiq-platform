@@ -279,7 +279,8 @@ describe('the rating exam and comments in the grid', () => {
         {
           on: { target: 'mark', lessonId: LESSON, studentId: uid(101) },
           body: 'Came late',
-          visibility: 'staff',
+          // The owner, 20 November 2026: a new comment is visible to parents by default.
+          visibility: 'parents',
           version: null,
         },
       ]);
@@ -454,7 +455,7 @@ describe('the rating exam and comments in the grid', () => {
         {
           on: { target: 'mark', lessonId: LESSON, studentId: uid(101) },
           body: 'Came late',
-          visibility: 'staff',
+          visibility: 'parents',
           version: null,
           correction: { reason: 'The register shows a late arrival' },
         },

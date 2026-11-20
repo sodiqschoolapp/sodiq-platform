@@ -397,6 +397,11 @@ export const planSchema = z.object({
     startDate: schoolDateSchema.nullable(),
     /** The last day in force for the owner (an extension included). */
     endDate: schoolDateSchema.nullable(),
+    /**
+     * The branch switched its plan windows off (the owner, 20 November 2026): the plan is open
+     * at any time (`state` "open", no dates), and no request is asked or prepared.
+     */
+    off: z.boolean(),
   }),
   /** Task 7.2: overdue, window not opened, or vacancy; `null` otherwise. */
   flag: z.enum(PLAN_FLAGS).nullable(),
@@ -596,6 +601,8 @@ export const planWindowsSchema = z.object({
   yearId: z.uuid().nullable(),
   /** The reader may open, change and extend (the Academic Vice Principal, the Super Admin). */
   canEdit: z.boolean(),
+  /** The branch switched its plan windows off (Settings): the windows below are kept, not used. */
+  off: z.boolean(),
   quarters: z.array(
     z.object({
       quarter: planQuarterSchema,

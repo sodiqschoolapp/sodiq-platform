@@ -65,10 +65,18 @@ test('a teacher opens the journal from today’s lesson on the home page and rea
   const work = page.getByRole('button', { name: /^Work: / }).last();
   await expect(work).toBeVisible();
   const column = await work.locator('xpath=ancestor::*[@col-id][1]').getAttribute('col-id');
+  // The header names a work added by hand "… · unplanned"; the editor by its name alone.
+  const workName = ((await work.getAttribute('aria-label')) ?? '')
+    .replace(/^Work: /, '')
+    .replace(` · ${en.journal.works.unplanned}`, '');
+  // The owner, 20 November 2026: the work's header opens the lesson editor at its total.
   await work.click();
   const dialog = page.getByRole('dialog');
-  await dialog.getByLabel(en.journal.works.total, { exact: true }).fill('20');
-  await dialog.getByRole('button', { name: en.journal.works.saveTotal, exact: true }).click();
+  const total = dialog.getByLabel(en.journal.editor.totalOf.replace('{{name}}', workName), {
+    exact: true,
+  });
+  await total.fill('20');
+  await total.press('Enter');
   const question = page.getByRole('alertdialog');
   await expect(question).toContainText(en.journal.works.confirmTotalTitle);
   await question
@@ -105,21 +113,16 @@ test('a teacher opens the journal from today’s lesson on the home page and rea
     .getByRole('button', { name: en.journal.card.open, exact: true });
   await button.focus();
   await page.keyboard.press('Enter');
-  // Task 8.8: the works of the lesson open from its lesson card.
-  await page
-    .getByRole('dialog')
-    .getByRole('button', { name: en.journal.works.button, exact: true })
-    .click();
+  // The owner, 20 November 2026: the lesson's button opens the one lesson editor.
   const works = page.getByRole('dialog');
-  await expect(works).toContainText(en.journal.works.noPlan);
-  await works.getByRole('button', { name: en.journal.works.addClasswork, exact: true }).click();
+  await works.getByRole('button', { name: en.journal.editor.addClasswork, exact: true }).click();
   // Task 10.6: the classwork is named when it is added, and the title is its column title.
   await works
     .getByLabel(en.journal.works.classworkTitle, { exact: true })
     .fill('Fractions dictation');
   await works.getByRole('button', { name: en.journal.works.add, exact: true }).click();
   await expect(
-    works.getByRole('button', { name: en.journal.works.addClasswork, exact: true }),
+    works.getByRole('button', { name: en.journal.editor.addClasswork, exact: true }),
   ).toBeVisible();
   await works.getByRole('button', { name: en.journal.entry.close, exact: true }).click();
   await expect(page.getByRole('button', { name: /^Work: / })).toHaveCount(before + 1);
