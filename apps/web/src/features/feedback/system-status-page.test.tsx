@@ -207,8 +207,10 @@ describe('the system status', () => {
     expect(grafana.textContent).toContain(
       en.systemStatus.grafana.normal_other.replace('{{count}}', '2'),
     );
-    // Every school rule is in Grafana: no "only … of" line.
-    expect(grafana.textContent).not.toContain('Only ');
+    // Every school rule is in Grafana: no "has only … of" line.
+    expect(grafana.textContent).not.toContain(
+      en.systemStatus.grafana.missing_other.split('{{found}}')[0],
+    );
     const sentry = await panel(en.systemStatus.sentry.title);
     expect(
       within(sentry)

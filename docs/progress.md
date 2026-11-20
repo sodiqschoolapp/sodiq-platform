@@ -7,7 +7,7 @@ Newest entry first. Each finished task adds an entry: what was built, what was l
 Not a task of the build plan: two faults of #363 the owner found on production (pull request #364; decisions in `docs/decisions.md`).
 
 - **Sentry**: `statsPeriod` is the chosen period, so 7 and 14 days list the errors of the whole period (before, only the last 24 hours). Tests: the parameter and the query on 24 hours, 7 and 14 days; on 14 days an error of 4 days before is listed and not counted as attention.
-- **Grafana**: only the 20 rules of `ALERT_RULES` are read, in the rows, the history and the instances still firing; `asserts_up` of Grafana's Asserts app is gone from the page and from the attention count. The answer has `schoolRules` (`found`, `of`), and the panel says "Only N of the school's 20 rules are in Grafana" when one is missing. Tests: `asserts_up` firing (with an instance and history lines) is in no row, line or count; a rule imported twice is found once; the web line.
+- **Grafana**: only the 20 rules of `ALERT_RULES` are read, in the rows, the history and the instances still firing; `asserts_up` of Grafana's Asserts app is gone from the page and from the attention count. The answer has `schoolRules` (`found`, `of`), and the panel says "Grafana has only N of the school's 20 rules" when one is missing. Tests: `asserts_up` firing (with an instance and history lines) is in no row, line or count; a rule imported twice is found once; the web line.
 
 The next sessions must know:
 

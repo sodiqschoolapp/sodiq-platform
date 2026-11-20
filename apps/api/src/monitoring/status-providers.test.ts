@@ -8,6 +8,7 @@ import {
 import { afterEach, describe, expect, it } from 'vitest';
 import type { StatusProvidersConfig } from '../config/config.js';
 import { FixedClock } from '../testing/fixed-clock.js';
+import { ALERT_RULES } from './alert-rules.js';
 import { ShippingLogger } from './monitoring.service.js';
 import {
   downPeriods,
@@ -384,8 +385,8 @@ describe('the outside services of the System status page', () => {
         { name: 'CellSavesSlow', state: 'normal', health: 'ok' },
         { name: 'JobsFailing', state: 'normal', health: 'no_data' },
       ],
-      // Five of the school's 20 rules are in this answer.
-      schoolRules: { found: 5, of: 20 },
+      // Five of the school's rules are in this answer.
+      schoolRules: { found: 5, of: ALERT_RULES.length },
     });
     expect(read.grafana.state === 'connected' && read.grafana.rules).toHaveLength(5);
     expect(read.sentry).toEqual({
@@ -602,7 +603,7 @@ describe('the outside services of the System status page', () => {
       expect(read.grafana.rules.map((rule) => rule.name)).toEqual(['BackupOld', 'BackupOld']);
       expect(read.grafana.attention).toBe(0);
       expect(read.grafana.history).toEqual({ state: 'read', cut: false, items: [] });
-      expect(read.grafana.schoolRules).toEqual({ found: 1, of: 20 });
+      expect(read.grafana.schoolRules).toEqual({ found: 1, of: ALERT_RULES.length });
     });
 
     it.each([
