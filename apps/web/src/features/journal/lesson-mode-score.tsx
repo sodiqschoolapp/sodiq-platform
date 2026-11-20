@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { FIELD } from '@/components/ui/control';
 import { cn } from '@/lib/utils';
 import { SaveSign } from './cell-saves';
-import { typedScore } from './journal-grid';
+import { NOT_GRADED_TEXT, storedWorkEntry, typedWorkEntry } from './journal-grid';
 import { useWorkLabel } from './work-kind-tag';
 import type { WorksEntry } from './works-entry';
 
@@ -18,6 +18,9 @@ import type { WorksEntry } from './works-entry';
  * large, never switched off while another number is saved (the grid never is either; a field
  * switched off took the focus and the keyboard away from the next student), and Enter, the
  * keyboard's "Next", saves and goes on to the next student's field of the same work.
+ *
+ * A "-" is "not graded" (the owner, 20 November 2026). A phone's number pad may have no minus,
+ * so the small "-" button beside the field types it and saves at once.
  */
 export function LessonModeScore({
   lesson,
@@ -43,8 +46,8 @@ export function LessonModeScore({
   const { t } = useTranslation();
   const workLabel = useWorkLabel();
   const typedCell = student.cells[index]?.works[workIndex];
-  const stored = typedCell?.score ?? null;
-  const shown = stored === null ? '' : String(stored);
+  const stored = storedWorkEntry(typedCell);
+  const shown = stored === null ? '' : stored === 'notGraded' ? NOT_GRADED_TEXT : String(stored);
   // What the person types, until it is sent; the server's value again after each answer.
   const [typed, setTyped] = useState<{ from: string; text: string } | null>(null);
   const text = typed !== null && typed.from === shown ? typed.text : shown;
@@ -58,7 +61,7 @@ export function LessonModeScore({
     const entry = unsent.current;
     unsent.current = null;
     if (entry === null || entry.from !== shown) return true;
-    const value = typedScore(entry.text, work.total);
+    const value = typedWorkEntry(entry.text, work.total);
     if (value === undefined) {
       // The refused number stays in its field, marked, until it is corrected: on a phone the
       // page's message is out of view.
@@ -124,6 +127,25 @@ export function LessonModeScore({
           }
         }}
       />
+      <button
+        type="button"
+        className="size-11 shrink-0 rounded-md text-lg font-semibold text-muted-foreground hover:bg-muted"
+        data-lesson-mode-not-graded="true"
+        aria-label={t('journal.notGraded.typeFor', {
+          name: `${student.lastName} ${student.firstName}`,
+        })}
+        title={t('journal.notGraded.sign')}
+        aria-pressed={stored === 'notGraded'}
+        disabled={works.waiting(lesson.id, student.id, work)}
+        onClick={() => {
+          unsent.current = null;
+          setTyped(null);
+          setRefused(false);
+          works.score(lesson, work, student, stored === 'notGraded' ? null : 'notGraded');
+        }}
+      >
+        {NOT_GRADED_TEXT}
+      </button>
       {/* The percent the server worked out, as in the grid's cell; the total is in the header. */}
       <span className="w-11 text-sm text-muted-foreground" data-lesson-mode-percent="true">
         {typedCell?.percent !== null && typedCell?.percent !== undefined && (

@@ -747,8 +747,9 @@ export class PlansService {
       request,
       window: {
         state,
-        startDate: window?.startDate ?? null,
+        startDate: window?.off === true ? null : (window?.startDate ?? null),
         endDate: endsAt === null ? null : schoolDateOf(endsAt, scene.timeZone),
+        off: window?.off === true,
       },
       flag,
       belowMinimum: minimumMarkOf(minimum, workCount, state === 'ended'),
@@ -1646,9 +1647,9 @@ export class PlansService {
       .executeTakeFirst();
     let itemId: string;
     if (place !== undefined) {
+      // The owner, 20 November 2026: a teacher adds works in the journal at any lesson they may
+      // enter, an item with a topic too (task 10.8 took them only where the item had none).
       const item = await this.lockItem(transaction, place.item_id);
-      // Plan decision 4: an item with a topic is the lesson's plan item; works go through the plan.
-      if (item.topic.trim() !== '') throw new ApiException('lesson_has_plan_item', 409);
       itemId = item.id;
     } else {
       itemId = await this.placeJournalItem(transaction, scene, planId, journalId, others, position);
@@ -1710,6 +1711,113 @@ export class PlansService {
       details: { createdPlan, createdItem: place === undefined },
     });
     return { planId, itemId, planWorkId: added.id };
+  }
+
+  /**
+   * The owner, 20 November 2026: the topic of a lesson written in the journal ("let the teacher
+   * delete and add as much topics ... whenever they want, inside the journal editing period").
+   * The lesson's plan item takes it, created for it (with the plan) when there is none, in the
+   * lock order of `addFromJournal`; the journal's route decided the edit period and the writer.
+   * Refused `plan_item_stale` when the topic changed since it was read. Audited as a plan edit,
+   * with the old and the new topic (`09`: "old text, new text").
+   */
+  async topicFromJournal(
+    transaction: Transaction,
+    access: Access,
+    input: {
+      readonly branchId: string;
+      readonly journalId: string;
+      readonly lessonId: string;
+      readonly assignmentId: string;
+      readonly requestId?: string;
+      readonly topic: string;
+      readonly baseTopic: string;
+    },
+  ): Promise<{ planId: string; itemId: string; topic: string; changed: boolean }> {
+    const { branchId, journalId, lessonId } = input;
+    const found = await sql<{ quarter: string | null }>`
+      select lesson_quarter(${lessonId}::uuid)::text as quarter
+    `.execute(transaction);
+    const quarterId = found.rows[0]?.quarter ?? null;
+    if (quarterId === null) throw new ApiException('journal_no_quarter', 409);
+    const scene = await this.sceneOf(transaction, access, branchId, journalId, quarterId);
+    const others = (await this.lockPlanOf(transaction, journalId, quarterId)).filter(
+      (id) => id !== journalId,
+    );
+    const rows = await planRows(
+      transaction,
+      branchId,
+      scene.journal,
+      scene.quarter,
+      scene.timeZone,
+      scene.now,
+    );
+    const index = rows.findIndex((row) => row.lessonId === lessonId);
+    if (index < 0) throw new ApiException('plan_row_unknown', 409);
+    const position = index + 1;
+    const topic = input.topic.trim();
+    const planIdBefore = await planIdOf(transaction, journalId, quarterId);
+    const placeOf = async (planId: string) =>
+      transaction
+        .selectFrom('lesson_plan_places')
+        .select('item_id')
+        .where('plan_id', '=', planId)
+        .where('journal_id', '=', journalId)
+        .where('position', '=', position)
+        .executeTakeFirst();
+    const placeBefore = planIdBefore === null ? undefined : await placeOf(planIdBefore);
+    const stored =
+      placeBefore === undefined ? null : await this.lockItem(transaction, placeBefore.item_id);
+    const before = stored?.topic ?? '';
+    if (input.baseTopic.trim() !== before.trim()) {
+      throw new ApiException('plan_item_stale', 409, undefined, [
+        {
+          path: 'topic',
+          code: 'plan_item_stale',
+          message: 'The topic was changed since it was read.',
+          ...(stored === null ? {} : { recordId: stored.id }),
+        },
+      ]);
+    }
+    if (topic === before.trim() && stored !== null) {
+      return { planId: stored.plan_id, itemId: stored.id, topic: before, changed: false };
+    }
+    const actor = {
+      branchId,
+      accountId: access.accountId,
+      assignmentId: input.assignmentId,
+      ...(input.requestId === undefined ? {} : { requestId: input.requestId }),
+    };
+    const planId = await ensurePlan(transaction, this.audit, actor, scene.journal, quarterId);
+    let itemId: string;
+    if (stored !== null) {
+      itemId = stored.id;
+    } else {
+      itemId = await this.placeJournalItem(transaction, scene, planId, journalId, others, position);
+      await this.lockItem(transaction, itemId);
+    }
+    await transaction
+      .updateTable('lesson_plan_items')
+      .set({ topic })
+      .where('id', '=', itemId)
+      .execute();
+    await this.audit.record(transaction, {
+      ...actor,
+      actorId: access.accountId,
+      action: 'plan.item_edit',
+      record: { type: 'lesson_plan', id: planId },
+      oldValue: { topic: before },
+      newValue: { topic },
+      details: {
+        itemId,
+        inJournal: true,
+        lessonId,
+        date: rows[index]?.date ?? null,
+        createdPlan: planIdBefore === null,
+        createdItem: stored === null,
+      },
+    });
+    return { planId, itemId, topic, changed: true };
   }
 
   /**

@@ -30,6 +30,8 @@ import {
   studentAbsencesSchema,
   workSavedSchema,
   workAddedSchema,
+  lessonTopicSavedSchema,
+  type LessonTopic,
   type PlanWorkRename,
   type AbsenceReasonRecord,
   type AttendanceSave,
@@ -138,7 +140,14 @@ export const copyAttendance = (lessonId: string) =>
  */
 export function showTyped(
   queryClient: QueryClient,
-  cell: { lessonId: string; studentId: string; workIndex: number | null; value: number | null },
+  cell: {
+    lessonId: string;
+    studentId: string;
+    workIndex: number | null;
+    value: number | null;
+    /** A work's cell typed "-" (not graded). */
+    notGraded?: boolean;
+  },
 ): void {
   queryClient.setQueriesData<JournalGrid>({ queryKey: journalKey() }, (grid) => {
     if (grid === undefined || !('lessons' in grid) || !('students' in grid)) return grid;
@@ -158,7 +167,14 @@ export function showTyped(
             return {
               ...one,
               works: one.works.map((work, workAt) =>
-                workAt === cell.workIndex ? { ...work, score: cell.value, percent: null } : work,
+                workAt === cell.workIndex
+                  ? {
+                      ...work,
+                      score: cell.value,
+                      percent: null,
+                      notGraded: cell.notGraded === true,
+                    }
+                  : work,
               ),
             };
           }),
@@ -233,7 +249,16 @@ export const addWork = (lessonId: string, body: WorkAdd) =>
     }),
   ).then((answer) => workAddedSchema.parse(answer));
 
-/** Task 10.8: renames a work added in the journal while its plan item has no topic. */
+/** The owner, 20 November 2026: the topic of a lesson, written in the journal into its plan item. */
+export const saveLessonTopic = (lessonId: string, body: LessonTopic) =>
+  answerOf(
+    api.PUT('/api/journal/lessons/{lessonId}/topic', {
+      params: { header: branchHeader(), path: { lessonId } },
+      body,
+    }),
+  ).then((answer) => lessonTopicSavedSchema.parse(answer));
+
+/** Task 10.8: renames a work of the lesson's plan item (any, since 20 November 2026). */
 export const renamePlanWork = (lessonId: string, planWorkId: string, body: PlanWorkRename) =>
   answerOf(
     api.PUT('/api/journal/lessons/{lessonId}/plan-works/{planWorkId}/title', {

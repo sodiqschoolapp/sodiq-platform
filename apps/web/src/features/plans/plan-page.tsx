@@ -212,7 +212,8 @@ export function PlanPage(): React.JSX.Element {
               <WindowLine plan={data} />
             </dl>
             <SharingActions plan={data} />
-            <ExtendWindow plan={data} />
+            {/* The owner, 20 November 2026: with plan windows off there is no window to extend. */}
+            {!data.window.off && <ExtendWindow plan={data} />}
           </div>
           <ListPage
             listId="plan-rows"
@@ -233,7 +234,8 @@ export function PlanPage(): React.JSX.Element {
           />
           <SharedWith plan={data} />
           <MasterMark plan={data} />
-          <RequestsSection plan={data} />
+          {/* No edit request is asked or prepared with plan windows off. */}
+          {!data.window.off && <RequestsSection plan={data} />}
           <NotCoveredSections plan={data} />
         </div>
       )}

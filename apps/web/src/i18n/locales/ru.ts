@@ -1799,6 +1799,12 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       classDailyNote:
         'От {{min}} до {{max}} или пусто, если без ограничения. Класс, у которого в день больше уроков, отмечается в расписании.',
       classDailyNotSet: 'Не задано',
+      planWindowsTitle: 'Окна планов уроков',
+      planWindows: 'Окна планов',
+      planWindowsOn: 'Включены: план пишется в окне, после него — по запросу',
+      planWindowsOff: 'Выключены: учителя меняют план в любое время',
+      planWindowsNote:
+        'Когда выключены, окно, запросы на правку и отметка «просрочен» не используются. Сохранённые окна не удаляются.',
       earlyWarningTitle: 'Список раннего предупреждения',
       thresholds: {
         lowResult: 'Результат четверти ниже',
@@ -4409,6 +4415,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
         edit_days: 'Дни на исправление изменены',
         early_warning: 'Настройки раннего предупреждения изменены',
         class_daily_lessons: 'Наибольшее число уроков класса в день изменено',
+        plan_windows: 'Окна планов включены или выключены',
       },
       subject: {
         create: 'Предмет создан',
@@ -4602,6 +4609,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
         cells_undo: 'Последнее действие отменено',
         attendance_copy: 'Посещаемость скопирована из первого урока сдвоенного урока',
         work_add: 'Работа добавлена вручную',
+        topic: 'Тема урока записана в журнале',
         work_delete: 'Работа, добавленная вручную, удалена',
         work_total: 'Задан максимум работы',
         work_not_held: 'Работа отмечена как непроведённая, или отметка снята',
@@ -6982,6 +6990,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
     },
     window: {
       label: 'Окно:',
+      off: 'выключено, план можно менять в любое время',
       state: {
         not_opened: 'не открыто',
         before: 'откроется {{start}}, закончится {{end}}',
@@ -7077,6 +7086,9 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
     },
     windows: {
       title: 'Окна планов',
+      offTitle: 'Окна планов выключены',
+      offText:
+        'Учителя меняют план в любое время. Сохранённые окна снова действуют, когда их включат:',
       emptyTitle: 'Нет четвертей',
       empty: 'Четверти учебного года появятся здесь, когда у них будут даты.',
       unpublished: 'Расписание этой четверти ещё не опубликовано.',
@@ -7315,6 +7327,27 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       stored: 'Сохранено: отметка {{mark}}, числа {{works}}',
       hiddenBy: 'скрыто освобождением ({{kind}}) {{from}} – {{until}}',
     },
+    editor: {
+      open: 'Изменить урок',
+      classworks: 'Классные работы',
+      addClasswork: '+ Добавить классную работу',
+      addHomework: '+ Задать домашнее задание',
+      total: 'из',
+      totalOf: '{{name}}: всего',
+      rename: '{{name}}: переименовать',
+      delete: '{{name}}: удалить',
+      deleteTitle: 'Удалить «{{name}}»?',
+      deleteNumbers_one: '{{count}} оценка уйдёт из средних и останется в истории.',
+      deleteNumbers_few: '{{count}} оценки уйдут из средних и останутся в истории.',
+      deleteNumbers_many: '{{count}} оценок уйдут из средних и останутся в истории.',
+      deleteNumbers_other: '{{count}} оценки уйдут из средних и останутся в истории.',
+      deleteText: 'Работа будет убрана из журнала.',
+      deleteAction: 'Удалить',
+      saveTopic: 'Сохранить тему',
+      topicTooLong: 'Не больше {{max}} символов.',
+      extrasFailed: 'Цели и материалы плана не загрузились.',
+      retry: 'Повторить',
+    },
     card: {
       editPlan: 'Изменить план этого урока',
       askToEdit: 'Запросить изменение этого урока',
@@ -7372,6 +7405,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       skipped_many: '{{count}} ячеек тем временем заполнили, они сохранены.',
       skipped_other: '{{count}} ячейки тем временем заполнили, они сохранены.',
       sign: 'Без оценки',
+      typeFor: '{{name}}: без оценки (-)',
       optional: 'Открыта до {{date}}',
     },
     reminders: {

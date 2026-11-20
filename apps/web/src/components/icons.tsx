@@ -22,6 +22,7 @@ import ChevronRightSvg from '@material-symbols/svg-500/rounded/chevron_right-fil
 import CloseSvg from '@material-symbols/svg-500/rounded/close-fill.svg?react';
 import ContrastSvg from '@material-symbols/svg-500/rounded/contrast-fill.svg?react';
 import EditSvg from '@material-symbols/svg-500/rounded/edit-fill.svg?react';
+import DeleteSvg from '@material-symbols/svg-500/rounded/delete-fill.svg?react';
 import DownloadSvg from '@material-symbols/svg-500/rounded/download-fill.svg?react';
 // "expand_more" of the design system: the package names the same drawing keyboard_arrow_down.
 import ExpandMoreSvg from '@material-symbols/svg-500/rounded/keyboard_arrow_down-fill.svg?react';
@@ -101,6 +102,7 @@ export const CloseIcon = icon(CloseSvg);
 export const ContrastIcon = icon(ContrastSvg);
 export const DownloadIcon = icon(DownloadSvg);
 export const EditIcon = icon(EditSvg);
+export const DeleteIcon = icon(DeleteSvg);
 export const ExpandMoreIcon = icon(ExpandMoreSvg);
 export const FeedbackIcon = icon(FeedbackSvg);
 export const FullscreenIcon = icon(FullscreenSvg);

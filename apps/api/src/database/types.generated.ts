@@ -211,6 +211,7 @@ export interface BranchSettings {
   created_at: Generated<Timestamp>;
   edit_days: Generated<number>;
   low_result: Generated<number>;
+  plan_windows: Generated<boolean>;
   result_drop: Generated<number>;
 }
 

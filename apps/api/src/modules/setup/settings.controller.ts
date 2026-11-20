@@ -14,6 +14,8 @@ import {
   type AttendanceValuesRecord,
   type BranchSettings,
   type ClassDailyLessonsRecord,
+  planWindowsRecordSchema,
+  type PlanWindowsRecord,
   type EarlyWarningRecord,
   type EditDaysRecord,
   type GradeChanges,
@@ -75,6 +77,17 @@ export class SettingsController {
     @RequestId() requestId: string,
   ): Promise<BranchSettings> {
     return this.settings.setClassDailyLessons(access, branchOf(access), record, requestId);
+  }
+
+  @Put('settings/plan-windows')
+  @Requires('settings', 'edit')
+  @Returns(branchSettingsSchema)
+  setPlanWindows(
+    @CurrentAccess() access: Access,
+    @ValidBody(planWindowsRecordSchema) record: PlanWindowsRecord,
+    @RequestId() requestId: string,
+  ): Promise<BranchSettings> {
+    return this.settings.setPlanWindows(access, branchOf(access), record, requestId);
   }
 
   @Get('attendance-values')

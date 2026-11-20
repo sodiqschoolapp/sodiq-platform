@@ -27,6 +27,7 @@ const SETTINGS: BranchSettings = {
   attendancePercent: 80,
   absencesInRow: 3,
   classDailyLessons: null,
+  planWindows: true,
 };
 
 const QUARTER_ID = '0199b000-0000-7000-8000-000000000011';

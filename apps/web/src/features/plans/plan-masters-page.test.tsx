@@ -93,7 +93,7 @@ const PLAN: Plan = {
   canDrop: false,
   carryClosed: false,
   request: null,
-  window: { state: 'open', startDate: '2026-09-01', endDate: '2026-10-31' },
+  window: { state: 'open', startDate: '2026-09-01', endDate: '2026-10-31', off: false },
   flag: null,
   belowMinimum: null,
   requests: [],

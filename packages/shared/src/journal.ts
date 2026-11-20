@@ -187,6 +187,12 @@ export const journalLessonSchema = z.object({
   /** The homeworks given at this lesson, with the lesson that checks them, or why none does (task 8.1). */
   given: z.array(
     z.object({
+      /**
+       * The stored work and the plan's work (the owner, 20 November 2026: the lesson editor
+       * removes a homework given here by them); `null` before its first write, or by hand.
+       */
+      workId: z.uuid().nullable(),
+      planWorkId: z.uuid().nullable(),
       title: z.string().nullable(),
       checkAt: z.uuid().nullable(),
       /** `year_end`: "will not be graded"; `group_closed`: "not checked, group closed" (`edge/lesson-plans`). */

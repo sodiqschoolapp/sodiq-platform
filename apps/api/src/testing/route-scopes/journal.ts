@@ -173,6 +173,7 @@ export const JOURNAL_SCOPES: RouteScopes = {
   'DELETE /api/journal/lessons/:lessonId/works/:workId': entryLines,
   'PUT /api/journal/lessons/:lessonId/works/total': entryLines,
   'PUT /api/journal/lessons/:lessonId/works/:workId/title': entryLines,
+  'PUT /api/journal/lessons/:lessonId/topic': entryLines,
   'PUT /api/journal/lessons/:lessonId/plan-works/:planWorkId/title': entryLines,
   'DELETE /api/journal/lessons/:lessonId/plan-works/:planWorkId': entryLines,
   'PUT /api/journal/lessons/:lessonId/works/not-held': entryLines,

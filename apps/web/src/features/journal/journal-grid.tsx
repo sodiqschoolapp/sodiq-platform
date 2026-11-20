@@ -411,6 +411,27 @@ export function typedScore(typed: unknown, total: number): number | null | undef
   return value <= total ? value : undefined;
 }
 
+/** What a teacher types for "not graded" in a work's cell (the owner, 20 November 2026). */
+export const NOT_GRADED_TEXT = '-';
+
+/** The entry of a work's cell: a number, "not graded" for a "-", `null` for an emptied cell. */
+export type WorkEntry = number | 'notGraded' | null;
+
+/**
+ * The entry typed in a work's cell: `typedScore`, and a "-" (or a dash a keyboard gives for it)
+ * for "not graded" (the owner, 20 November 2026: the teacher types "-" in place of the button).
+ */
+export function typedWorkEntry(typed: unknown, total: number): WorkEntry | undefined {
+  if (typeof typed === 'string' && /^[-–—−]$/.test(typed.trim())) return 'notGraded';
+  return typedScore(typed, total);
+}
+
+/** The entry a work's cell holds now, as `typedWorkEntry` gives it. */
+export const storedWorkEntry = (
+  typed: { score: number | null; notGraded: boolean } | undefined,
+): WorkEntry =>
+  typed === undefined ? null : (typed.score ?? (typed.notGraded ? 'notGraded' : null));
+
 /** The keys that type a mark in an A cell (`edge/journal`: "An attendance digit saves at once and moves down"). */
 const MARK_KEYS: Readonly<Record<string, AttendanceMark>> = { '0': 0, '1': 1, '2': 2, '3': 3 };
 
@@ -985,8 +1006,9 @@ export function JournalGridView({
                   },
                 }
               : {}),
-            // Task 8.8: the lesson card (`09`: "Clicking it opens the lesson card"), with the
-            // works of the lesson inside it (task 8.1).
+            // Task 8.8: the lesson card (`09`: "Clicking it opens the lesson card"). The owner, 20
+            // November 2026: for a reader who enters the journal it is the one lesson editor
+            // (topic, works, totals); for a reader who only views, the card as it was.
             ...(graded && !cancelled
               ? {
                   more: {
@@ -994,7 +1016,8 @@ export function JournalGridView({
                     icon: 'more',
                     disabled: works?.busy === true,
                     run: () => {
-                      setCardOpen(lesson.id);
+                      if (works !== undefined) works.openLesson(lesson);
+                      else setCardOpen(lesson.id);
                     },
                   },
                 }
@@ -1174,21 +1197,22 @@ export function JournalGridView({
             params.data?.kind === 'student' &&
             params.data.student.cells[index]?.closed !== true &&
             (enterable || openCell(params.data.student.cells[index])),
-          valueGetter: (params) =>
-            params.data?.kind === 'student'
-              ? (params.data.student.cells[index]?.works[workIndex]?.score ?? null)
-              : null,
+          valueGetter: (params) => {
+            if (params.data?.kind !== 'student') return null;
+            const entry = storedWorkEntry(params.data.student.cells[index]?.works[workIndex]);
+            return entry === 'notGraded' ? NOT_GRADED_TEXT : entry;
+          },
           // A number is saved when the cell is left (edge/journal: "not per key"); the grid
           // shows the server's answer, so the row is never changed here.
           valueSetter: (params) => {
             const row = params.data;
             if (works === undefined || row?.kind !== 'student' || work.total === null) return false;
-            const value = typedScore(params.newValue, work.total);
+            const value = typedWorkEntry(params.newValue, work.total);
             if (value === undefined) {
               onRefusedNumber?.(work.total);
               return false;
             }
-            const before = row.student.cells[index]?.works[workIndex]?.score ?? null;
+            const before = storedWorkEntry(row.student.cells[index]?.works[workIndex]);
             if (value !== before) works.score(lesson, work, row.student, value);
             return false;
           },
@@ -1228,7 +1252,7 @@ export function JournalGridView({
                     title={t('journal.notGraded.sign')}
                     aria-label={t('journal.notGraded.sign')}
                   >
-                    —
+                    {NOT_GRADED_TEXT}
                     <SaveSign state={state} />
                   </span>
                 );
@@ -1510,16 +1534,6 @@ export function JournalGridView({
     [grid.lessons, entry, comments, rating, commentCellOf],
   );
 
-  /** Whether the works button of a lesson has anything to show. */
-  function lessonWorksShown(lesson: JournalLesson): boolean {
-    return (
-      lesson.canEnterWorks ||
-      lesson.notHeldWorks.length > 0 ||
-      lesson.given.length > 0 ||
-      (lesson.held && !lesson.planItem)
-    );
-  }
-
   const pinnedBottomRowData = useMemo(
     (): GridRow[] => (bottom === null ? [] : [{ kind: 'bottom', bottom }]),
     [bottom],
@@ -1587,27 +1601,15 @@ export function JournalGridView({
           if (last !== undefined) event.api.ensureColumnVisible(last, 'end');
         }}
       />
-      {cardOpen !== null &&
-        (() => {
-          const lesson = grid.lessons.find((one) => one.id === cardOpen);
-          return (
-            <LessonCardDialog
-              lessonId={cardOpen}
-              language={language}
-              onClose={() => {
-                setCardOpen(null);
-              }}
-              onOpenWorks={
-                works !== undefined && lesson !== undefined && lessonWorksShown(lesson)
-                  ? () => {
-                      setCardOpen(null);
-                      works.openLesson(lesson);
-                    }
-                  : undefined
-              }
-            />
-          );
-        })()}
+      {cardOpen !== null && (
+        <LessonCardDialog
+          lessonId={cardOpen}
+          language={language}
+          onClose={() => {
+            setCardOpen(null);
+          }}
+        />
+      )}
     </div>
   );
 }

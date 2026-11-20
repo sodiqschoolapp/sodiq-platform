@@ -28,6 +28,8 @@ export interface CellSave {
   value: number | null;
   /** The version the value was typed on; `null` for a cell that was empty and never saved. */
   version: number | null;
+  /** A work's cell with no number set "not graded" (a typed "-", the owner, 20 November 2026). */
+  notGraded?: boolean;
 }
 
 /** Who saves, for the cells and the audit entry of the call. */
@@ -45,6 +47,8 @@ export interface SavedCell {
   studentId: string;
   workId: string | null;
   value: number | null;
+  /** The cell holds "not graded". */
+  notGraded: boolean;
   version: number;
   changedAt: Date;
 }
@@ -98,6 +102,9 @@ export async function saveCells(
     ) {
       throw new Error('A mark is 0 to 3 and a number a whole number from 0.');
     }
+    if (save.notGraded === true && (save.workId === null || value !== null)) {
+      throw new Error('"Not graded" is the cell of a work with no number.');
+    }
   }
   // The lessons first, FOR SHARE in the order of the id (review must-fix 2 of
   // the plan): the cell trigger reads them, so a cancel, a date move or a
@@ -124,8 +131,8 @@ export async function saveCells(
       const values = {
         mark: save.workId === null ? save.value : null,
         score: save.workId === null ? null : save.value,
-        // Task 8.7: a number, or a person's clear, ends "not graded".
-        not_graded: false,
+        // Task 8.7: a number, or a person's clear, ends "not graded"; a typed "-" sets it.
+        not_graded: save.notGraded === true,
         changed_by: actor.accountId,
         changed_how: 'entry',
       };
@@ -136,13 +143,14 @@ export async function saveCells(
         'work_id',
         'mark',
         'score',
+        'not_graded',
         'version',
         'changed_at',
       ] as const;
       let row;
       if (save.version === null) {
-        // A first save with no value writes nothing.
-        if (save.value === null) continue;
+        // A first save with no value writes nothing (a "-" is a value).
+        if (save.value === null && save.notGraded !== true) continue;
         row = await transaction
           .insertInto('journal_cells')
           .values({
@@ -182,6 +190,7 @@ export async function saveCells(
         studentId: row.student_id,
         workId: row.work_id,
         value: valueOf(row),
+        notGraded: row.not_graded,
         version: row.version,
         changedAt: new Date(row.changed_at),
       });

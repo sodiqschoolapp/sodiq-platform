@@ -5,6 +5,9 @@ import {
   type ScoresSave,
   type ScoresSaved,
   type WorkAdd,
+  type LessonTopic,
+  type LessonTopicSaved,
+  lessonTopicSavedSchema,
   type WorkCarry,
   type WorkColumn,
   type PlanWorkRename,
@@ -468,10 +471,8 @@ export class WorksService {
    */
   add(access: Access, lessonId: string, input: WorkAdd, requestId?: string): Promise<WorkAdded> {
     return this.transactions.run(access.branchIds, async (transaction) => {
+      // The owner, 20 November 2026: at any lesson the reader may enter, with a plan item or not.
       const scene = await this.sceneOf(transaction, access, lessonId, requestId, input.correction);
-      if (scene.columns.columns.get(scene.lesson.id)?.planItem !== false) {
-        throw new ApiException('lesson_has_plan_item', 409);
-      }
       const actor = this.actorOf(scene);
       const added = await this.plans.addFromJournal(transaction, access, {
         branchId: scene.branchId,
@@ -495,6 +496,43 @@ export class WorksService {
       });
       await this.noticeCorrection(transaction, scene);
       return workAddedSchema.parse({ ...added, kind: input.kind, title: input.title });
+    });
+  }
+
+  /**
+   * The owner, 20 November 2026 ("let the teacher delete and add as much topics, CW, or HW as they
+   * want and whenever they want, inside the journal editing period"): the topic of a lesson the
+   * reader may enter now (`sceneOf`: the lesson, the reader's scope, its start and edit period,
+   * a graded journal), written into its plan item by `PlansService.topicFromJournal`.
+   */
+  saveTopic(
+    access: Access,
+    lessonId: string,
+    input: LessonTopic,
+    requestId?: string,
+  ): Promise<LessonTopicSaved> {
+    return this.transactions.run(access.branchIds, async (transaction) => {
+      const scene = await this.sceneOf(transaction, access, lessonId, requestId, input.correction);
+      const actor = this.actorOf(scene);
+      const saved = await this.plans.topicFromJournal(transaction, access, {
+        branchId: scene.branchId,
+        journalId: scene.journal.id,
+        lessonId: scene.lesson.id,
+        assignmentId: actor.assignmentId,
+        ...(requestId === undefined ? {} : { requestId }),
+        topic: input.topic,
+        baseTopic: input.baseTopic,
+      });
+      if (saved.changed) {
+        await this.audit.record(transaction, {
+          ...actor,
+          action: 'journal.topic',
+          record: { type: 'lesson', id: scene.lesson.id },
+          newValue: { itemId: saved.itemId, topic: saved.topic },
+        });
+        await this.noticeCorrection(transaction, scene);
+      }
+      return lessonTopicSavedSchema.parse({ itemId: saved.itemId, topic: saved.topic });
     });
   }
 
@@ -526,8 +564,8 @@ export class WorksService {
   /**
    * Task 10.8 (plan decision 8): the scene of a change of a work added in the journal, in the
    * lock order of the add (the journal's checks, the plan's journals, the item, the lesson's
-   * advisory lock). Refused `work_planned` once the owner wrote the item's topic: the work is
-   * the owner's then, through the plan.
+   * advisory lock). The owner, 20 November 2026: every work of the lesson's plan item, also one
+   * of an item with a topic (task 10.8 took only works added in the journal to an item without).
    */
   private async journalPlanWork(
     transaction: Transaction,
@@ -546,14 +584,13 @@ export class WorksService {
     if (work === undefined) throw notFound();
     const { source, shown } = this.planWorkAt(scene.columns, scene.lesson.id, planWorkId);
     if (!shown || source === null) throw new ApiException('work_not_in_lesson', 409);
-    if (work.added_in_journal_at === null) throw new ApiException('work_planned', 409);
     const quarter = await sql<{ quarter: string | null }>`
       select lesson_quarter(${source}::uuid)::text as quarter
     `.execute(transaction);
     const quarterId = quarter.rows[0]?.quarter ?? null;
     if (quarterId !== null) await this.plans.lockPlanOf(transaction, scene.journal.id, quarterId);
+    // The owner, 20 November 2026: every work of the lesson, planned or added in the journal.
     const item = await this.plans.lockItem(transaction, work.item_id);
-    if (item.topic.trim() !== '') throw new ApiException('work_planned', 409);
     await sql`select pg_advisory_xact_lock(hashtextextended(${`journal_works_limit:${source}`}, 0))`.execute(
       transaction,
     );
@@ -685,21 +722,14 @@ export class WorksService {
           throw new ApiException('work_holds_data', 409);
         }
       }
-      // The code review of the task: a "not given" mark and the files the owner gave the work
-      // through the plan are data too; the journal never removes them (the owner removes the
-      // files in the plan first).
+      // The code review of task 10.8: a "not given" mark is data too. The owner, 20 November
+      // 2026: the work's files go with it (removed, their rows and bytes kept), named in the entry.
       const marked = await transaction
         .selectFrom('journal_homework_not_given')
         .select('id')
         .where('plan_work_id', '=', work.id)
         .executeTakeFirst();
-      const files = await transaction
-        .selectFrom('lesson_plan_files')
-        .select('id')
-        .where('work_id', '=', work.id)
-        .where('removed_at', 'is', null)
-        .executeTakeFirst();
-      if (marked !== undefined || files !== undefined) {
+      if (marked !== undefined) {
         throw new ApiException('work_holds_data', 409);
       }
       for (const row of rows) {
@@ -714,7 +744,7 @@ export class WorksService {
           mapWorkRefusal(error);
         }
       }
-      await removePlanWork(transaction, work.id);
+      const removedFiles = await removePlanWork(transaction, work.id);
       const kind = work.kind === 'homework' ? 'homework' : 'classwork';
       const actor = this.actorOf(scene);
       await this.audit.record(transaction, {
@@ -737,6 +767,7 @@ export class WorksService {
           itemId: work.item_id,
           inJournal: true,
           removedWorks: [{ id: work.id, kind, title: work.title }],
+          ...(removedFiles.length === 0 ? {} : { removedFiles }),
         },
         ...(requestId === undefined ? {} : { requestId }),
       });
@@ -1143,6 +1174,7 @@ export class WorksService {
             cell.value === null
               ? null
               : percentOf(cell.value, totals.get(cell.workId ?? '') ?? null),
+          notGraded: cell.notGraded,
           version: cell.version,
         })),
         works: works.map(savedOf),
@@ -1365,6 +1397,7 @@ export class WorksService {
           workId: row?.id ?? '',
           value: save.score,
           version: save.version,
+          ...(save.notGraded === true ? { notGraded: true } : {}),
         };
       }),
     );

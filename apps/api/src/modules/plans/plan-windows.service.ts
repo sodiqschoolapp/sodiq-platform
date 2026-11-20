@@ -18,7 +18,7 @@ import { Notifications } from '../notifications/notifications.service.js';
 import { lockOpenQuarter } from '../setup/closed-quarters.js';
 import { notFound } from '../setup/setup-refusals.js';
 import { ownerFactsOf, ownerOn } from '../timetable/journal-owners.js';
-import { dayMoments, storedWindowOf } from './plan-gate.js';
+import { dayMoments, planWindowsOn, storedWindowAsKept } from './plan-gate.js';
 import { accountOfStaff } from '../access/request-posts.js';
 import {
   clockOf,
@@ -103,7 +103,10 @@ export class PlanWindowsService {
           (WINDOW_ROLES as readonly string[]).includes(assignment.role) &&
           (assignment.branchId === null || assignment.branchId === branchId),
       );
-      if (yearId === null) return planWindowsSchema.parse({ yearId, canEdit, quarters: [] });
+      const off = !(await planWindowsOn(transaction, branchId));
+      if (yearId === null) {
+        return planWindowsSchema.parse({ yearId, canEdit, off, quarters: [] });
+      }
       const readsEvery = access.permitting.some((one) => EXTENSION_READERS.has(one.role));
       const own = readsEvery
         ? undefined
@@ -115,7 +118,7 @@ export class PlanWindowsService {
       const quarters = await datedQuarters(transaction, yearId);
       const answer: PlanWindows['quarters'] = [];
       for (const quarter of quarters) {
-        const window = await storedWindowOf(transaction, quarter, null, timeZone);
+        const window = await storedWindowAsKept(transaction, quarter, null, timeZone);
         let shown: PlanWindows['quarters'][number]['window'] = null;
         if (window !== null) {
           const extensions = await transaction
@@ -145,7 +148,7 @@ export class PlanWindowsService {
           window: shown,
         });
       }
-      return planWindowsSchema.parse({ yearId, canEdit, quarters: answer });
+      return planWindowsSchema.parse({ yearId, canEdit, off, quarters: answer });
     });
   }
 
@@ -470,7 +473,7 @@ export class PlanWindowsService {
         );
         if (owned.length === 0) throw new ApiException('plan_extension_owner', 409);
         await lockJournals(transaction, owned.map((one) => one.journal.id).sort());
-        const stored = await storedWindowOf(transaction, quarter, person.id, timeZone);
+        const stored = await storedWindowAsKept(transaction, quarter, person.id, timeZone);
         if (stored === null) throw new ApiException('plan_window_none', 409);
         const { state, endsAt } = windowStateOf(stored, now);
         const moments = await dayMoments(transaction, input.endDate, input.endDate, timeZone);

@@ -7,6 +7,7 @@ import {
   type BranchSettings,
   type ChecklistItem,
   type ClassDailyLessonsRecord,
+  type PlanWindowsRecord,
   type Clock,
   type EarlyWarningRecord,
   type EditDaysRecord,
@@ -170,6 +171,25 @@ export class Settings {
       branchId,
       { class_daily_lessons: record.classDailyLessons },
       'settings.class_daily_lessons',
+      requestId,
+    );
+  }
+
+  /**
+   * The plan windows switch (the owner, 20 November 2026; migration 0174). Off, every plan write
+   * of the branch passes the window (`PlansService.gate`); nothing stored is changed.
+   */
+  setPlanWindows(
+    access: Access,
+    branchId: string,
+    record: PlanWindowsRecord,
+    requestId: string,
+  ): Promise<BranchSettings> {
+    return this.change(
+      access,
+      branchId,
+      { plan_windows: record.planWindows },
+      'settings.plan_windows',
       requestId,
     );
   }

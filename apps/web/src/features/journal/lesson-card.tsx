@@ -1,14 +1,9 @@
-import type { LessonCard, PlanItemFile } from '@sodiq/shared';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
+import type { PlanItemFile } from '@sodiq/shared';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { useConfirm } from '@/components/confirm-dialog';
-import { useLeave } from '@/components/unsent/unsent-changes';
 import { FailureAlert } from '@/components/failure-alert';
-import { TextAreaField } from '@/components/field';
 import { ErrorState, LoadingOutline } from '@/components/states';
 import { Button } from '@/components/ui/button';
-import { CHECKBOX, CHECKBOX_TARGET } from '@/components/ui/control';
 import {
   Dialog,
   DialogContent,
@@ -17,117 +12,35 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { useView } from '@/features/access/use-view';
-import { NotUploaded, PlanItemEditor, type HeldFile } from '@/features/plans/plan-item-editor';
-import { askPlanRequest, downloadPlanFile, invalidatePlans } from '@/features/plans/plans-api';
+import { downloadPlanFile } from '@/features/plans/plans-api';
 import { schoolDateText } from '@/lib/dates';
-import {
-  invalidateJournal,
-  journalKey,
-  lessonCardQuery,
-  setDelivery,
-  setHomeworkGiven,
-} from './journal-api';
+import { lessonCardQuery } from './journal-api';
 import { WorkKindTag } from './work-kind-tag';
 
 /**
  * The lesson card (task 8.8, pull request #226; `09`, In the journal: "Clicking it opens the
  * lesson card: number, date, slot, topic, classworks, homeworks, objectives, materials"; "The
- * lesson card shows two homework lines: 'given today' ... and 'checked today'"). On it the
- * lesson's teacher or substitute sets "topic not delivered" and marks homeworks "not given"
- * (`edge/lesson-plans`, "A substitute supervises the class"). Task 10.8 (`09`, In the journal:
- * "The lesson card is a second way into the plan item of its lesson"): the plan's owner edits the
- * item here while its row is open (`plan.edit` `open`), through the plan's own routes, and
- * otherwise sends the edit request for this lesson; the files show under their work, the item's
+ * lesson card shows two homework lines: 'given today' ... and 'checked today'"). The owner, 20
+ * November 2026: read only, for a reader who views the journal; whoever enters the journal edits
+ * the lesson in the one lesson editor (`lesson-editor.tsx`), and "topic not delivered", "not
+ * given" and the edit request of the card are gone. The files show under their work, the item's
  * own files as its "Materials".
  */
 export function LessonCardDialog({
   lessonId,
   language,
   onClose,
-  onOpenWorks,
 }: {
   lessonId: string;
   language: string;
   onClose: () => void;
-  /** The works of the lesson (task 8.1), for a reader who enters them. */
-  onOpenWorks?: (() => void) | undefined;
 }) {
   const { t } = useTranslation();
   const { branchId } = useView();
-  const queryClient = useQueryClient();
   const card = useQuery(lessonCardQuery(branchId, lessonId));
-  const refresh = async () => {
-    await queryClient.invalidateQueries({ queryKey: [...journalKey(branchId), 'card', lessonId] });
-    await invalidateJournal(queryClient);
-  };
-  const delivery = useMutation({
-    mutationFn: (value: LessonCard['delivery'] & { next: boolean }) =>
-      setDelivery(lessonId, { notDelivered: value.next, version: value.version }),
-    onSettled: refresh,
-  });
-  const homework = useMutation({
-    mutationFn: (value: { planWorkId: string; notGiven: boolean }) =>
-      setHomeworkGiven(lessonId, { planWorkIds: [value.planWorkId], notGiven: value.notGiven }),
-    onSettled: refresh,
-  });
   const download = useMutation({
     mutationFn: ({ id, name }: { id: string; name: string }) => downloadPlanFile(id, name),
   });
-  // Task 10.8: the card's way into the plan.
-  const [editing, setEditing] = useState(false);
-  const [failed, setFailed] = useState<HeldFile[]>([]);
-  const [asking, setAsking] = useState(false);
-  const [reason, setReason] = useState('');
-  const ask = useMutation({
-    mutationFn: async (value: { found: LessonCard; reason: string }) => {
-      const { found: at } = value;
-      await askPlanRequest(
-        at.journalId,
-        // `edge/lesson-plans`: "Lessons already held take only Text"; a lesson not yet held is
-        // re-planned from itself (plan decision 12).
-        at.held
-          ? {
-              kind: 'text',
-              quarterId: at.plan.quarterId,
-              lessonIds: [at.lessonId],
-              reason: value.reason,
-            }
-          : {
-              kind: 'replan',
-              quarterId: at.plan.quarterId,
-              fromLessonId: at.lessonId,
-              reason: value.reason,
-            },
-      );
-      await invalidatePlans(queryClient);
-    },
-    onSuccess: () => {
-      setAsking(false);
-      setReason('');
-    },
-  });
-  const confirm = useConfirm();
-  const leave = useLeave();
-  // Code review (spec 4): files not uploaded are never dropped without a word; closing asks.
-  const close = async () => {
-    // Code review: an item being edited, with its typed values and held files, is asked about
-    // first, as every unsent form (`useLeave`).
-    if (editing && !(await leave.leave())) return;
-    if (failed.length === 0) {
-      onClose();
-      return;
-    }
-    void confirm({
-      title: t('plans.files.notUploaded'),
-      text: t('plans.files.closeText'),
-      names: failed.map((one) => one.file.name),
-      action: t('plans.files.closeAction'),
-      destructive: true,
-    }).then((sure) => {
-      if (sure) onClose();
-    });
-  };
-  const busy = delivery.isPending || homework.isPending;
   const found = card.data;
   const filesOf = (workId: string | null): PlanItemFile[] =>
     (found?.files ?? []).filter((file) => file.workId === workId);
@@ -163,7 +76,7 @@ export function LessonCardDialog({
     <Dialog
       open
       onOpenChange={(open) => {
-        if (!open) void close();
+        if (!open) onClose();
       }}
     >
       <DialogContent aria-label={title} className="sm:max-w-lg">
@@ -179,23 +92,6 @@ export function LessonCardDialog({
           />
         ) : found === undefined ? (
           <LoadingOutline lines={4} />
-        ) : editing && found.plan.position !== null ? (
-          <PlanItemEditor
-            journalId={found.journalId}
-            quarterId={found.plan.quarterId}
-            position={found.plan.position}
-            lessonId={found.lessonId}
-            item={found.plan.item}
-            label={title}
-            onSaved={(_saved, notSent) => {
-              setFailed(notSent);
-              setEditing(false);
-              void refresh();
-            }}
-            onCancel={() => {
-              setEditing(false);
-            }}
-          />
         ) : (
           <div className="grid gap-4 text-sm" data-lesson-card={found.lessonId}>
             {/* The title gives the number and the date; this line adds the lesson's place in the
@@ -212,11 +108,6 @@ export function LessonCardDialog({
                   ? t('journal.works.noPlan')
                   : found.topic}
               </p>
-              {found.delivery.notDelivered && (
-                <p className="font-semibold" data-not-delivered="true">
-                  {t('journal.card.notDelivered')}
-                </p>
-              )}
               {found.movedFrom !== null && (
                 <p className="text-muted-foreground">
                   {t('journal.card.movedFrom', { date: dateOf(found.movedFrom) })}
@@ -266,24 +157,7 @@ export function LessonCardDialog({
                         <span className={given.notGiven ? 'line-through' : undefined}>
                           {given.title ?? t('journal.grid.homeworkShort', { number: index + 1 })}
                         </span>
-                        {found.canMark && given.planWorkId !== null && (
-                          <label className={CHECKBOX_TARGET}>
-                            <input
-                              type="checkbox"
-                              className={CHECKBOX}
-                              checked={given.notGiven}
-                              disabled={busy}
-                              onChange={(event) => {
-                                homework.mutate({
-                                  planWorkId: given.planWorkId ?? '',
-                                  notGiven: event.target.checked,
-                                });
-                              }}
-                            />
-                            {t('journal.card.notGiven')}
-                          </label>
-                        )}
-                        {!found.canMark && given.notGiven && (
+                        {given.notGiven && (
                           <span className="text-muted-foreground">
                             {t('journal.card.notGiven')}
                           </span>
@@ -369,104 +243,11 @@ export function LessonCardDialog({
                 </ul>
               </div>
             )}
-            {found.canMark && (
-              <label className={CHECKBOX_TARGET}>
-                <input
-                  type="checkbox"
-                  className={CHECKBOX}
-                  checked={found.delivery.notDelivered}
-                  disabled={busy}
-                  onChange={(event) => {
-                    delivery.mutate({ ...found.delivery, next: event.target.checked });
-                  }}
-                />
-                {t('journal.card.markNotDelivered')}
-              </label>
-            )}
-            {delivery.isError && <FailureAlert error={delivery.error} />}
-            {homework.isError && <FailureAlert error={homework.error} />}
             {download.isError && <FailureAlert error={download.error} />}
-            <NotUploaded
-              itemId={found.plan.item?.id ?? null}
-              failed={failed}
-              onChange={setFailed}
-            />
-            {asking && (
-              <form
-                className="grid gap-2"
-                onSubmit={(event) => {
-                  event.preventDefault();
-                  if (reason.trim() === '') return;
-                  ask.mutate({ found, reason: reason.trim() });
-                }}
-              >
-                <TextAreaField
-                  label={t('journal.card.askReason')}
-                  rows={2}
-                  value={reason}
-                  onChange={(event) => {
-                    setReason(event.target.value);
-                  }}
-                />
-                <div className="flex flex-wrap gap-2">
-                  <Button type="submit" disabled={ask.isPending || reason.trim() === ''}>
-                    {t('journal.card.askSend')}
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    onClick={() => {
-                      setAsking(false);
-                    }}
-                  >
-                    {t('form.cancel')}
-                  </Button>
-                </div>
-              </form>
-            )}
-            {ask.isSuccess && !asking && (
-              <p role="status" data-asked="true">
-                {t('journal.card.asked')}
-              </p>
-            )}
-            {ask.isError && <FailureAlert error={ask.error} />}
           </div>
         )}
         <DialogFooter>
-          {found !== undefined &&
-            !editing &&
-            found.plan.edit === 'open' &&
-            found.plan.position !== null && (
-              <Button
-                variant="secondary"
-                onClick={() => {
-                  setEditing(true);
-                }}
-              >
-                {t('journal.card.editPlan')}
-              </Button>
-            )}
-          {found !== undefined && !asking && found.plan.edit === 'request' && (
-            <Button
-              variant="secondary"
-              onClick={() => {
-                setAsking(true);
-              }}
-            >
-              {t('journal.card.askToEdit')}
-            </Button>
-          )}
-          {onOpenWorks !== undefined && (
-            <Button variant="secondary" onClick={onOpenWorks}>
-              {t('journal.works.button')}
-            </Button>
-          )}
-          <Button
-            variant="ghost"
-            onClick={() => {
-              void close();
-            }}
-          >
+          <Button variant="ghost" onClick={onClose}>
             {t('journal.entry.close')}
           </Button>
         </DialogFooter>

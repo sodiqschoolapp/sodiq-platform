@@ -32,6 +32,7 @@ import {
   ExpandMoreIcon,
   FullscreenExitIcon,
   FullscreenIcon,
+  EditIcon,
   UndoIcon,
   ViewColumnIcon,
 } from '@/components/icons';
@@ -62,6 +63,7 @@ import {
   JOURNAL_DEFAULT_HIDDEN,
   JournalGridView,
   MARK_TINT,
+  NOT_GRADED_TEXT,
   hideableColumnsOf,
   weekdayOf,
 } from './journal-grid';
@@ -563,6 +565,7 @@ function JournalLoaded({
             {/* Right above the grid, not among the selectors (owner, 13 November 2026). */}
             {!full && (
               <div className="mb-3 flex flex-wrap items-center justify-end gap-3">
+                <MarksStrip attendanceOnly={data.journal.attendanceOnly} />
                 {columnsButton}
                 <Button
                   variant="secondary"
@@ -592,6 +595,7 @@ function JournalLoaded({
                   </Button>
                 </div>
                 {alerts}
+                <MarksStrip attendanceOnly={data.journal.attendanceOnly} />
               </>
             )}
             <JournalGridView
@@ -932,17 +936,19 @@ function LessonMode({
           </p>
         )}
       </div>
-      {/* Works added by hand when the lesson has no plan item (`edge/journal`). */}
-      {(lesson.canEnterWorks || (lesson.held && !lesson.planItem)) && (
+      {/* The owner, 20 November 2026: one way to edit the lesson (topic, works, totals). */}
+      {lesson.canEnterWorks && (
         <div className="flex flex-wrap gap-2">
           <Button
             variant="secondary"
+            className="max-sm:w-full"
             disabled={works.busy}
             onClick={() => {
               works.openLesson(lesson);
             }}
           >
-            {t('journal.works.button')}
+            <EditIcon aria-hidden="true" />
+            {t('journal.editor.open')}
           </Button>
         </div>
       )}
@@ -1162,6 +1168,43 @@ function FoldOnPhone({
       </summary>
       <div className="mt-3 grid gap-4">{children}</div>
     </details>
+  );
+}
+
+/**
+ * The attendance marks right above the grid, in full screen too (the owner, 20 November 2026:
+ * "these 4 marks should be at the top of the journal in full screen"), and the "-" a teacher
+ * types for "not graded" in a graded journal. The whole legend stays under the grid.
+ */
+function MarksStrip({ attendanceOnly }: { attendanceOnly: boolean }) {
+  const { t } = useTranslation();
+  const marks: readonly [string, string][] = [
+    ['1', t('journal.marks.present')],
+    ['0', t('journal.marks.absent')],
+    ['2', t('journal.marks.late')],
+    ['3', t('journal.marks.skipped')],
+    ...(attendanceOnly ? [] : [[NOT_GRADED_TEXT, t('journal.notGraded.sign')] as [string, string]]),
+  ];
+  return (
+    <dl
+      className="mr-auto flex min-w-0 flex-wrap items-center gap-x-4 gap-y-1 text-sm"
+      aria-label={t('journal.legend.marks')}
+      data-journal-marks="true"
+    >
+      {marks.map(([key, word]) => (
+        <div key={key} className="flex items-center gap-1.5">
+          <dt
+            className={cn(
+              'inline-flex size-6 items-center justify-center rounded-md font-semibold',
+              MARK_TINT[Number(key)] ?? 'bg-muted',
+            )}
+          >
+            {key}
+          </dt>
+          <dd>{word}</dd>
+        </div>
+      ))}
+    </dl>
   );
 }
 

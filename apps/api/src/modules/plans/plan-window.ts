@@ -17,6 +17,11 @@ export interface StoredWindow {
   readonly quarterEndsAt: Date;
   /** The latest extension of the owner, if any. */
   readonly extensionEndsAt: Date | null;
+  /**
+   * The branch switched its plan windows off (the owner, 20 November 2026; migration 0174):
+   * plans are open for their owners at any time, whatever is stored.
+   */
+  readonly off?: boolean;
 }
 
 /** Where the window stands for one owner at a moment, and the end in force for them. */
@@ -24,6 +29,7 @@ export function windowStateOf(
   window: StoredWindow | null,
   now: Date,
 ): { state: PlanWindowState; endsAt: Date | null } {
+  if (window?.off === true) return { state: 'open', endsAt: null };
   if (window === null) return { state: 'not_opened', endsAt: null };
   const own =
     window.extensionEndsAt !== null && window.extensionEndsAt > window.endsAt

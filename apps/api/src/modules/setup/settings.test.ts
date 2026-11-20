@@ -19,6 +19,7 @@ const DEFAULTS = {
   attendancePercent: 80,
   absencesInRow: 3,
   classDailyLessons: null,
+  planWindows: true,
 };
 
 const THRESHOLDS = { lowResult: 45, resultDrop: 20, attendancePercent: 75, absencesInRow: 4 };
@@ -149,7 +150,12 @@ describe('the settings of a branch', () => {
       const branch = await t.newBranch();
       const response = await put('/api/setup/settings/early-warning', branch, THRESHOLDS);
       expect(response.status).toBe(200);
-      expect(response.body).toEqual({ ...THRESHOLDS, editDays: 7, classDailyLessons: null });
+      expect(response.body).toEqual({
+        ...THRESHOLDS,
+        editDays: 7,
+        classDailyLessons: null,
+        planWindows: true,
+      });
       const entries = await t.entries('settings.early_warning', branch);
       expect(entries).toHaveLength(1);
       expect(entries[0]).toMatchObject({
@@ -280,6 +286,65 @@ describe('the settings of a branch', () => {
         await put(path, t.north, { classDailyLessons: 9 }, t.principal),
         await put(path, t.north, { classDailyLessons: 9 }, t.teacher),
         await put(path, t.south, { classDailyLessons: 9 }, t.vicePrincipal),
+      ];
+      for (const response of refused) {
+        expect(response.status).toBe(403);
+        expect(errorCode(response)).toBe('permission_denied');
+      }
+      expect(await settingsRow(t.north)).toEqual(north);
+      expect(await settingsRow(t.south)).toEqual(south);
+      expect(await t.auditCount()).toBe(count);
+    });
+  });
+
+  // The owner, 20 November 2026 (migration 0174): plan windows can be switched off.
+  describe('the plan windows switch', () => {
+    const path = '/api/setup/settings/plan-windows';
+
+    it('is on at first, is switched off and on again by the Academic Vice Principal, audited', async () => {
+      const branch = await t.newBranch();
+      expect((await t.get('/api/setup/settings', branch)).body).toMatchObject({
+        planWindows: true,
+      });
+      const off = await put(path, t.north, { planWindows: false }, t.vicePrincipal);
+      expect(off.status).toBe(200);
+      expect(off.body).toMatchObject({ planWindows: false });
+      expect((await settingsRow(t.north)).plan_windows).toBe(false);
+      const on = await put(path, t.north, { planWindows: true }, t.vicePrincipal);
+      expect(on.body).toMatchObject({ planWindows: true });
+      expect((await settingsRow(t.north)).plan_windows).toBe(true);
+      const entries = await t.entries('settings.plan_windows', t.north);
+      expect(entries).toHaveLength(2);
+      expect(entries[0]).toMatchObject({
+        branch_id: t.north,
+        record_type: 'branch_settings',
+        assignment_id: t.viceAssignment,
+        old_value: { planWindows: true },
+        new_value: { planWindows: false },
+        request_id: off.headers['x-request-id'],
+      });
+      expect(entries[1]).toMatchObject({
+        old_value: { planWindows: false },
+        new_value: { planWindows: true },
+      });
+    });
+
+    it('refuses a missing or other value and another field', async () => {
+      for (const body of [{}, { planWindows: 'no' }, { planWindows: false, other: 1 }]) {
+        const response = await put(path, t.north, body);
+        expect(response.status, JSON.stringify(body)).toBe(400);
+        expect(errorCode(response)).toBe('validation_failed');
+      }
+    });
+
+    it('refuses the Principal, a Teacher and the Academic Vice Principal of another branch, and changes nothing', async () => {
+      const north = await settingsRow(t.north);
+      const south = await settingsRow(t.south);
+      const count = await t.auditCount();
+      const refused = [
+        await put(path, t.north, { planWindows: false }, t.principal),
+        await put(path, t.north, { planWindows: false }, t.teacher),
+        await put(path, t.south, { planWindows: false }, t.vicePrincipal),
       ];
       for (const response of refused) {
         expect(response.status).toBe(403);

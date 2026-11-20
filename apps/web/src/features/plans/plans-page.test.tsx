@@ -158,7 +158,7 @@ const planOf = (canEdit: boolean, item: PlanItem | null = ITEM): Plan => ({
   canDrop: false,
   carryClosed: false,
   request: null,
-  window: { state: 'open', startDate: '2026-09-01', endDate: '2026-10-31' },
+  window: { state: 'open', startDate: '2026-09-01', endDate: '2026-10-31', off: false },
   flag: null,
   belowMinimum: null,
   requests: [],
@@ -788,7 +788,7 @@ describe('the outcomes of items not covered', () => {
 describe('the plan window and edit requests', () => {
   const ended = (plan: Plan): Plan => ({
     ...plan,
-    window: { state: 'ended', startDate: '2026-09-01', endDate: '2026-10-10' },
+    window: { state: 'ended', startDate: '2026-09-01', endDate: '2026-10-10', off: false },
     flag: 'overdue',
     rows: plan.rows.map((row) => ({ ...row, open: 'none' })),
   });
@@ -995,12 +995,17 @@ describe('the plan window and edit requests', () => {
   it.each([
     {
       flag: 'window_not_opened' as const,
-      window: { state: 'not_opened' as const, startDate: null, endDate: null },
+      window: { state: 'not_opened' as const, startDate: null, endDate: null, off: false },
       text: 'not opened',
     },
     {
       flag: 'vacancy' as const,
-      window: { state: 'open' as const, startDate: '2026-09-01', endDate: '2026-10-31' },
+      window: {
+        state: 'open' as const,
+        startDate: '2026-09-01',
+        endDate: '2026-10-31',
+        off: false,
+      },
       text: 'open until',
     },
   ])('shows the window and the flag $flag on the plan page', async ({ flag, window, text }) => {
@@ -1272,6 +1277,7 @@ const REQUEST: PlanRequest = {
 const WINDOWS: PlanWindows = {
   yearId: uid(3),
   canEdit: true,
+  off: false,
   quarters: [
     {
       quarter: quarters[0] ?? { id: Q1, number: 1, startDate: '', endDate: '' },

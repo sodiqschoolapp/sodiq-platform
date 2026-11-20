@@ -79,6 +79,16 @@ export const classDailyLessonsRecordSchema = z.object({
 
 export type ClassDailyLessonsRecord = z.infer<typeof classDailyLessonsRecordSchema>;
 
+/**
+ * The plan windows switch (the owner, 20 November 2026; migration 0174): off, the owner of a
+ * plan edits it at any time while the quarter is open, with no window, request or "overdue".
+ */
+export const planWindowsRecordSchema = z.strictObject({
+  planWindows: z.boolean(),
+});
+
+export type PlanWindowsRecord = z.infer<typeof planWindowsRecordSchema>;
+
 const attendanceValueSchema = z.int().min(ATTENDANCE_VALUE_MIN).max(ATTENDANCE_VALUE_MAX);
 
 export const attendanceValuesRecordSchema = z.object({
@@ -103,7 +113,8 @@ export type TravelTimeRecord = z.infer<typeof travelTimeRecordSchema>;
 /** The settings of the branch of the request. */
 export const branchSettingsSchema = earlyWarningRecordSchema
   .extend(editDaysRecordSchema.shape)
-  .extend(classDailyLessonsRecordSchema.shape);
+  .extend(classDailyLessonsRecordSchema.shape)
+  .extend(planWindowsRecordSchema.shape);
 
 export type BranchSettings = z.infer<typeof branchSettingsSchema>;
 

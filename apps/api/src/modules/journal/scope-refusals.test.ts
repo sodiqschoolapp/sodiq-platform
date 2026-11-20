@@ -355,6 +355,8 @@ describe('the journal routes outside the scope of a role', () => {
         ],
         ['post', `${lesson}/not-graded`, { workIds: [workId] }, 'journal_entry_scope'],
         ['put', `${lesson}/delivery`, { notDelivered: true, version: null }, 'journal_entry_scope'],
+        // The owner, 20 November 2026: the topic written in the journal.
+        ['put', `${lesson}/topic`, { topic: 'Fractions', baseTopic: '' }, 'journal_entry_scope'],
         [
           'put',
           `${lesson}/homework-given`,

@@ -465,6 +465,8 @@ export const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
   'PUT /api/setup/settings/edit-days': { branch: 'request', roles: SETTINGS_WRITERS },
   'PUT /api/setup/settings/early-warning': { branch: 'request', roles: SETTINGS_WRITERS },
   'PUT /api/setup/settings/class-daily-lessons': { branch: 'request', roles: SETTINGS_WRITERS },
+  // The owner, 20 November 2026: the plan windows switch, as the other settings of a branch.
+  'PUT /api/setup/settings/plan-windows': { branch: 'request', roles: SETTINGS_WRITERS },
   'GET /api/setup/attendance-values': { branch: 'request', roles: SETTINGS_VIEWERS },
   'PUT /api/setup/quarters/:id/attendance-values': { branch: 'request', roles: SETTINGS_WRITERS },
   // Task 9.1: the preview of a change of late and skipped values, as its write.
@@ -1038,6 +1040,12 @@ export const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
   },
   // Task 10.8: rename and remove a work added in the journal, written into the plan (scope in
   // the route, journal-works.test.ts).
+  // The owner, 20 November 2026: the topic of a lesson written in the journal (scope in the
+  // route, journal-topic.test.ts).
+  'PUT /api/journal/lessons/:lessonId/topic': {
+    branch: 'request',
+    roles: JOURNAL_WRITERS,
+  },
   'PUT /api/journal/lessons/:lessonId/plan-works/:planWorkId/title': {
     branch: 'request',
     roles: JOURNAL_WRITERS,

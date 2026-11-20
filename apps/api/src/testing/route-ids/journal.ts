@@ -127,6 +127,8 @@ export const JOURNAL_IDS: RouteIds = {
     lesson(WORKS),
     branch('path:workId', 'journal work', PATH, [WORKS]),
   ],
+  // The owner, 20 November 2026: the topic written in the journal.
+  'PUT /api/journal/lessons/:lessonId/topic': [lesson(WORKS)],
   'PUT /api/journal/lessons/:lessonId/plan-works/:planWorkId/title': [
     lesson(WORKS),
     branch('path:planWorkId', 'plan work', PATH, [WORKS]),
