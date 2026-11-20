@@ -2,6 +2,19 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 20 November 2026: the System status page's history, and its card on the Super Admin's home
+
+Not a task of the build plan: the owner asked, after #361, for what happened and recovered (the alert emails' content) on the page, over 24 hours, 7 or 14 days, and a home page section (pull request #363; decisions in `docs/decisions.md`).
+
+- **Period switch** on System status (`?period=7d`, `?period=14d`; 24 hours by default): `GET /api/system-status/providers?period=…` (a `strictObject`; another period or field is 400) answers each provider's `history`: UptimeRobot's down periods (from `logs=1`, filtered in code), the Grafana alerts that fired and resolved (`/api/v1/rules/history`, a second call in parallel, paired by rule and instance labels, each with its branch), and Sentry's errors of the period. A history in another shape is "could not be read" and the current rows still show. The ratio of UptimeRobot is the period's.
+- **Attention stays "now"**, shared by the page and the card (`attentionOf` in `status-history.ts`).
+- **Home card** for the Super Admin (`system-status-card.tsx`, above the branch summary): attention now, the last 24 hours ("2 down periods, 1 alert fired, 1 error", or "… not read"), the new feedback, links to both pages. The Principal neither sees it nor calls the routes.
+- Tests: `status-providers.test.ts` (the period's parameters, down periods in and across the period's start, logs missing or of another shape, firings paired per instance, a reason after a state, the history call failing in five ways, the cut list, Sentry's attention on 7 days, the cache per period), `system-status.test.ts` (the query), `system-status-page.test.tsx` (the switch in the address, the lists with branch names, an unreadable history, the summary on two periods, the card, the Principal without calls), browser: `setup.spec.ts` (7 days, the Super Admin's home).
+
+The next sessions must know:
+
+- The providers' answers were read in their code (the comments on #363), not checked against a live answer: check each panel's history once with the keys after the deploy.
+
 ## 19 November 2026: the demo data works on any day of the year
 
 Not a task of the build plan: the owner found, preparing the teachers' tutorial, that a demo run on 19 November 2026 opened no plan window (its fixed end, 7 November, was past: `plan_window_dates`, while the summary still said "open until 7 November") and left no locked lesson with an unlock request (the day ten days back was a Sunday). Only the demo seed changed; no application code.

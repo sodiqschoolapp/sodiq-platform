@@ -6,6 +6,7 @@ import {
   WORKER_SILENT_MS,
   type CheckStatus,
   type Clock,
+  type StatusPeriod,
   type StatusProviders,
   type SystemStatus,
 } from '@sodiq/shared';
@@ -162,7 +163,7 @@ export class SystemStatusReader {
     });
   }
 
-  providers(): Promise<StatusProviders> {
-    return this.outside.read();
+  providers(period: StatusPeriod): Promise<StatusProviders> {
+    return this.outside.read(period);
   }
 }

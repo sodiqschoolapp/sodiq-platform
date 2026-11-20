@@ -1141322,7 +1141322,21 @@
     "/api/system-status/providers": {
       "get": {
         "operationId": "SystemStatusController_providers",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "period",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "24h",
+                "7d",
+                "14d"
+              ]
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "",
@@ -1141331,6 +1141345,14 @@
                 "schema": {
                   "type": "object",
                   "properties": {
+                    "period": {
+                      "type": "string",
+                      "enum": [
+                        "24h",
+                        "7d",
+                        "14d"
+                      ]
+                    },
                     "uptimeRobot": {
                       "oneOf": [
                         {
@@ -1141426,7 +1141448,7 @@
                                       "not_checked"
                                     ]
                                   },
-                                  "uptime7d": {
+                                  "uptime": {
                                     "nullable": true,
                                     "type": "string"
                                   }
@@ -1141435,10 +1141457,82 @@
                                   "name",
                                   "url",
                                   "state",
-                                  "uptime7d"
+                                  "uptime"
                                 ],
                                 "additionalProperties": false
                               }
+                            },
+                            "history": {
+                              "oneOf": [
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "state": {
+                                      "type": "string",
+                                      "enum": [
+                                        "read"
+                                      ]
+                                    },
+                                    "items": {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "object",
+                                        "properties": {
+                                          "monitor": {
+                                            "type": "string"
+                                          },
+                                          "startedAt": {
+                                            "type": "string",
+                                            "format": "date-time",
+                                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                                          },
+                                          "endedAt": {
+                                            "nullable": true,
+                                            "type": "string",
+                                            "format": "date-time",
+                                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                                          },
+                                          "reason": {
+                                            "nullable": true,
+                                            "type": "string"
+                                          }
+                                        },
+                                        "required": [
+                                          "monitor",
+                                          "startedAt",
+                                          "endedAt",
+                                          "reason"
+                                        ],
+                                        "additionalProperties": false
+                                      }
+                                    },
+                                    "cut": {
+                                      "type": "boolean"
+                                    }
+                                  },
+                                  "required": [
+                                    "state",
+                                    "items",
+                                    "cut"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "state": {
+                                      "type": "string",
+                                      "enum": [
+                                        "unreadable"
+                                      ]
+                                    }
+                                  },
+                                  "required": [
+                                    "state"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              ]
                             }
                           },
                           "required": [
@@ -1141446,7 +1141540,8 @@
                             "checkedAt",
                             "attention",
                             "dashboardUrl",
-                            "monitors"
+                            "monitors",
+                            "history"
                           ],
                           "additionalProperties": false
                         }
@@ -1141558,6 +1141653,84 @@
                                 ],
                                 "additionalProperties": false
                               }
+                            },
+                            "history": {
+                              "oneOf": [
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "state": {
+                                      "type": "string",
+                                      "enum": [
+                                        "read"
+                                      ]
+                                    },
+                                    "items": {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "object",
+                                        "properties": {
+                                          "rule": {
+                                            "type": "string"
+                                          },
+                                          "branch": {
+                                            "nullable": true,
+                                            "type": "string"
+                                          },
+                                          "detail": {
+                                            "nullable": true,
+                                            "type": "string"
+                                          },
+                                          "firedAt": {
+                                            "nullable": true,
+                                            "type": "string",
+                                            "format": "date-time",
+                                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                                          },
+                                          "resolvedAt": {
+                                            "nullable": true,
+                                            "type": "string",
+                                            "format": "date-time",
+                                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                                          }
+                                        },
+                                        "required": [
+                                          "rule",
+                                          "branch",
+                                          "detail",
+                                          "firedAt",
+                                          "resolvedAt"
+                                        ],
+                                        "additionalProperties": false
+                                      }
+                                    },
+                                    "cut": {
+                                      "type": "boolean"
+                                    }
+                                  },
+                                  "required": [
+                                    "state",
+                                    "items",
+                                    "cut"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "state": {
+                                      "type": "string",
+                                      "enum": [
+                                        "unreadable"
+                                      ]
+                                    }
+                                  },
+                                  "required": [
+                                    "state"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              ]
                             }
                           },
                           "required": [
@@ -1141565,7 +1141738,8 @@
                             "checkedAt",
                             "attention",
                             "dashboardUrl",
-                            "rules"
+                            "rules",
+                            "history"
                           ],
                           "additionalProperties": false
                         }
@@ -1141680,6 +1141854,9 @@
                                 ],
                                 "additionalProperties": false
                               }
+                            },
+                            "cut": {
+                              "type": "boolean"
                             }
                           },
                           "required": [
@@ -1141687,7 +1141864,8 @@
                             "checkedAt",
                             "attention",
                             "dashboardUrl",
-                            "issues"
+                            "issues",
+                            "cut"
                           ],
                           "additionalProperties": false
                         }
@@ -1141695,6 +1141873,7 @@
                     }
                   },
                   "required": [
+                    "period",
                     "uptimeRobot",
                     "grafana",
                     "sentry"

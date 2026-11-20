@@ -122,6 +122,22 @@ async function checkSuperAdminPages(page: Page): Promise<void> {
     page.getByRole('region', { name: en.systemStatus.grafana.title }).getByText(/^Not connected/),
   ).toBeVisible();
   await checkPage(page, 'system-status-super-admin');
+  // Pull request #363: the period of the outside services' history, kept in the address. The
+  // browser tests have no keys: this proves the switch, not the history lists (unit tests).
+  await page
+    .getByRole('radiogroup', { name: en.systemStatus.period })
+    .getByText(en.systemStatus.period_7d, { exact: true })
+    .click();
+  await expect(page).toHaveURL(/[?&]period=7d/);
+  await expect(
+    page.getByRole('region', { name: en.systemStatus.grafana.title }).getByText(/^Not connected/),
+  ).toBeVisible();
+  await checkPage(page, 'system-status-7d-super-admin');
+  // The Super Admin's home: the system status card above the branch summary.
+  await page.goto('/');
+  await expect(heading(page, en.home.title)).toBeVisible();
+  await expect(page.getByRole('region', { name: en.home.status.title })).toBeVisible();
+  await checkPage(page, 'home-super-admin');
   // Task 2.7c-2a: the lists only the Super Admin adds to, with the new record
   // in the side panel. Nothing is saved.
   // In the branch of the pages test, which keeps an active floor: the floor

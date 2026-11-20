@@ -29,6 +29,9 @@ export const PROVIDER_CACHE_MS = 60_000;
 /** The longest wait for one provider. */
 export const PROVIDER_TIMEOUT_MS = 5_000;
 
+/** The 24 hours before now: Sentry's errors that need attention, and the home card's line. */
+export const DAY_MS = 86_400_000;
+
 export const CHECK_STATUSES = ['ok', 'attention', 'unknown'] as const;
 
 export const checkStatusSchema = z.enum(CHECK_STATUSES);
@@ -96,17 +99,74 @@ export const GRAFANA_RULE_STATES = ['firing', 'pending', 'normal'] as const;
 
 export const GRAFANA_RULE_HEALTHS = ['ok', 'no_data', 'error'] as const;
 
+/**
+ * The period of the outside services' history on the System status page (pull request #363;
+ * owner, 20 November 2026): 14 days at most, the shortest history of the three (Grafana Cloud's
+ * free plan keeps 14 days). The own checks and the attention count are always "now".
+ */
+export const STATUS_PERIODS = ['24h', '7d', '14d'] as const;
+
+export type StatusPeriod = (typeof STATUS_PERIODS)[number];
+
+export const STATUS_PERIOD_DAYS: Record<StatusPeriod, number> = { '24h': 1, '7d': 7, '14d': 14 };
+
+export const statusPeriodSchema = z.enum(STATUS_PERIODS);
+
+/** The query of the providers' route: the period, 24 hours when left out. */
+export const statusProvidersQuerySchema = z.strictObject({ period: statusPeriodSchema.optional() });
+
+export type StatusProvidersQuery = z.infer<typeof statusProvidersQuerySchema>;
+
+/**
+ * A provider's history of the period, newest first, or "could not be read" when the provider
+ * answered it in another shape (the current rows still show). `cut`: the provider's own limit
+ * was reached, so older lines may be missing.
+ */
+function history<T extends z.ZodType>(item: T) {
+  return z.discriminatedUnion('state', [
+    z.object({ state: z.literal('read'), items: z.array(item), cut: z.boolean() }),
+    z.object({ state: z.literal('unreadable') }),
+  ]);
+}
+
+export const uptimeDownPeriodSchema = z.object({
+  monitor: z.string(),
+  startedAt: moment,
+  /** Null while the monitor is still down. */
+  endedAt: moment.nullable(),
+  /** UptimeRobot's reason ("Connection Timeout"), or none. */
+  reason: z.string().nullable(),
+});
+
+export type UptimeDownPeriod = z.infer<typeof uptimeDownPeriodSchema>;
+
+export const grafanaFiringSchema = z.object({
+  rule: z.string(),
+  /** The alert instance's `branch` label (a branch id), or none. */
+  branch: z.string().nullable(),
+  /** The instance's job name or route, when its labels have one. */
+  detail: z.string().nullable(),
+  /** Null when it fired before the period. */
+  firedAt: moment.nullable(),
+  /** Null while it still fires. */
+  resolvedAt: moment.nullable(),
+});
+
+export type GrafanaFiring = z.infer<typeof grafanaFiringSchema>;
+
 export const statusProvidersSchema = z.object({
+  period: statusPeriodSchema,
   uptimeRobot: provider({
     monitors: z.array(
       z.object({
         name: z.string(),
         url: z.string(),
         state: z.enum(UPTIME_MONITOR_STATES),
-        /** The 7-day uptime ratio as UptimeRobot gives it ("99.982"), or none. */
-        uptime7d: z.string().nullable(),
+        /** The period's uptime ratio as UptimeRobot gives it ("99.982"), or none. */
+        uptime: z.string().nullable(),
       }),
     ),
+    history: history(uptimeDownPeriodSchema),
   }),
   grafana: provider({
     /** Firing first, then pending, then normal; by name within each. */
@@ -117,9 +177,10 @@ export const statusProvidersSchema = z.object({
         health: z.enum(GRAFANA_RULE_HEALTHS),
       }),
     ),
+    history: history(grafanaFiringSchema),
   }),
   sentry: provider({
-    /** Unresolved issues seen in the last 24 hours, the newest first, at most 10. */
+    /** Unresolved issues last seen in the period, the newest first, at most 10. */
     issues: z.array(
       z.object({
         title: z.string(),
@@ -130,6 +191,8 @@ export const statusProvidersSchema = z.object({
         link: z.url().nullable(),
       }),
     ),
+    /** Sentry's limit of 10 was reached: older issues of the period may be missing. */
+    cut: z.boolean(),
   }),
 });
 

@@ -1,6 +1,14 @@
-import type { CheckStatus, StatusProviders, SystemStatus } from '@sodiq/shared';
+import {
+  STATUS_PERIODS,
+  type CheckStatus,
+  type GrafanaFiring,
+  type StatusPeriod,
+  type StatusProviders,
+  type SystemStatus,
+  type UptimeDownPeriod,
+} from '@sodiq/shared';
 import { useQuery, useQueryClient, type UseQueryResult } from '@tanstack/react-query';
-import { Link } from '@tanstack/react-router';
+import { Link, useNavigate, useSearch } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CheckCircleIcon, InfoIcon, WarningIcon } from '@/components/icons';
@@ -8,10 +16,12 @@ import { PageHeader } from '@/components/page-header';
 import { ErrorState, LoadingOutline } from '@/components/states';
 import { Button } from '@/components/ui/button';
 import { PANEL, SECTION_TITLE } from '@/components/ui/control';
+import { Segmented } from '@/components/ui/segmented';
 import { formatMoment } from '@/lib/dates';
 import { SYSTEM_STATUS_KEY, statusProvidersQuery, systemStatusQuery } from './feedback-reports-api';
+import { attentionOf, historyOf, type HistoryReading } from './status-history';
 
-type Provider = StatusProviders[keyof StatusProviders];
+type Provider = StatusProviders['uptimeRobot' | 'grafana' | 'sentry'];
 
 const LINK = 'font-semibold text-link underline-offset-4 hover:underline';
 
@@ -20,12 +30,23 @@ const LINK = 'font-semibold text-link underline-offset-4 hover:underline';
  * status page by which we are able to fully see the health of current app … uptimerobot,
  * grafana etc."). The app's own checks come at once; UptimeRobot, Grafana and Sentry fill their
  * panels when the server has read them. Nothing reads on a timer: Refresh reads both again.
+ * Pull request #363: the outside services' history of 24 hours, 7 or 14 days, chosen in the
+ * address (`?period=7d`); the summary stays "now".
  */
 export function SystemStatusPage() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const own = useQuery(systemStatusQuery());
-  const providers = useQuery(statusProvidersQuery());
+  const navigate = useNavigate();
+  const search = useSearch({ from: '/app/system-status' });
+  const period: StatusPeriod = search.period ?? '24h';
+  const providers = useQuery(statusProvidersQuery(period));
+  const history = providers.data === undefined ? undefined : historyOf(providers.data);
+  // A Grafana line names its branch by id: the own checks know the names.
+  const branchNames =
+    own.data === undefined
+      ? undefined
+      : new Map(own.data.branches.map((branch) => [branch.id, branch.name]));
   const refreshing = own.isFetching || providers.isFetching;
 
   return (
@@ -73,6 +94,24 @@ export function SystemStatusPage() {
             <Branches status={own.data} />
           </>
         )}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className={SECTION_TITLE}>{t('systemStatus.outside')}</h2>
+          <Segmented
+            label={t('systemStatus.period')}
+            options={STATUS_PERIODS.map((value) => ({
+              value,
+              label: t(`systemStatus.period_${value}`),
+            }))}
+            value={period}
+            onChange={(value) => {
+              void navigate({
+                to: '/system-status',
+                search: value === '24h' ? {} : { period: value },
+                replace: true,
+              });
+            }}
+          />
+        </div>
         <ProviderPanel
           title={t('systemStatus.uptimeRobot.title')}
           name={t('systemStatus.uptimeRobot.name')}
@@ -97,16 +136,27 @@ export function SystemStatusPage() {
                       />
                     </span>
                     <span className="text-sm break-all text-muted-foreground">
-                      {monitor.uptime7d === null
+                      {monitor.uptime === null
                         ? monitor.url
                         : t('systemStatus.uptimeRobot.uptime', {
                             url: monitor.url,
-                            ratio: monitor.uptime7d,
+                            ratio: monitor.uptime,
                           })}
                     </span>
                   </li>
                 ))}
               </ul>
+            )
+          }
+          history={
+            history !== undefined && (
+              <HistoryBlock
+                title={t('systemStatus.uptimeRobot.downs')}
+                reading={history.downs}
+                empty={t('systemStatus.uptimeRobot.noDowns')}
+                line={(down) => <DownLine down={down} />}
+                keyOf={(down) => `${down.monitor} ${down.startedAt}`}
+              />
             )
           }
         />
@@ -117,6 +167,19 @@ export function SystemStatusPage() {
           pick={(all) => all.grafana}
           rows={(provider) =>
             provider.state === 'connected' && <GrafanaRules rules={provider.rules} />
+          }
+          history={
+            history !== undefined && (
+              <HistoryBlock
+                title={t('systemStatus.grafana.fired')}
+                reading={history.firings}
+                empty={t('systemStatus.grafana.noneFired')}
+                line={(firing) => <FiringLine firing={firing} branchNames={branchNames} />}
+                keyOf={(firing) =>
+                  `${firing.rule} ${firing.branch ?? ''} ${firing.detail ?? ''} ${firing.firedAt ?? firing.resolvedAt ?? ''}`
+                }
+              />
+            )
           }
         />
         <ProviderPanel
@@ -129,7 +192,12 @@ export function SystemStatusPage() {
             (provider.issues.length === 0 ? (
               <StatusWord status="ok" text={t('systemStatus.sentry.none')} />
             ) : (
-              <SentryIssues issues={provider.issues} />
+              <>
+                <SentryIssues issues={provider.issues} />
+                {provider.cut && (
+                  <p className="text-sm text-muted-foreground">{t('systemStatus.sentry.cut')}</p>
+                )}
+              </>
             ))
           }
         />
@@ -139,7 +207,7 @@ export function SystemStatusPage() {
 }
 
 /** A status in words beside its icon, never by colour alone (`12`, Accessibility). */
-function StatusWord({ status, text }: { status: CheckStatus; text: string }) {
+export function StatusWord({ status, text }: { status: CheckStatus; text: string }) {
   if (status === 'ok') {
     return (
       <span className="inline-flex items-center gap-1 text-success">
@@ -176,30 +244,20 @@ function Summary({
   providersFailed: boolean;
 }) {
   const { t, i18n } = useTranslation();
-  const outside =
-    providers === undefined
-      ? providersFailed
-        ? 1
-        : 0
-      : [providers.uptimeRobot, providers.grafana, providers.sentry].reduce(
-          (sum, one) =>
-            sum + (one.state === 'connected' ? one.attention : one.state === 'unreachable' ? 1 : 0),
-          0,
-        );
-  const total = own.attention + outside;
-  // Never "all pass" before the outside services have answered.
-  const waiting = providers === undefined && !providersFailed && total === 0;
+  const summary = attentionOf(own, providers, providersFailed);
   return (
     <section className={PANEL} aria-label={t('systemStatus.summary')}>
       <p className="text-lg" role="status">
         <StatusWord
-          status={waiting ? 'unknown' : total === 0 ? 'ok' : 'attention'}
+          status={
+            summary.kind === 'waiting' ? 'unknown' : summary.kind === 'fine' ? 'ok' : 'attention'
+          }
           text={
-            waiting
+            summary.kind === 'waiting'
               ? t('systemStatus.readingOutside')
-              : total === 0
+              : summary.kind === 'fine'
                 ? t('systemStatus.allFine')
-                : t('systemStatus.needAttention', { count: total })
+                : t('systemStatus.needAttention', { count: summary.count })
           }
         />
       </p>
@@ -338,12 +396,15 @@ function ProviderPanel<P extends Provider>({
   query,
   pick,
   rows,
+  history,
 }: {
   title: string;
   name: string;
   query: UseQueryResult<StatusProviders>;
   pick: (all: StatusProviders) => P;
   rows: (provider: P) => ReactNode;
+  /** The history of the period, under the current rows (pull request #363). */
+  history?: ReactNode;
 }) {
   const { t, i18n } = useTranslation();
   const id = `system-status-${name.toLowerCase().replace(/[^a-z]/g, '')}`;
@@ -383,6 +444,7 @@ function ProviderPanel<P extends Provider>({
           {provider.state === 'connected' && (
             <>
               {rows(provider)}
+              {history}
               <p className="text-sm text-muted-foreground">
                 {t('systemStatus.readAt', {
                   moment: formatMoment(i18n.language, provider.checkedAt),
@@ -468,5 +530,117 @@ function SentryIssues({ issues }: { issues: readonly SentryIssue[] }) {
         </li>
       ))}
     </ul>
+  );
+}
+
+/**
+ * A service's history of the period (pull request #363): its lines newest first, a line when
+ * there is none, "History could not be read" when the service answered it in another shape, and
+ * a note when the service's own limit cut the list.
+ */
+function HistoryBlock<T>({
+  title,
+  reading,
+  empty,
+  line,
+  keyOf,
+}: {
+  title: string;
+  reading: HistoryReading<T>;
+  empty: string;
+  line: (item: T) => ReactNode;
+  keyOf: (item: T) => string;
+}) {
+  const { t } = useTranslation();
+  return (
+    <div className="grid gap-2 border-t border-border pt-3">
+      <h3 className={SECTION_TITLE}>{title}</h3>
+      {reading.kind === 'not_read' ? (
+        <StatusWord status="unknown" text={t('systemStatus.historyUnreadable')} />
+      ) : reading.items.length === 0 ? (
+        <p className="text-sm text-muted-foreground">{empty}</p>
+      ) : (
+        <>
+          <ul aria-label={title} className="grid gap-2 text-sm">
+            {reading.items.map((item) => (
+              <li key={keyOf(item)} className="grid gap-0.5">
+                {line(item)}
+              </li>
+            ))}
+          </ul>
+          {reading.cut && (
+            <p className="text-sm text-muted-foreground">{t('systemStatus.historyCut')}</p>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+/** A down period of a monitor: when, how long or still down, and UptimeRobot's reason. */
+function DownLine({ down }: { down: UptimeDownPeriod }) {
+  const { t, i18n } = useTranslation();
+  const from = formatMoment(i18n.language, down.startedAt);
+  return (
+    <>
+      <span>
+        {down.endedAt === null
+          ? t('systemStatus.uptimeRobot.downRunning', { monitor: down.monitor, from })
+          : t('systemStatus.uptimeRobot.down', {
+              monitor: down.monitor,
+              from,
+              to: formatMoment(i18n.language, down.endedAt),
+              minutes: Math.max(
+                1,
+                Math.round((Date.parse(down.endedAt) - Date.parse(down.startedAt)) / 60_000),
+              ),
+            })}
+      </span>
+      {down.reason !== null && (
+        <span className="text-muted-foreground">
+          {t('systemStatus.uptimeRobot.reason', { reason: down.reason })}
+        </span>
+      )}
+    </>
+  );
+}
+
+/** An alert that fired: the rule, its branch by name, the job or route, and when. */
+function FiringLine({
+  firing,
+  branchNames,
+}: {
+  firing: GrafanaFiring;
+  /** Undefined while the own checks are not read: the branch is left out, never shown as its id. */
+  branchNames: ReadonlyMap<string, string> | undefined;
+}) {
+  const { t, i18n } = useTranslation();
+  const where = [
+    // A branch the own checks do not list (the hidden Monitoring branch) keeps its id.
+    firing.branch === null || branchNames === undefined
+      ? null
+      : (branchNames.get(firing.branch) ?? firing.branch),
+    firing.detail,
+  ].filter((one): one is string => one !== null);
+  const at = (moment: string) => formatMoment(i18n.language, moment);
+  return (
+    <>
+      <span>
+        <span className="font-semibold">{firing.rule}</span>
+        {where.length > 0 && <span className="text-muted-foreground"> · {where.join(' · ')}</span>}
+      </span>
+      <span className="text-muted-foreground">
+        {firing.firedAt === null
+          ? firing.resolvedAt === null
+            ? t('systemStatus.grafana.firingEarlierRunning')
+            : t('systemStatus.grafana.firingBefore', { to: at(firing.resolvedAt) })
+          : firing.resolvedAt === null
+            ? t('systemStatus.grafana.firingRunning', { from: at(firing.firedAt) })
+            : t('systemStatus.grafana.firing', {
+                from: at(firing.firedAt),
+                to: at(firing.resolvedAt),
+              })}
+      </span>
+    </>
   );
 }
