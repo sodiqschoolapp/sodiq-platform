@@ -533,8 +533,10 @@ export class StatusProviderReader {
       async (checkedAt, now) => {
         const query = new URLSearchParams({
           query: `is:unresolved lastSeen:-${period}`,
-          // Only the answer's stats: 24h is taken by every Sentry.
-          statsPeriod: '24h',
+          // The search's time range on the organisation issues endpoint: an issue last seen
+          // before it is never answered, whatever `lastSeen` asks (owner, 20 November 2026:
+          // the 14 days missed errors of 4 days before; pull request #364).
+          statsPeriod: period,
           environment: sentry.environment,
           sort: 'date',
           limit: String(SENTRY_LIMIT),

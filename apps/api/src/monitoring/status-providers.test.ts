@@ -1,5 +1,10 @@
 import { Logger } from '@nestjs/common';
-import { PROVIDER_CACHE_MS, statusProvidersSchema, type StatusProviders } from '@sodiq/shared';
+import {
+  PROVIDER_CACHE_MS,
+  STATUS_PERIODS,
+  statusProvidersSchema,
+  type StatusProviders,
+} from '@sodiq/shared';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { StatusProvidersConfig } from '../config/config.js';
 import { FixedClock } from '../testing/fixed-clock.js';
@@ -594,6 +599,42 @@ describe('the outside services of the System status page', () => {
       expect(read.sentry.issues.map((issue) => issue.shortId)).toEqual([
         'SODIQ-PRODUCTION-4A',
         'SODIQ-PRODUCTION-2B',
+      ]);
+      expect(read.sentry.attention).toBe(1);
+    });
+
+    // Pull request #364 (owner, 20 November 2026): on the organisation issues endpoint
+    // `statsPeriod` is the search's time range, so a 24-hour one hid every older error from the
+    // longer periods (review of the plan, correction 1: every period, 14 days included).
+    it("sends Sentry the period as the search's time range on every period", async () => {
+      expect(STATUS_PERIODS).toEqual(['24h', '7d', '14d']);
+      for (const period of STATUS_PERIODS) {
+        const { calls, fetcher } = fakeNetwork(happy);
+        await new StatusProviderReader(CONNECTED, new FixedClock(NOW), fetcher).read(period);
+        const sentry = calls.find((call) => call.url.includes('sentry'));
+        const query = new URL(sentry?.url ?? 'https://x').searchParams;
+        expect(query.get('statsPeriod')).toBe(period);
+        expect(query.get('query')).toBe(`is:unresolved lastSeen:-${period}`);
+      }
+    });
+
+    it('lists on 14 days an error last seen 4 days ago, never counted as attention', async () => {
+      const older = {
+        ...SENTRY_ANSWER[0],
+        shortId: 'SODIQ-PRODUCTION-3C',
+        lastSeen: new Date(NOW_MS - 4 * 24 * HOUR_S * 1000).toISOString(),
+      };
+      const { fetcher } = fakeNetwork((url) =>
+        url.includes('sentry') ? { status: 200, body: [older, ...SENTRY_ANSWER] } : happy(url),
+      );
+      const read = await new StatusProviderReader(CONNECTED, new FixedClock(NOW), fetcher).read(
+        '14d',
+      );
+      if (read.sentry.state !== 'connected') throw new Error('Not read.');
+
+      expect(read.sentry.issues.map((issue) => issue.shortId)).toEqual([
+        'SODIQ-PRODUCTION-4A',
+        'SODIQ-PRODUCTION-3C',
       ]);
       expect(read.sentry.attention).toBe(1);
     });
