@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { ErrorState, LoadingOutline } from '@/components/states';
+import { Button } from '@/components/ui/button';
 import { PANEL, SECTION_TITLE } from '@/components/ui/control';
 import { statusProvidersQuery, systemStatusQuery } from './feedback-reports-api';
 import { attentionOf, historyOf, type HistoryReading } from './status-history';
@@ -48,6 +49,9 @@ export function SystemStatusCard() {
             <LastDay
               history={providers.data === undefined ? undefined : historyOf(providers.data)}
               failed={providers.isError}
+              onRetry={() => {
+                void providers.refetch();
+              }}
             />
           </p>
           <p className="text-sm">
@@ -84,16 +88,24 @@ function Attention({ summary }: { summary: ReturnType<typeof attentionOf> }) {
 function LastDay({
   history,
   failed,
+  onRetry,
 }: {
   history: ReturnType<typeof historyOf> | undefined;
   failed: boolean;
+  onRetry: () => void;
 }) {
   const { t } = useTranslation();
   if (history === undefined) {
-    return (
-      <span className="text-muted-foreground">
-        {failed ? t('home.status.lastDayFailed') : t('systemStatus.readingOutside')}
+    // A failure of the second query, with its retry (web rules; spec review of #363, must-fix 3).
+    return failed ? (
+      <span className="inline-flex flex-wrap items-center gap-3">
+        <span role="alert">{t('home.status.lastDayFailed')}</span>
+        <Button size="sm" variant="secondary" onClick={onRetry}>
+          {t('problems.retry')}
+        </Button>
       </span>
+    ) : (
+      <span className="text-muted-foreground">{t('systemStatus.readingOutside')}</span>
     );
   }
   const part = (

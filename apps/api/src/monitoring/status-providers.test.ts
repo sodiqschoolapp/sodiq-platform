@@ -5,7 +5,9 @@ import type { StatusProvidersConfig } from '../config/config.js';
 import { FixedClock } from '../testing/fixed-clock.js';
 import { ShippingLogger } from './monitoring.service.js';
 import {
+  downPeriods,
   firesIn,
+  stillFiring,
   GRAFANA_HISTORY_LIMIT,
   StatusProviderReader,
   UPTIMEROBOT_DASHBOARD,
@@ -105,7 +107,20 @@ const GRAFANA_ANSWER = {
         name: 'sodiq-production',
         rules: [
           { name: 'CellSavesSlow', type: 'alerting', state: 'inactive', health: 'ok' },
-          { name: 'BackupOld', type: 'alerting', state: 'firing', health: 'ok' },
+          {
+            name: 'BackupOld',
+            type: 'alerting',
+            state: 'firing',
+            health: 'ok',
+            // Fired 3 days ago and still fires: no line of the 24 hours' history holds it.
+            alerts: [
+              {
+                labels: { alertname: 'BackupOld' },
+                state: 'Alerting',
+                activeAt: '2026-11-16T05:00:00Z',
+              },
+            ],
+          },
           { name: 'SignInSaveFailing', type: 'alerting', state: 'pending', health: 'ok' },
           { name: 'ApiSilent', type: 'alerting', state: 'inactive', health: 'error' },
           { name: 'JobsFailing', type: 'alerting', state: 'normal', health: 'nodata' },
@@ -143,7 +158,7 @@ const line = (
 });
 
 /** Grafana's history as grafana-plugin-sdk-go writes the frame: columns of time and line. */
-const frame = (rows: [number, unknown][]) => ({
+const frame = (rows: [unknown, unknown][]) => ({
   schema: {
     name: 'states',
     fields: [
@@ -503,6 +518,8 @@ describe('the outside services of the System status page', () => {
             firedAt: null,
             resolvedAt: at(20),
           },
+          // Fired before the period and still fires: from the rules' instances, no history line.
+          { rule: 'BackupOld', branch: null, detail: null, firedAt: null, resolvedAt: null },
         ],
       });
       // A firing that recovered already never raises the count: still the 2 rules of now.
@@ -582,6 +599,107 @@ describe('the outside services of the System status page', () => {
     });
   });
 
+  describe('the edges of the history', () => {
+    it('ends an old down period with its duration while the monitor only seems down (status 8)', () => {
+      const monitor = {
+        name: 'app',
+        down: false,
+        logs: [
+          { type: 1, datetime: NOW_S - 10 * HOUR_S, duration: 600, reason: { detail: 'Timeout' } },
+          { type: 2, datetime: NOW_S - 10 * HOUR_S + 600, duration: 30_000 },
+        ],
+      };
+      // Seems down now (8): not confirmed, no new down log; the old one ended after 10 minutes.
+      expect(downPeriods([monitor], NOW_MS - 24 * HOUR_S * 1000, NOW_MS)).toEqual([
+        {
+          monitor: 'app',
+          startedAt: new Date((NOW_S - 10 * HOUR_S) * 1000).toISOString(),
+          endedAt: new Date((NOW_S - 10 * HOUR_S + 600) * 1000).toISOString(),
+          reason: 'Timeout',
+        },
+      ]);
+      // Down (9), but its newest log is the up after the old down: that down still ended.
+      expect(
+        downPeriods([{ ...monitor, down: true }], NOW_MS - 24 * HOUR_S * 1000, NOW_MS)[0]?.endedAt,
+      ).not.toBeNull();
+      // Down (9) with the down as its newest log: still running.
+      expect(
+        downPeriods(
+          [{ ...monitor, down: true, logs: [monitor.logs[0]].filter((one) => one !== undefined) }],
+          NOW_MS - 24 * HOUR_S * 1000,
+          NOW_MS,
+        )[0]?.endedAt,
+      ).toBeNull();
+    });
+
+    it('adds the instances that fired before the period and still fire, with their branch', () => {
+      const open = [
+        {
+          rule: 'CellSavesFailing',
+          branch: SOUTH,
+          detail: '/api/journal/cells',
+          firedAt: '2026-11-19T04:00:00.000Z',
+          resolvedAt: null,
+        },
+      ];
+      const rules = [
+        {
+          name: 'CellSavesFailing',
+          state: 'firing',
+          alerts: [
+            // Held open by the history: not added twice.
+            {
+              labels: { branch: SOUTH, route: '/api/journal/cells' },
+              state: 'Alerting',
+              activeAt: '2026-11-19T04:00:00Z',
+            },
+            // Fired 2 days ago in North and still fires.
+            {
+              labels: { branch: NORTH, route: '/api/journal/cells' },
+              state: 'Alerting (Error)',
+              activeAt: '2026-11-17T04:00:00Z',
+            },
+            {
+              labels: { branch: NORTH, route: '/api/journal/exports' },
+              state: 'Normal',
+              activeAt: null,
+            },
+          ],
+        },
+        // No instances listed: one line for the rule.
+        { name: 'ApiSilent', state: 'firing', alerts: undefined },
+        { name: 'SlowPages', state: 'inactive', alerts: [] },
+      ];
+
+      expect(stillFiring(rules, open, NOW_MS - 24 * HOUR_S * 1000)).toEqual([
+        {
+          rule: 'CellSavesFailing',
+          branch: NORTH,
+          detail: '/api/journal/cells',
+          firedAt: null,
+          resolvedAt: null,
+        },
+        { rule: 'ApiSilent', branch: null, detail: null, firedAt: null, resolvedAt: null },
+      ]);
+    });
+
+    it("says Sentry's list is cut at its limit of 10", async () => {
+      const many = Array.from({ length: 10 }, (_, n) => ({
+        ...SENTRY_ANSWER[0],
+        shortId: `SODIQ-${String(n)}`,
+      }));
+      const { fetcher } = fakeNetwork((url) =>
+        url.includes('sentry') ? { status: 200, body: many } : happy(url),
+      );
+      const read = await new StatusProviderReader(CONNECTED, new FixedClock(NOW), fetcher).read(
+        '14d',
+      );
+      if (read.sentry.state !== 'connected') throw new Error('Not read.');
+      expect(read.sentry.cut).toBe(true);
+      expect(read.sentry.issues).toHaveLength(10);
+    });
+  });
+
   it('reads a Grafana state by its first word', () => {
     expect(firesIn('Alerting')).toBe(true);
     expect(firesIn('Alerting (Error)')).toBe(true);
@@ -591,46 +709,58 @@ describe('the outside services of the System status page', () => {
     expect(firesIn('NoData')).toBe(false);
   });
 
-  it.each([
-    ['an error answer', () => ({ status: 500, body: { error: `bad key ${UPTIME_KEY}` } })],
-    ['a refusal', () => ({ status: 401, body: { detail: 'Invalid token' } })],
-    ['an answer of another shape', () => ({ status: 200, body: { unexpected: true } })],
+  type Answer = { status: number; body: unknown } | 'hang' | 'fail';
+  const failures: [string, () => Answer, number][] = [
+    // Lines logged: one per call that failed; a history answered beside rules that fail is not
+    // read, so it logs nothing of its own.
+    ['an error answer', () => ({ status: 500, body: { error: `bad key ${UPTIME_KEY}` } }), 4],
+    ['a refusal', () => ({ status: 401, body: { detail: 'Invalid token' } }), 4],
+    ['an answer of another shape', () => ({ status: 200, body: { unexpected: true } }), 3],
     [
       'UptimeRobot saying fail',
       () => ({ status: 200, body: { stat: 'fail', error: { type: 'invalid_parameter' } } }),
+      3,
     ],
-    ['no connection', () => 'fail' as const],
-  ])('says "unreachable" on %s, logs no key and reports nothing', async (_name, answer) => {
-    const { fetcher } = fakeNetwork(answer);
-    let read: unknown;
-    const lines = await logLinesOf(async () => {
-      read = await new StatusProviderReader(CONNECTED, new FixedClock(NOW), fetcher).read();
-    });
-    const checkedAt = new Date(NOW).toISOString();
+    ['no connection', () => 'fail', 4],
+  ];
+  it.each(failures)(
+    'says "unreachable" on %s, logs no key and reports nothing',
+    async (_name, answer, logged) => {
+      const { fetcher } = fakeNetwork(answer);
+      let read: unknown;
+      const lines = await logLinesOf(async () => {
+        read = await new StatusProviderReader(CONNECTED, new FixedClock(NOW), fetcher).read();
+      });
+      const checkedAt = new Date(NOW).toISOString();
 
-    // Never thrown, so nothing reaches the error filter and its reports.
-    expect(read).toEqual({
-      period: '24h',
-      uptimeRobot: { state: 'unreachable', checkedAt, dashboardUrl: UPTIMEROBOT_DASHBOARD },
-      grafana: {
-        state: 'unreachable',
-        checkedAt,
-        dashboardUrl: 'https://sodiq.grafana.net/alerting/list',
-      },
-      sentry: { state: 'unreachable', checkedAt, dashboardUrl: 'https://sodiq.sentry.io/issues/' },
-    });
-    expect(lines.length).toBeGreaterThanOrEqual(3);
-    const logged = lines.join('\n');
-    for (const secret of [
-      UPTIME_KEY,
-      GRAFANA_TOKEN,
-      SENTRY_TOKEN,
-      'api.uptimerobot.com',
-      'Invalid token',
-    ]) {
-      expect(logged).not.toContain(secret);
-    }
-  });
+      // Never thrown, so nothing reaches the error filter and its reports.
+      expect(read).toEqual({
+        period: '24h',
+        uptimeRobot: { state: 'unreachable', checkedAt, dashboardUrl: UPTIMEROBOT_DASHBOARD },
+        grafana: {
+          state: 'unreachable',
+          checkedAt,
+          dashboardUrl: 'https://sodiq.grafana.net/alerting/list',
+        },
+        sentry: {
+          state: 'unreachable',
+          checkedAt,
+          dashboardUrl: 'https://sodiq.sentry.io/issues/',
+        },
+      });
+      expect(lines).toHaveLength(logged);
+      const text = lines.join('\n');
+      for (const secret of [
+        UPTIME_KEY,
+        GRAFANA_TOKEN,
+        SENTRY_TOKEN,
+        'api.uptimerobot.com',
+        'Invalid token',
+      ]) {
+        expect(text).not.toContain(secret);
+      }
+    },
+  );
 
   it('says "unreachable" when a service does not answer in time', async () => {
     const { fetcher } = fakeNetwork((url) => (url.includes('grafana') ? 'hang' : happy(url)));
@@ -639,7 +769,13 @@ describe('the outside services of the System status page', () => {
       read = await new StatusProviderReader(CONNECTED, new FixedClock(NOW), fetcher, 50).read();
     });
     if (read === undefined) throw new Error('No answer.');
-    expect(lines.every((one) => one.includes('grafana panel'))).toBe(true);
+    // Grafana's history and its rules: one line each, both naming the Grafana panel.
+    expect(lines).toEqual([
+      expect.stringContaining('could not read: its history: no answer within 50 ms'),
+      expect.stringMatching(
+        /^The grafana panel of the System status page could not read: no answer within 50 ms\./,
+      ),
+    ]);
 
     expect(read.grafana.state).toBe('unreachable');
     expect(read.uptimeRobot.state).toBe('connected');

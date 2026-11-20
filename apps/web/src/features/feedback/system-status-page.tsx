@@ -43,7 +43,10 @@ export function SystemStatusPage() {
   const providers = useQuery(statusProvidersQuery(period));
   const history = providers.data === undefined ? undefined : historyOf(providers.data);
   // A Grafana line names its branch by id: the own checks know the names.
-  const branchNames = new Map((own.data?.branches ?? []).map((branch) => [branch.id, branch.name]));
+  const branchNames =
+    own.data === undefined
+      ? undefined
+      : new Map(own.data.branches.map((branch) => [branch.id, branch.name]));
   const refreshing = own.isFetching || providers.isFetching;
 
   return (
@@ -587,6 +590,10 @@ function DownLine({ down }: { down: UptimeDownPeriod }) {
               monitor: down.monitor,
               from,
               to: formatMoment(i18n.language, down.endedAt),
+              minutes: Math.max(
+                1,
+                Math.round((Date.parse(down.endedAt) - Date.parse(down.startedAt)) / 60_000),
+              ),
             })}
       </span>
       {down.reason !== null && (
@@ -604,11 +611,15 @@ function FiringLine({
   branchNames,
 }: {
   firing: GrafanaFiring;
-  branchNames: ReadonlyMap<string, string>;
+  /** Undefined while the own checks are not read: the branch is left out, never shown as its id. */
+  branchNames: ReadonlyMap<string, string> | undefined;
 }) {
   const { t, i18n } = useTranslation();
   const where = [
-    firing.branch === null ? null : (branchNames.get(firing.branch) ?? firing.branch),
+    // A branch the own checks do not list (the hidden Monitoring branch) keeps its id.
+    firing.branch === null || branchNames === undefined
+      ? null
+      : (branchNames.get(firing.branch) ?? firing.branch),
     firing.detail,
   ].filter((one): one is string => one !== null);
   const at = (moment: string) => formatMoment(i18n.language, moment);
@@ -620,9 +631,9 @@ function FiringLine({
       </span>
       <span className="text-muted-foreground">
         {firing.firedAt === null
-          ? t('systemStatus.grafana.firingBefore', {
-              to: firing.resolvedAt === null ? '' : at(firing.resolvedAt),
-            })
+          ? firing.resolvedAt === null
+            ? t('systemStatus.grafana.firingEarlierRunning')
+            : t('systemStatus.grafana.firingBefore', { to: at(firing.resolvedAt) })
           : firing.resolvedAt === null
             ? t('systemStatus.grafana.firingRunning', { from: at(firing.firedAt) })
             : t('systemStatus.grafana.firing', {

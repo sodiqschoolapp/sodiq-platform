@@ -78,6 +78,10 @@ Asked by the owner on 20 November 2026, after #361 ("this page does not show eve
 | The attention count is "now" on every period: Sentry's issues last seen in the 24 hours before now, Grafana's rules firing now, UptimeRobot's monitors down now; a history line never counts. | It already recovered; the summary and the card agree on every period. |
 | The card counts the last 24 hours from the same reading the page lists (`status-history.ts`, `historyOf`, `attentionOf`), names a service not read "not read", and reads the new feedback from the existing `GET /api/system-status`. | Review, corrections 3 and 4; never "0" for a service not read. |
 | 14 days is the longest period; the own checks stay "now". | The shortest history of the three (Grafana Cloud's free plan); the own checks' alerts are Grafana rules, so their history is the Grafana list. |
+| A down log still runs only when it is the monitor's newest log and the monitor is down (status 9) now; "seems down" (8) is not confirmed and writes no log, so an older down log ends with its duration. | Spec review of the code, must-fix 1: an old down period was shown as still down. |
+| An alert that fired before the period (or before the lines read) and still fires is a line "Fired earlier, still firing", from the instances of the rules' list with their branch, or one line per firing rule when the list gives none. | Spec review of the code, should-fix 4: the page would say "No alerts fired" beside a firing rule. |
+| A list cut by a provider's limit says "Not every line could be read: open the service for the rest", not "the newest": whether Grafana keeps the newest or the oldest 500 lines could not be read; a resolution whose firing was not read says "Fired earlier". | Spec review of the code, advisory 9 and "not checked". |
+| The Grafana history's branch is named from the own checks once they are read, left out before (never its id); a branch they do not list (the hidden Monitoring branch) keeps its id. | Spec review of the code, should-fix 6; `.claude/rules/web.md`. |
 
 ## 19 November 2026: the Super Admin's Feedback reports and System status pages (owner's request, not a build-plan task)
 

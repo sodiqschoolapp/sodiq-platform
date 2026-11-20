@@ -365,6 +365,8 @@ describe('the history of the period', () => {
     expect(downLines[1]).toContain('app: down');
     expect(downLines[1]).toContain('Connection Timeout');
 
+    // The branch names come with the own checks.
+    await panel(en.systemStatus.own);
     const fired = screen.getByRole('list', { name: en.systemStatus.grafana.fired });
     const [first, second] = within(fired)
       .getAllByRole('listitem')
@@ -373,7 +375,7 @@ describe('the history of the period', () => {
     expect(first).toContain('Fired');
     // A branch the own checks do not know is named by its id, never left blank.
     expect(second).toContain('JobsFailing · an-unknown-branch');
-    expect(second).toContain('Fired before this period');
+    expect(second).toContain('Fired earlier, resolved');
   });
 
   it('says a history could not be read and keeps the current rows', async () => {
@@ -511,5 +513,55 @@ describe('the system status card of the home page', () => {
     });
     expect(screen.queryByRole('region', { name: en.home.status.title })).toBeNull();
     expect(calls.filter((call) => call.route.startsWith('GET /api/system-status'))).toEqual([]);
+  });
+});
+
+describe('the review of the code of #363', () => {
+  it('shows a failure of the outside services on the home card with a retry', async () => {
+    let fail = true;
+    fakeApi({
+      'GET /api/auth/session': () => json(session()),
+      'GET /api/system-status': () => json(own()),
+      'GET /api/system-status/providers': () =>
+        fail
+          ? json({ error: { code: 'internal_error', message: 'Failed.', requestId: 'r1' } }, 500)
+          : json(CONNECTED),
+    });
+    renderApp('/', 'en');
+    const card = await screen.findByRole('region', { name: en.home.status.title });
+    expect((await within(card).findByRole('alert')).textContent).toBe(en.home.status.lastDayFailed);
+    fail = false;
+    fireEvent.click(within(card).getByRole('button', { name: en.problems.retry }));
+    await waitFor(() => {
+      expect(card.textContent).toContain(en.home.status.firings_other.replace('{{count}}', '2'));
+    });
+  });
+
+  it('never shows a branch id while the branch names are not read', async () => {
+    fakeApi({
+      'GET /api/auth/session': () => json(session()),
+      // The own checks never answer: the branch names are not known.
+      'GET /api/system-status': () => new Promise<Response>(() => undefined),
+      'GET /api/system-status/providers': () => json(CONNECTED),
+    });
+    renderApp('/system-status', 'en');
+    const fired = await screen.findByRole('list', { name: en.systemStatus.grafana.fired });
+    const [first] = within(fired)
+      .getAllByRole('listitem')
+      .map((one) => one.textContent);
+    expect(first).toContain('CellSavesFailing · /api/journal/cells');
+    expect(first).not.toContain(NORTH.id);
+  });
+
+  it('gives a down period its length', async () => {
+    fakeApi({
+      'GET /api/auth/session': () => json(session()),
+      'GET /api/system-status': () => json(own()),
+      'GET /api/system-status/providers': () => json(CONNECTED),
+    });
+    renderApp('/system-status', 'en');
+    const downs = await screen.findByRole('list', { name: en.systemStatus.uptimeRobot.downs });
+    // 22:14 to 22:32: 18 minutes.
+    expect(within(downs).getAllByRole('listitem')[1]?.textContent).toContain('(18 min)');
   });
 });

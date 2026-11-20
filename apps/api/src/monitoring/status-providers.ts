@@ -93,12 +93,23 @@ const grafanaAnswer = z.object({
             type: z.string().optional(),
             state: z.string().optional(),
             health: z.string().optional(),
+            // Read apart (`stillFiring`): its shape never takes the rules with it.
+            alerts: z.unknown().optional(),
           }),
         ),
       }),
     ),
   }),
 });
+
+/** The instances of a rule as the rules' list gives them; only what pairs them is read. */
+const grafanaRuleAlerts = z.array(
+  z.object({
+    labels: z.record(z.string(), z.string()).nullish(),
+    state: z.string(),
+    activeAt: z.string().nullish(),
+  }),
+);
 
 // `GET /api/v1/rules/history` (Grafana's Loki state history): a data frame of the fields `time`
 // (epoch milliseconds) and `line` (the entry as an object), written by grafana-plugin-sdk-go.
@@ -133,8 +144,60 @@ const RULE_ORDER = { firing: 0, pending: 1, normal: 2 } as const;
  * reverse; Alerting → "Alerting (Error)" is neither (review of the plan of #363, correction 1).
  */
 export function firesIn(state: string): boolean {
-  const word = state.trim().split(/[\s(]/, 1)[0] ?? '';
-  return word === 'Alerting' || word === 'Recovering';
+  const word = (state.trim().split(/[\s(]/, 1)[0] ?? '').toLowerCase();
+  // The history writes Alerting; the rules' list may write firing.
+  return word === 'alerting' || word === 'firing' || word === 'recovering';
+}
+
+/**
+ * The instances firing now that the history of the period does not hold open: they fired before
+ * the period (or before the lines read) and still fire (spec review of the code of #363,
+ * should-fix 4). From each rule's instances when its list gives them, with their branch; else one
+ * line for a firing rule that has no open line.
+ */
+export function stillFiring(
+  rules: readonly { name: string; state: string; alerts: unknown }[],
+  open: readonly GrafanaFiring[],
+  from: number,
+): GrafanaFiring[] {
+  const lines: GrafanaFiring[] = [];
+  const isOpen = (rule: string, branch: string | null, detail: string | null) =>
+    open.some(
+      (one) =>
+        one.resolvedAt === null &&
+        one.rule === rule &&
+        one.branch === branch &&
+        one.detail === detail,
+    );
+  for (const rule of rules) {
+    const alerts = grafanaRuleAlerts.safeParse(rule.alerts);
+    if (alerts.success && alerts.data.length > 0) {
+      for (const alert of alerts.data) {
+        if (!firesIn(alert.state)) continue;
+        const labels = alert.labels ?? {};
+        const branch = labels.branch ?? null;
+        const detail = labels.name ?? labels.route ?? null;
+        if (isOpen(rule.name, branch, detail)) continue;
+        const since =
+          alert.activeAt === null || alert.activeAt === undefined
+            ? NaN
+            : Date.parse(alert.activeAt);
+        lines.push({
+          rule: rule.name,
+          branch,
+          detail,
+          firedAt: Number.isFinite(since) && since >= from ? new Date(since).toISOString() : null,
+          resolvedAt: null,
+        });
+      }
+    } else if (
+      firesIn(rule.state) &&
+      !open.some((one) => one.rule === rule.name && one.resolvedAt === null)
+    ) {
+      lines.push({ rule: rule.name, branch: null, detail: null, firedAt: null, resolvedAt: null });
+    }
+  }
+  return lines;
 }
 
 /** A moment as an ISO text, or none when the provider's text is not one. */
@@ -155,8 +218,8 @@ const newestFirst = (one: string | null, other: string | null): number =>
 
 /**
  * The down periods of the monitors in the period `[from, now]`, newest first: a log of type 1
- * starts one, its `duration` ends it; the newest down log of a monitor that is down now still
- * runs. A down period that began before the period is kept when it ended inside it or still runs.
+ * starts one, its `duration` ends it; a down log that is the monitor's newest log while the
+ * monitor is down (status 9) still runs. A down period that began before the period is kept when it ended inside it or still runs.
  */
 export function downPeriods(
   monitors: readonly { name: string; down: boolean; logs: z.infer<typeof uptimeLogs> }[],
@@ -165,12 +228,17 @@ export function downPeriods(
 ): UptimeDownPeriod[] {
   const periods: UptimeDownPeriod[] = [];
   for (const monitor of monitors) {
-    const downs = monitor.logs
-      .filter((log) => log.type === UPTIME_LOG_DOWN)
-      .sort((one, other) => other.datetime - one.datetime);
-    downs.forEach((log, index) => {
+    // The monitor's newest log of any type: a down log still runs only when it is that one and
+    // the monitor is down (status 9) now. "Seems down" (8) is not confirmed and writes no log, so
+    // an older down log ended with its duration (spec review of the code of #363, must-fix 1).
+    const newest = monitor.logs.reduce<z.infer<typeof uptimeLogs>[number] | undefined>(
+      (found, log) => (found === undefined || log.datetime > found.datetime ? log : found),
+      undefined,
+    );
+    const downs = monitor.logs.filter((log) => log.type === UPTIME_LOG_DOWN);
+    downs.forEach((log) => {
       const start = log.datetime * 1000;
-      const running = index === 0 && monitor.down;
+      const running = log === newest && monitor.down;
       const end = running ? null : start + log.duration * 1000;
       if (start > now || (end !== null && end < from)) return;
       periods.push({
@@ -316,7 +384,7 @@ export class StatusProviderReader {
             items: downPeriods(
               answer.monitors.map((monitor, index) => ({
                 name: monitor.friendly_name,
-                down: monitor.status === 8 || monitor.status === 9,
+                down: monitor.status === 9,
                 logs: logs[index]?.data ?? [],
               })),
               now - STATUS_PERIOD_DAYS[period] * DAY_MS,
@@ -360,7 +428,8 @@ export class StatusProviderReader {
           to: String(to),
           limit: String(GRAFANA_HISTORY_LIMIT),
         });
-        const [rulesAnswer, historyAnswer] = await Promise.all([
+        // Both calls settle before either is read, so a failure of each is logged once, in turn.
+        const [rulesCall, historyCall] = await Promise.allSettled([
           this.call(`${grafana.url}/api/prometheus/grafana/api/v1/rules`, {
             method: 'GET',
             headers,
@@ -368,19 +437,25 @@ export class StatusProviderReader {
           this.call(`${grafana.url}/api/v1/rules/history?${query.toString()}`, {
             method: 'GET',
             headers,
-          }).catch((error: unknown) => {
-            this.warn(
-              'grafana',
-              `its history: ${error instanceof Unreachable ? error.reason : 'no answer'}`,
-            );
-            return undefined;
           }),
         ]);
+        if (historyCall.status === 'rejected') {
+          const error: unknown = historyCall.reason;
+          this.warn(
+            'grafana',
+            `its history: ${error instanceof Unreachable ? error.reason : 'no answer'}`,
+          );
+        }
+        if (rulesCall.status === 'rejected') throw rulesCall.reason;
+        const rulesAnswer: unknown = rulesCall.value;
+        const historyAnswer: unknown =
+          historyCall.status === 'fulfilled' ? historyCall.value : undefined;
         const answer = grafanaAnswer.parse(rulesAnswer);
-        const rules = answer.data.groups
+        // A recording rule raises nothing.
+        const alerting = answer.data.groups
           .flatMap((group) => group.rules)
-          // A recording rule raises nothing.
-          .filter((rule) => rule.type === undefined || rule.type === 'alerting')
+          .filter((rule) => rule.type === undefined || rule.type === 'alerting');
+        const rules = alerting
           .map((rule) => {
             const state = (rule.state ?? '').toLowerCase();
             const health = (rule.health ?? '').toLowerCase().replace(/[^a-z]/g, '');
@@ -410,9 +485,21 @@ export class StatusProviderReader {
           if (firings === null) {
             this.warn('grafana', 'its history is of another shape');
           } else {
+            const before = stillFiring(
+              alerting.map((rule) => ({
+                name: rule.name,
+                state: rule.state ?? '',
+                alerts: rule.alerts,
+              })),
+              firings.items,
+              from * 1000,
+            );
             history = {
               state: 'read',
-              items: firings.items,
+              // The ones that fired earlier and still fire, after those of the period.
+              items: [...firings.items, ...before].sort((one, other) =>
+                newestFirst(one.firedAt, other.firedAt),
+              ),
               cut: firings.lines >= GRAFANA_HISTORY_LIMIT,
             };
           }

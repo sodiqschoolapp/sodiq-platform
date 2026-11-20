@@ -111,6 +111,11 @@ const listed = [...JOURNAL_ROUTES, ...SEARCH_ROUTES, ...REPORT_ROUTES].map(
   (route) => route.split(' ')[1] ?? '',
 );
 
+/**
+ * A rule's labels `branch`, `name` (a job) and `route` (a route pattern) are shown on the Super
+ * Admin's System status page with each alert that fired (pull request #363): a label of a rule
+ * never holds personal data, a record's id or a query, as the numbers pushed to Grafana.
+ */
 export const ALERT_RULES: readonly AlertRule[] = [
   {
     alert: 'CellSavesFailing',

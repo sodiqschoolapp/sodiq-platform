@@ -17,7 +17,7 @@ import { insertBranch } from '../testing/branch-filter-sql.js';
 import { ClassesKit } from '../testing/classes-kit.js';
 import { createTestApp } from '../testing/create-test-app.js';
 import { FixedClock } from '../testing/fixed-clock.js';
-import { signInKit, type SignInKit } from '../testing/sign-in-kit.js';
+import { errorCode, signInKit, type SignInKit } from '../testing/sign-in-kit.js';
 import { createTestDatabase, type TestDatabase } from '../testing/test-database.js';
 import { countsJob, MonitoringCounts } from './counts.job.js';
 import { Monitoring } from './monitoring.service.js';
@@ -355,6 +355,8 @@ describe('the own checks of the System status page', () => {
     for (const query of ['period=30d', 'period=24h&days=7', 'days=7']) {
       const response = await kit.get(`/api/system-status/providers?${query}`, admin);
       expect(response.status, query).toBe(400);
+      // The one error shape of the API.
+      expect(errorCode(response), query).toBe('validation_failed');
     }
   });
 
