@@ -146,7 +146,16 @@ const GRID: JournalGrid = {
       works: [TEST],
       number: 7,
       topic: 'Fractions and their common denominators in practice',
-      given: [{ title: 'Read', checkAt: NO_PLAN, ungraded: null, notGiven: false }],
+      given: [
+        {
+          workId: null,
+          planWorkId: uid(71),
+          title: 'Read',
+          checkAt: NO_PLAN,
+          ungraded: null,
+          notGiven: false,
+        },
+      ],
     }),
     lesson(NO_PLAN, '2026-10-26', { planItem: false, number: 8 }),
   ],
@@ -213,9 +222,6 @@ function open(handlers: Record<string, (body: unknown) => Response> = {}) {
   return calls;
 }
 
-const sent = (calls: ReturnType<typeof fakeApi>, route: string) =>
-  calls.filter((call) => call.route === route).map((call) => call.body);
-
 // docs/spec/09-lesson-plans.md, In the journal; docs/spec/edge-cases/lesson-plans.md,
 // "A substitute supervises the class"; task 8.8.
 describe('the lesson card', () => {
@@ -241,294 +247,89 @@ describe('the lesson card', () => {
         en.journal.card.slotOfDay.replace('{{slot}}', '1'),
       );
     });
-    const title = within(dialog).getByRole('heading').textContent ?? '';
+    const title = within(dialog).getAllByRole('heading')[0]?.textContent ?? '';
     const date = title.replace(/^Lesson 7 · /, '');
     expect(date).not.toBe(title);
     expect((dialog.textContent ?? '').split(date)).toHaveLength(2);
   });
 
-  it('shows given today and checked today, and marks a homework "not given" and the topic "not delivered"', async () => {
-    const calls = open({
-      [`PUT /api/journal/lessons/${PLANNED}/homework-given`]: () => json({ notGiven: [uid(71)] }),
-      [`PUT /api/journal/lessons/${PLANNED}/delivery`]: () =>
-        json({ notDelivered: true, version: 1, copyItemId: uid(90) }),
-    });
+  // The owner, 20 November 2026: no "not given" and no "topic not delivered": the teacher
+  // deletes a homework or changes the topic in the editor.
+  it('shows the homework given today with the day it is checked, and no "not given" or "not delivered"', async () => {
+    open();
     const cards = await screen.findAllByRole('button', { name: en.journal.card.open });
     fireEvent.click(cards[0] as HTMLElement);
     const dialog = await screen.findByRole('dialog');
-    await waitFor(() => {
-      expect(dialog.querySelector('[data-card-topic]')?.textContent).toBe(CARD.topic);
-    });
-    const given = dialog.querySelector('[data-given-today]') as HTMLElement;
+    const given = dialog.querySelector('[data-editor-given]') as HTMLElement;
     expect(given.textContent).toContain('Read');
-    expect(given.textContent).toContain('Pages 10 to 12');
-    const checked = dialog.querySelector('[data-checked-today]') as HTMLElement;
-    expect(checked.textContent).toContain('Write');
-    expect(within(dialog).getByText('Ten sums')).toBeDefined();
-    // Task 10.7: each work of the card carries its kind's tag, the full word on hover.
+    expect(given.textContent).toContain('26 October 2026');
+    // Task 10.7: each work carries its kind's tag, the full word on hover.
     const tags = [...dialog.querySelectorAll('[data-work-kind]')].map((one) => [
       one.getAttribute('data-work-kind'),
       one.textContent,
       one.getAttribute('title'),
     ]);
     expect(tags).toContainEqual(['classwork', 'C', 'Classwork']);
-    expect(tags.filter(([kind]) => kind === 'homework')).toEqual([
-      ['homework', 'H', 'Homework'],
-      ['homework', 'H', 'Homework'],
-    ]);
-    fireEvent.click(within(given).getByRole('checkbox', { name: en.journal.card.notGiven }));
-    await waitFor(() => {
-      expect(sent(calls, `PUT /api/journal/lessons/${PLANNED}/homework-given`)).toEqual([
-        { planWorkIds: [uid(71)], notGiven: true },
-      ]);
-    });
-    fireEvent.click(
-      within(dialog).getByRole('checkbox', { name: en.journal.card.markNotDelivered }),
-    );
-    await waitFor(() => {
-      expect(sent(calls, `PUT /api/journal/lessons/${PLANNED}/delivery`)).toEqual([
-        { notDelivered: true, version: null },
-      ]);
-    });
-    // The journal is read again, so the next lesson's column follows the server.
-    await waitFor(() => {
-      expect(
-        calls.filter((call) => call.route === `GET /api/journal/journals/${JOURNAL}`).length,
-      ).toBeGreaterThan(1);
-    });
+    expect(tags).toContainEqual(['homework', 'H', 'Homework']);
+    expect(within(dialog).queryAllByRole('checkbox')).toEqual([]);
+    expect(dialog.textContent).not.toContain(en.journal.card.markNotDelivered);
+    expect(dialog.textContent).not.toContain(en.journal.card.notGiven);
   });
 
-  // Task 10.8: docs/spec/09-lesson-plans.md, In the journal ("The lesson card is a second way into
-  // the plan item of its lesson"); What a plan contains (files of each work, staff-only materials).
-  describe('the way into the plan (task 10.8)', () => {
-    const ITEM_ID = uid(80);
-    const ITEM = {
-      id: ITEM_ID,
-      position: 7,
-      topic: CARD.topic ?? '',
-      objectives: 'Add fractions',
-      links: [],
-      classworks: [{ id: uid(70), title: 'Test', description: 'Ten sums' }],
-      homeworks: [{ id: uid(71), title: 'Read', description: 'Pages 10 to 12' }],
-      files: [
-        {
-          id: uid(85),
-          workId: null,
-          name: 'answer-key.pdf',
-          type: 'application/pdf' as const,
-          bytes: 9,
-        },
-        {
-          id: uid(86),
-          workId: uid(71),
-          name: 'reading.pdf',
-          type: 'application/pdf' as const,
-          bytes: 9,
-        },
-      ],
-      addedInJournal: [],
-      movedFrom: null,
-      copiedFrom: null,
-      editedAfterLesson: false,
-      notDeliveredFrom: null,
-    };
-    const OWNED: LessonCard = {
-      ...CARD,
-      files: ITEM.files,
-      plan: { quarterId: QUARTER.id, position: 7, edit: 'open', item: ITEM },
-    };
-
-    const openCard = async (
-      card: LessonCard,
-      handlers: Record<string, (body: unknown) => Response> = {},
-    ) => {
-      const calls = open({
-        [`GET /api/journal/lessons/${PLANNED}/card`]: () => json(card),
-        ...handlers,
-      });
-      const cards = await screen.findAllByRole('button', { name: en.journal.card.open });
-      fireEvent.click(cards[0] as HTMLElement);
-      const dialog = await screen.findByRole('dialog');
-      await waitFor(() => {
-        expect(dialog.querySelector('[data-card-topic]')).not.toBeNull();
-      });
-      return { calls, dialog };
-    };
-
-    it('lists each file under its work and the materials apart', async () => {
-      const { dialog } = await openCard(OWNED);
-      const given = dialog.querySelector('[data-given-today]') as HTMLElement;
-      expect(within(given).getByRole('button', { name: 'reading.pdf' })).toBeDefined();
-      expect(within(given).queryByRole('button', { name: 'answer-key.pdf' })).toBeNull();
-      expect(within(dialog).getByRole('button', { name: 'answer-key.pdf' })).toBeDefined();
-    });
-
-    it('lets the owner change the topic and attach a file to a homework, uploaded once the save answers', async () => {
-      const saved = { ...ITEM, topic: 'Fractions, again' };
-      const { calls, dialog } = await openCard(OWNED, {
-        [`PUT /api/plans/items/${ITEM_ID}`]: () => json(saved),
-        [`PUT /api/plans/items/${ITEM_ID}/files`]: () =>
-          json({
-            id: uid(87),
-            workId: uid(71),
-            name: 'sheet.pdf',
-            type: 'application/pdf',
-            bytes: 4,
-          }),
-      });
-      fireEvent.click(within(dialog).getByRole('button', { name: en.journal.card.editPlan }));
-      const topic = await within(dialog).findByLabelText(en.plans.plan.topic);
-      fireEvent.change(topic, { target: { value: 'Fractions, again' } });
-      const picker = within(dialog).getByLabelText(
-        en.plans.files.attachTo.replace('{{name}}', 'Read'),
-      );
-      fireEvent.change(picker, {
-        target: { files: [new File(['%PDF'], 'sheet.pdf', { type: 'application/pdf' })] },
-      });
-      expect(within(dialog).getByText('sheet.pdf')).toBeDefined();
-      // Nothing is uploaded before the save.
-      expect(calls.filter((call) => call.route.endsWith('/files'))).toEqual([]);
-      fireEvent.click(within(dialog).getByRole('button', { name: en.form.save }));
-      await waitFor(() => {
-        expect(
-          calls.filter((call) => call.route === `PUT /api/plans/items/${ITEM_ID}/files`),
-        ).toEqual([
-          {
-            route: `PUT /api/plans/items/${ITEM_ID}/files`,
-            body: { type: 'application/pdf', size: 4 },
-            query: `?name=sheet.pdf&workId=${uid(71)}`,
-          },
-        ]);
-      });
-      expect(sent(calls, `PUT /api/plans/items/${ITEM_ID}`)).toEqual([
-        {
-          base: {
-            topic: ITEM.topic,
-            objectives: ITEM.objectives,
-            links: [],
-            classworks: ITEM.classworks,
-            homeworks: ITEM.homeworks,
-          },
-          values: {
-            topic: 'Fractions, again',
-            objectives: ITEM.objectives,
-            links: [],
-            classworks: ITEM.classworks,
-            homeworks: ITEM.homeworks,
-          },
-        },
-      ]);
-    });
-
-    it('keeps a file the server did not take as "not uploaded", with a retry', async () => {
-      let refuse = true;
-      const { calls, dialog } = await openCard(OWNED, {
-        [`PUT /api/plans/items/${ITEM_ID}`]: () => json(ITEM),
-        [`PUT /api/plans/items/${ITEM_ID}/files`]: () =>
-          refuse
-            ? json(
-                { error: { code: 'plan_files_full', message: 'Full.', requestId: uid(99) } },
-                409,
-              )
-            : json({
-                id: uid(87),
-                workId: null,
-                name: 'notes.pdf',
-                type: 'application/pdf',
-                bytes: 4,
-              }),
-      });
-      fireEvent.click(within(dialog).getByRole('button', { name: en.journal.card.editPlan }));
-      const picker = await within(dialog).findByLabelText(en.plans.files.attachMaterial);
-      fireEvent.change(picker, {
-        target: { files: [new File(['%PDF'], 'notes.pdf', { type: 'application/pdf' })] },
-      });
-      fireEvent.change(within(dialog).getByLabelText(en.plans.plan.topic), {
-        target: { value: 'Fractions, again' },
-      });
-      fireEvent.click(within(dialog).getByRole('button', { name: en.form.save }));
-      const kept = await screen.findByText(en.plans.files.notUploaded);
-      const block = kept.closest('[data-not-uploaded]') as HTMLElement;
-      expect(block.textContent).toContain('notes.pdf');
-      expect(block.textContent).toContain(en.errors.plan_files_full);
-      refuse = false;
-      fireEvent.click(within(block).getByRole('button', { name: en.plans.files.retry }));
-      await waitFor(() => {
-        expect(screen.queryByText(en.plans.files.notUploaded)).toBeNull();
-      });
-      expect(
-        calls.filter((call) => call.route === `PUT /api/plans/items/${ITEM_ID}/files`),
-      ).toHaveLength(2);
-    });
-
-    it('offers the owner the edit request for this lesson when the row is closed', async () => {
-      const { calls, dialog } = await openCard(
-        { ...OWNED, plan: { ...OWNED.plan, edit: 'request' } },
-        {
-          [`POST /api/plans/journals/${JOURNAL}/requests`]: () => json({}, 500),
-        },
-      );
-      expect(within(dialog).queryByRole('button', { name: en.journal.card.editPlan })).toBeNull();
-      fireEvent.click(within(dialog).getByRole('button', { name: en.journal.card.askToEdit }));
-      fireEvent.change(within(dialog).getByLabelText(en.journal.card.askReason), {
-        target: { value: 'The topic changed' },
-      });
-      fireEvent.click(within(dialog).getByRole('button', { name: en.journal.card.askSend }));
-      await waitFor(() => {
-        expect(sent(calls, `POST /api/plans/journals/${JOURNAL}/requests`)).toEqual([
-          {
-            kind: 'text',
-            quarterId: QUARTER.id,
-            lessonIds: [PLANNED],
-            reason: 'The topic changed',
-          },
-        ]);
-      });
-    });
-
-    // Code review of the task, finding 2: closing the card while its item is edited asks first.
-    it('asks before Close takes away an item being edited with a picked file', async () => {
-      const { dialog } = await openCard(OWNED);
-      fireEvent.click(within(dialog).getByRole('button', { name: en.journal.card.editPlan }));
-      fireEvent.change(await within(dialog).findByLabelText(en.plans.plan.topic), {
-        target: { value: 'Fractions, again' },
-      });
-      fireEvent.change(within(dialog).getByLabelText(en.plans.files.attachMaterial), {
-        target: { files: [new File(['%PDF'], 'notes.pdf', { type: 'application/pdf' })] },
-      });
-      fireEvent.click(within(dialog).getByRole('button', { name: en.journal.entry.close }));
-      expect(await screen.findByText(en.unsent.leaveTitle)).toBeDefined();
-      // Staying keeps the form with its file.
-      fireEvent.click(screen.getByRole('button', { name: en.unsent.stay }));
-      await waitFor(() => {
-        expect(screen.queryByText(en.unsent.leaveTitle)).toBeNull();
-      });
-      expect(within(dialog).getByText('notes.pdf')).toBeDefined();
-    });
-
-    it('gives a substitute and any other reader no way into the plan', async () => {
-      const { dialog } = await openCard({
-        ...OWNED,
-        plan: { ...OWNED.plan, edit: 'none', item: null },
-      });
-      expect(within(dialog).queryByRole('button', { name: en.journal.card.editPlan })).toBeNull();
-      expect(within(dialog).queryByRole('button', { name: en.journal.card.askToEdit })).toBeNull();
-    });
-  });
-
-  it('shows no mark to a reader who may not set them', async () => {
+  // The owner, 20 November 2026: the plan's objectives and materials stay readable in the editor;
+  // "Bu dars rejasini o'zgartirish" and the edit request of the card are gone.
+  it('lists the objectives and materials of the plan under the editor, with no way into the form of the plan or a request', async () => {
     open({
       [`GET /api/journal/lessons/${PLANNED}/card`]: () =>
-        json({ ...CARD, whole: false, canMark: false, classworks: [], objectives: null }),
+        json({
+          ...CARD,
+          links: ['https://example.org/fractions'],
+          files: [
+            { id: uid(80), workId: null, name: 'Slides.pdf', type: 'application/pdf', bytes: 1200 },
+          ],
+          plan: { ...CARD.plan, edit: 'request' },
+        }),
     });
     const cards = await screen.findAllByRole('button', { name: en.journal.card.open });
     fireEvent.click(cards[0] as HTMLElement);
     const dialog = await screen.findByRole('dialog');
-    await waitFor(() => {
-      expect(dialog.querySelector('[data-card-topic]')).not.toBeNull();
+    const extras = await waitFor(() => {
+      const found = dialog.querySelector('[data-editor-extras="true"]');
+      expect(found).not.toBeNull();
+      return found as HTMLElement;
     });
-    expect(within(dialog).queryAllByRole('checkbox')).toEqual([]);
-    expect(dialog.textContent).not.toContain('Ten sums');
+    expect(extras.textContent).toContain('Add fractions');
+    expect(extras.textContent).toContain('Slides.pdf');
+    expect(extras.textContent).toContain('https://example.org/fractions');
+    expect(dialog.textContent).not.toContain(en.journal.card.editPlan);
+    expect(dialog.textContent).not.toContain(en.journal.card.askToEdit);
+  });
+
+  it('is read only for a reader who cannot enter the lesson, with no staff materials for a substitute', async () => {
+    fakeApi({
+      'GET /api/auth/session': () =>
+        json(sessionOf({ assignments: [{ role: 'teacher', branchId: NORTH.id }] })),
+      [`GET /api/journal/journals/${JOURNAL}`]: () =>
+        json({
+          ...GRID,
+          lessons: GRID.lessons.map((one) => ({ ...one, canEnter: false, canEnterWorks: false })),
+        }),
+      [`GET /api/journal/lessons/${PLANNED}/card`]: () => json({ ...CARD, whole: false }),
+    });
+    renderApp(`/journal/${JOURNAL}`);
+    const cards = await screen.findAllByRole('button', { name: en.journal.card.open });
+    fireEvent.click(cards[0] as HTMLElement);
+    const dialog = await screen.findByRole('dialog');
+    await waitFor(() => {
+      expect(dialog.querySelector('[data-card-topic]')?.textContent).toBe(
+        'Fractions and their common denominators in practice',
+      );
+    });
+    expect(within(dialog).queryByLabelText(en.journal.card.topic)).toBeNull();
+    expect(
+      within(dialog).queryByRole('button', { name: en.journal.editor.addClasswork }),
+    ).toBeNull();
+    expect(dialog.textContent).not.toContain('Add fractions');
   });
 
   it('puts topic, classwork and homework at the top of lesson mode', async () => {

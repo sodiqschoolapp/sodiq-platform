@@ -2,6 +2,27 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 20 November 2026: simpler plans and journal
+
+Not a task of the build plan: the owner's request "a lot of the things are overcomplicated" (decisions in `docs/decisions.md`; handbook `06-journal.md`, "Not graded" and "Editing a lesson"; `07-lesson-plans.md`, "Switching plan windows off").
+
+- **Plan windows switch**: Setup → Settings → Lesson plan windows, per branch (migration `0174`, on by default). Off: every plan write passes the gate, no "overdue" or "window not opened", no request asked or prepared, no window reminders; the plan page says "off", the windows page says so with a link to Settings. Stored windows and requests are kept.
+- **One lesson editor** in the journal (`lesson-editor.tsx`): topic, classworks and their totals, homework checked today and its totals, homework given today, add, rename and delete, the plan's objectives and materials read only. Opened from the lesson's **Lesson card** button, a work's **…** (its total focused) and **Edit lesson** in lesson mode. The lesson card, the works dialog, the work dialog and the buttons "not held", "not checked", "check at the next lesson", "topic not delivered", "not given" are gone. New route `PUT /api/journal/lessons/:lessonId/topic`; the journal's add, rename and remove take any lesson the reader may enter. A work with numbers is deleted as "not held" underneath, after a question that names the count.
+- **"-" is "not graded"**, typed in a cell (or the "-" button in lesson mode); the bulk button is gone. The save of numbers takes `notGraded: true`.
+- **Attendance marks above the grid**, in full screen too; **C** on an attendance cell opens its comment and the lesson note, on a work's cell only its own; a new comment is "visible to parents".
+- Tests: API `settings.test.ts` (the switch, refusals), `plan-requests.test.ts` (writes before and after the window with the switch off, no flag, no prepared request, back as stored), `closing.test.ts` (no window reminder off), `journal-works.test.ts` ("-" per cell, adds at an item with a topic, rename and remove after the topic, the topic route with its refusals and audit), `scope-refusals.test.ts` and the route lists; web `works-entry.test.tsx` (the editor), `lesson-card.test.tsx` (its read side), `lesson-mode.test.tsx` ("-" typed and the button), `settings-page.test.tsx`, `plans-page.test.tsx`; browser `journal.spec.ts`, `lesson-card-plan.spec.ts`, `lesson-status.spec.ts`, `plans-in-journal.spec.ts`.
+
+Left out:
+
+- The spec still describes windows, requests and the removed buttons: the `/spec-change` wording is in the pull request, for the owner.
+- A work deleted with numbers stays listed in its plan row (as a work "not held"); the plan page could hide it later if the owner wants.
+- The routes of "not held", "carry", "topic not delivered", "not given" and the bulk "not graded" stay (stored marks are read as before); remove them once the spec changes, if the owner wants.
+
+The next sessions must know:
+
+- `storedWindowOf` and `storedWindowsOf` answer an "off" window when the branch switched windows off; a reader that must show what is stored uses `storedWindowAsKept`.
+- The journal's topic, add, rename and remove do not pass the plan gate: the journal's edit period decides them.
+
 ## 20 November 2026: today's lesson in the journal, short headers, the journal and the teaching home on a phone
 
 Not a task of the build plan: the owner's four findings on the test site (decisions in `docs/decisions.md`; handbook `06-journal.md`, "Today's lesson and the short headers" and "The journal on a phone"). Web only.

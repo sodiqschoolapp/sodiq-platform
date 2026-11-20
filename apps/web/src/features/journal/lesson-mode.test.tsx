@@ -156,6 +156,7 @@ function open(date: string, total: number | null = 10) {
           workId: WORK,
           score: one.score,
           percent: one.score === null ? null : one.score * 10,
+          notGraded: false,
           version: 2,
         })),
         works: [],
@@ -211,6 +212,47 @@ describe('the numbers of works in lesson mode', () => {
     });
   });
 
+  // The owner, 20 November 2026: a "-" is "not graded", typed or with the button beside the field.
+  it('saves a typed "-" and the "-" button as "not graded"', async () => {
+    const calls = open('2026-10-27');
+    await rowOf();
+    chooseWork();
+    const row = await rowOf();
+    const field = within(row).getByRole('textbox', { name: fieldName });
+    fireEvent.change(field, { target: { value: '-' } });
+    fireEvent.blur(field);
+    await waitFor(() => {
+      expect(calls.filter((call) => call.route === SCORES)[0]?.body).toMatchObject({
+        saves: [
+          {
+            studentId: uid(101),
+            column: { workId: WORK },
+            score: null,
+            notGraded: true,
+            version: null,
+          },
+        ],
+      });
+    });
+  });
+
+  it('saves the "-" button beside the field as "not graded"', async () => {
+    const calls = open('2026-10-27');
+    await rowOf();
+    chooseWork();
+    const row = await rowOf();
+    fireEvent.click(
+      within(row).getByRole('button', {
+        name: en.journal.notGraded.typeFor.replace('{{name}}', 'Zokirov Ali'),
+      }),
+    );
+    await waitFor(() => {
+      expect(calls.filter((call) => call.route === SCORES)[0]?.body).toMatchObject({
+        saves: [{ studentId: uid(101), score: null, notGraded: true, version: null }],
+      });
+    });
+  });
+
   it('refuses a number over the total and sends nothing', async () => {
     const calls = open('2026-10-27');
     await rowOf();
@@ -238,9 +280,13 @@ describe('the numbers of works in lesson mode', () => {
         name: `Classwork: ${en.journal.lessonMode.setTotal.replace('{{work}}', 'Test')}`,
       }),
     );
-    expect(
-      await screen.findByText(en.journal.works.workTitle.replace('{{name}}', 'Test')),
-    ).not.toBeNull();
+    // The owner, 20 November 2026: the lesson editor opens with the work's total waiting.
+    const total = await screen.findByLabelText(
+      en.journal.editor.totalOf.replace('{{name}}', 'Test'),
+    );
+    await waitFor(() => {
+      expect(document.activeElement).toBe(total);
+    });
   });
 
   it('shows the numbers of a lesson the reader does not enter, with no field', async () => {
@@ -271,6 +317,7 @@ describe('lesson mode on a phone', () => {
             workId: WORK,
             score: one.score,
             percent: one.score === null ? null : one.score * 10,
+            notGraded: false,
             version: 2,
           })),
           works: [],

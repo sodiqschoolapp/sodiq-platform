@@ -836,6 +836,46 @@ describe('the plan window and edit requests', () => {
     });
   });
 
+  // The owner, 20 November 2026 (migration 0174): plan windows switched off in Settings.
+  it('says the plan is open at any time with windows off, with no request or extension', async () => {
+    open({
+      path: `/plans/${JOURNAL}`,
+      plan: {
+        ...planOf(true),
+        window: { state: 'open', startDate: null, endDate: null, off: true },
+        flag: null,
+      },
+    });
+    const line = await waitFor(() => {
+      const found = document.querySelector('[data-plan-window]');
+      expect(found).not.toBeNull();
+      return found as HTMLElement;
+    });
+    expect(line.textContent).toContain(en.plans.window.off);
+    await waitFor(() => {
+      expect(rows()).toHaveLength(3);
+    });
+    expect(screen.queryByRole('button', { name: en.plans.requests.ask })).toBeNull();
+  });
+
+  it('shows the windows page switched off, with the way to Settings', async () => {
+    open({
+      role: 'academic_vice_principal',
+      path: '/plans/windows',
+      routes: { 'GET /api/plans/windows': () => json({ ...WINDOWS, off: true }) },
+    });
+    const notice = await waitFor(() => {
+      const found = document.querySelector('[data-plan-windows-off]');
+      expect(found).not.toBeNull();
+      return found as HTMLElement;
+    });
+    expect(notice.textContent).toContain(en.plans.windows.offTitle);
+    expect(within(notice).getByRole('link', { name: en.setup.settings.title })).not.toBeNull();
+    expect(
+      screen.queryByRole('form', { name: en.plans.windows.formTitle.replace('{{number}}', '2') }),
+    ).toBeNull();
+  });
+
   it('shows the date the timetable covers a quarter from, only when it starts inside the quarter (task 5.19)', async () => {
     open({
       role: 'academic_vice_principal',

@@ -6161,8 +6161,8 @@ try {
   // Task 8.8: a branch of its own for plans in the journal: a class of two students, a teacher
   // of its "Geodesy" (graded) with a lesson yesterday and one today at 00:05 (both held), and
   // a plan item on yesterday's row with the homework "Read the map". The browser test opens
-  // yesterday's lesson card, marks the homework "not given", and today's homework column is
-  // gone. All names are invented.
+  // yesterday's lesson in the lesson editor, deletes the homework (the owner, 20 November 2026),
+  // and today's homework column is gone. All names are invented.
   const deliveryBranch = await insertBranch(migrator, 'Plans in the journal browser test branch');
   const deliveryTeacher = await create('Dilfuza', 'Rahimova');
   await transactions.run([deliveryBranch], (transaction) =>

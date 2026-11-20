@@ -32,7 +32,8 @@ test('a teacher marks a homework "not given" on the lesson card, and the next le
   await expect(yesterday).toHaveCount(1);
   await expect(page.getByRole('button', { name: 'Work: Read the map' })).toHaveCount(1);
 
-  // The lesson card of yesterday's lesson: "given today" holds the homework.
+  // Yesterday's lesson in the lesson editor (the owner, 20 November 2026): "given today" holds
+  // the homework, and the teacher deletes it.
   const firstLesson = await page
     .locator('.ag-header-cell[col-id$=":a"]')
     .first()
@@ -43,15 +44,20 @@ test('a teacher marks a homework "not given" on the lesson card, and the next le
   await card.focus();
   await page.keyboard.press('Enter');
   const dialog = page.getByRole('dialog');
-  await expect(dialog.locator('[data-card-topic]')).toHaveText('Contour lines');
-  const given = dialog.locator('[data-given-today]');
+  await expect(dialog.getByLabel(en.journal.card.topic, { exact: true })).toHaveValue(
+    'Contour lines',
+  );
+  const given = dialog.locator('[data-editor-given]');
   await expect(given).toContainText('Read the map');
-  await given.getByRole('checkbox', { name: en.journal.card.notGiven, exact: true }).click();
-  await expect(
-    given.getByRole('checkbox', { name: en.journal.card.notGiven, exact: true }),
-  ).toBeChecked();
+  await given
+    .getByRole('button', {
+      name: en.journal.editor.delete.replace('{{name}}', 'Read the map'),
+      exact: true,
+    })
+    .click();
+  await expect(given).toHaveCount(0);
   await dialog.getByRole('button', { name: en.journal.entry.close, exact: true }).click();
 
-  // Today's lesson has no column for the homework not given.
+  // Today's lesson has no column for the homework deleted.
   await expect(page.getByRole('button', { name: 'Work: Read the map' })).toHaveCount(0);
 });

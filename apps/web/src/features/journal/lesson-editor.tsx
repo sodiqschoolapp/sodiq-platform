@@ -17,7 +17,7 @@ import { Field } from '@/components/field';
 import { wholeNumber } from '@/components/form/form-messages';
 import { DeleteIcon, EditIcon } from '@/components/icons';
 import { Button } from '@/components/ui/button';
-import { FIELD } from '@/components/ui/control';
+import { FIELD, SECTION_TITLE } from '@/components/ui/control';
 import {
   Dialog,
   DialogContent,
@@ -131,7 +131,7 @@ export function LessonEditor({
         </DialogHeader>
         <div className="grid gap-5 text-sm">
           {lesson.slot !== null && (
-            <p className="text-muted-foreground">
+            <p className="text-muted-foreground" data-card-slot="true">
               {t('journal.card.slotOfDay', { slot: lesson.slot })}
             </p>
           )}
@@ -144,7 +144,7 @@ export function LessonEditor({
             onSave={onTopic}
           />
           <section className="grid gap-2" aria-label={t('journal.editor.classworks')}>
-            <h3 className="font-semibold">{t('journal.editor.classworks')}</h3>
+            <h3 className={SECTION_TITLE}>{t('journal.editor.classworks')}</h3>
             {classworks.length === 0 && (
               <p className="text-muted-foreground">{t('journal.card.none')}</p>
             )}
@@ -197,7 +197,7 @@ export function LessonEditor({
           </section>
           {checked.length > 0 && (
             <section className="grid gap-2" aria-label={t('journal.card.checkedToday')}>
-              <h3 className="font-semibold">{t('journal.card.checkedToday')}</h3>
+              <h3 className={SECTION_TITLE}>{t('journal.card.checkedToday')}</h3>
               {checked.map((work) => (
                 <WorkRow
                   key={keyOf(work)}
@@ -224,7 +224,7 @@ export function LessonEditor({
             </section>
           )}
           <section className="grid gap-2" aria-label={t('journal.card.givenToday')}>
-            <h3 className="font-semibold">{t('journal.card.givenToday')}</h3>
+            <h3 className={SECTION_TITLE}>{t('journal.card.givenToday')}</h3>
             {given.length === 0 && (
               <p className="text-muted-foreground">{t('journal.card.none')}</p>
             )}

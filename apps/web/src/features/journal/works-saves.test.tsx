@@ -151,7 +151,9 @@ afterEach(() => {
 
 const answer = (score: number, version: number) =>
   json({
-    cells: [{ studentId: ZOKIROV, workId: WORK, score, percent: score * 10, version }],
+    cells: [
+      { studentId: ZOKIROV, workId: WORK, score, percent: score * 10, notGraded: false, version },
+    ],
     works: [],
   });
 

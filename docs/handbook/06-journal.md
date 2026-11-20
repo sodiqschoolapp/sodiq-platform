@@ -84,29 +84,24 @@ The exported and printed journal uses the same labels, under the heading **Sinf 
 
 ## Not graded
 
-<!-- Sources: spec 07 (Lesson status), edge/journal (Saving and working together: "All present" and "not graded"; Undo); task 8.7, decision 3 -->
+<!-- Sources: spec 07 (Lesson status), edge/journal (Saving and working together); task 8.7, decision 3; the owner, 20 November 2026 -->
 
-**What it is.** One click sets the empty number cells of the students marked present or late to "not graded". The lesson is then complete, and those cells are left out of the student's average.
+**What it is.** A dash (**-**) typed in a classwork or homework cell means "not graded" (**Baholanmagan**): the student was not graded for that work. The cell counts in no average, like an empty cell, and the lesson no longer waits for it.
 
-**Who can use it.**
-
-| Role | What the role may do | Where |
-| --- | --- | --- |
-| Teacher, Tutor | Set "not graded" in a lesson they may enter | Own lessons, inside the edit period or an unlock |
-| Academic Vice Principal, Super Admin | The same as a correction, with a reason | Every lesson of the branch |
+**Who can use it.** Whoever may type numbers in the lesson: the lesson's teacher or substitute inside the edit period or an unlock; the Academic Vice Principal and the Super Admin as a correction, with a reason.
 
 **How it works.**
 
-1. In the journal, open the works of the lesson (the button under the A of the lesson).
-2. Press **Not graded** (**Baholanmagan**). The question names how many empty cells will change.
-3. Confirm. The answer says how many cells were set, and how many were typed by someone meanwhile and kept.
+1. In the journal, click the cell and type **-**, then Enter or move on, as with a number.
+2. In lesson mode on a phone, type **-** in the field, or press the small **-** button beside it (a phone's number pad may have no minus).
+3. To undo, type a number or clear the cell.
 
 **Rules.**
 
-- Only empty cells change; a number typed meanwhile is kept and reported.
-- A "not graded" cell shows a dash. Typing a number in it replaces it; clearing the cell makes it empty again.
-- **Undo** gives the cells back as they were, if nobody changed them since.
-- "Not graded" counts in no average, like an empty cell.
+- A "not graded" cell shows a dash. Every change is kept in the cell's history.
+- The dashes a keyboard may give in its place (–, —, −) count as a dash too.
+- The **Baholanmagan** button that filled every empty cell at once is gone (owner, 20 November 2026).
+- The attendance marks and the dash are listed right above the grid, in full screen too.
 
 ## Reminders
 
@@ -180,81 +175,46 @@ The exported and printed journal uses the same labels, under the heading **Sinf 
 - A new assignment of the same lesson replaces the open one.
 - The assigned teacher gets no other right: only that lesson, only until the end of the assignment.
 
-## The lesson card
+## Editing a lesson
 
-<!-- Sources: spec 09 (In the journal), edge/lesson-plans (Plans and the journal, "Who may read a plan?", "A double lesson"); task 8.8, decisions 6 and 16, plan review correction 1 -->
+<!-- Sources: spec 09 (In the journal), spec 07 (Entering data); the owner, 20 November 2026 ("make lesson editing inside the journal very simple") -->
 
-**What it is.** The header of each lesson in the journal shows the lesson's number in the quarter and its topic from the plan, shortened to fit; the whole topic shows when the pointer rests on the header. The **Lesson card** (**Dars kartasi**) button under the attendance column of a lesson (**Dav**) opens the card: number, date, slot, topic, classworks, the homework given today, the homework checked today, objectives and materials.
+**What it is.** One window holds everything about a lesson: its topic, its classworks with their totals, the homework checked at it with their totals, the homework given at it, and the plan's objectives and materials. It replaces the lesson card's **Bu dars rejasini oʻzgartirish** button, the **Dars ishlari** window, the window of a single work, and the **Oʻtkazilmadi**, **Tekshirilmadi**, **Keyingi darsda tekshirish**, **Mavzu oʻtilmadi** and **Berilmadi** buttons.
+
+**How to open it.**
+
+- The **Lesson card** (**Dars kartasi**) button under the attendance column (**Dav**) of a lesson.
+- The **…** of a classwork or homework header: the window opens with that work's total ready to type.
+- In lesson mode on a phone: **Edit lesson** (**Darsni tahrirlash**).
 
 **Who can use it.**
 
 | Role | What the role may do |
 | --- | --- |
-| The lesson's teacher (the plan's owner on that day, or the substitute while the substitution is in force) | Sees the whole card and sets "Topic not delivered" and "Not given" |
-| Readers of the plan (Academic Vice Principal, Principal, Super Admin, Head Teachers of the subject, teachers with the subject and grade in their profile) | See the whole card |
-| Tutor, Head Tutor, Vice Principal for Spiritual and Moral Education | See the topic and the homework titles only |
+| The lesson's teacher, or the substitute on the day | Change everything listed below while the lesson can be entered: from its start, inside its edit period (or an open unlock) |
+| Academic Vice Principal, Super Admin | The same as a correction, with a reason |
+| Everyone else who reads the journal | Sees the window read only |
+
+**What the teacher can do.**
+
+- **Topic**: type it and press **Save topic**. It is written into the lesson's row of the plan (the plan and its row are made if there is none).
+- **Classwork**: **+ Add classwork**, type a title (at most 60 characters), **Add**. Type its total in **Soni** and press Enter. Rename with the pencil, delete with the bin.
+- **Homework given today**: **+ Give homework**, type a title, **Add**. It becomes a column of the next lesson. Delete with the bin.
+- **Homework checked today**: type its total; rename; delete.
+- As many works as needed, up to 10 of each kind per lesson.
+
+**Deleting a work.**
+
+- A work with no total and no numbers is deleted at once, from the plan too.
+- A work with a total or numbers asks first and says how many numbers it holds. It then leaves the journal and every average; its numbers stay in the history (records with data are archived, never deleted).
+- A homework given today that already holds a total or numbers at the next lesson is taken out there the same way.
 
 **Rules.**
 
-- The number is the lesson's place among the quarter's lessons that are not cancelled.
-- The plan is read only in the journal; it is changed only on the plan page.
-- "Homework checked today" lists the homework given at the previous lesson: the numbers of this lesson's homework columns refer to it.
-- Homework given at the first of two lessons on one day says "Will be checked today in slot N".
-- In lesson mode on a phone, the topic, the classwork and the homework stand at the top.
-- The **Works** button inside the card opens the works of the lesson (totals, "not held", works added by hand).
-
-## Naming a work added by hand
-
-<!-- Sources: spec 07 (Entering data: Classwork and homework), edge/journal ("A lesson is held with no plan item"), edge/lesson-plans (titles of at most 60 characters); the owner's /spec-change of 5 November 2026; task 10.6, decisions 1 to 8 -->
-
-**What it is.** At a lesson held with no plan item the teacher may add classworks and homework given by hand. Each one gets a title when it is added, and the title is the column title, as a plan's title would be.
-
-**How it works.**
-
-1. Open the lesson card, then **Works** (or **Works of the lesson** in lesson mode).
-2. Press **Add classwork** or **Add homework given**, type the title and press **Add**.
-3. To rename it, open the work from its column (the **…** of the header) and change its title.
-
-**Who can use it.** Whoever may add a work at that lesson: the lesson's teacher, a substitute or acting teacher on the day.
-
-**Rules.**
-
-- The title is required and is at most 60 characters; spaces around it are dropped.
-- A work can be renamed while the lesson can still be edited (its edit days, or an open unlock). Each change is kept in the work's history.
-- When the plan item is written later, its works take over the columns in order and their titles replace the typed ones; the typed titles stay in the history. A work added by hand with no match keeps its own title.
-- A work that came from the plan is renamed in the plan, not in the journal.
-- Works added by hand before this change have no title and show as "SI 1" or "UV 1" ("Кл/р 1" or "Д/з 1" in Russian, "CW 1" or "HW 1" in English) until someone renames them.
-
-## Topic not delivered and homework not given
-
-<!-- Sources: edge/lesson-plans ("A substitute supervises the class", "On Thursday it is recorded that Monday's lesson did not happen"), spec 09 (In the journal); task 8.8, decisions 4 to 9 and 18 -->
-
-**What it is.** When the planned topic was not taught, or a planned homework was not given, the lesson's teacher marks it on the lesson card. This is not a plan edit.
-
-**How it works.**
-
-1. Open the lesson card of a held lesson.
-2. Tick **Topic not delivered** (**Mavzu oʻtilmadi**). A copy of the lesson's item goes to "Not covered" on the plan of this class, and an edit request is prepared for the plan's owner.
-3. Tick **Not given** (**Berilmadi**) beside a homework. The next lesson has no column for it.
-4. Untick to undo, inside the same edit period.
-
-**Rules.**
-
-- Only for a held lesson with a plan item, of a graded subject, inside the edit period or under an unlock of that lesson.
-- A homework cannot be marked "not given" once its column has a total, numbers, a carry or "not held". Mark it "not held" instead.
-- The copy in "Not covered" belongs to the class of that lesson only, also in a shared plan.
-- Undoing "Topic not delivered" removes the copy while it is unchanged and still not covered; once it was edited or placed in a row, the undo is refused.
-- When the substitute sets "Topic not delivered", the plan's owner gets a notice.
-
-**What happens if…**
-
-| Case | What happens |
-| --- | --- |
-| The lesson is later recorded as not having happened (cancelled after its date) | Both marks are taken back by themselves, and an unchanged copy leaves "Not covered"; the item moves on as after any cancellation. |
-| A homework was marked "not given" and the next lesson's teacher tries to set its total | It is refused: "This homework was marked "not given", so nothing is entered for it." |
-| Two people mark and grade the same homework at the same moment | One wins: either the mark is refused because the column has a total, or the total is refused because the homework is "not given". |
-
-**What the person sees.** "This homework already has a total, numbers, a carry or a "not held" mark in the journal, so it cannot be marked "not given". Mark it "not held" instead."
+- The header of each lesson shows its number among the quarter's lessons that are not cancelled and its topic, shortened; the whole topic shows on hover.
+- Objectives, links and files of the plan are read here and changed on the plan page.
+- A future lesson is read only here; plan ahead on the plan page.
+- Every change is in the audit log and in the plan's history (who, when, the old and the new text).
 
 ## Exporting a journal
 

@@ -44,7 +44,6 @@ import type { AttendanceEntry } from './attendance-entry';
 import { SaveSign } from './cell-saves';
 import type { CommentCell, CommentsInput } from './comment-dialog';
 import { ratingEntryOf, useEntryText, type RatingInput } from './rating-entry';
-import { LessonCardDialog } from './lesson-card';
 import { StudentPhotoCell } from './student-photo';
 import { workKey, type WorksEntry } from './works-entry';
 
@@ -575,7 +574,6 @@ export function JournalGridView({
   const entryText = useEntryText();
   const api = useRef<GridApi<GridRow> | null>(null);
   /** Task 8.8: the lesson whose card is open. */
-  const [cardOpen, setCardOpen] = useState<string | null>(null);
   /** The marker class of a cell with a comment, for a student row. */
   const marked = useCallback(
     (row: GridRow | undefined, cell: (studentId: string) => CommentCell): string | undefined =>
@@ -1007,17 +1005,16 @@ export function JournalGridView({
                 }
               : {}),
             // Task 8.8: the lesson card (`09`: "Clicking it opens the lesson card"). The owner, 20
-            // November 2026: for a reader who enters the journal it is the one lesson editor
-            // (topic, works, totals); for a reader who only views, the card as it was.
-            ...(graded && !cancelled
+            // November 2026: it is the one lesson editor (topic, works, totals), read only for
+            // a reader who cannot enter the lesson now.
+            ...(graded && !cancelled && works !== undefined
               ? {
                   more: {
                     label: t('journal.card.open'),
                     icon: 'more',
                     disabled: works?.busy === true,
                     run: () => {
-                      if (works !== undefined) works.openLesson(lesson);
-                      else setCardOpen(lesson.id);
+                      works?.openLesson(lesson);
                     },
                   },
                 }
@@ -1601,15 +1598,6 @@ export function JournalGridView({
           if (last !== undefined) event.api.ensureColumnVisible(last, 'end');
         }}
       />
-      {cardOpen !== null && (
-        <LessonCardDialog
-          lessonId={cardOpen}
-          language={language}
-          onClose={() => {
-            setCardOpen(null);
-          }}
-        />
-      )}
     </div>
   );
 }

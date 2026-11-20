@@ -48,28 +48,16 @@ test('a teacher completes today’s lesson with "Not graded", and the journal an
     .filter({ hasText: en.journal.lessonStatus.in_progress });
   await expect(header).toHaveCount(1);
 
-  // "Not graded" for Botirova's empty cell, from the works of the lesson.
-  const lessonId = (column ?? '').split(':')[0] ?? '';
-  const button = page
-    .locator(`.ag-header-cell[col-id="${lessonId}:a"]`)
-    .getByRole('button', { name: en.journal.card.open, exact: true });
-  await button.focus();
+  // "Not graded" for Botirova: a "-" typed in her cell (the owner, 20 November 2026).
+  const botirova = await page
+    .locator('.ag-row')
+    .filter({ hasText: 'Botirova' })
+    .first()
+    .getAttribute('row-id');
+  const empty = page.locator(`[row-id="${botirova ?? ''}"] [col-id="${column ?? ''}"]`).last();
+  await empty.click();
+  await page.keyboard.type('-');
   await page.keyboard.press('Enter');
-  // Task 8.8: the works of the lesson open from its lesson card.
-  await page
-    .getByRole('dialog')
-    .getByRole('button', { name: en.journal.works.button, exact: true })
-    .click();
-  await page
-    .getByRole('dialog')
-    .getByRole('button', { name: en.journal.notGraded.button, exact: true })
-    .click();
-  const question = page.getByRole('alertdialog');
-  await expect(question).toContainText('1 empty cell of a present student');
-  await question
-    .getByRole('button', { name: en.journal.notGraded.confirmAction, exact: true })
-    .click();
-  await expect(page.locator('[data-not-graded-notice]')).toContainText('1 cell set "not graded".');
   await expect(page.locator('[data-not-graded]')).toHaveCount(1);
   await expect(
     page.locator('.ag-header-group-cell').filter({ hasText: en.journal.lessonStatus.complete }),
