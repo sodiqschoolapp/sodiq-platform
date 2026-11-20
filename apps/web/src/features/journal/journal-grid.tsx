@@ -28,7 +28,15 @@ import { AgGridReact } from 'ag-grid-react';
 import { cn } from 'cn';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { CheckCircleIcon, ContentCopyIcon, InfoIcon, MoreHorizIcon } from '@/components/icons';
+import {
+  CheckCircleIcon,
+  ContentCopyIcon,
+  InfoIcon,
+  LockIcon,
+  MoreHorizIcon,
+  RadioButtonUncheckedIcon,
+  ScheduleIcon,
+} from '@/components/icons';
 import { Button } from '@/components/ui/button';
 import { momentText, schoolDateText, weekdayName } from '@/lib/dates';
 import { WorkKindTag, type WorkKind } from './work-kind-tag';
@@ -83,13 +91,14 @@ type Weekday = Parameters<typeof weekdayName>[1];
 const dayAfter = (date: string): string =>
   new Date(Date.parse(`${date}T00:00:00Z`) + 86_400_000).toISOString().slice(0, 10);
 
-const weekdayOf = (date: string): Weekday => {
+/** The weekday of a school date, 1 Monday to 7 Sunday. */
+export const weekdayOf = (date: string): Weekday => {
   const day = new Date(`${date}T00:00:00Z`).getUTCDay();
   return (day === 0 ? 7 : day) as Weekday;
 };
 
 /** The tint of an attendance mark (docs/design-system.md, Status labels): always the digit. */
-const MARK_TINT: Record<number, string> = {
+export const MARK_TINT: Record<number, string> = {
   0: 'bg-destructive-bg text-destructive',
   2: 'bg-warning-bg text-warning',
   3: 'bg-destructive-bg text-destructive',
@@ -275,9 +284,31 @@ const STATUS_TINT: Record<string, string> = {
   locked_incomplete: 'bg-destructive-bg text-destructive',
 };
 
+/** The icon of a status in a narrow header: a different shape for each, so not by colour alone. */
+const STATUS_ICON: Record<string, React.ComponentType<{ className?: string }>> = {
+  not_started: RadioButtonUncheckedIcon,
+  in_progress: ScheduleIcon,
+  complete: CheckCircleIcon,
+  locked_incomplete: LockIcon,
+};
+
+/** The colour of a status's icon in a narrow header (the text colours of `STATUS_TINT`). */
+const STATUS_ICON_TINT: Record<string, string> = {
+  not_started: 'text-muted-foreground',
+  in_progress: 'text-warning',
+  complete: 'text-success',
+  locked_incomplete: 'text-destructive',
+};
+
 /**
  * The header of a lesson (`07`, Layout, row 1): date, weekday and slot with the status on the
  * first line; the lesson number and topic (or the reason of a cancelled lesson) on the second.
+ *
+ * A lesson with attendance only is one narrow column (`07`, Layout), too narrow for those words:
+ * its header is short (owner, 20 November 2026: "To'ldir…" and "№ 2 · R…" could not be read),
+ * "Du, 16.11" over "3-dars" with the status as an icon, and the whole text in the tooltip and for
+ * a screen reader. Today's lesson says "Today" on the orange of the active item; its column is in
+ * `--today`.
  */
 function LessonHeader(
   props: IHeaderGroupParams & {
@@ -285,17 +316,67 @@ function LessonHeader(
     second: string;
     status: { key: string; text: string } | null;
     tooltip?: string;
+    today?: boolean;
+    /** The two short lines of a narrow lesson, and its whole text for a screen reader. */
+    compact?: { first: string; second: string; whole: string } | null;
   },
 ) {
+  if (props.compact !== undefined && props.compact !== null) {
+    const Icon = props.status === null ? null : STATUS_ICON[props.status.key];
+    return (
+      <div
+        className="flex w-full min-w-0 flex-col justify-center gap-0.5"
+        title={props.tooltip}
+        aria-current={props.today === true ? 'date' : undefined}
+        data-lesson-header="compact"
+      >
+        <span className="sr-only">{props.compact.whole}</span>
+        <span className="truncate leading-tight font-semibold" aria-hidden="true">
+          {props.compact.first}
+        </span>
+        <span className="flex min-w-0 items-center gap-1" aria-hidden="true">
+          <span
+            className={cn(
+              'truncate text-xs leading-tight',
+              props.today === true ? 'text-primary-foreground' : 'text-muted-foreground',
+            )}
+          >
+            {props.compact.second}
+          </span>
+          {props.status !== null && Icon !== undefined && Icon !== null && (
+            <span
+              className={cn(
+                'ml-auto inline-flex shrink-0',
+                // On today's orange the shape tells the status; its colour would not read.
+                props.today === true
+                  ? 'text-primary-foreground'
+                  : STATUS_ICON_TINT[props.status.key],
+              )}
+              data-status-icon={props.status.key}
+            >
+              <Icon className="size-4" />
+            </span>
+          )}
+        </span>
+      </div>
+    );
+  }
   return (
-    <div className="flex w-full min-w-0 flex-col justify-center gap-0.5" title={props.tooltip}>
+    <div
+      className="flex w-full min-w-0 flex-col justify-center gap-0.5"
+      title={props.tooltip}
+      aria-current={props.today === true ? 'date' : undefined}
+    >
       <span className="flex min-w-0 items-center gap-1.5">
         <span className="truncate leading-tight font-semibold">{props.first}</span>
         {props.status !== null && (
           <span
             className={cn(
               'shrink-0 rounded-sm px-1.5 text-xs leading-5 font-semibold',
-              STATUS_TINT[props.status.key],
+              // "Nothing entered" has no fill of its own: on today's orange it is navy.
+              props.today === true && props.status.key === 'not_started'
+                ? 'text-primary-foreground'
+                : STATUS_TINT[props.status.key],
             )}
           >
             {props.status.text}
@@ -303,7 +384,14 @@ function LessonHeader(
         )}
       </span>
       {props.second !== '' && (
-        <span className="truncate text-xs leading-tight text-muted-foreground">{props.second}</span>
+        <span
+          className={cn(
+            'truncate text-xs leading-tight',
+            props.today === true ? 'text-primary-foreground' : 'text-muted-foreground',
+          )}
+        >
+          {props.second}
+        </span>
       )}
     </div>
   );
@@ -828,7 +916,16 @@ export function JournalGridView({
     function lessonGroup(lesson: JournalLesson, index: number): ColGroupDef<GridRow> {
       const cancelled = lesson.cancelled !== null;
       const struck = cancelled ? 'line-through text-muted-foreground' : '';
-      const date = `${schoolDateText(lesson.date, language, false)}, ${weekdayName(language, weekdayOf(lesson.date))}`;
+      // Today's lesson stands out among the others (owner, 20 November 2026: "Teachers can not
+      // easily know where today's data is"): "Today" in its header, its header and every cell in
+      // `--today` (`docs/design-system.md`: "The row, column or item that is now or today").
+      const today = lesson.date === grid.today;
+      const todayFill = today && !cancelled ? 'bg-today' : undefined;
+      const date = today
+        ? `${t('journal.grid.today')}, ${schoolDateText(lesson.date, language, false)}`
+        : `${schoolDateText(lesson.date, language, false)}, ${weekdayName(language, weekdayOf(lesson.date))}`;
+      // A lesson with attendance only is one narrow column (`07`, Layout): a short header.
+      const compact = lesson.works.length === 0;
       const slot =
         lesson.slot === null ? '' : ` · ${t('journal.grid.slot', { number: lesson.slot })}`;
       const reason = cancelled
@@ -904,15 +1001,18 @@ export function JournalGridView({
               : {}),
           },
           // Room for the short label with its menu ("Dav", "Пос", "Att": the labels follow the
-          // language since 18 November 2026), and under it "all present" (and "copy") or the lock.
-          width: entering && lesson.canEnter && lesson.copyFrom !== null ? 92 : 76,
+          // language since 18 November 2026), and under it "all present" (and "copy") or the lock;
+          // a lesson of attendance only also for its short header, "Du, 16.11" (20 November 2026).
+          width: compact ? 100 : entering && lesson.canEnter && lesson.copyFrom !== null ? 92 : 76,
           cellClass: (params) =>
             cn(
               cancelled ||
-                (params.data?.kind === 'student' &&
+                // Today's cells waiting for the lesson to start keep today's fill.
+                (!(today && ahead) &&
+                  params.data?.kind === 'student' &&
                   params.data.student.cells[index]?.closed === true)
                 ? 'bg-muted'
-                : undefined,
+                : todayFill,
               // Task 8.2: a comment on the mark, or the student's note of the lesson.
               marked(params.data, (studentId) => ({
                 target: 'mark',
@@ -1095,10 +1195,12 @@ export function JournalGridView({
           cellClass: (params) =>
             cn(
               cancelled ||
-                (params.data?.kind === 'student' &&
+                // Today's cells waiting for the lesson to start keep today's fill.
+                (!(today && ahead) &&
+                  params.data?.kind === 'student' &&
                   params.data.student.cells[index]?.closed === true)
                 ? 'bg-muted'
-                : undefined,
+                : todayFill,
               work.id === null
                 ? undefined
                 : marked(params.data, (studentId) => ({
@@ -1174,6 +1276,7 @@ export function JournalGridView({
             hover: t('journal.grid.lessonScore'),
           },
           width: 60,
+          cellClass: () => todayFill,
           cellRenderer: (params: ICellRendererParams<GridRow>) => {
             const row = params.data;
             if (row?.kind !== 'student') return null;
@@ -1204,6 +1307,19 @@ export function JournalGridView({
       const first = `${date}${slot}`;
       const second =
         reason ?? [number, topic, noPlan, notDelivered].filter((part) => part !== '').join(' · ');
+      // The narrow header: "Du, 16.11" (or "Today") over "3-dars" (or the reason of a cancelled
+      // lesson), the status as an icon; the whole text for a screen reader and in the tooltip.
+      const compactLines = compact
+        ? {
+            first: today
+              ? t('journal.grid.today')
+              : `${t(`dates.weekdaysShort.${String(weekdayOf(lesson.date))}` as 'dates.weekdaysShort.1')}, ${shortDate(lesson.date)}`,
+            second:
+              reason ??
+              (lesson.slot === null ? '' : t('journal.grid.slot', { number: lesson.slot })),
+            whole: [first, status?.text ?? '', second].filter((part) => part !== '').join(' · '),
+          }
+        : null;
       return {
         groupId: lesson.id,
         headerName: [first, status?.text ?? '', second].filter((part) => part !== '').join(' · '),
@@ -1212,11 +1328,26 @@ export function JournalGridView({
           first,
           second,
           status,
-          tooltip: [first, reason ?? lesson.topic].filter((part) => part !== null).join(' · '),
+          today,
+          compact: compactLines,
+          tooltip: [
+            first,
+            ...(compact && status !== null ? [status.text] : []),
+            ...(compact ? [second] : [reason ?? lesson.topic]),
+          ]
+            .filter((part) => part !== null && part !== '')
+            .join(' · '),
         },
-        headerClass: cancelled ? 'bg-muted text-muted-foreground' : undefined,
+        headerClass: cancelled
+          ? 'bg-muted text-muted-foreground'
+          : today
+            ? // Today's lesson header in the solid orange of the active item, navy on it: orange
+              // marks "now" or "today" (`docs/design-system.md`, Working screens).
+              'bg-primary text-primary-foreground'
+            : undefined,
         children: children.map((child) => ({
           ...child,
+          ...(todayFill === undefined ? {} : { headerClass: todayFill }),
           headerComponent: TwoLineHeader,
           sortable: false,
           suppressMovable: true,

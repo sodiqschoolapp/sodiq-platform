@@ -26,6 +26,8 @@ import { Button } from '@/components/ui/button';
 import { useSwitchBranch } from '@/features/access/use-switch-branch';
 import { useView } from '@/features/access/use-view';
 import { schoolDateText, weekdayName } from '@/lib/dates';
+import { SM, useMinWidth } from '@/lib/use-min-width';
+import { cn } from '@/lib/utils';
 import { teachingHomeQuery } from './timetable-api';
 import { useLessonMarks } from './views-page';
 
@@ -223,7 +225,9 @@ function TodayList({
 }) {
   const { t } = useTranslation();
   const marks = useLessonMarks();
+  const phone = !useMinWidth(SM);
   if (items.length === 0) return <EmptyState text={t('home.lessons.noToday')} />;
+  if (phone) return <TodayCards items={items} now={now} named={named} language={language} />;
   return (
     <div className="overflow-x-auto">
       <Table>
@@ -326,6 +330,137 @@ function TodayList({
 }
 
 /**
+ * Today's lessons on a phone (owner, 20 November 2026: the table scrolled sideways to reach the
+ * journal button, "a copy of the laptop version"): one card a lesson, in time order. The lesson
+ * number and the time first, then the class or group and the subject, the room (and the branch),
+ * the marks and the status, and "Open the journal" the width of the card, a thumb's reach away.
+ * The lesson happening now has the `--today` fill and semibold text, as its row on a computer.
+ */
+function TodayCards({
+  items,
+  now,
+  named,
+  language,
+}: {
+  items: Item[];
+  now: number | null;
+  named: boolean;
+  language: Language;
+}) {
+  const { t } = useTranslation();
+  const marks = useLessonMarks();
+  return (
+    <ul className="grid gap-3" data-home-today-list="true">
+      {items.map((item) => {
+        const time = `${timeText(item.at.start)}–${timeText(item.at.end)}`;
+        const branch = named ? item.at.branch.name : null;
+        if (item.kind === 'busy') {
+          return (
+            <li
+              key={item.key}
+              data-busy="true"
+              className="grid gap-0.5 rounded-lg bg-muted px-4 py-3 text-sm text-muted-foreground"
+            >
+              <span className="font-semibold tabular-nums">{time}</span>
+              <span>{t('timetable.views.busyIn', { branch: item.at.branch.name })}</span>
+            </li>
+          );
+        }
+        if (item.kind === 'exam') {
+          const exam = item.at;
+          return (
+            <li
+              key={item.key}
+              data-exam={exam.id}
+              className="grid gap-0.5 rounded-lg border px-4 py-3 text-sm"
+            >
+              <span className="font-semibold tabular-nums">
+                {time} · {t('timetable.day.exam')}
+              </span>
+              <span>
+                {exam.title}
+                {exam.subject !== null && <> · {exam.subject.names[language]}</>}
+              </span>
+              <span className="text-muted-foreground">
+                {[
+                  ...exam.rooms.flatMap((room) => room.units),
+                  ...exam.rooms.map((room) => room.room.name),
+                  ...(branch === null ? [] : [branch]),
+                ].join(' · ')}
+              </span>
+            </li>
+          );
+        }
+        const lesson = item.at;
+        const current = isNow(item, now);
+        // "As planned" when nothing changed, as on the row of a computer.
+        const state = marks(lesson).join(' · ') || t('timetable.day.asPlanned');
+        return (
+          <li
+            key={item.key}
+            data-lesson={lesson.id}
+            className={cn('grid gap-3 rounded-lg border px-4 py-3', current && 'bg-today')}
+            {...(current ? { 'data-now': 'true', 'aria-current': 'time' as const } : {})}
+          >
+            <div className="flex items-start gap-3">
+              <div className="grid min-w-0 flex-1 gap-0.5">
+                <span className={cn('tabular-nums', current ? 'font-bold' : 'font-semibold')}>
+                  {[
+                    lesson.lessonNumber === null
+                      ? null
+                      : t('journal.grid.slot', { number: lesson.lessonNumber }),
+                    time,
+                  ]
+                    .filter((part) => part !== null)
+                    .join(' · ')}
+                </span>
+                <span className={cn('text-base', current ? 'font-bold' : 'font-semibold')}>
+                  {lesson.unit.name} · {lesson.subject.names[language]}
+                </span>
+                {(lesson.room !== null || branch !== null) && (
+                  <span className="text-sm text-muted-foreground">
+                    {[
+                      lesson.room === null
+                        ? null
+                        : `${t('timetable.day.room')} ${lesson.room.name}`,
+                      branch,
+                    ]
+                      .filter((part) => part !== null)
+                      .join(' · ')}
+                  </span>
+                )}
+                {(state !== '' || lesson.status !== null) && (
+                  <span className="text-sm">
+                    {state}
+                    {lesson.status !== null && (
+                      <span
+                        className={cn('font-semibold', state !== '' && 'ml-2')}
+                        data-status={lesson.status}
+                      >
+                        {t(`journal.lessonStatus.${lesson.status}`)}
+                      </span>
+                    )}
+                  </span>
+                )}
+              </div>
+            </div>
+            {lesson.journalId !== null && (
+              <OpenJournal
+                now={current}
+                journalId={lesson.journalId}
+                date={lesson.date}
+                branchId={lesson.branch.id}
+                wide
+              />
+            )}
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+/**
  * The button that opens the journal of a lesson of today (task 6.2, From 5.9b:
  * "button to open the journal"), at the lesson's date, in its own branch: a
  * lesson of another branch switches the tab's branch first, through
@@ -336,12 +471,15 @@ function OpenJournal({
   journalId,
   date,
   branchId,
+  wide = false,
 }: {
   /** Task 10.7: the lesson happening now; its button pulses, unless reduced motion is asked for. */
   now: boolean;
   journalId: string;
   date: string;
   branchId: string;
+  /** On a phone's lesson card: a full-width button, primary for the lesson happening now. */
+  wide?: boolean;
 }) {
   const { t } = useTranslation();
   const { branchId: current } = useView();
@@ -357,10 +495,11 @@ function OpenJournal({
   };
   return (
     <Button
-      variant="secondary"
-      size="sm"
+      variant={wide && now ? 'default' : 'secondary'}
+      size={wide ? 'default' : 'sm'}
       // `motion-safe:` only: under prefers-reduced-motion no animation applies (`12`, Home page).
-      {...(now ? { className: 'motion-safe:animate-now-pulse', 'data-pulse': 'true' } : {})}
+      className={cn(wide && 'w-full', now && 'motion-safe:animate-now-pulse')}
+      {...(now ? { 'data-pulse': 'true' } : {})}
       onClick={() => {
         if (branchId === current) {
           open();
@@ -393,6 +532,7 @@ function WeekTable({
 }) {
   const { t } = useTranslation();
   const text = useItemText(language);
+  const phone = !useMinWidth(SM);
   const dates = [
     ...new Set([...home.days.map((day) => day.date), ...items.map((item) => item.at.date)]),
   ].sort();
@@ -411,6 +551,42 @@ function WeekTable({
     return (
       <div className="grid gap-4">
         <EmptyState text={t('home.lessons.noWeek')} />
+        {dayOffLines}
+      </div>
+    );
+  }
+  if (phone) {
+    // On a phone the week is a list by day: a table of five days scrolled sideways (owner, 20
+    // November 2026).
+    return (
+      <div className="grid gap-4" data-home-week-list="true">
+        {dates.map((date) => (
+          <section key={date} className="grid gap-1" aria-labelledby={`home-week-${date}`}>
+            <h3 id={`home-week-${date}`} className={SECTION_TITLE}>
+              {weekdayName(language, weekdayOf(date))}, {schoolDateText(date, language, false)}
+            </h3>
+            <ul className="grid">
+              {items
+                .filter((item) => item.at.date === date)
+                .map((item) => (
+                  <li
+                    key={item.key}
+                    className="flex gap-3 border-b py-2 text-sm last:border-b-0"
+                    {...(item.kind === 'busy' ? { 'data-busy': 'true' } : {})}
+                  >
+                    <span className="w-24 shrink-0 font-semibold tabular-nums">
+                      {timeText(item.at.start)}–{timeText(item.at.end)}
+                    </span>
+                    <span
+                      className={cn('min-w-0', item.kind === 'busy' && 'text-muted-foreground')}
+                    >
+                      {text(item, named).join(' · ')}
+                    </span>
+                  </li>
+                ))}
+            </ul>
+          </section>
+        ))}
         {dayOffLines}
       </div>
     );

@@ -193,4 +193,18 @@ test('a teacher opens the journal from today’s lesson on the home page and rea
   await expect(workCell(ids[1] ?? '')).toContainText('45%');
   await expect(workCell(ids[2] ?? '')).toContainText('40%');
   await expect(page.getByRole('dialog')).toHaveCount(0);
+
+  // On a phone (owner, 20 November 2026): lesson mode with the selectors folded, today's lessons
+  // as cards on the home page, and neither page scrolls sideways.
+  const sideways = 'document.documentElement.scrollWidth - document.documentElement.clientWidth';
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.locator('[data-lesson-mode] [data-student]')).toHaveCount(3);
+  await expect(page.locator('[data-journal-choose]')).toBeVisible();
+  await expect(page.locator('[data-journal-grid]')).toHaveCount(0);
+  expect(await page.evaluate<number>(sideways)).toBe(0);
+  await page.goto('/');
+  const cards = page.locator('[data-home-today-list]');
+  await expect(cards.getByRole('button', { name: en.journal.open, exact: true })).toBeVisible();
+  await expect(page.locator('[data-home-today] table')).toHaveCount(0);
+  expect(await page.evaluate<number>(sideways)).toBe(0);
 });

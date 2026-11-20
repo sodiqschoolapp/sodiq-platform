@@ -3657,6 +3657,16 @@ export const en = {
       '6': 'Saturday',
       '7': 'Sunday',
     },
+    // The short weekday of a narrow journal column ("Du, 16.11"; owner, 20 November 2026).
+    weekdaysShort: {
+      '1': 'Mon',
+      '2': 'Tue',
+      '3': 'Wed',
+      '4': 'Thu',
+      '5': 'Fri',
+      '6': 'Sat',
+      '7': 'Sun',
+    },
   },
   period: {
     // Task 10.5: the demo time of the test environment, beside the period.
@@ -7256,7 +7266,6 @@ export const en = {
       },
       otherYear: 'Journals of {{year}}',
       noLessons: 'No lessons in this quarter yet.',
-      lessonOf: 'Lesson of {{date}}, {{time}}',
       journalColumn: 'Journal',
     },
     // Task 8.6: the results at leaving on the student's record (edge/calculation).
@@ -7268,6 +7277,8 @@ export const en = {
       lastDay: 'to {{date}}',
     },
     grid: {
+      // The lesson of today in the grid (owner, 20 November 2026).
+      today: 'Today',
       lessonNumber: 'No. {{number}}',
       notDeliveredShort: 'not delivered',
       // Task 8.6: results that follow the student (07, Transfers; edge/calculation).
@@ -7462,8 +7473,14 @@ export const en = {
       line: '{{text}} · {{who}} · {{when}}',
     },
     lessonMode: {
+      // Lesson mode on a phone, one column at a time (owner, 20 November 2026).
+      enter: 'What to enter',
+      next: 'Next: {{column}}',
+      previousLesson: 'Previous lesson',
+      nextLesson: 'Next lesson',
+      // The selectors of the journal, folded on a phone.
+      choose: 'Class, subject and period',
       score: '{{work}}, {{name}}',
-      outOf: 'of {{total}}',
       total: '{{work}}: total {{total}}',
       setTotal: '{{work}}: set the total',
     },

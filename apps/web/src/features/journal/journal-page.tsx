@@ -22,11 +22,19 @@ import { useMayView, useView } from '@/features/access/use-view';
 import { TimetableFileButtons } from '@/features/timetable/timetable-file-buttons';
 import { nameOf } from '@/features/setup/setup-api';
 import { SubjectChip } from '@/features/setup/subject-colour';
-import { monthsText, schoolDateText } from '@/lib/dates';
+import { monthsText, schoolDateText, weekdayName } from '@/lib/dates';
 import { SM, useMinWidth } from '@/lib/use-min-width';
 import { ATTENDANCE_MARKS } from '@sodiq/shared';
 import { Button } from '@/components/ui/button';
-import { FullscreenExitIcon, FullscreenIcon, UndoIcon, ViewColumnIcon } from '@/components/icons';
+import {
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  ExpandMoreIcon,
+  FullscreenExitIcon,
+  FullscreenIcon,
+  UndoIcon,
+  ViewColumnIcon,
+} from '@/components/icons';
 import { readHiddenColumns, storeHiddenColumns } from '@/components/list/list-state';
 import {
   DropdownMenu,
@@ -39,7 +47,7 @@ import { useUndo } from './cell-saves';
 import { useComments } from './comment-dialog';
 import { useRatingEntry } from './rating-entry';
 import { WorkKindTag, useWorkLabel } from './work-kind-tag';
-import { useWorkName, useWorksEntry, type WorksEntry } from './works-entry';
+import { useWorkName, useWorksEntry, workKey, type WorksEntry } from './works-entry';
 import { LessonModeScore } from './lesson-mode-score';
 import {
   correctionOf,
@@ -53,7 +61,9 @@ import {
   GRADE_TINT,
   JOURNAL_DEFAULT_HIDDEN,
   JournalGridView,
+  MARK_TINT,
   hideableColumnsOf,
+  weekdayOf,
 } from './journal-grid';
 import { JOURNAL_FILTERS, type JournalFilter, type JournalSearch } from './journal-search';
 import { yearText } from './journals-page';
@@ -286,6 +296,8 @@ function JournalLoaded({
   const undoButton: ReactNode = data.lessons.some((one) => one.canEnter) && (
     <Button
       variant="secondary"
+      // Its own width also where the selectors fold on a phone.
+      className="justify-self-start"
       disabled={!undo.available || undo.busy}
       onClick={undo.undo}
       title={t('journal.saving.undoHint')}
@@ -383,120 +395,130 @@ function JournalLoaded({
               )}
             </p>
           </div>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-            <SelectField
-              label={
-                data.journal.unit.kind === 'class'
-                  ? t('journal.page.class')
-                  : t('journal.page.group')
-              }
-              value={data.journal.id}
-              options={data.others
-                .filter(
-                  (one) =>
-                    one.subject.id === data.journal.subject.id &&
-                    one.unit.kind === data.journal.unit.kind,
-                )
-                .map((one) => ({ value: one.id, label: one.unit.name }))}
-              onChange={(event) => {
-                void navigate({
-                  to: '/journal/$journalId',
-                  params: { journalId: event.target.value },
-                });
-              }}
-            />
-            <SelectField
-              label={t('journal.page.subject')}
-              value={data.journal.id}
-              options={data.others
-                .filter((one) => one.unit.id === data.journal.unit.id)
-                .map((one) => ({ value: one.id, label: nameOf(one.subject.names, language) }))}
-              onChange={(event) => {
-                void navigate({
-                  to: '/journal/$journalId',
-                  params: { journalId: event.target.value },
-                });
-              }}
-            />
-            <SelectField
-              label={t('journal.page.year')}
-              value={data.journal.year.id}
-              options={data.years.map((year) => ({ value: year.id, label: yearText(year) }))}
-              onChange={(event) => {
-                // A journal belongs to one year: another year opens its Journals page.
-                if (event.target.value !== data.journal.year.id) {
-                  void navigate({ to: '/journal', search: { year: event.target.value } });
-                }
-              }}
-            />
-            <SelectField
-              label={t('journal.page.quarter')}
-              value={data.quarter.id}
-              options={data.quarters
-                .filter((one) => one.startDate !== null)
-                .map((one) => ({
-                  value: one.id,
-                  label: t('journal.page.quarterNumber', { number: one.number }),
-                }))}
-              onChange={(event) => {
-                go({ quarter: event.target.value, month: undefined, date: undefined }, 'push');
-              }}
-            />
-            <SelectField
-              label={t('journal.page.month')}
-              value={month ?? ''}
-              options={[
-                { value: '', label: t('journal.page.wholeQuarter') },
-                ...data.months.map((one) => ({ value: one, label: monthName(one, language) })),
-              ]}
-              onChange={(event) => {
-                go({ month: event.target.value === '' ? undefined : event.target.value });
-              }}
-            />
-          </div>
-          <div className="flex flex-wrap items-end gap-4">
-            <div className="w-64">
-              <Field
-                label={t('journal.page.search')}
-                type="search"
-                value={search.q ?? ''}
-                onChange={(event) => {
-                  go({ q: event.target.value === '' ? undefined : event.target.value });
-                }}
-              />
-            </div>
-            <div className="w-56">
+          {/* On a phone the selectors fold away, so the lesson is near the top (owner, 20 November
+              2026: the phone journal was "too bad"). */}
+          <FoldOnPhone
+            folded={narrow}
+            label={t('journal.lessonMode.choose')}
+            // A search or a filter in use is not folded out of sight.
+            startOpen={search.q !== undefined || filter !== 'all'}
+          >
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
               <SelectField
-                label={t('journal.page.filter')}
-                value={filter}
-                options={JOURNAL_FILTERS.map((one) => ({
-                  value: one,
-                  label: t(`journal.page.filters.${one}`),
-                }))}
+                label={
+                  data.journal.unit.kind === 'class'
+                    ? t('journal.page.class')
+                    : t('journal.page.group')
+                }
+                value={data.journal.id}
+                options={data.others
+                  .filter(
+                    (one) =>
+                      one.subject.id === data.journal.subject.id &&
+                      one.unit.kind === data.journal.unit.kind,
+                  )
+                  .map((one) => ({ value: one.id, label: one.unit.name }))}
                 onChange={(event) => {
-                  const value = event.target.value as JournalFilter;
-                  go({ filter: value === 'all' ? undefined : value });
+                  void navigate({
+                    to: '/journal/$journalId',
+                    params: { journalId: event.target.value },
+                  });
+                }}
+              />
+              <SelectField
+                label={t('journal.page.subject')}
+                value={data.journal.id}
+                options={data.others
+                  .filter((one) => one.unit.id === data.journal.unit.id)
+                  .map((one) => ({ value: one.id, label: nameOf(one.subject.names, language) }))}
+                onChange={(event) => {
+                  void navigate({
+                    to: '/journal/$journalId',
+                    params: { journalId: event.target.value },
+                  });
+                }}
+              />
+              <SelectField
+                label={t('journal.page.year')}
+                value={data.journal.year.id}
+                options={data.years.map((year) => ({ value: year.id, label: yearText(year) }))}
+                onChange={(event) => {
+                  // A journal belongs to one year: another year opens its Journals page.
+                  if (event.target.value !== data.journal.year.id) {
+                    void navigate({ to: '/journal', search: { year: event.target.value } });
+                  }
+                }}
+              />
+              <SelectField
+                label={t('journal.page.quarter')}
+                value={data.quarter.id}
+                options={data.quarters
+                  .filter((one) => one.startDate !== null)
+                  .map((one) => ({
+                    value: one.id,
+                    label: t('journal.page.quarterNumber', { number: one.number }),
+                  }))}
+                onChange={(event) => {
+                  go({ quarter: event.target.value, month: undefined, date: undefined }, 'push');
+                }}
+              />
+              <SelectField
+                label={t('journal.page.month')}
+                value={month ?? ''}
+                options={[
+                  { value: '', label: t('journal.page.wholeQuarter') },
+                  ...data.months.map((one) => ({ value: one, label: monthName(one, language) })),
+                ]}
+                onChange={(event) => {
+                  go({ month: event.target.value === '' ? undefined : event.target.value });
                 }}
               />
             </div>
-            {!narrow && (
-              <Segmented
-                label={t('journal.page.mode')}
-                options={[
-                  { value: 'grid', label: t('journal.page.gridMode') },
-                  { value: 'lesson', label: t('journal.page.lessonMode') },
-                ]}
-                value={lessonMode ? 'lesson' : 'grid'}
-                onChange={(value) => {
-                  go({ mode: value === 'lesson' ? 'lesson' : undefined });
-                }}
-              />
-            )}
-            {undoButton}
-            <Link to="/journal" search={{ year: data.journal.year.id }} className="text-link">
-              {t('journal.page.otherYear', { year: yearText(data.journal.year) })}
-            </Link>
-          </div>
+            <div className="flex flex-wrap items-end gap-4">
+              <div className="w-64">
+                <Field
+                  label={t('journal.page.search')}
+                  type="search"
+                  value={search.q ?? ''}
+                  onChange={(event) => {
+                    go({ q: event.target.value === '' ? undefined : event.target.value });
+                  }}
+                />
+              </div>
+              <div className="w-56">
+                <SelectField
+                  label={t('journal.page.filter')}
+                  value={filter}
+                  options={JOURNAL_FILTERS.map((one) => ({
+                    value: one,
+                    label: t(`journal.page.filters.${one}`),
+                  }))}
+                  onChange={(event) => {
+                    const value = event.target.value as JournalFilter;
+                    go({ filter: value === 'all' ? undefined : value });
+                  }}
+                />
+              </div>
+              {!narrow && (
+                <Segmented
+                  label={t('journal.page.mode')}
+                  options={[
+                    { value: 'grid', label: t('journal.page.gridMode') },
+                    { value: 'lesson', label: t('journal.page.lessonMode') },
+                  ]}
+                  value={lessonMode ? 'lesson' : 'grid'}
+                  onChange={(value) => {
+                    go({ mode: value === 'lesson' ? 'lesson' : undefined });
+                  }}
+                />
+              )}
+              {!narrow && undoButton}
+              <Link to="/journal" search={{ year: data.journal.year.id }} className="text-link">
+                {t('journal.page.otherYear', { year: yearText(data.journal.year) })}
+              </Link>
+            </div>
+          </FoldOnPhone>
+          {narrow && undoButton}
         </div>
         <EditPeriodPanel
           grid={read}
@@ -518,6 +540,8 @@ function JournalLoaded({
           </div>
         ) : lessonMode ? (
           <LessonMode
+            // Another date asked for starts lesson mode again at its lesson.
+            key={nearest?.id ?? 'none'}
             grid={data}
             lesson={nearest}
             students={[...members, ...exempt, ...folded]}
@@ -645,6 +669,9 @@ function useFullScreen(full: boolean, setFull: (full: boolean) => void): void {
 /** The words of each typed mark (`07`, Entering data). */
 const MARK_NAMES = { 0: 'absent', 1: 'present', 2: 'late', 3: 'skipped' } as const;
 
+/** The column lesson mode enters: attendance, or one work by its key. */
+const ATTENDANCE = 'a';
+
 /**
  * Lesson mode (`07`, Lesson mode: "On a phone, one lesson is shown at a time
  * as a list of students"; decision 12): the lesson of the date asked, or the
@@ -653,10 +680,17 @@ const MARK_NAMES = { 0: 'absent', 1: 'present', 2: 'late', 3: 'skipped' } as con
  * (`07`, Lesson mode: "attendance, then each classwork, then each homework"): a field per work
  * that saves as the grid does, and a button per work for its total (found missing on the test
  * site, 5 November 2026).
+ *
+ * Rebuilt for the phone (owner, 20 November 2026: the rows with works scrolled sideways and a
+ * number could not be typed): the lessons before and after are a tap away, and a lesson with
+ * works is entered one column at a time, in the spec's order: attendance, then each classwork,
+ * then each homework. Each student is one row with the large buttons or a large number field, and
+ * "Next: …" at the end of the list goes on to the next column. A lesson the reader only reads
+ * shows every value of a student on its row.
  */
 function LessonMode({
   grid,
-  lesson,
+  lesson: first,
   students,
   entry,
   works,
@@ -670,8 +704,13 @@ function LessonMode({
   onRefusedNumber: (total: number) => void;
 }) {
   const { t, i18n } = useTranslation();
+  const language = i18n.language;
   const workName = useWorkName();
   const workLabel = useWorkLabel();
+  // The lesson shown: the nearest to the date at first, then the one the arrows move to.
+  const [lessonId, setLessonId] = useState(first?.id ?? null);
+  const [column, setColumn] = useState(ATTENDANCE);
+  const lesson = grid.lessons.find((one) => one.id === lessonId) ?? first;
   if (lesson === null) {
     return (
       <div className={PANEL}>
@@ -680,21 +719,165 @@ function LessonMode({
     );
   }
   const index = grid.lessons.indexOf(lesson);
+  const before = grid.lessons[index - 1];
+  const after = grid.lessons[index + 1];
+  const moveTo = (other: JournalLesson) => {
+    setLessonId(other.id);
+    setColumn(ATTENDANCE);
+  };
+  const today = lesson.date === grid.today;
+  // A lesson still to come: its closed cells wait empty, as in the grid (design review J6).
+  const ahead = lesson.date > grid.today || (today && !lesson.held && lesson.cancelled === null);
+  const closedText = ahead ? (
+    '—'
+  ) : (
+    <span className="text-sm text-muted-foreground">{t('journal.grid.closed')}</span>
+  );
+  const opened = students.some((student) => student.cells[index]?.open === true);
+  // One column at a time where the reader enters works; otherwise every value on the row.
+  const columns =
+    lesson.works.length > 0 && (lesson.canEnterWorks || opened)
+      ? [ATTENDANCE, ...lesson.works.map((work) => workKey(work))]
+      : null;
+  const shown = columns === null || !columns.includes(column) ? ATTENDANCE : column;
+  const workAt = lesson.works.findIndex((work) => workKey(work) === shown);
+  const work = columns === null ? undefined : lesson.works[workAt];
+  const nextColumn = columns === null ? undefined : columns[columns.indexOf(shown) + 1];
+  const nextWork = lesson.works.find((one) => workKey(one) === nextColumn);
+  const columnName = (one: JournalLesson['works'][number]) => workName(one);
+  const totalText = (one: JournalLesson['works'][number]) =>
+    one.total === null
+      ? t('journal.lessonMode.setTotal', { work: columnName(one) })
+      : t('journal.lessonMode.total', { work: columnName(one), total: one.total });
+  const chooseColumn = (next: string) => {
+    setColumn(next);
+    // The new column starts at the top of the list.
+    const top = document.querySelector('[data-lesson-mode-list]');
+    if (top !== null && typeof top.scrollIntoView === 'function') {
+      top.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    }
+  };
+  const status = lesson.status === null ? null : t(`journal.lessonStatus.${lesson.status}`);
+
+  const markButtons = (student: JournalStudent) => {
+    const cell = student.cells[index];
+    if (cell === undefined) return null;
+    // A cell being saved waits for its answer; the other students stay free (owner, 20 November
+    // 2026: marks tapped one after another were lost while the first was saved).
+    // ... and the read of the journal after it, so a second tap carries the new version.
+    const waiting = entry.bulk || entry.waiting(lesson.id, student.id);
+    return (
+      <span
+        role="group"
+        aria-label={t('journal.grid.attendance')}
+        className="grid grid-cols-4 gap-2 sm:flex sm:gap-1"
+      >
+        {ATTENDANCE_MARKS.map((mark) => (
+          <Button
+            key={mark}
+            variant={cell.mark === mark ? 'default' : 'secondary'}
+            className="min-w-11 text-base"
+            aria-pressed={cell.mark === mark}
+            aria-label={t('journal.entry.markButton', {
+              mark,
+              name: t(`journal.marks.${MARK_NAMES[mark]}`),
+            })}
+            title={t(`journal.marks.${MARK_NAMES[mark]}`)}
+            disabled={waiting}
+            onClick={() => {
+              entry.mark(lesson.id, student, cell.mark === mark ? null : mark);
+            }}
+          >
+            {mark}
+          </Button>
+        ))}
+      </span>
+    );
+  };
+
+  /** The mark of a student as text: the digit in its tint, "Closed", or a dash. */
+  const markText = (student: JournalStudent) => {
+    const cell = student.cells[index];
+    if (cell === undefined || cell.closed) return closedText;
+    if (cell.exempt !== null) {
+      return (
+        <span
+          className="rounded-sm bg-muted px-1.5 text-muted-foreground"
+          title={t(`journal.grid.exemptCell.${cell.exempt}`)}
+        >
+          {cell.exempt === 'full' ? 5 : 4}
+        </span>
+      );
+    }
+    return cell.mark === null ? (
+      '—'
+    ) : (
+      <span className={cn('rounded-sm px-1.5', MARK_TINT[cell.mark])}>{cell.mark}</span>
+    );
+  };
+
   return (
-    <section className={`${PANEL} grid gap-4`} data-lesson-mode={lesson.id}>
-      <h2 className={SECTION_TITLE}>
-        {t('journal.page.lessonOf', {
-          date: schoolDateText(lesson.date, i18n.language),
-          time: timeText(lesson.start),
-        })}
-        {lesson.cancelled !== null && (
-          <span className="ml-2 text-muted-foreground">
-            {lesson.cancelled.reason === null
-              ? t('journal.grid.cancelled')
-              : t('journal.grid.cancelledReason', { reason: lesson.cancelled.reason })}
-          </span>
-        )}
-      </h2>
+    <section
+      className={`${PANEL} grid gap-4 max-sm:px-4`}
+      data-lesson-mode={lesson.id}
+      aria-labelledby={`lesson-mode-${lesson.id}`}
+    >
+      {/* The lesson, with the lessons before and after it a tap away. */}
+      <div className="flex items-center gap-2">
+        <Button
+          variant="secondary"
+          size="icon"
+          aria-label={t('journal.lessonMode.previousLesson')}
+          title={t('journal.lessonMode.previousLesson')}
+          disabled={before === undefined}
+          onClick={() => {
+            if (before !== undefined) moveTo(before);
+          }}
+        >
+          <ChevronLeftIcon aria-hidden="true" />
+        </Button>
+        <div
+          className={cn(
+            'grid min-w-0 flex-1 gap-0.5 rounded-lg px-3 py-1.5 text-center',
+            today && 'bg-today',
+          )}
+          aria-current={today ? 'date' : undefined}
+          data-lesson-mode-today={today ? 'true' : undefined}
+        >
+          <h2 id={`lesson-mode-${lesson.id}`} className={SECTION_TITLE}>
+            {today ? t('journal.grid.today') : weekdayName(language, weekdayOf(lesson.date))},{' '}
+            {schoolDateText(lesson.date, language, false)}
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            {[
+              lesson.slot === null ? null : t('journal.grid.slot', { number: lesson.slot }),
+              `${timeText(lesson.start)}–${timeText(lesson.end)}`,
+              status,
+            ]
+              .filter((part) => part !== null)
+              .join(' · ')}
+          </p>
+          {lesson.cancelled !== null && (
+            <p className="text-sm font-semibold text-muted-foreground">
+              {lesson.cancelled.reason === null
+                ? t('journal.grid.cancelled')
+                : t('journal.grid.cancelledReason', { reason: lesson.cancelled.reason })}
+            </p>
+          )}
+        </div>
+        <Button
+          variant="secondary"
+          size="icon"
+          aria-label={t('journal.lessonMode.nextLesson')}
+          title={t('journal.lessonMode.nextLesson')}
+          disabled={after === undefined}
+          onClick={() => {
+            if (after !== undefined) moveTo(after);
+          }}
+        >
+          <ChevronRightIcon aria-hidden="true" />
+        </Button>
+      </div>
       {/* Task 8.8 (`09`, In the journal): "In lesson mode on a phone, topic, classwork and
           homework are at the top of the screen". */}
       <div className="grid gap-1 text-sm" data-lesson-plan-top="true">
@@ -702,35 +885,35 @@ function LessonMode({
           <span className="font-semibold">{t('journal.card.topic')}</span>{' '}
           {lesson.topic === null || lesson.topic === '' ? t('journal.works.noPlan') : lesson.topic}
         </p>
-        {lesson.works.some((work) => work.kind === 'classwork') && (
+        {lesson.works.some((one) => one.kind === 'classwork') && (
           <p>
             <span className="font-semibold">{t('journal.card.classworks')}</span>{' '}
             {lesson.works
-              .filter((work) => work.kind === 'classwork')
-              .map((work) => (
+              .filter((one) => one.kind === 'classwork')
+              .map((one) => (
                 // Task 10.7: the kind's tag in front of each work listed.
                 <span
-                  key={`${work.kind}:${String(work.position)}:${work.id ?? ''}`}
+                  key={`${one.kind}:${String(one.position)}:${one.id ?? ''}`}
                   className="mr-2 inline-flex items-center gap-1"
                 >
-                  <WorkKindTag kind={work.kind} />
-                  {workName(work)}
+                  <WorkKindTag kind={one.kind} />
+                  {workName(one)}
                 </span>
               ))}
           </p>
         )}
-        {lesson.works.some((work) => work.kind === 'homework') && (
+        {lesson.works.some((one) => one.kind === 'homework') && (
           <p>
             <span className="font-semibold">{t('journal.card.checkedToday')}</span>{' '}
             {lesson.works
-              .filter((work) => work.kind === 'homework')
-              .map((work) => (
+              .filter((one) => one.kind === 'homework')
+              .map((one) => (
                 <span
-                  key={`${work.kind}:${String(work.position)}:${work.id ?? ''}`}
+                  key={`${one.kind}:${String(one.position)}:${one.id ?? ''}`}
                   className="mr-2 inline-flex items-center gap-1"
                 >
-                  <WorkKindTag kind={work.kind} />
-                  {workName(work)}
+                  <WorkKindTag kind={one.kind} />
+                  {workName(one)}
                 </span>
               ))}
           </p>
@@ -749,141 +932,236 @@ function LessonMode({
           </p>
         )}
       </div>
-      {(lesson.canEnter || lesson.canEnterWorks || (lesson.held && !lesson.planItem)) && (
+      {/* Works added by hand when the lesson has no plan item (`edge/journal`). */}
+      {(lesson.canEnterWorks || (lesson.held && !lesson.planItem)) && (
         <div className="flex flex-wrap gap-2">
-          {lesson.canEnter && (
-            <Button
-              disabled={entry.busy}
-              onClick={() => {
-                entry.allPresent(lesson.id);
-              }}
-            >
-              {t('journal.entry.allPresent')}
-            </Button>
-          )}
-          {/* The total of each work, as the "…" of its column in the grid. */}
-          {lesson.canEnterWorks &&
-            lesson.works.map((work) => (
-              <Button
-                key={`${work.kind}:${String(work.position)}:${work.id ?? ''}`}
-                variant="secondary"
-                disabled={works.busy}
-                // Task 10.7: the name says the kind in full in front of the visible words, which it
-                // holds whole (WCAG 2.5.3, label in name); the tag shows the letter.
-                aria-label={workLabel(
-                  work.kind,
-                  work.total === null
-                    ? t('journal.lessonMode.setTotal', { work: workName(work) })
-                    : t('journal.lessonMode.total', { work: workName(work), total: work.total }),
-                )}
-                onClick={() => {
-                  works.openWork(lesson, work);
-                }}
-              >
-                <WorkKindTag kind={work.kind} />
-                {work.total === null
-                  ? t('journal.lessonMode.setTotal', { work: workName(work) })
-                  : t('journal.lessonMode.total', { work: workName(work), total: work.total })}
-              </Button>
-            ))}
-          {/* Works added by hand when the lesson has no plan item (`edge/journal`). */}
-          {(lesson.canEnterWorks || (lesson.held && !lesson.planItem)) && (
-            <Button
-              variant="secondary"
-              disabled={works.busy}
-              onClick={() => {
-                works.openLesson(lesson);
-              }}
-            >
-              {t('journal.works.button')}
-            </Button>
-          )}
+          <Button
+            variant="secondary"
+            disabled={works.busy}
+            onClick={() => {
+              works.openLesson(lesson);
+            }}
+          >
+            {t('journal.works.button')}
+          </Button>
         </div>
       )}
-      <ul className="grid gap-2">
+      {/* One column at a time: attendance, then each classwork, then each homework. */}
+      {columns !== null && (
+        <div
+          role="group"
+          aria-label={t('journal.lessonMode.enter')}
+          className="flex flex-wrap gap-2"
+          data-lesson-mode-columns="true"
+        >
+          {lesson.works.length > 0 &&
+            [ATTENDANCE, ...lesson.works.map((one) => workKey(one))].map((key) => {
+              const one = lesson.works.find((candidate) => workKey(candidate) === key);
+              const chosen = key === shown;
+              return (
+                <Button
+                  key={key}
+                  variant={chosen ? 'default' : 'secondary'}
+                  aria-pressed={chosen}
+                  aria-label={
+                    one === undefined
+                      ? t('journal.grid.attendance')
+                      : workLabel(one.kind, columnName(one))
+                  }
+                  data-lesson-mode-column={key}
+                  onClick={() => {
+                    chooseColumn(key);
+                  }}
+                >
+                  {one === undefined ? (
+                    t('journal.grid.attendance')
+                  ) : (
+                    <>
+                      <WorkKindTag kind={one.kind} />
+                      <span className="max-w-40 truncate">{columnName(one)}</span>
+                    </>
+                  )}
+                </Button>
+              );
+            })}
+        </div>
+      )}
+      {/* What the column needs first: "All present", or the total of the work. */}
+      {work === undefined ? (
+        lesson.canEnter && (
+          <Button
+            className="max-sm:w-full"
+            disabled={entry.busy}
+            onClick={() => {
+              entry.allPresent(lesson.id);
+            }}
+          >
+            {t('journal.entry.allPresent')}
+          </Button>
+        )
+      ) : !lesson.canEnterWorks ? (
+        // Entered through an unlock: the total in view all the same (`07`, The total).
+        <p className="flex items-center gap-1 text-sm font-semibold" data-lesson-mode-total="true">
+          <WorkKindTag kind={work.kind} />
+          {work.total === null
+            ? t('journal.grid.totalUnset')
+            : t('journal.grid.total', { total: work.total })}
+        </p>
+      ) : (
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant={work.total === null ? 'default' : 'secondary'}
+            className="max-sm:w-full"
+            disabled={works.busy}
+            // Task 10.7: the name says the kind in full in front of the visible words, which
+            // it holds whole (WCAG 2.5.3, label in name); the tag shows the letter.
+            aria-label={workLabel(work.kind, totalText(work))}
+            onClick={() => {
+              works.openWork(lesson, work);
+            }}
+          >
+            <WorkKindTag kind={work.kind} />
+            {totalText(work)}
+          </Button>
+        </div>
+      )}
+      <ul className="grid scroll-mt-24" data-lesson-mode-list={shown}>
         {students.map((student) => {
           const cell = student.cells[index];
+          const name = (
+            <span className="min-w-0 font-medium break-words">
+              {student.lastName} {student.firstName}
+            </span>
+          );
+          // A work's column: the student's mark beside the name, the number field at the right.
+          if (work !== undefined) {
+            const total = work.total;
+            const enters =
+              total !== null &&
+              cell !== undefined &&
+              !cell.closed &&
+              (lesson.canEnterWorks || cell.open);
+            return (
+              <li
+                key={student.id}
+                className="flex min-h-14 items-center gap-3 border-b py-2 last:border-b-0"
+                data-student={student.id}
+              >
+                <span className="grid min-w-0 flex-1 gap-0.5">
+                  {name}
+                  <span
+                    className="text-xs text-muted-foreground"
+                    aria-label={t('journal.grid.attendance')}
+                  >
+                    {t('journal.grid.attendanceShort')} {markText(student)}
+                  </span>
+                </span>
+                {enters ? (
+                  <LessonModeScore
+                    // A field of its own for each work: what is typed stays with its work.
+                    key={workKey(work)}
+                    lesson={lesson}
+                    index={index}
+                    work={{ ...work, total }}
+                    workIndex={workAt}
+                    student={student}
+                    name={columnName(work)}
+                    works={works}
+                    onRefusedNumber={onRefusedNumber}
+                  />
+                ) : (
+                  <span className="text-lg" aria-label={workLabel(work.kind, columnName(work))}>
+                    {cell === undefined || cell.closed
+                      ? closedText
+                      : (cell.works[workAt]?.score ?? '—')}
+                  </span>
+                )}
+              </li>
+            );
+          }
+          // Attendance, with every value of the student on a lesson the reader only reads.
+          const marks = lesson.canEnter && cell !== undefined && !cell.closed;
           return (
             <li
               key={student.id}
-              className="flex min-h-11 flex-wrap items-center justify-between gap-3 border-b py-2"
+              className={cn(
+                'flex min-h-14 flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b py-2 last:border-b-0',
+                marks && 'max-sm:grid max-sm:justify-stretch',
+              )}
               data-student={student.id}
             >
-              <span>
-                {student.lastName} {student.firstName}
-              </span>
-              <span className="flex gap-3 text-lg">
-                {lesson.canEnter && cell !== undefined && !cell.closed ? (
+              {name}
+              <span
+                className={cn('flex flex-wrap items-center gap-3 text-lg', marks && 'max-sm:grid')}
+              >
+                {marks ? (
                   // Large buttons (`07`, Lesson mode): attendance first.
-                  <span
-                    role="group"
-                    aria-label={t('journal.grid.attendance')}
-                    className="flex gap-1"
-                  >
-                    {ATTENDANCE_MARKS.map((mark) => (
-                      <Button
-                        key={mark}
-                        variant={cell.mark === mark ? 'default' : 'secondary'}
-                        className="min-w-11"
-                        aria-pressed={cell.mark === mark}
-                        aria-label={t('journal.entry.markButton', {
-                          mark,
-                          name: t(`journal.marks.${MARK_NAMES[mark]}`),
-                        })}
-                        title={t(`journal.marks.${MARK_NAMES[mark]}`)}
-                        disabled={entry.busy}
-                        onClick={() => {
-                          entry.mark(lesson.id, student, cell.mark === mark ? null : mark);
-                        }}
-                      >
-                        {mark}
-                      </Button>
-                    ))}
-                  </span>
+                  markButtons(student)
                 ) : (
                   <span aria-label={t('journal.grid.attendance')}>
-                    {cell === undefined || cell.closed ? (
-                      <span className="text-muted-foreground">{t('journal.grid.closed')}</span>
-                    ) : (
-                      (cell.mark ?? '—')
-                    )}
+                    {cell === undefined || cell.closed ? closedText : (cell.mark ?? '—')}
                   </span>
                 )}
-                {lesson.works.map((work, workIndex) => {
-                  const total = work.total;
-                  // As the grid: a lesson the reader enters, or a cell an unlock opened.
-                  return total !== null &&
-                    cell !== undefined &&
-                    !cell.closed &&
-                    (lesson.canEnterWorks || cell.open) ? (
-                    <LessonModeScore
-                      key={`${work.kind}:${String(work.position)}:${work.id ?? ''}`}
-                      lesson={lesson}
-                      index={index}
-                      work={{ ...work, total }}
-                      workIndex={workIndex}
-                      student={student}
-                      name={workName(work)}
-                      works={works}
-                      onRefusedNumber={onRefusedNumber}
-                    />
-                  ) : (
+                {columns === null &&
+                  lesson.works.map((one, workIndex) => (
                     <span
-                      key={`${work.kind}:${String(work.position)}:${work.id ?? ''}`}
+                      key={`${one.kind}:${String(one.position)}:${one.id ?? ''}`}
                       className="inline-flex items-center gap-1"
-                      aria-label={workLabel(work.kind, workName(work))}
+                      aria-label={workLabel(one.kind, columnName(one))}
                     >
-                      <WorkKindTag kind={work.kind} />
+                      <WorkKindTag kind={one.kind} />
                       {cell?.works[workIndex]?.score ?? '—'}
                     </span>
-                  );
-                })}
+                  ))}
               </span>
             </li>
           );
         })}
       </ul>
+      {/* On to the next column at the end of the list. */}
+      {nextWork !== undefined && (
+        <Button
+          variant="secondary"
+          className="justify-self-end max-sm:w-full"
+          data-lesson-mode-next="true"
+          onClick={() => {
+            chooseColumn(workKey(nextWork));
+          }}
+        >
+          {t('journal.lessonMode.next', { column: columnName(nextWork) })}
+          <ChevronRightIcon aria-hidden="true" />
+        </Button>
+      )}
     </section>
+  );
+}
+
+/** The selectors of the journal: as they are on a wider screen, folded under a summary on a phone. */
+function FoldOnPhone({
+  folded,
+  label,
+  startOpen,
+  children,
+}: {
+  folded: boolean;
+  label: string;
+  startOpen: boolean;
+  children: ReactNode;
+}) {
+  // Open at first while a search or filter is in use; the person folds it as they like.
+  const [open] = useState(startOpen);
+  if (!folded) return <>{children}</>;
+  return (
+    <details className="group" data-journal-choose="true" open={open}>
+      <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 font-semibold [&::-webkit-details-marker]:hidden">
+        <ExpandMoreIcon
+          className="size-5 transition-transform group-open:rotate-180"
+          aria-hidden="true"
+        />
+        {label}
+      </summary>
+      <div className="mt-3 grid gap-4">{children}</div>
+    </details>
   );
 }
 

@@ -3844,6 +3844,16 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       '6': 'суббота',
       '7': 'воскресенье',
     },
+    // The short weekday of a narrow journal column ("Du, 16.11"; owner, 20 November 2026).
+    weekdaysShort: {
+      '1': 'Пн',
+      '2': 'Вт',
+      '3': 'Ср',
+      '4': 'Чт',
+      '5': 'Пт',
+      '6': 'Сб',
+      '7': 'Вс',
+    },
   },
   period: {
     // Task 10.5: the demo time of the test environment, beside the period.
@@ -7687,7 +7697,6 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       },
       otherYear: 'Журналы {{year}}',
       noLessons: 'В этой четверти пока нет уроков.',
-      lessonOf: 'Урок {{date}}, {{time}}',
       journalColumn: 'Журнал',
     },
     // Task 8.6: результаты при выбытии в карточке ученика (edge/calculation).
@@ -7699,6 +7708,8 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       lastDay: 'по {{date}}',
     },
     grid: {
+      // The lesson of today in the grid (owner, 20 November 2026).
+      today: 'Сегодня',
       lessonNumber: '№ {{number}}',
       notDeliveredShort: 'не пройдена',
       // Task 8.6: результаты следуют за учеником (07, Transfers; edge/calculation).
@@ -7923,8 +7934,14 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       line: '{{text}} · {{who}} · {{when}}',
     },
     lessonMode: {
+      // Lesson mode on a phone, one column at a time (owner, 20 November 2026).
+      enter: 'Что вводить',
+      next: 'Далее: {{column}}',
+      previousLesson: 'Предыдущий урок',
+      nextLesson: 'Следующий урок',
+      // The selectors of the journal, folded on a phone.
+      choose: 'Класс, предмет и период',
       score: '{{work}}, {{name}}',
-      outOf: 'из {{total}}',
       total: '{{work}}: всего {{total}}',
       setTotal: '{{work}}: задайте «всего»',
     },

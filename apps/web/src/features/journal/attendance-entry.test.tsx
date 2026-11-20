@@ -327,3 +327,154 @@ describe('attendance entry in lesson mode', () => {
     expect(screen.queryByRole('button', { name: en.journal.entry.allPresent })).toBeNull();
   });
 });
+
+// Owner, 20 November 2026: on a phone, marks tapped one after another were lost while the first
+// was saved, as every button waited for it.
+describe('attendance entry in lesson mode while a mark is saved', () => {
+  it("keeps the other students' buttons free and only the saved student's waiting", async () => {
+    const calls = fakeApi({
+      'GET /api/auth/session': () =>
+        json(sessionOf({ assignments: [{ role: 'teacher', branchId: NORTH.id }] })),
+      [`GET /api/journal/journals/${JOURNAL}`]: () => json(GRID),
+      // The first save never answers: it stays on its way.
+      [`POST /api/journal/lessons/${LESSON}/attendance`]: () => new Promise<Response>(() => {}),
+    });
+    renderApp(`/journal/${JOURNAL}?mode=lesson&date=2026-10-27`);
+    const rowOf = (id: string) =>
+      waitFor(() => {
+        const found = document.querySelector<HTMLElement>(`[data-student="${id}"]`);
+        expect(found).not.toBeNull();
+        return found as HTMLElement;
+      });
+    const first = await rowOf(uid(101));
+    fireEvent.click(within(first).getByRole('button', { name: `0: ${en.journal.marks.absent}` }));
+    await waitFor(() => {
+      expect(
+        within(first)
+          .getAllByRole('button')
+          .every((one) => (one as HTMLButtonElement).disabled),
+      ).toBe(true);
+    });
+    const second = await rowOf(uid(102));
+    expect(
+      within(second)
+        .getAllByRole('button')
+        .every((one) => !(one as HTMLButtonElement).disabled),
+    ).toBe(true);
+    // The second student's mark goes at once, on that student's own version.
+    fireEvent.click(within(second).getByRole('button', { name: `1: ${en.journal.marks.present}` }));
+    await waitFor(() => {
+      expect(
+        posts(calls, `POST /api/journal/lessons/${LESSON}/attendance`).map((one) => one.body),
+      ).toEqual([
+        { saves: [{ studentId: uid(101), mark: 0, version: null }] },
+        { saves: [{ studentId: uid(102), mark: 1, version: 1 }] },
+      ]);
+    });
+  });
+
+  it('keeps a student waiting until the journal is read again after the save', async () => {
+    let reads = 0;
+    const calls = fakeApi({
+      'GET /api/auth/session': () =>
+        json(sessionOf({ assignments: [{ role: 'teacher', branchId: NORTH.id }] })),
+      // The first read answers; the read after the save stays on its way.
+      [`GET /api/journal/journals/${JOURNAL}`]: () => {
+        reads += 1;
+        return reads === 1 ? json(GRID) : new Promise<Response>(() => {});
+      },
+      [`POST /api/journal/lessons/${LESSON}/attendance`]: () =>
+        json({
+          cells: [{ studentId: uid(101), mark: 0, version: 1 }],
+          cleared: [],
+          presentEarlier: [],
+        }),
+    });
+    renderApp(`/journal/${JOURNAL}?mode=lesson&date=2026-10-27`);
+    const first = await waitFor(() => {
+      const found = document.querySelector<HTMLElement>(`[data-student="${uid(101)}"]`);
+      expect(found).not.toBeNull();
+      return found as HTMLElement;
+    });
+    fireEvent.click(within(first).getByRole('button', { name: `0: ${en.journal.marks.absent}` }));
+    await waitFor(() => {
+      expect(reads).toBe(2);
+    });
+    // Saved, but the page still holds the old version: a second tap would be refused as stale.
+    expect(
+      within(first)
+        .getAllByRole('button')
+        .every((one) => (one as HTMLButtonElement).disabled),
+    ).toBe(true);
+    expect(posts(calls, `POST /api/journal/lessons/${LESSON}/attendance`)).toHaveLength(1);
+  });
+
+  it('asks "keep or clear" for each student in turn when two marks are refused together', async () => {
+    const asked = (body: unknown) =>
+      (body as { saves: { numbers?: string }[] }).saves[0]?.numbers === undefined;
+    const calls = fakeApi({
+      'GET /api/auth/session': () =>
+        json(sessionOf({ assignments: [{ role: 'teacher', branchId: NORTH.id }] })),
+      [`GET /api/journal/journals/${JOURNAL}`]: () => json(GRID),
+      [`POST /api/journal/lessons/${LESSON}/attendance`]: (body) => {
+        const save = (body as { saves: { studentId: string; numbers?: string }[] }).saves[0];
+        return asked(body)
+          ? refusal('numbers_keep_or_clear', 409)
+          : json({
+              cells: [{ studentId: save?.studentId ?? '', mark: 0, version: 2 }],
+              cleared: [],
+              presentEarlier: [],
+            });
+      },
+    });
+    renderApp(`/journal/${JOURNAL}?mode=lesson&date=2026-10-27`);
+    const row = (id: string) =>
+      waitFor(() => {
+        const found = document.querySelector<HTMLElement>(`[data-student="${id}"]`);
+        expect(found).not.toBeNull();
+        return found as HTMLElement;
+      });
+    // Both tapped one after the other, before either answer arrives.
+    const absent = `0: ${en.journal.marks.absent}`;
+    const first = within(await row(uid(101))).getByRole('button', { name: absent });
+    const second = within(await row(uid(102))).getByRole('button', { name: absent });
+    fireEvent.click(first);
+    fireEvent.click(second);
+    const keepText = (name: string) => en.journal.works.keepText.replace('{{names}}', name);
+    // The first question stands until it is answered; the second waits behind it.
+    expect(await screen.findByText(keepText('Zokirov Ali'))).not.toBeNull();
+    await waitFor(() => {
+      expect(posts(calls, `POST /api/journal/lessons/${LESSON}/attendance`)).toHaveLength(2);
+    });
+    expect(screen.queryByText(keepText('Abdullayev Ali'))).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: en.journal.works.clear }));
+    expect(await screen.findByText(keepText('Abdullayev Ali'))).not.toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: en.journal.works.keep }));
+    await waitFor(() => {
+      const sent = posts(calls, `POST /api/journal/lessons/${LESSON}/attendance`)
+        .map((one) => one.body as { saves: { studentId: string; numbers?: string }[] })
+        .filter((one) => one.saves[0]?.numbers !== undefined)
+        .map((one) => [one.saves[0]?.studentId, one.saves[0]?.numbers]);
+      expect(sent).toEqual([
+        [uid(101), 'clear'],
+        [uid(102), 'keep'],
+      ]);
+    });
+  });
+
+  it('makes every button wait while "All present" is on its way', async () => {
+    fakeApi({
+      'GET /api/auth/session': () =>
+        json(sessionOf({ assignments: [{ role: 'teacher', branchId: NORTH.id }] })),
+      [`GET /api/journal/journals/${JOURNAL}`]: () => json(GRID),
+      [`POST /api/journal/lessons/${LESSON}/all-present`]: () => new Promise<Response>(() => {}),
+    });
+    renderApp(`/journal/${JOURNAL}?mode=lesson&date=2026-10-27`);
+    fireEvent.click(await screen.findByRole('button', { name: en.journal.entry.allPresent }));
+    await waitFor(() => {
+      const buttons = [...document.querySelectorAll<HTMLButtonElement>('[data-student] button')];
+      expect(buttons.length).toBe(8);
+      expect(buttons.every((one) => one.disabled)).toBe(true);
+    });
+  });
+});

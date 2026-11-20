@@ -85,6 +85,8 @@ export interface WorksEntry {
   /** Where each number typed in this visit stands, for its sign (task 8.3a). */
   stateOf: (lessonId: string, studentId: string, work: JournalWork) => SaveState | undefined;
   busy: boolean;
+  /** Whether a number waits for its save and the journal read after it (lesson mode). */
+  waiting: (lessonId: string, studentId: string, work: JournalWork) => boolean;
 }
 
 /** A typed number on its way: the key is made once and sent again on a retry. */
@@ -142,6 +144,9 @@ export function useWorksEntry(
   // Task 8.3a: the sign of each typed number, the retry of one with no answer, both values.
   const saves = useSaveStates();
   const [stale, setStale] = useState<{ input: TypedNumber; cell: StaleCell } | null>(null);
+  // The numbers whose save and the read after it are on their way: a second number for the
+  // same cell sent before the read lands would carry the old version.
+  const [inFlight, setInFlight] = useState<ReadonlySet<string>>(new Set());
   const signKey = (lessonId: string, studentId: string, cell: string) =>
     `${lessonId}/${studentId}/${cell}`;
 
@@ -173,6 +178,15 @@ export function useWorksEntry(
         value: input.score,
       });
       saves.set(signKey(input.lessonId, input.studentId, input.cell), 'saving');
+      setInFlight((now) => new Set(now).add(signKey(input.lessonId, input.studentId, input.cell)));
+    },
+    // After `onSuccess` and its read of the journal, or after a failure.
+    onSettled: (_answer, _error, input) => {
+      setInFlight((now) => {
+        const next = new Set(now);
+        next.delete(signKey(input.lessonId, input.studentId, input.cell));
+        return next;
+      });
     },
     onSuccess: async (answer, input) => {
       const key = signKey(input.lessonId, input.studentId, input.cell);
@@ -297,8 +311,10 @@ export function useWorksEntry(
         setWorkOpen({ lessonId: lesson.id, key: workKey(work) });
       },
       busy: scoring || changing,
+      waiting: (lessonId, studentId, work) =>
+        inFlight.has(signKey(lessonId, studentId, workKey(work))),
     }),
-    [grid.lessons, saveScore, scoring, changing, states],
+    [grid.lessons, saveScore, scoring, changing, states, inFlight],
   );
 
   const lesson = grid.lessons.find((one) => one.id === (workOpen?.lessonId ?? lessonOpen));

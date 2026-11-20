@@ -1,7 +1,7 @@
 import type { AttendanceMark, JournalGrid, JournalStudent } from '@sodiq/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ApiFailure } from '@/api/failure';
 import { useConfirm } from '@/components/confirm-dialog';
@@ -72,6 +72,17 @@ export interface AttendanceEntry {
   stateOf: (lessonId: string, studentId: string) => SaveState | undefined;
   /** A save or "all present" is on its way. */
   busy: boolean;
+  /**
+   * "All present" or "copy attendance" is on its way: every cell of the lesson waits. A single
+   * mark leaves the other students' buttons free, so marks tapped one after another on a phone
+   * are not lost while the first is saved (owner, 20 November 2026).
+   */
+  bulk: boolean;
+  /**
+   * Whether a student's cell waits for its save and the journal read after it: a second mark
+   * sent before the read lands would carry the old version and be refused as stale.
+   */
+  waiting: (lessonId: string, studentId: string) => boolean;
 }
 
 interface Notice {
@@ -106,6 +117,11 @@ export function useAttendanceEntry(
   const confirm = useConfirm();
   const saves = useSaveStates();
   const [stale, setStale] = useState<{ input: TypedMark; cell: StaleCell } | null>(null);
+  // The cells whose save and the read after it are on their way (lesson mode waits on them).
+  const [inFlight, setInFlight] = useState<ReadonlySet<string>>(new Set());
+  // One "keep or clear" question at a time: marks saved at once each wait for the question
+  // before them to be answered (a new question would answer the open one "keep" unseen).
+  const questions = useRef<Promise<unknown>>(Promise.resolve());
   const [notice, setNotice] = useState<Notice | null>(null);
   const [failure, setFailure] = useState<unknown>(null);
   const [history, setHistory] = useState<{ lessonId: string; student: JournalStudent } | null>(
@@ -143,13 +159,17 @@ export function useAttendanceEntry(
         // edge/journal: "Changing present to absent with numbers asks 'keep or clear', keeping by
         // default": the button that goes on clears, the one that does not keeps.
         if (!(error instanceof ApiFailure) || error.code !== 'numbers_keep_or_clear') throw error;
-        const clear = await confirm({
-          title: t('journal.works.keepTitle'),
-          text: t('journal.works.keepText', { names: nameOf(input.studentId) }),
-          action: t('journal.works.clear'),
-          cancel: t('journal.works.keep'),
-          destructive: true,
-        });
+        const asked = questions.current.then(() =>
+          confirm({
+            title: t('journal.works.keepTitle'),
+            text: t('journal.works.keepText', { names: nameOf(input.studentId) }),
+            action: t('journal.works.clear'),
+            cancel: t('journal.works.keep'),
+            destructive: true,
+          }),
+        );
+        questions.current = asked.catch(() => undefined);
+        const clear = await asked;
         input.numbers = clear ? 'clear' : 'keep';
         return send(input.numbers);
       }
@@ -164,6 +184,15 @@ export function useAttendanceEntry(
         value: input.mark,
       });
       saves.set(cellKey(input.lessonId, input.studentId), 'saving');
+      setInFlight((now) => new Set(now).add(cellKey(input.lessonId, input.studentId)));
+    },
+    // After `onSuccess` and its read of the journal, or after a failure.
+    onSettled: (_answer, _error, input) => {
+      setInFlight((now) => {
+        const next = new Set(now);
+        next.delete(cellKey(input.lessonId, input.studentId));
+        return next;
+      });
     },
     onSuccess: async (answer, input) => {
       const key = cellKey(input.lessonId, input.studentId);
@@ -278,8 +307,10 @@ export function useAttendanceEntry(
       },
       stateOf: (lessonId, studentId) => states.get(cellKey(lessonId, studentId)),
       busy: saving || filling || copying,
+      bulk: filling || copying,
+      waiting: (lessonId, studentId) => inFlight.has(cellKey(lessonId, studentId)),
     }),
-    [grid.lessons, saveMark, fillAll, copyMarks, states, saving, filling, copying],
+    [grid.lessons, saveMark, fillAll, copyMarks, states, saving, filling, copying, inFlight],
   );
 
   const notices = (
