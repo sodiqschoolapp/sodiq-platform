@@ -7550,7 +7550,6 @@ export const uz: Texts<'one' | 'other'> = {
       // The selectors of the journal, folded on a phone.
       choose: 'Sinf, fan va davr',
       score: '{{work}}, {{name}}',
-      outOf: '{{total}} dan',
       total: '{{work}}: jami {{total}}',
       setTotal: '{{work}}: jamini belgilang',
     },

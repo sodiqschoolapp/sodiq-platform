@@ -63,17 +63,10 @@ import {
   JournalGridView,
   MARK_TINT,
   hideableColumnsOf,
+  weekdayOf,
 } from './journal-grid';
 import { JOURNAL_FILTERS, type JournalFilter, type JournalSearch } from './journal-search';
 import { yearText } from './journals-page';
-
-type Weekday = Parameters<typeof weekdayName>[1];
-
-/** The weekday of a school date, 1 Monday to 7 Sunday. */
-const weekdayOf = (date: string): Weekday => {
-  const day = new Date(`${date}T00:00:00Z`).getUTCDay();
-  return (day === 0 ? 7 : day) as Weekday;
-};
 
 /** The month name of `YYYY-MM`, from the dates helper. */
 const monthName = (month: string, language: string): string =>
@@ -404,7 +397,12 @@ function JournalLoaded({
           </div>
           {/* On a phone the selectors fold away, so the lesson is near the top (owner, 20 November
               2026: the phone journal was "too bad"). */}
-          <FoldOnPhone folded={narrow} label={t('journal.lessonMode.choose')}>
+          <FoldOnPhone
+            folded={narrow}
+            label={t('journal.lessonMode.choose')}
+            // A search or a filter in use is not folded out of sight.
+            startOpen={search.q !== undefined || filter !== 'all'}
+          >
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
               <SelectField
                 label={
@@ -766,7 +764,8 @@ function LessonMode({
     if (cell === undefined) return null;
     // A cell being saved waits for its answer; the other students stay free (owner, 20 November
     // 2026: marks tapped one after another were lost while the first was saved).
-    const waiting = entry.bulk || entry.stateOf(lesson.id, student.id) === 'saving';
+    // ... and the read of the journal after it, so a second tap carries the new version.
+    const waiting = entry.bulk || entry.waiting(lesson.id, student.id);
     return (
       <span
         role="group"
@@ -777,7 +776,7 @@ function LessonMode({
           <Button
             key={mark}
             variant={cell.mark === mark ? 'default' : 'secondary'}
-            className="min-w-11 text-base max-sm:h-12"
+            className="min-w-11 text-base"
             aria-pressed={cell.mark === mark}
             aria-label={t('journal.entry.markButton', {
               mark,
@@ -988,36 +987,44 @@ function LessonMode({
         </div>
       )}
       {/* What the column needs first: "All present", or the total of the work. */}
-      {work === undefined
-        ? lesson.canEnter && (
-            <Button
-              className="max-sm:w-full"
-              disabled={entry.busy}
-              onClick={() => {
-                entry.allPresent(lesson.id);
-              }}
-            >
-              {t('journal.entry.allPresent')}
-            </Button>
-          )
-        : lesson.canEnterWorks && (
-            <div className="flex flex-wrap items-center gap-2">
-              <Button
-                variant={work.total === null ? 'default' : 'secondary'}
-                className="max-sm:w-full"
-                disabled={works.busy}
-                // Task 10.7: the name says the kind in full in front of the visible words, which
-                // it holds whole (WCAG 2.5.3, label in name); the tag shows the letter.
-                aria-label={workLabel(work.kind, totalText(work))}
-                onClick={() => {
-                  works.openWork(lesson, work);
-                }}
-              >
-                <WorkKindTag kind={work.kind} />
-                {totalText(work)}
-              </Button>
-            </div>
-          )}
+      {work === undefined ? (
+        lesson.canEnter && (
+          <Button
+            className="max-sm:w-full"
+            disabled={entry.busy}
+            onClick={() => {
+              entry.allPresent(lesson.id);
+            }}
+          >
+            {t('journal.entry.allPresent')}
+          </Button>
+        )
+      ) : !lesson.canEnterWorks ? (
+        // Entered through an unlock: the total in view all the same (`07`, The total).
+        <p className="flex items-center gap-1 text-sm font-semibold" data-lesson-mode-total="true">
+          <WorkKindTag kind={work.kind} />
+          {work.total === null
+            ? t('journal.grid.totalUnset')
+            : t('journal.grid.total', { total: work.total })}
+        </p>
+      ) : (
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant={work.total === null ? 'default' : 'secondary'}
+            className="max-sm:w-full"
+            disabled={works.busy}
+            // Task 10.7: the name says the kind in full in front of the visible words, which
+            // it holds whole (WCAG 2.5.3, label in name); the tag shows the letter.
+            aria-label={workLabel(work.kind, totalText(work))}
+            onClick={() => {
+              works.openWork(lesson, work);
+            }}
+          >
+            <WorkKindTag kind={work.kind} />
+            {totalText(work)}
+          </Button>
+        </div>
+      )}
       <ul className="grid scroll-mt-24" data-lesson-mode-list={shown}>
         {students.map((student) => {
           const cell = student.cells[index];
@@ -1051,6 +1058,8 @@ function LessonMode({
                 </span>
                 {enters ? (
                   <LessonModeScore
+                    // A field of its own for each work: what is typed stays with its work.
+                    key={workKey(work)}
                     lesson={lesson}
                     index={index}
                     work={{ ...work, total }}
@@ -1131,15 +1140,19 @@ function LessonMode({
 function FoldOnPhone({
   folded,
   label,
+  startOpen,
   children,
 }: {
   folded: boolean;
   label: string;
+  startOpen: boolean;
   children: ReactNode;
 }) {
+  // Open at first while a search or filter is in use; the person folds it as they like.
+  const [open] = useState(startOpen);
   if (!folded) return <>{children}</>;
   return (
-    <details className="group" data-journal-choose="true">
+    <details className="group" data-journal-choose="true" open={open}>
       <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 font-semibold [&::-webkit-details-marker]:hidden">
         <ExpandMoreIcon
           className="size-5 transition-transform group-open:rotate-180"

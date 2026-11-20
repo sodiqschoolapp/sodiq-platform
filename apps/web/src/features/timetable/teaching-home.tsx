@@ -393,7 +393,8 @@ function TodayCards({
         }
         const lesson = item.at;
         const current = isNow(item, now);
-        const state = marks(lesson).join(' · ');
+        // "As planned" when nothing changed, as on the row of a computer.
+        const state = marks(lesson).join(' · ') || t('timetable.day.asPlanned');
         return (
           <li
             key={item.key}

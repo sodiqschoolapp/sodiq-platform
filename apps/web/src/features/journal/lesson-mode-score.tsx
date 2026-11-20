@@ -75,7 +75,7 @@ export function LessonModeScore({
   return (
     <span className="flex shrink-0 items-center gap-2" data-lesson-mode-work={work.id ?? ''}>
       <input
-        className={cn(FIELD, 'h-12 w-20 text-center text-lg font-semibold max-sm:h-12')}
+        className={cn(FIELD, 'w-20 text-center text-lg font-semibold')}
         inputMode="numeric"
         enterKeyHint="next"
         autoComplete="off"
@@ -85,6 +85,9 @@ export function LessonModeScore({
           name: `${student.lastName} ${student.firstName}`,
         })}
         value={text}
+        // Its own save and the read after it are on their way: a second number would be sent on
+        // the old version. Read only, not switched off, so the focus and keyboard stay.
+        readOnly={works.waiting(lesson.id, student.id, work)}
         aria-invalid={refused && typed !== null ? true : undefined}
         title={
           refused && typed !== null

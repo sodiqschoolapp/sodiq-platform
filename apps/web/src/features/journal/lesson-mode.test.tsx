@@ -71,7 +71,8 @@ const student = (n: number, lastName: string): JournalStudent => ({
   photoId: null,
   folded: false,
   exemptions: [],
-  cells: [cell(null), cell(4)],
+  // In the order of the lessons: 20 October, then 27 October.
+  cells: [cell(4), cell(null)],
   quarter: null,
   months: null,
   comments: [],
@@ -123,7 +124,8 @@ const gridOf = (total: number | null): JournalGrid => ({
   teacher: { id: uid(50), name: 'Karimova Aziza' },
   shape: 'lessons',
   months: ['2026-10'],
-  lessons: [lesson(LESSON, '2026-10-27', true, total), lesson(OLD, '2026-10-20', false, 10)],
+  // In time order, as the API sends them (`journal-grid.query.ts`).
+  lessons: [lesson(OLD, '2026-10-20', false, 10), lesson(LESSON, '2026-10-27', true, total)],
   students: [student(1, 'Zokirov')],
   absences: [],
   reminders: [],
@@ -346,13 +348,123 @@ describe('lesson mode on a phone', () => {
     expect(document.querySelector('[data-lesson-mode-today]')?.getAttribute('aria-current')).toBe(
       'date',
     );
-    const previous = screen.getByRole('button', { name: en.journal.lessonMode.previousLesson });
-    expect((previous as HTMLButtonElement).disabled).toBe(true);
-    fireEvent.click(screen.getByRole('button', { name: en.journal.lessonMode.nextLesson }));
+    // Today's lesson is the last of the fixture: nothing after it.
+    const next = screen.getByRole('button', { name: en.journal.lessonMode.nextLesson });
+    expect((next as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(screen.getByRole('button', { name: en.journal.lessonMode.previousLesson }));
     await waitFor(() => {
       expect(document.querySelector(`[data-lesson-mode="${OLD}"]`)).not.toBeNull();
     });
     expect(heading()).toBe('Tuesday, 20 October');
     expect(document.querySelector('[data-lesson-mode-today]')).toBeNull();
+    expect(
+      screen.getByRole<HTMLButtonElement>('button', {
+        name: en.journal.lessonMode.previousLesson,
+      }).disabled,
+    ).toBe(true);
+  });
+
+  it("keeps the next student's field free while a number is saved, and waits only the saved one", async () => {
+    const grid = { ...gridOf(10), students: [student(1, 'Zokirov'), student(2, 'Yusupov')] };
+    const calls = fakeApi({
+      'GET /api/auth/session': () =>
+        json(sessionOf({ assignments: [{ role: 'teacher', branchId: NORTH.id }] })),
+      [`GET /api/journal/journals/${JOURNAL}`]: () => json(grid),
+      // No save answers: each stays on its way.
+      [SCORES]: () => new Promise<Response>(() => {}),
+    });
+    renderApp(`/journal/${JOURNAL}?mode=lesson&date=2026-10-27`);
+    await rowOf();
+    chooseWork();
+    const first = fieldOf('Zokirov Ali');
+    first.focus();
+    fireEvent.change(first, { target: { value: '7' } });
+    fireEvent.keyDown(first, { key: 'Enter' });
+    await waitFor(() => {
+      expect(calls.filter((call) => call.route === SCORES)).toHaveLength(1);
+    });
+    // The saved one waits (read only, still focusable); the next one is free and takes a number.
+    await waitFor(() => {
+      expect((fieldOf('Zokirov Ali') as HTMLInputElement).readOnly).toBe(true);
+    });
+    const second = fieldOf('Yusupov Ali') as HTMLInputElement;
+    expect(second.disabled).toBe(false);
+    expect(second.readOnly).toBe(false);
+    expect(document.activeElement).toBe(second);
+    fireEvent.change(second, { target: { value: '9' } });
+    fireEvent.keyDown(second, { key: 'Enter' });
+    await waitFor(() => {
+      expect(calls.filter((call) => call.route === SCORES).map((call) => call.body)).toMatchObject([
+        { saves: [{ studentId: uid(101), score: 7 }] },
+        { saves: [{ studentId: uid(102), score: 9 }] },
+      ]);
+    });
+  });
+
+  it('keeps what is typed with its work when another work is chosen', async () => {
+    const two = (total: number | null): JournalGrid => {
+      const base = gridOf(total);
+      const second: JournalWork = { ...work(10), id: uid(71), position: 2, title: 'Quiz' };
+      return {
+        ...base,
+        lessons: base.lessons.map((one) =>
+          one.id === LESSON ? { ...one, works: [work(10), second] } : one,
+        ),
+        students: base.students.map((one) => ({
+          ...one,
+          cells: one.cells.map((c, at) =>
+            at === 1 ? { ...c, works: [...c.works, ...c.works] } : c,
+          ),
+        })),
+      };
+    };
+    fakeApi({
+      'GET /api/auth/session': () =>
+        json(sessionOf({ assignments: [{ role: 'teacher', branchId: NORTH.id }] })),
+      [`GET /api/journal/journals/${JOURNAL}`]: () => json(two(10)),
+    });
+    renderApp(`/journal/${JOURNAL}?mode=lesson&date=2026-10-27`);
+    await rowOf();
+    chooseWork();
+    const field = within(await rowOf()).getByRole('textbox', { name: fieldName });
+    // A refused number stays in the field of its own work.
+    fireEvent.change(field, { target: { value: '15' } });
+    fireEvent.keyDown(field, { key: 'Enter' });
+    expect((field as HTMLInputElement).value).toBe('15');
+    fireEvent.click(screen.getByRole('button', { name: 'Classwork: Quiz' }));
+    const quiz = within(await rowOf()).getByRole('textbox', {
+      name: en.journal.lessonMode.score
+        .replace('{{work}}', 'Classwork: Quiz')
+        .replace('{{name}}', 'Zokirov Ali'),
+    });
+    expect((quiz as HTMLInputElement).value).toBe('');
+    expect(quiz.getAttribute('aria-invalid')).toBeNull();
+  });
+
+  it('shows the total of a work entered through an unlock', async () => {
+    const base = gridOf(10);
+    const grid: JournalGrid = {
+      ...base,
+      // The lesson is not entered as a whole; an unlock opened the student's cells.
+      lessons: base.lessons.map((one) =>
+        one.id === LESSON ? { ...one, canEnter: false, canEnterWorks: false } : one,
+      ),
+      students: base.students.map((one) => ({
+        ...one,
+        cells: one.cells.map((c, at) => (at === 1 ? { ...c, open: true } : c)),
+      })),
+    };
+    fakeApi({
+      'GET /api/auth/session': () =>
+        json(sessionOf({ assignments: [{ role: 'teacher', branchId: NORTH.id }] })),
+      [`GET /api/journal/journals/${JOURNAL}`]: () => json(grid),
+    });
+    renderApp(`/journal/${JOURNAL}?mode=lesson&date=2026-10-27`);
+    await rowOf();
+    chooseWork();
+    expect(document.querySelector('[data-lesson-mode-total]')?.textContent).toBe(
+      `C${en.journal.grid.total.replace('{{total}}', '10')}`,
+    );
+    expect(within(await rowOf()).getByRole('textbox', { name: fieldName })).not.toBeNull();
   });
 });

@@ -7942,7 +7942,6 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       // The selectors of the journal, folded on a phone.
       choose: 'Класс, предмет и период',
       score: '{{work}}, {{name}}',
-      outOf: 'из {{total}}',
       total: '{{work}}: всего {{total}}',
       setTotal: '{{work}}: задайте «всего»',
     },

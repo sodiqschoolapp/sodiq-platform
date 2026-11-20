@@ -91,7 +91,8 @@ type Weekday = Parameters<typeof weekdayName>[1];
 const dayAfter = (date: string): string =>
   new Date(Date.parse(`${date}T00:00:00Z`) + 86_400_000).toISOString().slice(0, 10);
 
-const weekdayOf = (date: string): Weekday => {
+/** The weekday of a school date, 1 Monday to 7 Sunday. */
+export const weekdayOf = (date: string): Weekday => {
   const day = new Date(`${date}T00:00:00Z`).getUTCDay();
   return (day === 0 ? 7 : day) as Weekday;
 };

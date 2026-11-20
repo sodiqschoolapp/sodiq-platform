@@ -1177,6 +1177,14 @@ describe('the journal on a phone', () => {
     expect(document.querySelector('[data-journal-grid]')).toBeNull();
   });
 
+  it('leaves the selectors open while a search is in use', async () => {
+    setWindowWidth(390);
+    open(GRID, `/journal/${JOURNAL}?date=2026-10-19&q=Zok`);
+    await waitFor(() => {
+      expect(document.querySelector<HTMLDetailsElement>('[data-journal-choose]')?.open).toBe(true);
+    });
+  });
+
   it('keeps the selectors as they are on a wider screen', async () => {
     open(GRID);
     await screen.findByRole('radio', { name: en.journal.page.lessonMode });

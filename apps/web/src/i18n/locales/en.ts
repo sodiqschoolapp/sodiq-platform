@@ -7481,7 +7481,6 @@ export const en = {
       // The selectors of the journal, folded on a phone.
       choose: 'Class, subject and period',
       score: '{{work}}, {{name}}',
-      outOf: 'of {{total}}',
       total: '{{work}}: total {{total}}',
       setTotal: '{{work}}: set the total',
     },

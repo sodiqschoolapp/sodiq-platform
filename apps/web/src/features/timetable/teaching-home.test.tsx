@@ -602,6 +602,8 @@ describe('the teaching home page on a phone', () => {
     expect(cards[0]?.textContent).toContain('lesson 1 · 08:00–08:45');
     expect(cards[0]?.textContent).toContain('7 Oxford · Mathematics');
     expect(cards[0]?.textContent).toContain(`${en.timetable.day.room} Room 12`);
+    // Nothing changed: 'As planned', as on the row of a computer.
+    expect(cards[0]?.textContent).toContain(en.timetable.day.asPlanned);
     expect(list.querySelector('[data-busy]')?.textContent).toContain('Busy in East');
     // The lesson happening now: the today fill, named the current time, its button pulsing.
     expect(cards[1]?.getAttribute('aria-current')).toBe('time');
