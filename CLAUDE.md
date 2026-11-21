@@ -67,7 +67,8 @@ pnpm test:e2e         browser tests (Playwright)
 pnpm db:migrate       apply SQL migrations to the local database
 pnpm sync             switch to main, pull, install, migrate (before a hand test)
 pnpm db:codegen       regenerate Kysely types from the database
-pnpm api:client       regenerate the web API client from OpenAPI
+pnpm api:client       regenerate the web API client from OpenAPI, and the operations
+                      open to integration keys in docs/integration-guide.md
 pnpm security:checklist  write the generated tables of docs/security/permission-checklist.md again
 pnpm auth:first-account -- --first-name <name> --last-name <name>
                       create the first Super Admin, once (prints login and first password)
