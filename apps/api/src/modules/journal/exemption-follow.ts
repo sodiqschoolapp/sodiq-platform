@@ -1,7 +1,12 @@
 import { sql } from 'kysely';
 import { transactionMoment, type Transaction } from '../../database/transactions.js';
 import type { Audit } from '../audit/audit.service.js';
-import type { Notifications } from '../notifications/notifications.service.js';
+import { lessonUnits, teachingRoleOf } from '../notifications/notice-roles.js';
+import {
+  toEach,
+  type NotificationRecipient,
+  type Notifications,
+} from '../notifications/notifications.service.js';
 import { addDays } from './exemption-effects.js';
 
 /**
@@ -254,7 +259,10 @@ export async function exemptionsFollowBranchMove(
     await notifications.send(transaction, {
       kind: 'journal.exemption_offer',
       branchId: actor.branchId,
-      accountIds: vices.rows.map((one) => one.account_id),
+      to: toEach(
+        vices.rows.map((one) => one.account_id),
+        'academic_vice_principal',
+      ),
       data: {
         student: `${student.last_name} ${student.first_name}`.trim() || '—',
         from: row.start > input.from ? row.start : input.from,
@@ -317,6 +325,7 @@ export async function noticeKeptLessons(
     teacher_account: string | null;
     classes: string;
     tutors: string[] | null;
+    tutor_posts: string[] | null;
   }>`
     with lessons_kept as (
       select l.id, l.lesson_date, l.starts_at, l.class_id, l.group_id, l.teacher_id, b.time_zone
@@ -337,7 +346,8 @@ export async function noticeKeptLessons(
       coalesce(g.name, c.grade::text || ' ' || c.name) as unit,
       st.account_id as teacher_account,
       string_agg(distinct oc.grade::text || ' ' || oc.name, ', ') as classes,
-      array_remove(array_agg(distinct a.account_id), null) as tutors
+      array_remove(array_agg(distinct a.account_id), null) as tutors,
+      array_remove(array_agg(distinct a.account_id::text || ':' || a.role), null) as tutor_posts
     from lessons_kept k
     join out_classes o on o.lesson_id = k.id
     join classes oc on oc.id = o.class_id
@@ -352,18 +362,32 @@ export async function noticeKeptLessons(
     order by k.starts_at, k.id
   `.execute(transaction);
   let sent = 0;
+  const units = await lessonUnits(
+    transaction,
+    found.rows.map((row) => row.lesson_id),
+  );
   for (const row of found.rows) {
-    const accounts = [
-      ...new Set([
-        ...(row.tutors ?? []),
-        ...(row.teacher_account === null ? [] : [row.teacher_account]),
-      ]),
-    ].filter((one) => one !== input.actorId);
-    if (accounts.length === 0) continue;
+    // The class Tutors by their stored post, the lesson's teacher as its Teacher or its Tutor
+    // (task 10.11).
+    const to: NotificationRecipient[] = (row.tutor_posts ?? []).flatMap((one) => {
+      const [accountId = '', role] = one.split(':');
+      return role === 'tutor' || role === 'class_teacher' ? [{ accountId, for: [role] }] : [];
+    });
+    const unit = units.get(row.lesson_id);
+    if (row.teacher_account !== null) {
+      to.push({
+        accountId: row.teacher_account,
+        for: [unit === undefined ? 'teacher' : await teachingRoleOf(transaction, unit)],
+      });
+    }
+    const told = to
+      .filter((one) => one.accountId !== input.actorId)
+      .sort((one, other) => one.accountId.localeCompare(other.accountId));
+    if (told.length === 0) continue;
     await notifications.send(transaction, {
       kind: 'journal.exemption_kept_block',
       branchId: input.branchId,
-      accountIds: accounts.sort(),
+      to: told,
       data: { unit: row.unit, date: row.date, start: row.start, classes: row.classes },
     });
     sent += 1;

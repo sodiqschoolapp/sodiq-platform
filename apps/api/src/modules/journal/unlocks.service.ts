@@ -16,9 +16,10 @@ import { ApiException } from '../../http/api-exception.js';
 import { refuseOwnRequest } from '../access/own-request.js';
 import type { Access } from '../access/permission.guard.js';
 import { postHolders, postsOf, readerPostsOf } from '../access/request-posts.js';
-import { decisionReach, firstTier, type RequestOn } from '../access/request-routing.js';
+import { decisionReach, firstTierHolders, type RequestOn } from '../access/request-routing.js';
 import { Audit } from '../audit/audit.service.js';
 import { branchOf } from '../classes/classes.service.js';
+import { teachingRoleOf } from '../notifications/notice-roles.js';
 import { Notifications } from '../notifications/notifications.service.js';
 import {
   lockOpenJournalQuarter,
@@ -399,18 +400,19 @@ export class UnlocksService {
       requestId: input.requestId,
     });
     const holders = await postHolders(transaction, branchId, subject.subjectId, now);
-    const told = firstTier(
+    const told = firstTierHolders(
       { accountId: access.accountId, posts: readerPostsOf(holders, access) },
       holders,
       subject.on,
     );
     const name = (await staffNames(transaction, [input.staffId])).get(input.staffId) ?? '';
     if (subject.date !== null) {
-      for (const accountId of told) {
+      for (const decider of told) {
         await this.notifications.send(transaction, {
           kind: 'journal.unlock_requested',
           branchId,
-          accountIds: [accountId],
+          // The post by which the decider is told (task 10.11).
+          to: [decider],
           data: {
             name: name === '' ? subject.unit.name : name,
             unit: subject.unit.name,
@@ -501,12 +503,24 @@ export class UnlocksService {
           requestId,
         });
         if (subject.date !== null) {
+          // The requester holds the lesson or journal as its Teacher, or as its Tutor (task 10.11).
+          const requester = [
+            {
+              accountId: row.requested_by,
+              for: [
+                await teachingRoleOf(transaction, {
+                  subjectId: subject.subjectId,
+                  classId: subject.unit.kind === 'class' ? subject.unit.id : null,
+                }),
+              ],
+            },
+          ];
           if (approve && updated.open_until !== null) {
             const zone = await zoneOf(transaction, branchId);
             await this.notifications.send(transaction, {
               kind: 'journal.unlock_approved',
               branchId,
-              accountIds: [row.requested_by],
+              to: requester,
               data: {
                 unit: subject.unit.name,
                 date: subject.date,
@@ -518,7 +532,7 @@ export class UnlocksService {
             await this.notifications.send(transaction, {
               kind: 'journal.unlock_refused',
               branchId,
-              accountIds: [row.requested_by],
+              to: requester,
               data: { unit: subject.unit.name, date: subject.date, reason: input.reason ?? '' },
             });
           }

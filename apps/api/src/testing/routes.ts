@@ -24,6 +24,8 @@ export interface Route {
   takesFile: FileRoute | undefined;
   /** Task 10.10: how the route is open to integration keys (`OpenToKeys`, `KeyOnly`), or closed. */
   openToKeys: KeyRouteKind | undefined;
+  /** `<Controller>.<method>`, as `KeyRoutesCheck` names a handler (task 10.11). */
+  handlerName: string;
 }
 
 /** The method in the name of a route that answers every method (`@All()`). */
@@ -96,6 +98,7 @@ export function routesOf(app: INestApplication): Route[] {
                 Reflect.getMetadata(HTTP_CODE, handler) === 202,
               takesFile: Reflect.getMetadata(TAKES_FILE, handler) as FileRoute | undefined,
               openToKeys: keyRouteOf(handler),
+              handlerName: `${type.name}.${name}`,
             });
           }
         }

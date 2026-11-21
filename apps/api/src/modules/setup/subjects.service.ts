@@ -7,6 +7,7 @@ import type {
   GradeChanges,
   JournalType,
   Names,
+  NoticeRole,
   QuarterWeights,
   Subject,
   SubjectColour,
@@ -1365,18 +1366,22 @@ export class Subjects {
     // One notice per account for the change, naming every quarter of it the account
     // teaches in (decision 11: "each once"; spec review of the code, should-fix 3).
     const quartersOf = new Map<string, number[]>();
+    const rolesOf = new Map<string, Set<NoticeRole>>();
     for (const one of written) {
       if (one.change !== 'changed') continue;
       const quarter = await quarterRefOf(transaction, one.quarterId);
       if (quarter === undefined) continue;
-      const accountIds = await weightsNoticeAccounts(transaction, {
+      const recipients = await weightsNoticeAccounts(transaction, {
         branchId,
         subjectId: subject.id,
         quarter,
         today,
       });
-      for (const accountId of accountIds) {
+      for (const { accountId, for: roles } of recipients) {
         quartersOf.set(accountId, [...(quartersOf.get(accountId) ?? []), quarter.number]);
+        const held = rolesOf.get(accountId) ?? new Set<NoticeRole>();
+        for (const role of roles) held.add(role);
+        rolesOf.set(accountId, held);
       }
     }
     const byQuarters = new Map<string, { quarters: number[]; accountIds: string[] }>();
@@ -1396,7 +1401,10 @@ export class Subjects {
           reason,
         },
         branchId,
-        accountIds: group.accountIds,
+        to: group.accountIds.map((accountId) => ({
+          accountId,
+          for: [...(rolesOf.get(accountId) ?? [])].sort(),
+        })),
       });
     }
   }

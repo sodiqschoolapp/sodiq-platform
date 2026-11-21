@@ -148,11 +148,12 @@ export async function sendTutorChanges(
       after,
       beforeDiffers: differs,
       afterDiffers: differs,
-      send: (accountId, week) =>
+      // The Tutor lessons, held as the class Tutor or Class teacher (task 10.11).
+      send: (accountId, week, roles) =>
         notifications.send(transaction, {
           kind: 'timetable.tutor_changed',
           branchId,
-          accountIds: [accountId],
+          to: [{ accountId, for: roles }],
           data: week,
         }),
     });

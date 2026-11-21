@@ -26,7 +26,7 @@ import { IDLE_LIMIT_MS } from '../auth/idle-limit.js';
 import { Sessions } from '../auth/sessions.service.js';
 import { LiveListener } from './live/listener.js';
 import { LiveSockets } from './live/socket-server.js';
-import { Notifications } from './notifications.service.js';
+import { Notifications, toEach } from './notifications.service.js';
 
 const START = '2026-10-08T09:00:00+05:00';
 const MINUTE_MS = 60 * 1000;
@@ -152,7 +152,7 @@ describe('the live connection', () => {
         kind: 'sample.message',
         data: { text },
         branchId: north,
-        accountIds,
+        to: toEach(accountIds, 'teacher'),
       }),
     );
   }

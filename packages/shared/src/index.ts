@@ -279,6 +279,8 @@ export {
   type MenuItem,
 } from './menu.js';
 export {
+  NOTICE_ROLES,
+  type NoticeRole,
   NOTIFICATION_KIND_FORMAT,
   NOTIFICATION_KIND_MAX_LENGTH,
   NOTIFICATION_KIND_NAMES,

@@ -27,7 +27,7 @@ import {
   livePayloadSchema,
   type LivePayload,
 } from './live/live-payload.js';
-import { Notifications, type NewNotification } from './notifications.service.js';
+import { Notifications, toEach, type NewNotification } from './notifications.service.js';
 
 const START = '2026-10-08T09:00:00+05:00';
 const MINUTE_MS = 60 * 1000;
@@ -92,7 +92,7 @@ describe('notifications', () => {
         kind: 'sample.message',
         data: { text: 'The timetable of Monday changed.' },
         branchId,
-        accountIds,
+        to: toEach(accountIds, 'teacher'),
         ...fields,
       }),
     );
@@ -178,7 +178,7 @@ describe('notifications', () => {
             kind: 'sample.message',
             data: { text: 'Undone.' },
             branchId: null,
-            accountIds: [account.id],
+            to: toEach([account.id], 'teacher'),
           });
           throw new Error('The change failed.');
         }),
@@ -207,7 +207,7 @@ describe('notifications', () => {
             kind: 'sample.message',
             data: { text: 'Wrong branch.' },
             branchId: south,
-            accountIds: [account.id],
+            to: toEach([account.id], 'teacher'),
           }),
         ),
       ).rejects.toThrow('does not work for');

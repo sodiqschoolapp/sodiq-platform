@@ -15,7 +15,16 @@ import { journalRows } from '../../journal/journal-grid.query.js';
 import { subjectOf, unitOf } from '../../journal/journal-grid.service.js';
 import { lessonsCounted } from '../../journal/lesson-counted.js';
 import { lessonStatuses } from '../../journal/lesson-status.query.js';
-import { Notifications } from '../../notifications/notifications.service.js';
+import {
+  teachingRoleOf,
+  teachingRolesTogether,
+  type TaughtUnit,
+} from '../../notifications/notice-roles.js';
+import {
+  Notifications,
+  toEach,
+  type NotificationRecipient,
+} from '../../notifications/notifications.service.js';
 import { datedQuarters } from '../../plans/plan-read.js';
 import { PlansService } from '../../plans/plans.service.js';
 import { closingOf } from '../../setup/closed-quarters.js';
@@ -199,7 +208,7 @@ export class DailyWork {
         await this.notifications.send(transaction, {
           kind: 'results.check_difference',
           branchId,
-          accountIds: admins,
+          to: toEach(admins, 'super_admin'),
           data: { date: data.day, differences: found.differences.length, journals },
         });
       }
@@ -222,7 +231,7 @@ export class DailyWork {
     await this.notifications.send(transaction, {
       kind: 'results.check_missed',
       branchId,
-      accountIds: admins,
+      to: toEach(admins, 'super_admin'),
       data: { date: data.day },
     });
   }
@@ -258,7 +267,7 @@ export class DailyWork {
       await this.notifications.send(transaction, {
         kind: 'results.closing_overdue',
         branchId,
-        accountIds: vices,
+        to: vices,
         data: { quarter: quarter.number, lastDay: quarter.end_date },
       });
     }
@@ -298,7 +307,7 @@ export class DailyWork {
               await this.notifications.send(transaction, {
                 kind: 'plans.window_missing',
                 branchId,
-                accountIds: vices,
+                to: vices,
                 data: { quarter: quarter.number, startDate: quarter.startDate },
               });
             }
@@ -308,12 +317,22 @@ export class DailyWork {
         const rows = await this.plans.remindersIn(transaction, branchId, year.id, quarter);
         const ending = new Set<string>();
         const lastDay = new Map<string, string[]>();
+        // The journals each owner holds plans of, for the roles of the notice (task 10.11).
+        const held = new Map<string, TaughtUnit[]>();
+        const lastDayHeld = new Map<string, TaughtUnit[]>();
         for (const row of rows) {
           if (row.ownerId === null || row.endsAt === null) continue;
           // The window's end is the end of its last day: that day is the moment just before.
           const endDate = schoolDateOf(new Date(row.endsAt.getTime() - 1), timeZone);
-          if (addDays(today, 3) === endDate) ending.add(`${row.ownerId}|${endDate}`);
+          if (addDays(today, 3) === endDate) {
+            ending.add(`${row.ownerId}|${endDate}`);
+            held.set(`${row.ownerId}|${endDate}`, [
+              ...(held.get(`${row.ownerId}|${endDate}`) ?? []),
+              row.journal,
+            ]);
+          }
           if (today === endDate && !row.complete) {
+            lastDayHeld.set(row.ownerId, [...(lastDayHeld.get(row.ownerId) ?? []), row.journal]);
             lastDay.set(row.ownerId, [
               ...(lastDay.get(row.ownerId) ?? []),
               unitOf(row.journal).name,
@@ -327,7 +346,12 @@ export class DailyWork {
           await this.notifications.send(transaction, {
             kind: 'plans.window_ending',
             branchId,
-            accountIds: [account],
+            to: [
+              {
+                accountId: account,
+                for: await teachingRolesTogether(transaction, held.get(key) ?? []),
+              },
+            ],
             data: { quarter: quarter.number, endDate },
           });
         }
@@ -337,7 +361,12 @@ export class DailyWork {
           await this.notifications.send(transaction, {
             kind: 'plans.window_last_day',
             branchId,
-            accountIds: [account],
+            to: [
+              {
+                accountId: account,
+                for: await teachingRolesTogether(transaction, lastDayHeld.get(ownerId) ?? []),
+              },
+            ],
             data: { quarter: quarter.number, unit: [...new Set(units)].sort().join(', ') },
           });
         }
@@ -395,7 +424,7 @@ export class DailyWork {
       await this.notifications.send(transaction, {
         kind: 'plans.request_unsent',
         branchId,
-        accountIds: [account],
+        to: [{ accountId: account, for: [await teachingRoleOf(transaction, journal)] }],
         data: {
           unit: unitOf(journal).name,
           quarter: one.number,
@@ -488,7 +517,9 @@ export class DailyWork {
       await this.notifications.send(transaction, {
         kind: 'journal.lesson_about_to_lock',
         branchId,
-        accountIds: [account],
+        // The holder of the journal's lesson: its Teacher, or its Tutor for a Tutor lesson
+        // (task 10.11; a substitute of a Tutor lesson is told as its Tutor, out of a key).
+        to: [{ accountId: account, for: [await teachingRoleOf(transaction, journal)] }],
         data: {
           date: lesson.lesson_date,
           unit: unitOf(journal).name,
@@ -598,9 +629,15 @@ async function viceOf(transaction: Transaction, branchId: string): Promise<strin
  * (`edge/people-roles-accounts`: a task with no holder goes "to the Academic Vice Principal, then
  * to the Super Admin"; permission review should-fix 6).
  */
-async function viceOrAdminsOf(transaction: Transaction, branchId: string): Promise<string[]> {
+/** The branch's Academic Vice Principals, else the Super Admins, each told for that post (task 10.11). */
+async function viceOrAdminsOf(
+  transaction: Transaction,
+  branchId: string,
+): Promise<NotificationRecipient[]> {
   const vices = await viceOf(transaction, branchId);
-  return vices.length > 0 ? vices : superAdmins(transaction, branchId);
+  return vices.length > 0
+    ? toEach(vices, 'academic_vice_principal')
+    : toEach(await superAdmins(transaction, branchId), 'super_admin');
 }
 
 /**

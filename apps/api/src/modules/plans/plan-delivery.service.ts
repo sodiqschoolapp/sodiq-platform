@@ -40,6 +40,7 @@ import {
 } from '../journal/journal-grid.query.js';
 import { roleReadingOf } from '../journal/journal-scope.js';
 import { journalsColumns } from '../journal/journal-works.query.js';
+import { teachingRoleOf } from '../notifications/notice-roles.js';
 import { Notifications } from '../notifications/notifications.service.js';
 import { quarterClosedNow } from '../setup/closed-quarters.js';
 import { notFound } from '../setup/setup-refusals.js';
@@ -607,7 +608,9 @@ export class PlanDelivery {
       kind: 'plans.not_delivered',
       data: { unit: scene.journal.unitName, date: scene.date },
       branchId: scene.branchId,
-      accountIds: [owner.account_id],
+      to: [
+        { accountId: owner.account_id, for: [await teachingRoleOf(transaction, scene.journal)] },
+      ],
     });
   }
 

@@ -31,6 +31,7 @@ export class KeyRoutesCheck implements OnApplicationBootstrap {
           continue;
         }
         const fault = keyRouteFault({
+          name: `${wrapper.name}.${name}`,
           mark: keyRouteOf(handler),
           declarations: declarationsOf(handler),
           owedSteps: owedStepsAllowedOn(handler),

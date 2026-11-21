@@ -57,11 +57,26 @@ export const NEVER_THROUGH_KEYS: readonly Area[] = [
   'account_access',
 ];
 
+/**
+ * The own-account routes open to keys, by `<Controller>.<method>`, and no other (task 10.11,
+ * pull request #371): the person's notifications, which answer a key only the notices sent
+ * for a Teacher, Head Teacher or Senior Head Teacher role. Every other `@AnySignedIn()` route
+ * (the own account of `02`: password, second step, sessions, notification settings …)
+ * stays closed to keys.
+ */
+export const KEY_OWN_NOTICE_ROUTES: readonly string[] = [
+  'NotificationsController.list',
+  'NotificationsController.read',
+  'NotificationsController.readAll',
+];
+
 /** What a handler declares, as `keyRouteFault` reads it. */
 export interface KeyRouteFacts {
+  /** `<Controller>.<method>`, for `KEY_OWN_NOTICE_ROUTES`. */
+  name: string;
   mark: KeyRouteKind | undefined;
   /** `declarationsOf(handler)`, as kinds with the area and action of a `requires`. */
-  declarations: readonly { kind: string; area?: string; action?: string }[];
+  declarations: readonly { kind: string; area?: string; action?: string; parent?: boolean }[];
   /** `owedStepsAllowedOn(handler)`. */
   owedSteps: readonly string[];
 }
@@ -72,7 +87,7 @@ export interface KeyRouteFacts {
  * `key-routes.test.ts` runs the same check over every route.
  */
 export function keyRouteFault(facts: KeyRouteFacts): string | undefined {
-  const { mark, declarations, owedSteps } = facts;
+  const { name, mark, declarations, owedSteps } = facts;
   if (mark === undefined) {
     return undefined;
   }
@@ -87,6 +102,14 @@ export function keyRouteFault(facts: KeyRouteFacts): string | undefined {
     return declaration.kind === 'integration_key'
       ? undefined
       : 'is marked as the key’s own route without `KeyOnly`';
+  }
+  if (declaration.kind === 'any_signed_in' && mark === 'person') {
+    if (declaration.parent === true) {
+      return 'is open to keys and to a parent session; never a key';
+    }
+    return KEY_OWN_NOTICE_ROUTES.includes(name)
+      ? undefined
+      : 'is an own-account route; only the person’s notifications are open to keys';
   }
   if (declaration.kind !== 'requires') {
     return `is open to keys with the declaration ${declaration.kind}; only a route with a permission may be`;

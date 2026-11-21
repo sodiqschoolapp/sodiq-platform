@@ -26,6 +26,7 @@ import type { Access } from '../access/permission.guard.js';
 import { Audit } from '../audit/audit.service.js';
 import { branchOf } from '../classes/classes.service.js';
 import { journalRows, staffNames, type JournalRow } from '../journal/journal-grid.query.js';
+import { teachingRoleOf, type TeachingRole } from '../notifications/notice-roles.js';
 import { Notifications } from '../notifications/notifications.service.js';
 import { closingOf, lockOpenQuarter } from '../setup/closed-quarters.js';
 import { notFound } from '../setup/setup-refusals.js';
@@ -39,7 +40,7 @@ import {
   planDateOf,
   type PlanRowLesson,
 } from './plan-read.js';
-import { decisionReach, firstTier } from '../access/request-routing.js';
+import { decisionReach, firstTierHolders } from '../access/request-routing.js';
 import { ownerIdOn } from './plan-scope.js';
 import { periodLastDay, periodOpen, windowStateOf } from './plan-window.js';
 import { answerOf, calendarOf, requestRows, type RequestRow } from './plan-request-read.js';
@@ -924,7 +925,7 @@ export class PlanRequestsService {
         await this.notifications.send(transaction, {
           kind: 'plans.request_refused',
           branchId,
-          accountIds: [requester],
+          to: [{ accountId: requester, for: [await teachingRoleOf(transaction, scene.journal)] }],
           data: {
             unit: scene.journal.unitName,
             quarter: scene.quarter.number,
@@ -1028,7 +1029,7 @@ export class PlanRequestsService {
       await this.notifications.send(transaction, {
         kind: 'plans.request_approved',
         branchId,
-        accountIds: [requester],
+        to: [{ accountId: requester, for: [await teachingRoleOf(transaction, scene.journal)] }],
         data: { unit: scene.journal.unitName, quarter: scene.quarter.number, until: last },
       });
     }
@@ -1072,6 +1073,7 @@ export class PlanRequestsService {
       const skipped: string[] = [];
       let others = 0;
       const told = new Map<string, Set<string>>();
+      const toldFor = new Map<string, Set<TeachingRole>>();
       let until = today;
       // Every journal first in the order of the id, then the requests.
       const journalIds = [...new Set(requests.map((one) => one.journal_id))].sort();
@@ -1145,6 +1147,10 @@ export class PlanRequestsService {
           const units = told.get(requester) ?? new Set<string>();
           units.add(found.scene.journal.unitName);
           told.set(requester, units);
+          // The role of each plan's journal, joined in the one notice (task 10.11).
+          const roles = toldFor.get(requester) ?? new Set<TeachingRole>();
+          roles.add(await teachingRoleOf(transaction, found.scene.journal));
+          toldFor.set(requester, roles);
         }
       }
       // `edge`: "One notice per teacher per event, listing their plans."
@@ -1152,7 +1158,7 @@ export class PlanRequestsService {
         await this.notifications.send(transaction, {
           kind: 'plans.request_approved',
           branchId,
-          accountIds: [accountId],
+          to: [{ accountId, for: [...(toldFor.get(accountId) ?? [])].sort() }],
           data: {
             unit: [...units].sort((a, b) => a.localeCompare(b, 'en')).join(', '),
             quarter: [...scenes.values()][0]?.scene.quarter.number ?? 1,
@@ -1175,18 +1181,19 @@ export class PlanRequestsService {
     requester: string,
   ): Promise<void> {
     const holders = await postHolders(transaction, branchId, scene.journal.subjectId, scene.now);
-    const accounts = firstTier(
+    const accounts = firstTierHolders(
       { accountId: requester, posts: postsOf(holders, requester) },
       holders,
     );
     const owner = scene.ownerId === null ? [] : [scene.ownerId];
     const names = await staffNames(transaction, owner);
     const name = names.get(scene.ownerId ?? '') ?? scene.journal.unitName;
-    for (const accountId of accounts) {
+    for (const decider of accounts) {
       await this.notifications.send(transaction, {
         kind: 'plans.request_sent',
         branchId,
-        accountIds: [accountId],
+        // The post by which the decider is told (task 10.11).
+        to: [decider],
         data: {
           name: name === '' ? scene.journal.unitName : name,
           unit: scene.journal.unitName,

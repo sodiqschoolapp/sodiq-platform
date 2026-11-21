@@ -39,7 +39,8 @@ try {
       kind: 'sample.message',
       data: { text },
       branchId: null,
-      accountIds: [account.id],
+      // A sample of the browser tests, sent as to a Teacher (task 10.11, decision 15).
+      to: [{ accountId: account.id, for: ['teacher'] }],
     }),
   );
   console.log(JSON.stringify({ ids }));

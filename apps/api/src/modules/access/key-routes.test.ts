@@ -115,6 +115,7 @@ describe('the routes open to integration keys', () => {
     for (const route of routes) {
       expect(
         keyRouteFault({
+          name: route.handlerName,
           mark: route.openToKeys,
           declarations: route.access,
           owedSteps: route.allowedBefore,
@@ -130,9 +131,10 @@ describe('the routes open to integration keys', () => {
   it('refuses to open an export, a student’s record, a group transfer, the own account, a public, a portal or a sign-in step route', () => {
     const requires = (area: string, action: string) => [{ kind: 'requires', area, action }];
     const fault = (
-      declarations: { kind: string; area?: string; action?: string }[],
+      declarations: { kind: string; area?: string; action?: string; parent?: boolean }[],
       owedSteps: string[] = [],
-    ) => keyRouteFault({ mark: 'person', declarations, owedSteps });
+      name = 'SomeController.handler',
+    ) => keyRouteFault({ name, mark: 'person', declarations, owedSteps });
     expect(fault(requires('journal', 'export'))).toMatch(/export/);
     for (const area of [
       'students',
@@ -148,11 +150,31 @@ describe('the routes open to integration keys', () => {
     }
     expect(fault([{ kind: 'public' }])).toMatch(/only a route with a permission/);
     expect(fault([{ kind: 'portal' }])).toMatch(/only a route with a permission/);
-    expect(fault([{ kind: 'any_signed_in' }])).toMatch(/only a route with a permission/);
+    // Task 10.11: of the own-account routes, only the person's notifications, by name.
+    expect(fault([{ kind: 'any_signed_in', parent: false }])).toMatch(/own-account route/);
+    expect(
+      fault([{ kind: 'any_signed_in', parent: false }], [], 'AccountController.changePassword'),
+    ).toMatch(/own-account route/);
+    for (const name of [
+      'NotificationsController.list',
+      'NotificationsController.read',
+      'NotificationsController.readAll',
+    ]) {
+      expect(fault([{ kind: 'any_signed_in', parent: false }], [], name), name).toBeUndefined();
+      expect(fault([{ kind: 'any_signed_in', parent: true }], [], name), name).toMatch(/parent/);
+      expect(fault([{ kind: 'any_signed_in', parent: false }], ['second_step'], name)).toMatch(
+        /owes a step/,
+      );
+    }
     expect(fault(requires('journal', 'view'), ['second_step'])).toMatch(/owes a step/);
     expect(fault(requires('journal', 'view'))).toBeUndefined();
     expect(
-      keyRouteFault({ mark: 'key_only', declarations: requires('journal', 'view'), owedSteps: [] }),
+      keyRouteFault({
+        name: 'SomeController.handler',
+        mark: 'key_only',
+        declarations: requires('journal', 'view'),
+        owedSteps: [],
+      }),
     ).toMatch(/KeyOnly/);
   });
 

@@ -16,7 +16,7 @@ import { sql } from 'kysely';
 import { transactionMoment, type Transaction } from '../../database/transactions.js';
 import { ApiException } from '../../http/api-exception.js';
 import { noticeKeptLessons } from '../journal/exemption-follow.js';
-import { Notifications } from '../notifications/notifications.service.js';
+import { Notifications, toEach } from '../notifications/notifications.service.js';
 import {
   bulkKeyPartOf,
   bulkRecordsOf,
@@ -1479,7 +1479,10 @@ export class TimetableCalendarLessons {
         kind: 'timetable.exam_day_off',
         data: { name: event.name, title: one.exam.title, date: one.exam.date },
         branchId,
-        accountIds: vices.map((vice) => vice.account_id),
+        to: toEach(
+          vices.map((vice) => vice.account_id),
+          'academic_vice_principal',
+        ),
       });
     }
   }

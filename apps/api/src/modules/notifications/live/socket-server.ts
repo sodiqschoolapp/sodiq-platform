@@ -128,7 +128,7 @@ export class LiveSockets implements BeforeApplicationShutdown {
   private async welcome(socket: Socket): Promise<void> {
     const { accountId } = socket.data as ConnectionData;
     try {
-      const state = await this.notifications.list(accountId);
+      const state = await this.notifications.list({ accountId, throughKey: false });
       socket.emit(NOTIFICATION_MESSAGES.state, state);
     } catch (error) {
       this.logger.error(`The state for a connection could not be read: ${nameOf(error)}`);

@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { schoolDateSchema } from './academic-year.js';
 import { branchIdSchema } from './branches.js';
+import { ROLES, type Role } from './roles.js';
 
 /**
  * Notifications to staff in the app (docs/spec/10-portal-notifications-release-2.md,
@@ -16,6 +17,19 @@ import { branchIdSchema } from './branches.js';
 export const NOTIFICATION_KIND_FORMAT = /^[a-z]+(\.[a-z_]+)+$/;
 
 export const NOTIFICATION_KIND_MAX_LENGTH = 100;
+
+/**
+ * The roles a notice may be sent for (task 10.11): every staff role of `ROLES`, not the
+ * Student or the Parent. A notice records the post by which the sender chose the person
+ * (`for_roles` of `notifications`, 0177, whose check holds the same list; a test compares
+ * them). Through an integration key only the notices sent for a Teacher, Head Teacher or
+ * Senior Head Teacher role are read (`02`, Integration keys).
+ */
+export const NOTICE_ROLES = ROLES.filter(
+  (role) => role !== 'student' && role !== 'parent',
+) as readonly Exclude<Role, 'student' | 'parent'>[];
+
+export type NoticeRole = Exclude<Role, 'student' | 'parent'>;
 
 /**
  * The kinds of notification and the data each one carries. A later task adds
