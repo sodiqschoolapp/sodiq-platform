@@ -141,6 +141,13 @@ export function SetupPage() {
       area: 'monitoring',
     },
     {
+      // The Super Admin's integration keys (task 10.9).
+      key: 'integrationKeys',
+      to: '/integration-keys',
+      title: t('setup.integrationKeysLink'),
+      area: 'integration_keys',
+    },
+    {
       key: 'systemStatus',
       to: '/system-status',
       title: t('setup.systemStatusLink'),

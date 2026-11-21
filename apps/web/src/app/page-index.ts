@@ -49,6 +49,7 @@ export const SETUP_PAGES: readonly (IndexedPage & { area?: string; action?: Acti
   { titleKey: 'forcedDeletes.title', to: '/forced-deletes', area: 'forced_deletes' },
   // Pull request #361: the Super Admin's feedback reports and system status.
   { titleKey: 'feedbackReports.title', to: '/feedback-reports', area: 'monitoring' },
+  { titleKey: 'integrationKeys.title', to: '/integration-keys', area: 'integration_keys' },
   { titleKey: 'systemStatus.title', to: '/system-status', area: 'monitoring' },
 ];
 

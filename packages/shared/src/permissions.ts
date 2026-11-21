@@ -390,6 +390,16 @@ export const PERMISSIONS = freezeTable({
   monitoring: rows({
     super_admin: ['view', 'edit'],
   }),
+  /**
+   * `integration_keys` (task 10.9, pull request #368): the Integration keys page of the Super
+   * Admin, school-wide. `02`, Integration keys: "Only the Super Admin creates keys, changes their
+   * people and end date, and revokes them"; revoke is an edit. A new area for new routes,
+   * approved by the owner in chat on 21 November 2026 (stop-list item 5, build plan 10.9); no
+   * role gains a right.
+   */
+  integration_keys: rows({
+    super_admin: ['view', 'create', 'edit'],
+  }),
   subjects: rows({
     super_admin: ['view', 'create', 'edit', 'archive', 'export'],
     principal: ['view', 'export'],

@@ -1306,6 +1306,12 @@ export const ERROR_CODES = [
   'telegram_chat_linked',
   /** Task 11.4: the account has no open Telegram link to end. */
   'no_telegram_link',
+  /** Task 10.9: a person put on an integration key is not active, has no account, has a locked account or holds no current Teacher, Head Teacher or Senior Head Teacher assignment (`02`, Integration keys). `details` names each one by `recordId`, its staff record. */
+  'integration_key_person_refused',
+  /** Task 10.9: the end date of an integration key is before today or more than a year ahead, in Asia/Tashkent (`02`, Integration keys). */
+  'integration_key_end_refused',
+  /** Task 10.9: the integration key is revoked; nothing of it changes and it cannot be restored. */
+  'integration_key_revoked',
   /** Any other refusal that has no code of its own yet. */
   'request_refused',
   /** A fault on the server. The answer says nothing about it; the log does. */

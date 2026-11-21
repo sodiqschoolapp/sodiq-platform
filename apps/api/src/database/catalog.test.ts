@@ -21,6 +21,10 @@ const SCHOOL_WIDE_TABLES: Record<string, string> = {
   travel_times:
     'A travel time belongs to a pair of branches equally (task 1.6, decision 4); the Super Admin alone writes it, and the service answers a reader the pairs of its own branch only. A row holds two branch ids and minutes.',
   request_keys: 'A key is unique across the school; a row holds ids and status only.',
+  integration_keys:
+    'An integration key is of the whole school and may list people of several branches (task 10.9, decision 1 of pull request #368, Look first; build plan 10.9: "with the branch rule of the school-wide records"); a row holds a name, a hash of the secret and moments, never the secret.',
+  integration_key_people:
+    'The people of a school-wide integration key, who may work in any branch (task 10.9, decision 1 of pull request #368, Look first); a row holds ids and moments only.',
   audit_log_school:
     'Audit entries of events without a branch (sign-ins, relatives); who reads them is decided by the route (task 2.6a, decision 3 of pull request #75).',
   ...auditSchoolPartitions(),

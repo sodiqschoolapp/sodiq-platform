@@ -752,6 +752,16 @@ describe('a frozen permission table', () => {
     }
   });
 
+  it('gives the Super Admin alone the integration keys: view, create, edit (task 10.9, the owner on 21 November 2026)', () => {
+    // `02`, Integration keys: "Only the Super Admin creates keys, changes their people and end
+    // date, and revokes them."
+    for (const role of ROLES) {
+      expect(PERMISSIONS.integration_keys[role], role).toEqual(
+        role === 'super_admin' ? ['view', 'create', 'edit'] : [],
+      );
+    }
+  });
+
   it('gives the Super Admin alone the changes of branches, buildings, floors, rooms, divisions and departments', () => {
     expect(Object.keys(PERMISSIONS).sort()).toEqual([
       'absence_reasons',
@@ -779,6 +789,7 @@ describe('a frozen permission table', () => {
       'group_transfers',
       'groups',
       'head_teachers',
+      'integration_keys',
       'journal',
       'journal_discipline',
       'journal_extensions',

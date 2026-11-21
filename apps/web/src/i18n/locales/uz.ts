@@ -70,6 +70,12 @@ export const uz: Texts<'one' | 'other'> = {
     telegram_chat_linked:
       'Bu Telegram boshqa ota-ona akkauntiga bogʻlangan. Avval u yerda chiqing yoki portalni brauzerda oching.',
     no_telegram_link: 'Bu akkaunt Telegramga bogʻlanmagan.',
+    integration_key_person_refused:
+      'Tanlangan xodimni kalitga qoʻshib boʻlmaydi: u faol boʻlishi, akkaunti bloklanmagan boʻlishi va Oʻqituvchi, Fan rahbari yoki Katta fan rahbari roliga ega boʻlishi kerak. Uni roʻyxatdan olib tashlang.',
+    integration_key_end_refused:
+      'Tugash sanasi bugundan oldin va bir yildan keyin boʻlmasligi kerak. Boshqa sanani tanlang.',
+    integration_key_revoked:
+      'Bu kalit bekor qilingan va uni oʻzgartirib boʻlmaydi. Kerak boʻlsa, yangi kalit yarating.',
     password_unchanged: 'Yangi parol joriy parol bilan bir xil. Boshqasini tanlang.',
     second_step_required: 'Davom etishdan oldin ikkinchi bosqich kodini kiriting.',
     second_step_set_up_required: 'Davom etishdan oldin ikkinchi bosqichni sozlang.',
@@ -1255,6 +1261,37 @@ export const uz: Texts<'one' | 'other'> = {
     tooMany_one: 'Soʻnggi 24 soatda {{n}} ta xabar yubordingiz. Keyinroq urinib koʻring.',
     tooMany_other: 'Soʻnggi 24 soatda {{n}} ta xabar yubordingiz. Keyinroq urinib koʻring.',
   },
+  integrationKeys: {
+    title: 'Integratsiya kalitlari',
+    caption: 'Integratsiya kalitlari',
+    name: 'Nomi',
+    people: 'Xodimlar',
+    endsOn: 'Tugash sanasi',
+    endsOnNote: 'Bugundan boshlab koʻpi bilan bir yil.',
+    lastUsed: 'Oxirgi foydalanish',
+    neverUsed: 'Foydalanilmagan',
+    state: 'Holati',
+    state_active: 'Amalda',
+    state_ended: 'Muddati tugagan',
+    state_revoked: 'Bekor qilingan',
+    created: 'Yaratilgan',
+    revokedOn: '{{moment}} bekor qilingan',
+    create: 'Kalit yaratish',
+    findPerson: 'Ism yoki xodim ID boʻyicha qidirish',
+    noKeyRole: 'endi kalit roliga ega emas',
+    secretTitle: '{{name}} siri',
+    secretOnce:
+      'Uni hozir nusxalang: u faqat shu bir marta koʻrsatiladi va qaytib oʻqib boʻlmaydi.',
+    copy: 'Nusxalash',
+    copied: 'Nusxalandi',
+    done: 'Tayyor',
+    revoke: 'Bekor qilish',
+    revokeTitle: '{{name}} bekor qilinsinmi?',
+    revokeText: 'Kalit darhol ishlashdan toʻxtaydi va uni tiklab boʻlmaydi.',
+    emptyTitle: 'Integratsiya kalitlari yoʻq',
+    empty:
+      'Kalit kafedra platformasiga undagi xodimlar nomidan ishlash imkonini beradi. Birinchisini yarating.',
+  },
   feedbackReports: {
     title: 'Fikr-mulohazalar',
     caption: 'Fikr-mulohazalar',
@@ -1525,6 +1562,7 @@ export const uz: Texts<'one' | 'other'> = {
     subjectsLink: 'Fanlar',
     forcedDeletesLink: 'Butunlay oʻchirilganlar',
     feedbackReportsLink: 'Fikr-mulohazalar',
+    integrationKeysLink: 'Integratsiya kalitlari',
     systemStatusLink: 'Tizim holati',
     branches: {
       title: 'Filiallar',
@@ -4040,6 +4078,7 @@ export const uz: Texts<'one' | 'other'> = {
       plans: 'Dars rejalari',
       announcements: 'Eʼlonlar',
       feedback: 'Fikr-mulohazalar',
+      integration_keys: 'Integratsiya kalitlari',
     },
     scopes: {
       branch: 'Shu filial',
@@ -4081,6 +4120,7 @@ export const uz: Texts<'one' | 'other'> = {
       journal: 'Jurnal',
       teaching_load_row: 'Oʻquv yuklamasi qatori',
       feedback_report: 'Fikr-mulohaza',
+      integration_key: 'Integratsiya kaliti',
     },
     actions: {
       auth: {
@@ -4127,6 +4167,12 @@ export const uz: Texts<'one' | 'other'> = {
       feedback: {
         handled: 'Fikr-mulohaza koʻrib chiqildi deb belgilandi',
         reopened: 'Fikr-mulohaza yana yangi deb belgilandi',
+      },
+      integration_key: {
+        create: 'Integratsiya kaliti yaratildi',
+        people_changed: 'Integratsiya kalitining xodimlari oʻzgartirildi',
+        end_date_changed: 'Integratsiya kalitining tugash sanasi oʻzgartirildi',
+        revoke: 'Integratsiya kaliti bekor qilindi',
       },
       telegram: {
         linked: 'Telegram bogʻlandi',

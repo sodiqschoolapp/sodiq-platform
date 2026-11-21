@@ -15,6 +15,7 @@ import { AuditPage } from '@/features/audit/audit-page';
 import { auditSearch } from '@/features/audit/audit-search';
 import { ForcedDeletesPage } from '@/features/audit/forced-deletes-page';
 import { FeedbackReportsPage } from '@/features/feedback/feedback-reports-page';
+import { IntegrationKeysPage } from '@/features/access/integration-keys-page';
 import { SystemStatusPage } from '@/features/feedback/system-status-page';
 import { CodePage } from '@/features/auth/code-page';
 import { ForgotPasswordPage } from '@/features/auth/forgot-password-page';
@@ -870,6 +871,14 @@ const feedbackReportsRoute = createRoute({
   component: guarded('monitoring', FeedbackReportsPage),
 });
 
+// Task 10.9: the Super Admin's integration keys, school-wide.
+const integrationKeysRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/integration-keys',
+  validateSearch: listSearch,
+  component: guarded('integration_keys', IntegrationKeysPage),
+});
+
 const systemStatusRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '/system-status',
@@ -1104,6 +1113,7 @@ const routeTree = rootRoute.addChildren([
     auditRoute,
     forcedDeletesRoute,
     feedbackReportsRoute,
+    integrationKeysRoute,
     systemStatusRoute,
     personalDataRoute,
     patternsRoute,

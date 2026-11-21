@@ -473,6 +473,14 @@ export const AUDIT_ACTION_GROUPS = {
   ],
   // Pull request #361: the Super Admin's handled mark of a feedback report, and its taking back.
   feedback: ['feedback.handled', 'feedback.reopened'],
+  // Task 10.9: the integration keys of the Super Admin (edge/people-roles-accounts, Personal data
+  // and the audit log: "integration keys (created, people changed, end date changed, revoked)").
+  integration_keys: [
+    'integration_key.create',
+    'integration_key.people_changed',
+    'integration_key.end_date_changed',
+    'integration_key.revoke',
+  ],
   shows: [
     // Task 8.9: the support view of a student, journal and date (decision 14).
     'journal.support_view',

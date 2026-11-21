@@ -115,6 +115,48 @@ async function checkSuperAdminPages(page: Page): Promise<void> {
     page.getByRole('button', { name: en.feedbackReports.markHandled, exact: true }),
   ).toBeVisible();
   await checkPage(page, 'feedback-reports-record-super-admin');
+  // Task 10.9: the Super Admin creates an integration key for a seeded person, sees the secret
+  // once, changes the end date and revokes the key. The secret is invented by the test server.
+  await page.goto('/integration-keys');
+  await expect(heading(page, en.integrationKeys.title)).toBeVisible();
+  await page.getByRole('button', { name: en.integrationKeys.create, exact: true }).click();
+  const keyForm = page.getByRole('form', { name: en.integrationKeys.create });
+  await keyForm.getByLabel(en.integrationKeys.name, { exact: true }).fill('Browser test platform');
+  await keyForm.getByRole('checkbox').first().check();
+  await checkPage(page, 'integration-keys-new');
+  await keyForm.getByRole('button', { name: en.form.save, exact: true }).click();
+  const secretDialog = page.getByRole('dialog');
+  await expect(secretDialog.getByText(/^sodiq_ik_/)).toBeVisible();
+  await expect(secretDialog.getByRole('button', { name: en.integrationKeys.copy })).toBeVisible();
+  await secretDialog.getByRole('button', { name: en.integrationKeys.done, exact: true }).click();
+  await expect(secretDialog).toBeHidden();
+  await expect(page.getByText(/^sodiq_ik_/)).toHaveCount(0);
+  await page
+    .getByRole('row')
+    .filter({ hasText: 'Browser test platform' })
+    .getByRole('button')
+    .first()
+    .click();
+  const keyPanel = page.getByRole('complementary');
+  await expect(keyPanel).toBeVisible();
+  await checkPage(page, 'integration-keys-record');
+  const endForm = keyPanel.getByRole('form', { name: 'Browser test platform' });
+  const endField = endForm.getByLabel(en.integrationKeys.endsOn, { exact: true });
+  const latest = await endField.getAttribute('max');
+  const earliest = await endField.getAttribute('min');
+  await endField.fill(earliest ?? latest ?? '');
+  await endForm.getByRole('button', { name: en.form.save, exact: true }).click();
+  await expect(
+    page.getByRole('row').filter({ hasText: 'Browser test platform' }).getByRole('cell').nth(2),
+  ).not.toHaveText('');
+  await keyPanel.getByRole('button', { name: en.integrationKeys.revoke, exact: true }).click();
+  await page
+    .getByRole('alertdialog')
+    .getByRole('button', { name: en.integrationKeys.revoke, exact: true })
+    .click();
+  await expect(page.getByRole('row').filter({ hasText: 'Browser test platform' })).toContainText(
+    en.integrationKeys.state_revoked,
+  );
   await page.goto('/system-status');
   await expect(heading(page, en.systemStatus.title)).toBeVisible();
   await expect(page.getByRole('region', { name: en.systemStatus.own })).toBeVisible();

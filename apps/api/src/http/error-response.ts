@@ -703,6 +703,10 @@ const MESSAGE: Record<ErrorCode, string> = {
     'The Telegram launch did not sign in; sign in with the login and password.',
   telegram_chat_linked: 'This Telegram chat is linked to another parent account.',
   no_telegram_link: 'The account has no Telegram link.',
+  integration_key_person_refused:
+    'A person may not be put on an integration key: not active, locked or without a key role.',
+  integration_key_end_refused: 'The end date is before today or more than a year ahead.',
+  integration_key_revoked: 'The integration key is revoked.',
 };
 
 function codeOfStatus(status: number): ErrorCode {
