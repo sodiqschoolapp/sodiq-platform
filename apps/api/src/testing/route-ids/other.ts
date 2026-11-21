@@ -48,6 +48,17 @@ const KEY_RULE = 'db/migrations/0175: a key is of the whole school';
 const KEY_PEOPLE_RULE =
   'task 10.9, decision 2 of pull request #368: the Super Admin puts on a key people of any branch; an unknown one is 404 (integration-keys.test.ts > answers 404 for an unknown staff record on create and on a people change, and writes nothing)';
 
+// Task 11.12 (pull request #374): a conversation is the person's own, of any branch (decision 9):
+// another person's, another branch's (asked in this one) and an unknown one are 404. The Super
+// Admin reads every conversation of the school (`02`: "the Super Admin sees all of them").
+const C = 'src/modules/assistant/assistant-conversations.test.ts';
+const OWN_CONVERSATION = `${C} > lists the person’s own conversations of every branch, and no other person’s (plan decision 9)`;
+const ASKED_IN = `${C} > refuses a question on a conversation of another branch, of another person and an unknown one (404): nothing stored, nothing counted`;
+const CONVERSATION_RULE =
+  '02, Assistant, Audit: the person sees their own conversations; plan decision 9';
+const ALL_CONVERSATIONS_RULE =
+  '02, Assistant, Audit: the Super Admin sees all of them, of every branch, by design, and can restore one; an unknown id is 404 (assistant-conversations.test.ts: "answers 404 for an unknown conversation on the Super Admin’s read", "refuses a restore of a conversation that is not archived (409) and of an unknown one (404)")';
+
 const OWN_RULE = '.claude/rules/api.md, @AnySignedIn: never on one named in the request';
 
 const line = (
@@ -160,6 +171,18 @@ export const OTHER_IDS: RouteIds = {
   ],
   'POST /api/integration-keys/:id/revoke': [
     line('path:id', 'integration key', 'school', KEY_RULE, [KEY]),
+  ],
+  'GET /api/assistant/conversations/:id': [
+    line('path:id', 'assistant conversation', 'own', CONVERSATION_RULE, [OWN_CONVERSATION]),
+  ],
+  'POST /api/assistant/questions': [
+    line('body:conversationId', 'assistant conversation', 'own', CONVERSATION_RULE, [ASKED_IN]),
+  ],
+  'GET /api/assistant/all-conversations/:id': [
+    line('path:id', 'assistant conversation', 'none', ALL_CONVERSATIONS_RULE, []),
+  ],
+  'POST /api/assistant/all-conversations/:id/restore': [
+    line('path:id', 'assistant conversation', 'none', ALL_CONVERSATIONS_RULE, []),
   ],
   'POST /api/notifications/:id/read': [
     line('path:id', 'notification', 'own', OWN_RULE, [NOTIFICATION]),

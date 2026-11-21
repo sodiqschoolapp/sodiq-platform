@@ -134,12 +134,12 @@ Neither was done by hand (owner, 29 October 2026, issue #42). In their place: th
 
 ## The routes in numbers
 
-- Routes of the application: 545, each called by the role harness as the 15 roles, an account without a role, a Parent account (task 11.1) and nobody, in the own and in another branch.
-- Without sign-in: 5. For the own account: 24. The parent portal: 8. With a permission of the table: 507.
+- Routes of the application: 554, each called by the role harness as the 15 roles, an account without a role, a Parent account (task 11.1) and nobody, in the own and in another branch.
+- Without sign-in: 5. For the own account: 24. The parent portal: 8. With a permission of the table: 516.
 - Open to integration keys: 98 (tasks 10.10 and 10.11).
 - Routes with a limit inside the route: 158.
-- Routes that take an id: 423, with 870 ids (branch 760, school 79, own 12, none 19).
-- Areas of the permission table: 65.
+- Routes that take an id: 427, with 874 ids (branch 760, school 79, own 14, none 21).
+- Areas of the permission table: 66.
 
 ## Routes without a role
 
@@ -709,6 +709,8 @@ For every id a route takes, in its path, its query or its body, the record it na
 | `DELETE /api/timetable/versions/:id/pattern/:blockId` | `path:blockId` | pattern_block | branch | `src/modules/timetable/pattern.test.ts > answers 404 for another branch's, another version's and an unknown version, row and block, changing nothing`<br>`src/modules/timetable/pattern.test.ts > answers 404 to a double of another branch's, another version's and an unknown row, and to a half of their pairs; the Principal is refused; nothing changes` |
 | `DELETE /api/timetable/versions/:id/pins/:pinId` | `path:id` | timetable_version | branch | `src/modules/timetable/pins.test.ts > answers 404 for another branch's, another version's and an unknown version, row and pin, changing nothing` |
 | `DELETE /api/timetable/versions/:id/pins/:pinId` | `path:pinId` | timetable_pin | branch | `src/modules/timetable/pins.test.ts > answers 404 for another branch's, another version's and an unknown version, row and pin, changing nothing` |
+| `GET /api/assistant/all-conversations/:id` | `path:id` | assistant conversation | none | 02, Assistant, Audit: the Super Admin sees all of them, of every branch, by design, and can restore one; an unknown id is 404 (assistant-conversations.test.ts: "answers 404 for an unknown conversation on the Super Admin’s read", "refuses a restore of a conversation that is not archived (409) and of an unknown one (404)") |
+| `GET /api/assistant/conversations/:id` | `path:id` | assistant conversation | own | `src/modules/assistant/assistant-conversations.test.ts > lists the person’s own conversations of every branch, and no other person’s (plan decision 9)` |
 | `GET /api/audit/entries` | `query:recordId` | any record an entry names | branch | `src/modules/audit/audit-entries.test.ts > shows %s the entries of the branch and none of another`<br>`src/modules/audit/audit-entries.test.ts > does not show a relative linked only in another branch` |
 | `GET /api/classes/:id` | `path:id` | class | branch | `src/modules/classes/classes.test.ts > answers 404 for another branch's class and an unknown one, with nothing changed` |
 | `GET /api/classes/:id/members` | `path:id` | class | branch | `src/modules/classes/class-members.test.ts > answers 404 for a class or a student of another branch or unknown, changing nothing` |
@@ -892,6 +894,8 @@ For every id a route takes, in its path, its query or its body, the record it na
 | `POST /api/announcements` | `body:audience<kind=classes>.classIds` | class of the audience | branch | `src/modules/announcements/announcements.test.ts > writes for grades and classes of the branch; another branch’s or an unknown class is 404`<br>`repeat: src/modules/announcements/announcements.test.ts > keeps a used key to its account, its branch and its role (request keys)` |
 | `POST /api/announcements/:id/archive` | `path:id` | announcement | branch | `src/modules/announcements/announcements.test.ts > answers 404 for another branch’s and an unknown id, the Super Admin included` |
 | `POST /api/announcements/:id/restore` | `path:id` | announcement | branch | `src/modules/announcements/announcements.test.ts > answers 404 for another branch’s and an unknown id, the Super Admin included` |
+| `POST /api/assistant/all-conversations/:id/restore` | `path:id` | assistant conversation | none | 02, Assistant, Audit: the Super Admin sees all of them, of every branch, by design, and can restore one; an unknown id is 404 (assistant-conversations.test.ts: "answers 404 for an unknown conversation on the Super Admin’s read", "refuses a restore of a conversation that is not archived (409) and of an unknown one (404)") |
+| `POST /api/assistant/questions` | `body:conversationId` | assistant conversation | own | `src/modules/assistant/assistant-conversations.test.ts > refuses a question on a conversation of another branch, of another person and an unknown one (404): nothing stored, nothing counted` |
 | `POST /api/audit/entries/:id/show` | `path:id` | audit entry | branch | `src/modules/audit/audit-entries.test.ts > answers 404 to an entry the reader may not read, and logs nothing` |
 | `POST /api/classes` | `body:mainRoomId` | room | branch | `src/modules/classes/classes.test.ts > answers 404 for a year or a room of another branch or unknown, with nothing written` |
 | `POST /api/classes` | `body:academicYearId` | academic year | branch | `src/modules/classes/classes.test.ts > answers 404 for a year or a room of another branch or unknown, with nothing written` |
@@ -1625,6 +1629,12 @@ Every area of `PERMISSIONS` (`packages/shared/src/permissions.ts`), the table th
 | nurse | yes |  |  |  |  |
 | psychologist | yes |  |  |  |  |
 | librarian | yes |  |  |  |  |
+
+### `assistant`
+
+| Role | view | create | edit | archive | export |
+| --- | :-: | :-: | :-: | :-: | :-: |
+| super_admin | yes |  |  |  |  |
 
 ### `attendance_report`
 
