@@ -129,6 +129,7 @@ describe('OpenAPI document', () => {
         '/api/integration-keys/{id}/end-date',
         '/api/integration-keys/{id}/people',
         '/api/integration-keys/{id}/revoke',
+        '/api/integration/people',
         '/api/journal/attendance-today',
         '/api/journal/comments',
         '/api/journal/comments/history',
