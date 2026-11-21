@@ -65,6 +65,24 @@ The owner's answers to the decided-ahead questions for Phase 10, given in chat o
 19. Production deploys only after 18:00 or at the weekend, Tashkent time.
 20. The test environment stays after go-live; every change is tried there first.
 
+## 21 November 2026: a person's notifications through an integration key (task 10.11)
+
+Plan approved on pull request #371 with correction 1. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first.** A notice naming several roles shows through a key when any is Teacher, Head Teacher or Senior Head Teacher | Build line "the role or roles"; the event reached the person as a Teacher too (decision 1) |
+| **Look first.** Subjects of a Tutors department tell their holder by the class's Tutor post, on any unit, as `namesTutorWork` | `edge/people-roles-accounts`: "Tutor work is done in this platform" (decision 2) |
+| **Look first.** The roles are those of the notice when sent, not the person's roles now; notices of every branch of the person, as the session reads them | Build line: "the post by which the sender chose that person"; the key already refuses a person without a current key role (decision 3; permission review finding 4) |
+| **Look first.** `keyRouteFault` opens exactly three `@AnySignedIn()` routes by name; `PermissionGuard` lets a marked one through for a key's person | Within the owner's approval of stop-list item 5 (decision 4) |
+| **Look first.** The closed-notifications test of 10.10 changed; the own-account refusal is tested on sessions and language (no notification settings route exists) | The requirement changed (decision 5) |
+| **Look first.** One event reaching an account by two posts is one row naming both roles | Keeps "each gets one notification" of `send` (decision 6) |
+| The unread count through a key counts the notices it may see; "mark all" through a key tells the tabs by ids (100 a payload) and a `state`, never `read_all` | Decisions 7 and 8 |
+| A trigger refuses a new notice without roles; a check holds the staff roles; old rows untouched | `CLAUDE.md`, "The database guards the rules" (decision 9) |
+| A substitute or invigilator is told as `teacher`; a Tutor lesson's holder without the class's Tutor row is a substitute | Decision 10; spec review of the code, must-fix 1 |
+| `timetable.draft_taken_over` names the posts held at `edit_seen_at`, `academic_vice_principal` should none be found | Decision 12; never a 500 on a take-over |
+| **Build decision.** A read mark through a key writes no audit entry, as for a session | 0.9: the helper writes no entry for a read mark (decided by the owner) |
+
 ## 21 November 2026: integration keys, requests made through a key (task 10.10)
 
 Plan approved on pull request #369 with corrections 1 to 3. Flagged on issue #42.
