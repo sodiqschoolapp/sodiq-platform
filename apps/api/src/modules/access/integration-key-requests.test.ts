@@ -642,6 +642,8 @@ describe('requests made through an integration key', () => {
       // A subject of the Tutors department (the Homework slot row of 3.6c-2), held by the Tutor.
       const cells = await CellsKit.create(t.database.migrator);
       const tutorLesson = await cells.lesson(x.branch, x.year, x.classId, '2026-10-27');
+      // A locked Tutor lesson of 13 October, for an unlock request of the Tutor's own.
+      const lockedTutorLesson = await cells.lesson(x.branch, x.year, x.classId, '2026-10-13');
       const tutors = await t.database.migrator
         .selectFrom('departments')
         .select('id')
@@ -670,10 +672,85 @@ describe('requests made through an integration key', () => {
         .returning('id')
         .executeTakeFirstOrThrow();
       const pupil = await student(x.branch, x.classId, 'Rasulov');
+      await t.database.migrator
+        .updateTable('lessons')
+        .set({ teacher_id: x.people.owner.id })
+        .where('id', '=', lockedTutorLesson)
+        .execute();
       const call = asOwner(x);
       const save = { saves: [{ studentId: pupil, mark: 1, version: null }] };
       await at(
         async () => {
+          // The lists of the own work leave the Tutor's out through the key and keep it in the
+          // person's own session (code round 1 of the review, must-fix 1).
+          const unlock = ok(
+            await t
+              .post(
+                `/api/journal/lessons/${lockedTutorLesson}/unlocks`,
+                x.branch,
+                { reason: 'Away on a trip' },
+                x.owner.cookie,
+              )
+              .set(REQUEST_KEY_HEADER, randomUUID()),
+            201,
+          ).body as { id: string };
+          const unlockIds = (answer: Response) =>
+            (ok(answer).body as { requests: { id: string }[] }).requests.map((one) => one.id);
+          expect(unlockIds(await via('get', '/api/journal/unlocks?view=own', call))).not.toContain(
+            unlock.id,
+          );
+          expect(
+            unlockIds(await t.get('/api/journal/unlocks?view=own', x.branch, x.owner.cookie)),
+          ).toContain(unlock.id);
+          // The reminders and the plans list are made from the published lessons of a journal: the
+          // scene's own maths subject is put in the Tutors department for this check, and taken
+          // back after it.
+          const department = await t.database.migrator
+            .selectFrom('subjects')
+            .select('department_id')
+            .where('id', '=', x.subject)
+            .executeTakeFirstOrThrow();
+          const reminderLessons = (answer: Response) =>
+            (
+              ok(answer).body as {
+                reminders: ({ lesson: { id: string } } | { journal: { id: string } })[];
+              }
+            ).reminders.map((one) => ('lesson' in one ? one.lesson.id : one.journal.id));
+          expect(reminderLessons(await via('get', '/api/journal/reminders', call))).toContain(
+            x.first,
+          );
+          expect(
+            (
+              ok(await via('get', '/api/plans', call)).body as { plans: { journalId: string }[] }
+            ).plans.map((one) => one.journalId),
+          ).toContain(x.journal);
+          await t.database.migrator
+            .updateTable('subjects')
+            .set({ department_id: tutors.id })
+            .where('id', '=', x.subject)
+            .execute();
+          try {
+            expect(reminderLessons(await via('get', '/api/journal/reminders', call))).not.toContain(
+              x.first,
+            );
+            expect(
+              reminderLessons(await t.get('/api/journal/reminders', x.branch, x.owner.cookie)),
+            ).toContain(x.first);
+            const planJournals = (answer: Response) =>
+              (ok(answer).body as { plans: { journalId: string }[] }).plans.map(
+                (one) => one.journalId,
+              );
+            expect(planJournals(await via('get', '/api/plans', call))).not.toContain(x.journal);
+            expect(planJournals(await t.get('/api/plans', x.branch, x.owner.cookie))).toContain(
+              x.journal,
+            );
+          } finally {
+            await t.database.migrator
+              .updateTable('subjects')
+              .set({ department_id: department.department_id })
+              .where('id', '=', x.subject)
+              .execute();
+          }
           refused(
             await via('post', `/api/journal/lessons/${tutorLesson}/attendance`, call).send(save),
             403,

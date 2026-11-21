@@ -31,6 +31,8 @@ import { Requires } from '../access/access.decorators.js';
 import { CurrentAccess, type Access } from '../access/permission.guard.js';
 import { PlanRequestsService } from './plan-requests.service.js';
 import { OpenToKeys } from '../access/key-routes.js';
+import { Transactions } from '../../database/transactions.js';
+import { withoutTutorWorkForKey } from '../access/key-tutor-work.js';
 
 /**
  * Plan edit requests (task 7.2, pull request #215, decision 1, Look first):
@@ -40,17 +42,30 @@ import { OpenToKeys } from '../access/key-routes.js';
  */
 @Controller('plans')
 export class PlanRequestsController {
-  constructor(private readonly requests: PlanRequestsService) {}
+  constructor(
+    private readonly requests: PlanRequestsService,
+    private readonly transactions: Transactions,
+  ) {}
 
   @Get('requests')
   @Requires('plan_requests', 'view')
   @OpenToKeys()
   @Returns(planRequestsSchema)
-  list(
+  async list(
     @CurrentAccess() access: Access,
     @ValidQuery(planRequestsQuerySchema) query: PlanRequestsQuery,
   ): Promise<PlanRequests> {
-    return this.requests.list(access, query);
+    const list = await this.requests.list(access, query);
+    // Task 10.10: a key request lists no Tutor work (decision 6).
+    return {
+      ...list,
+      requests: await withoutTutorWorkForKey(
+        this.transactions,
+        access,
+        list.requests,
+        (one) => one.subject.id,
+      ),
+    };
   }
 
   /** `09`: "The teacher sends an edit request: which lessons, and the reason." */

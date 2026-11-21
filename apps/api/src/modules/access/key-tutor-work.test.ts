@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { namedRecords } from './key-tutor-work.js';
+import type { Transactions } from '../../database/transactions.js';
+import { namedRecords, withoutTutorWorkForKey } from './key-tutor-work.js';
 
 // Task 10.10 (decision 6 of pull request #369; code review finding 8): the ids of a request
 // that the check of Tutor work reads, path by path. A route of `KEY_ROUTES` that names a
@@ -105,5 +106,38 @@ describe('the records a key request names', () => {
         body: [1, 2],
       }),
     ).toEqual(none);
+  });
+});
+
+describe('a list answered to a key request', () => {
+  const TUTOR = '0199a000-0000-7000-8000-0000000000aa';
+  const MATHS = '0199a000-0000-7000-8000-0000000000bb';
+  // The transaction is asked only for the Tutor subjects (`tutorSubjectIds`).
+  const transactions = {
+    run: (_branchIds: readonly string[], work: (transaction: unknown) => Promise<unknown>) =>
+      work({
+        selectFrom: () => ({
+          innerJoin: () => ({
+            select: () => ({
+              where: () => ({ execute: () => Promise.resolve([{ id: TUTOR.toUpperCase() }]) }),
+            }),
+          }),
+        }),
+      }),
+  } as unknown as Transactions;
+  const items = [{ subject: TUTOR }, { subject: MATHS }];
+
+  it('leaves the Tutor subjects out for a key request, whatever the case of the ids, and keeps a session’s list', async () => {
+    expect(
+      await withoutTutorWorkForKey(
+        transactions,
+        { branchIds: ['b'], integrationKeyId: 'k' },
+        items,
+        (one) => one.subject,
+      ),
+    ).toEqual([{ subject: MATHS }]);
+    expect(
+      await withoutTutorWorkForKey(transactions, { branchIds: ['b'] }, items, (one) => one.subject),
+    ).toEqual(items);
   });
 });

@@ -32,6 +32,8 @@ import { CurrentAccess, type Access } from '../access/permission.guard.js';
 import { ExtensionsService } from './extensions.service.js';
 import { UnlocksService } from './unlocks.service.js';
 import { OpenToKeys } from '../access/key-routes.js';
+import { Transactions } from '../../database/transactions.js';
+import { withoutTutorWorkForKey } from '../access/key-tutor-work.js';
 
 /**
  * Unlock requests (task 8.4, pull request #222, decision 5, Look first): the
@@ -45,17 +47,28 @@ export class UnlocksController {
   constructor(
     private readonly unlocks: UnlocksService,
     private readonly extensions: ExtensionsService,
+    private readonly transactions: Transactions,
   ) {}
 
   @Get('unlocks')
   @Requires('journal_unlocks', 'view')
   @OpenToKeys()
   @Returns(journalUnlocksSchema)
-  list(
+  async list(
     @CurrentAccess() access: Access,
     @ValidQuery(journalUnlocksQuerySchema) query: JournalUnlocksQuery,
   ): Promise<JournalUnlocks> {
-    return this.unlocks.list(access, query.view);
+    const list = await this.unlocks.list(access, query.view);
+    // Task 10.10: a key request lists no Tutor work (decision 6).
+    return {
+      ...list,
+      requests: await withoutTutorWorkForKey(
+        this.transactions,
+        access,
+        list.requests,
+        (one) => one.subject.id,
+      ),
+    };
   }
 
   @Post('lessons/:lessonId/unlocks')

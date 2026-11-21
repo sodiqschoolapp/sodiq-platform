@@ -17,7 +17,7 @@ Left out:
 
 - **The person's notifications** (build plan 10.10 names them): closed to keys, decision 5 of the plan, Look first. A notice is sent to an account and does not say for which role. Proposed build-plan wording for a later task: "the person's notifications, once each notice names the role it was sent for".
 - Undo, exemptions, the class, group, student and search lists, Head Teacher lists and announcements stay closed (decision 1).
-- Tutor work in lists read through a key: only the Journals list leaves it out. `GET /api/plans`, `GET /api/journal/reminders`, the unlock and plan request lists, `lessons-today` and the teacher's timetable view still show the Tutor's own Tutor lessons (read only; every write and every route naming such a record is refused). `decide-event` is checked by the ids of its body, not the requests an event selects.
+- Tutor work in lists read through a key: the Journals list, the reminders, the plans list and the unlock and plan request lists leave it out (`withoutTutorWorkForKey`). The teacher's timetable view and `lessons-today` keep it: their scope is the branch timetable and journal discipline (code round 1). `decide-event` is checked by the ids of its body, not the requests an event selects.
 
 The next sessions must know:
 

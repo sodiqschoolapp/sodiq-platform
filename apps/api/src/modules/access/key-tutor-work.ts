@@ -1,5 +1,6 @@
 import { sql } from 'kysely';
-import type { Transaction } from '../../database/transactions.js';
+import type { Transaction, Transactions } from '../../database/transactions.js';
+import type { Access } from './permission.guard.js';
 
 /**
  * The ids of a request that name a lesson, a journal or a record of one (task 10.10, decision
@@ -131,4 +132,27 @@ export async function tutorSubjectIds(transaction: Transaction): Promise<Set<str
     .where('departments.tutors', '=', true)
     .execute();
   return new Set(rows.map((row) => row.id));
+}
+
+/**
+ * The items of a list answered to a key request without the Tutor work in it (task 10.10,
+ * decision 6; code round 1 of the review of pull request #369, must-fix 1): a Teacher who is
+ * also a Tutor sees through a key only what the Teacher, Head Teacher and Senior Head Teacher
+ * assignments give, and the Tutor's own Ma'naviyat soati and Homework slot lessons, plans and
+ * requests are in a list only because of the Tutor role. A session's list is unchanged.
+ */
+export async function withoutTutorWorkForKey<T>(
+  transactions: Transactions,
+  access: Pick<Access, 'branchIds' | 'integrationKeyId'>,
+  items: readonly T[],
+  subjectOf: (item: T) => string,
+): Promise<T[]> {
+  if (access.integrationKeyId === undefined || items.length === 0) {
+    return [...items];
+  }
+  const tutors = await transactions.run(access.branchIds, (transaction) =>
+    tutorSubjectIds(transaction),
+  );
+  const lowered = new Set([...tutors].map((id) => id.toLowerCase()));
+  return items.filter((item) => !lowered.has(subjectOf(item).toLowerCase()));
 }

@@ -55,6 +55,8 @@ import { PlanFiles } from './plan-files.service.js';
 import { PlanSharing } from './plan-sharing.service.js';
 import { PlansService } from './plans.service.js';
 import { OpenToKeys } from '../access/key-routes.js';
+import { Transactions } from '../../database/transactions.js';
+import { withoutTutorWorkForKey } from '../access/key-tutor-work.js';
 
 /**
  * Lesson plans (task 7.1a, pull request #212, decision 2, Look first): the
@@ -70,17 +72,28 @@ export class PlansController {
     private readonly plans: PlansService,
     private readonly files: PlanFiles,
     private readonly sharing: PlanSharing,
+    private readonly transactions: Transactions,
   ) {}
 
   @Get()
   @Requires('plans', 'view')
   @OpenToKeys()
   @Returns(planListSchema)
-  list(
+  async list(
     @CurrentAccess() access: Access,
     @ValidQuery(planListQuerySchema) query: PlanListQuery,
   ): Promise<PlanList> {
-    return this.plans.list(access, query);
+    const list = await this.plans.list(access, query);
+    // Task 10.10: a key request lists no Tutor work (decision 6).
+    return {
+      ...list,
+      plans: await withoutTutorWorkForKey(
+        this.transactions,
+        access,
+        list.plans,
+        (one) => one.subject.id,
+      ),
+    };
   }
 
   @Get('journals/:journalId')
