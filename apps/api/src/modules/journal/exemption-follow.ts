@@ -1,4 +1,5 @@
 import { sql } from 'kysely';
+import { OWN_CLASS_ROLES } from '@sodiq/shared';
 import { transactionMoment, type Transaction } from '../../database/transactions.js';
 import type { Audit } from '../audit/audit.service.js';
 import { lessonUnits, teachingRoleOf } from '../notifications/notice-roles.js';
@@ -371,7 +372,8 @@ export async function noticeKeptLessons(
     // (task 10.11).
     const to: NotificationRecipient[] = (row.tutor_posts ?? []).flatMap((one) => {
       const [accountId = '', role] = one.split(':');
-      return role === 'tutor' || role === 'class_teacher' ? [{ accountId, for: [role] }] : [];
+      const post = OWN_CLASS_ROLES.find((one) => one === role);
+      return post === undefined ? [] : [{ accountId, for: [post] }];
     });
     const unit = units.get(row.lesson_id);
     if (row.teacher_account !== null) {
