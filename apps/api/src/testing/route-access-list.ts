@@ -996,6 +996,14 @@ export const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
   'DELETE /api/feedback-reports/:id/handled': { branch: 'none', roles: ['super_admin'] },
   'GET /api/system-status': { branch: 'none', roles: ['super_admin'] },
   'GET /api/system-status/providers': { branch: 'none', roles: ['super_admin'] },
+  // Task 10.9 (pull request #368; the owner on 21 November 2026): the integration keys,
+  // school-wide, the Super Admin's alone (integration_keys).
+  'GET /api/integration-keys': { branch: 'none', roles: ['super_admin'] },
+  'GET /api/integration-keys/choices': { branch: 'none', roles: ['super_admin'] },
+  'POST /api/integration-keys': { branch: 'none', roles: ['super_admin'] },
+  'PUT /api/integration-keys/:id/people': { branch: 'none', roles: ['super_admin'] },
+  'PUT /api/integration-keys/:id/end-date': { branch: 'none', roles: ['super_admin'] },
+  'POST /api/integration-keys/:id/revoke': { branch: 'none', roles: ['super_admin'] },
   // Task 5.8c: the forced delete of a building, floor or room (forced_deletes).
   'POST /api/setup/buildings/:id/forced-delete': { branch: 'request', roles: ['super_admin'] },
   'POST /api/setup/floors/:id/forced-delete': { branch: 'request', roles: ['super_admin'] },

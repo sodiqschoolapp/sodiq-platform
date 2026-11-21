@@ -720,6 +720,29 @@ export interface Groups {
   version: Generated<number>;
 }
 
+export interface IntegrationKeyPeople {
+  added_at: Timestamp;
+  added_by: string;
+  id: Generated<string>;
+  key_id: string;
+  removed_at: Timestamp | null;
+  removed_by: string | null;
+  staff_id: string;
+}
+
+export interface IntegrationKeys {
+  created_at: Timestamp;
+  created_by: string;
+  ends_at: Timestamp;
+  ends_on: string;
+  id: Generated<string>;
+  last_used_at: Timestamp | null;
+  name: string;
+  revoked_at: Timestamp | null;
+  revoked_by: string | null;
+  secret_hash: string;
+}
+
 export interface JournalActingTeachers {
   branch_id: string;
   created_at: Generated<Timestamp>;
@@ -2448,6 +2471,8 @@ export interface DB {
   group_classes: GroupClasses;
   group_memberships: GroupMemberships;
   groups: Groups;
+  integration_key_people: IntegrationKeyPeople;
+  integration_keys: IntegrationKeys;
   journal_acting_teachers: JournalActingTeachers;
   journal_cell_history: JournalCellHistory;
   journal_cells: JournalCells;

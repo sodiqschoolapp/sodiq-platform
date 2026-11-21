@@ -134,11 +134,11 @@ Neither was done by hand (owner, 29 October 2026, issue #42). In their place: th
 
 ## The routes in numbers
 
-- Routes of the application: 538, each called by the role harness as the 15 roles, an account without a role, a Parent account (task 11.1) and nobody, in the own and in another branch.
-- Without sign-in: 5. For the own account: 24. The parent portal: 8. With a permission of the table: 501.
+- Routes of the application: 544, each called by the role harness as the 15 roles, an account without a role, a Parent account (task 11.1) and nobody, in the own and in another branch.
+- Without sign-in: 5. For the own account: 24. The parent portal: 8. With a permission of the table: 507.
 - Routes with a limit inside the route: 158.
-- Routes that take an id: 419, with 865 ids (branch 760, school 76, own 12, none 17).
-- Areas of the permission table: 64.
+- Routes that take an id: 423, with 870 ids (branch 760, school 79, own 12, none 19).
+- Areas of the permission table: 65.
 
 ## Routes without a role
 
@@ -863,6 +863,8 @@ For every id a route takes, in its path, its query or its body, the record it na
 | `POST /api/groups/transfers/:id/change` | `body:toGroupId` | group | branch | `src/modules/people/group-transfers.test.ts > answers 404 for ids of another branch on every route, the rows of both branches unchanged` |
 | `POST /api/groups/transfers/:id/change` | `body:journalEntries.seen[].id` | journal entry | branch | `src/modules/journal/journal-transfers.test.ts > on a group move and the change of a scheduled one` |
 | `POST /api/groups/transfers/:id/undo` | `path:id` | student move | branch | `src/modules/people/group-transfers.test.ts > answers 404 for a student, a group row, a group or a move it cannot see`<br>`src/modules/people/group-transfers.test.ts > answers 404 for ids of another branch on every route, the rows of both branches unchanged`<br>`src/modules/journal/journal-transfers.test.ts > on the cancel and undo of class and group moves and of a leaving, with journal rows in both branches` |
+| `POST /api/integration-keys` | `body:staffRecordIds` | staff record | none | task 10.9, decision 2 of pull request #368: the Super Admin puts on a key people of any branch |
+| `POST /api/integration-keys/:id/revoke` | `path:id` | integration key | school | `src/modules/access/integration-keys.test.ts > answers 404 for an unknown key on each route, and writes nothing` |
 | `POST /api/journal/discipline/export` | `body:departmentId` | department | school | `src/modules/journal/discipline-report.test.ts > keeps the Head Tutor to the Tutor subjects and a Head Teacher who also teaches to own subjects, in the items and the file, and answers 404 for an unknown department` |
 | `POST /api/journal/exports` | `body:quarterId` | quarter | branch | `src/modules/journal/journal-exports.test.ts > repeats a key: the stored answer for the same account, 409 for another, 404 and 403 checked first`<br>`repeat: src/modules/journal/journal-exports.test.ts > repeats a key: the stored answer for the same account, 409 for another, 404 and 403 checked first` |
 | `POST /api/journal/journals/:journalId/export` | `path:journalId` | journal | branch | `src/modules/journal/journal-exports.test.ts > answers 404 for an unknown journal and a quarter of another branch, and writes nothing in either branch` |
@@ -1340,6 +1342,9 @@ For every id a route takes, in its path, its query or its body, the record it na
 | `PUT /api/exemptions/:id/document` | `path:id` | exemption | branch | `src/modules/journal/exemption-files.test.ts > answers 404 for another branch’s and an unknown exemption, and 409 for a voided one` |
 | `PUT /api/groups/:id` | `path:id` | group | branch | `src/modules/classes/groups.test.ts > answers another branch’s and an unknown group 404 on every path, changing nothing` |
 | `PUT /api/groups/:id` | `body:classIds` | class | branch | `src/modules/classes/groups.test.ts > answers a class, a subject or a year of another branch or unknown in the body 404, changing nothing` |
+| `PUT /api/integration-keys/:id/end-date` | `path:id` | integration key | school | `src/modules/access/integration-keys.test.ts > answers 404 for an unknown key on each route, and writes nothing` |
+| `PUT /api/integration-keys/:id/people` | `path:id` | integration key | school | `src/modules/access/integration-keys.test.ts > answers 404 for an unknown key on each route, and writes nothing` |
+| `PUT /api/integration-keys/:id/people` | `body:staffRecordIds` | staff record | none | task 10.9, decision 2 of pull request #368: the Super Admin puts on a key people of any branch |
 | `PUT /api/journal/comments` | `body:on<target=mark>.lessonId` | lesson | branch | `src/modules/journal/rating.test.ts > answers 404 for another branch’s lesson, an unknown work and an unknown student, and writes nothing` |
 | `PUT /api/journal/comments` | `body:on<target=mark>.studentId` | student | branch | `src/modules/journal/rating.test.ts > answers 404 for another branch’s lesson, an unknown work and an unknown student, and writes nothing` |
 | `PUT /api/journal/comments` | `body:on<target=note>.lessonId` | lesson | branch | `src/modules/journal/rating.test.ts > answers 404 for another branch’s lesson, an unknown work and an unknown student, and writes nothing` |
@@ -1696,6 +1701,12 @@ Every area of `PERMISSIONS` (`packages/shared/src/permissions.ts`), the table th
 | academic_vice_principal | yes |  |  |  |  |
 | senior_head_teacher | yes |  |  |  |  |
 | head_teacher | yes |  |  |  |  |
+
+### `integration_keys`
+
+| Role | view | create | edit | archive | export |
+| --- | :-: | :-: | :-: | :-: | :-: |
+| super_admin | yes | yes | yes |  |  |
 
 ### `journal`
 

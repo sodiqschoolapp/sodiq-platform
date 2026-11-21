@@ -32,6 +32,8 @@ export const SCHOOL_RECORDS: readonly string[] = [
   'subject',
   // Pull request #361 (decision 6, Look first): a report about the app belongs to an account (0011).
   'feedback report',
+  // Task 10.9 (decision 1 of pull request #368, Look first): a key is of the whole school (0175).
+  'integration key',
 ];
 
 /** One id of a route. */

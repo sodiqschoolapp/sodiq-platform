@@ -40,6 +40,14 @@ const REPORT =
   'src/modules/feedback/feedback-list.test.ts > answers 404 for an unknown report, and writes nothing';
 const REPORT_RULE = 'db/migrations/0011: a report is school-wide, it belongs to an account';
 
+// Task 10.9 (pull request #368): a key has no branch (0175); its tests send an unknown id. The
+// people of a key are picked from every branch by design (decision 2, Look first).
+const K = 'src/modules/access/integration-keys.test.ts';
+const KEY = `${K} > answers 404 for an unknown key on each route, and writes nothing`;
+const KEY_RULE = 'db/migrations/0175: a key is of the whole school';
+const KEY_PEOPLE_RULE =
+  'task 10.9, decision 2 of pull request #368: the Super Admin puts on a key people of any branch';
+
 const OWN_RULE = '.claude/rules/api.md, @AnySignedIn: never on one named in the request';
 
 const line = (
@@ -139,6 +147,19 @@ export const OTHER_IDS: RouteIds = {
   ],
   'DELETE /api/feedback-reports/:id/handled': [
     line('path:id', 'feedback report', 'school', REPORT_RULE, [REPORT]),
+  ],
+  'POST /api/integration-keys': [
+    line('body:staffRecordIds', 'staff record', 'none', KEY_PEOPLE_RULE, []),
+  ],
+  'PUT /api/integration-keys/:id/people': [
+    line('path:id', 'integration key', 'school', KEY_RULE, [KEY]),
+    line('body:staffRecordIds', 'staff record', 'none', KEY_PEOPLE_RULE, []),
+  ],
+  'PUT /api/integration-keys/:id/end-date': [
+    line('path:id', 'integration key', 'school', KEY_RULE, [KEY]),
+  ],
+  'POST /api/integration-keys/:id/revoke': [
+    line('path:id', 'integration key', 'school', KEY_RULE, [KEY]),
   ],
   'POST /api/notifications/:id/read': [
     line('path:id', 'notification', 'own', OWN_RULE, [NOTIFICATION]),
