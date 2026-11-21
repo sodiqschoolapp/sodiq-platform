@@ -30,6 +30,11 @@ import type { StatusFetch } from '../monitoring/status-providers.js';
 import { STATUS_FETCH } from '../monitoring/system-status.service.js';
 import type { StopBeforeHandler } from './route-harness.js';
 import { FixedClock } from './fixed-clock.js';
+import {
+  ASSISTANT_ROUTE_LISTS,
+  type AssistantRouteLists,
+} from '../modules/access/assistant-routes.js';
+import { ASSISTANT_MODEL, type AssistantModel } from '../modules/assistant/model.js';
 // From database-server.ts, which needs no vitest: the second API process of the speed run's load
 // (testing/speed/server.ts, task 10.1c) builds this app in plain Node.
 import { withDatabaseName } from './database-server.js';
@@ -84,6 +89,15 @@ export interface TestAppOptions {
   statusFetch?: StatusFetch;
   /** Task 11.4: what the calls to the Bot API are sent through, with `config.telegram` set. */
   telegramFetch?: TelegramFetch;
+  /** Task 11.12: the assistant's model, usually a `FakeModel`. Without it: Gemini, not set up. */
+  assistantModel?: AssistantModel;
+  /** Task 11.12: the assistant's lists the guard reads, for a test of a role with no list yet. */
+  assistantRouteLists?: AssistantRouteLists;
+  /**
+   * Task 11.12: the server listens on an ephemeral port of 127.0.0.1, so that the assistant's
+   * reads reach it (`AssistantDispatcher`).
+   */
+  listen?: boolean;
 }
 
 /**
@@ -160,6 +174,12 @@ export async function createTestApp(options: TestAppOptions = {}): Promise<NestE
   if (options.permissionTable !== undefined) {
     builder.overrideProvider(PERMISSION_TABLE).useValue(options.permissionTable);
   }
+  if (options.assistantModel !== undefined) {
+    builder.overrideProvider(ASSISTANT_MODEL).useValue(options.assistantModel);
+  }
+  if (options.assistantRouteLists !== undefined) {
+    builder.overrideProvider(ASSISTANT_ROUTE_LISTS).useValue(options.assistantRouteLists);
+  }
   const moduleRef = await builder.compile();
   const app = moduleRef.createNestApplication<NestExpressApplication>();
   if (options.handlerStop !== undefined) {
@@ -170,5 +190,8 @@ export async function createTestApp(options: TestAppOptions = {}): Promise<NestE
   // As main.ts: the live connection is on the server of every test app; a test
   // that needs pushes also starts `LiveListener` with the address of its database.
   app.get(LiveSockets).attach(app.getHttpServer());
+  if (options.listen === true) {
+    await app.listen(0, '127.0.0.1');
+  }
   return app;
 }

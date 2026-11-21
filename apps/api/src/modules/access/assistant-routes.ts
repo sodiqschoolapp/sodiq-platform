@@ -318,12 +318,20 @@ const SUPER_ADMIN: Readonly<Record<string, AssistantRouteLine>> = {
   },
 };
 
-/** The list of each role; a role not named has none (the Academic Vice Principal in 11.13, the Teacher in 11.14). */
-export const ASSISTANT_ROUTES: Readonly<
+export type AssistantRouteLists = Readonly<
   Partial<Record<AssistantRole, Readonly<Record<string, AssistantRouteLine>>>>
-> = {
+>;
+
+/** The list of each role; a role not named has none (the Academic Vice Principal in 11.13, the Teacher in 11.14). */
+export const ASSISTANT_ROUTES: AssistantRouteLists = {
   super_admin: SUPER_ADMIN,
 };
+
+/**
+ * The lists `AssistantRoutes` reads for the guard: `ASSISTANT_ROUTES`, except in a test app that
+ * gives a role with no list yet a list of its own, to test the narrowing to a chosen role.
+ */
+export const ASSISTANT_ROUTE_LISTS = Symbol('ASSISTANT_ROUTE_LISTS');
 
 /** The routes of a role's list, by name. */
 export function assistantRoutesOf(

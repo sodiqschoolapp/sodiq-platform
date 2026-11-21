@@ -1,9 +1,13 @@
-import { Injectable, RequestMethod, type OnApplicationBootstrap } from '@nestjs/common';
+import { Inject, Injectable, RequestMethod, type OnApplicationBootstrap } from '@nestjs/common';
 import { DiscoveryService, MetadataScanner } from '@nestjs/core';
 import { ASSISTANT_ROLES, type AssistantRole } from '@sodiq/shared';
 import { API_PREFIX } from '../../app.setup.js';
 import { declarationsOf } from './access.decorators.js';
-import { assistantRouteFault, assistantRoutesOf } from './assistant-routes.js';
+import {
+  ASSISTANT_ROUTE_LISTS,
+  assistantRouteFault,
+  type AssistantRouteLists,
+} from './assistant-routes.js';
 
 // Under these keys NestJS keeps the path and the method of a controller and a handler.
 const PATH = 'path';
@@ -48,7 +52,12 @@ export class AssistantRoutes implements OnApplicationBootstrap {
   constructor(
     private readonly discovery: DiscoveryService,
     private readonly scanner: MetadataScanner,
+    @Inject(ASSISTANT_ROUTE_LISTS) private readonly lists: AssistantRouteLists,
   ) {}
+
+  private listOf(role: AssistantRole): Readonly<Record<string, unknown>> {
+    return this.lists[role] ?? {};
+  }
 
   onApplicationBootstrap(): void {
     const faults: string[] = [];
@@ -67,7 +76,7 @@ export class AssistantRoutes implements OnApplicationBootstrap {
         }
         for (const name of routeNamesOf(type, handler)) {
           const roles = ASSISTANT_ROLES.filter((role) =>
-            Object.hasOwn(assistantRoutesOf(role), name),
+            Object.hasOwn(this.listOf(role), name),
           );
           if (roles.length === 0) {
             continue;
@@ -87,7 +96,7 @@ export class AssistantRoutes implements OnApplicationBootstrap {
       }
     }
     for (const role of ASSISTANT_ROLES) {
-      for (const name of Object.keys(assistantRoutesOf(role))) {
+      for (const name of Object.keys(this.listOf(role))) {
         if (!found.has(name)) {
           faults.push(`${name} is on the assistant’s list of ${role} and is not a route`);
         }

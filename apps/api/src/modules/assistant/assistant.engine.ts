@@ -425,17 +425,15 @@ function readContent(
 
 /** What the model is given of a read: the filtered body, cut to its bound, or the refusal. */
 export function givenOf(outcome: ReadOutcome): unknown {
-  if ("failure" in outcome) {
+  if ('failure' in outcome) {
     return { error: `read_${outcome.failure}` };
   }
   if (outcome.status >= 400) {
-    const body = outcome.body as { code?: unknown } | null;
+    const body = outcome.body as { error?: { code?: unknown } } | null;
     // The refusal a screen would get (`edge/people-roles-accounts`: "the same refusal a
     // screen would"); its message is not passed, only the code.
-    return {
-      status: outcome.status,
-      error: typeof body?.code === 'string' ? body.code : 'refused',
-    };
+    const code = body?.error?.code;
+    return { status: outcome.status, error: typeof code === 'string' ? code : 'refused' };
   }
   const data = filterRead(outcome.body);
   const text = JSON.stringify(data);
