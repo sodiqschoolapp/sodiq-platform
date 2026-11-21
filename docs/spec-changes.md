@@ -2,6 +2,17 @@
 
 The spec in `docs/spec/` was taken from the full spec document on 3 October 2026 (revision 88). Every later change to a spec file is listed here, newest first, with the date, what changed, why, and the files touched. Changes are made only with the `/spec-change` skill and the owner's approval.
 
+## 21 November 2026: integration keys for the department platforms
+
+- What changed:
+  1. **Integration keys.** The Super Admin creates a key with a name, a list of people and an end date at most one year ahead; each person on it holds the Teacher, Head Teacher or Senior Head Teacher role, and one person can be on several keys. The secret is shown once and stored only as a hash. Only the Super Admin creates keys, changes their people and end date, and revokes them; the list shows each key's last use.
+  2. **A request made with a key acts for one named person** (by staff ID), checked on every request: the key not revoked and not past its end date, the person on the key and active. The person may do exactly what their Teacher, Head Teacher and Senior Head Teacher assignments allow in this platform, with the same scope, edit periods, locks, cell versions and checks; their other roles do not count. Never through a key: exports, a student's record, moving students between groups, and the person's own account. The routes open to keys are a list fixed in code; a new route stays closed until a task adds it.
+  3. **Calculation stays in this platform**: a key sends what a person types and reads results, never sends them. Every change through a key is audited as the person's, with the key named. A key is not a sign-in: no session, nothing of the account. Requests per minute are limited; the key is kept on the department platform's server.
+- Why: the owner, 21 November 2026, in chat. The English and Mathematics departments run platforms of their own, built by their head teachers, and asked for an integration. The owner decided that this platform stays the place where the school's data lives, and that a department platform may fill it through the API exactly as if its people typed in this platform. Per-teacher consent was left out on purpose (owner): the school administration decides who is on a key, and the Senior Head Teacher answers for the department. A key lists people rather than a department, so one key can serve any set of teachers.
+- Not changed: the permission table of the roles (no role gains a right); the cell versions of `edge/journal` ("Two people … change the same cell"), which already keep a save from the department platform from overwriting one made here, and the other way round; "every export is logged" (no export goes through a key; reads through a key are not logged one by one, as ordinary page views are not); `packages/calc`.
+- Code: tasks 10.9 (the keys and the Super Admin page) and 10.10 (requests made through a key), added to `docs/build-plan.md` with this change.
+- Files: `docs/spec/02-roles-and-access.md` (the new section Integration keys; Accounts and sign-in: build order, a new row), `docs/spec/13-technology.md` (Security), `docs/spec/edge-cases/people-roles-accounts.md` (Who can act, a new row; Accounts and sign-in, a new row; Personal data and the audit log, what the log records).
+
 ## 19 November 2026: the portal's Today page, and the latest scores by the moment they were saved
 
 - What changed:
