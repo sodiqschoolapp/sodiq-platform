@@ -18,6 +18,7 @@ import { moveSubjectDepartment } from './department-move';
 import { mergeRecords } from './merges';
 import { forceDeleteAndRestore } from './timetable-forced-delete';
 import { importStaff } from './staff-import';
+import { askTheAssistant } from './assistant';
 
 /**
  * The first sign-in of a seeded Super Admin or Academic Vice Principal: the
@@ -442,6 +443,9 @@ test('the Super Admin edits the branch, adds a building, a floor and a room, and
   // Task 5.8b: the seed holds no fourth Super Admin (correction 1 of #87).
   await test.step('deletes a lesson for good, restores it from Deleted lessons and reads both in its history', () =>
     forceDeleteAndRestore(page));
+  // Task 11.12: the assistant, switched on, answers from the platform's own list.
+  await test.step('switches the assistant on and asks which classes have no Tutor', () =>
+    askTheAssistant(page));
 });
 
 // docs/build-plan.md, task 1.2, done when: "Academic cannot be renamed or

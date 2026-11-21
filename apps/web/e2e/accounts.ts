@@ -127,8 +127,7 @@ export type AccountKey =
   | 'telegramParent'
   | 'announcementsAuthor'
   | 'announcementsParent'
-  // Task 11.12: the Super Admin of assistant.spec.ts.
-  | 'assistantAdmin'
+  // Task 11.12: the Teacher of assistant.spec.ts.
   | 'assistantTeacher';
 
 /** Invented for the tests. */

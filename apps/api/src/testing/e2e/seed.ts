@@ -8765,30 +8765,34 @@ try {
     password: announcementsParent.firstPassword,
   };
 
-  // Task 11.12: the Super Admin of assistant.spec.ts, one account of its own, in a branch of its
-  // own with two classes and no Tutor, so the scripted model's list holds exactly them. The
-  // assistant is switched on for the school and the Super Admin (it is off until switched on).
+  // Task 11.12: a branch of its own with two classes and no Tutor, so the scripted model's list
+  // holds exactly them, for a step of the setup Super Admin's test (the seed holds no fourth Super
+  // Admin, correction 1 of #87), and a Teacher of the branch for assistant.spec.ts. The step switches
+  // the assistant on in the Settings page (it is off until switched on).
   {
     const assistantBranch = await insertBranch(migrator, 'Assistant browser test branch');
-    const year = await migrator
-      .insertInto('academic_years')
-      .values({
-        branch_id: assistantBranch,
-        start_date: startDate,
-        end_date: isoDate(new Date(yearStart.getTime() + 364 * dayMs)),
-      })
-      .returning('id')
-      .executeTakeFirstOrThrow();
-    await migrator
-      .insertInto('quarters')
-      .values(
-        [1, 2, 3, 4].map((number) => ({
+    const year = await migrator.transaction().execute(async (transaction) => {
+      const created = await transaction
+        .insertInto('academic_years')
+        .values({
           branch_id: assistantBranch,
-          academic_year_id: year.id,
-          number,
-        })),
-      )
-      .execute();
+          start_date: startDate,
+          end_date: isoDate(new Date(yearStart.getTime() + 364 * dayMs)),
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      await transaction
+        .insertInto('quarters')
+        .values(
+          [1, 2, 3, 4].map((number) => ({
+            branch_id: assistantBranch,
+            academic_year_id: created.id,
+            number,
+          })),
+        )
+        .execute();
+      return created;
+    });
     await migrator
       .updateTable('academic_years')
       .set({ status: 'current' })
@@ -8807,23 +8811,6 @@ try {
         })
         .execute();
     }
-    const assistantAdmin = await create('Feruza', 'Rahimova');
-    await transactions.run([], (transaction) =>
-      assignments.give(transaction, {
-        accountId: assistantAdmin.id,
-        role: 'super_admin',
-        branchId: null,
-        givenBy: null,
-      }),
-    );
-    await migrator
-      .updateTable('assistant_settings')
-      .set({ school_on: true, roles_on: ['super_admin'] })
-      .execute();
-    seeded.assistantAdmin = {
-      login: assistantAdmin.login,
-      password: assistantAdmin.firstPassword,
-    };
     // A Teacher of the same branch, who sees no assistant (11.14 gives the Teacher one).
     const assistantTeacher = await create('Bobur', 'Aliyev');
     await transactions.run([assistantBranch], (transaction) =>

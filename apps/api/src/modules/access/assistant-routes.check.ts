@@ -93,6 +93,13 @@ export class AssistantRoutes implements OnApplicationBootstrap {
         }
       }
     }
+    // The jobs worker's context, the seeds and the first-account command hold none of the
+    // listed controllers and answer no request: nothing is open there. The application's own
+    // start, and `assistant-routes.test.ts`, hold every listed route.
+    if (found.size === 0) {
+      this.ready = true;
+      return;
+    }
     for (const role of ASSISTANT_ROLES) {
       for (const name of Object.keys(this.listOf(role))) {
         if (!found.has(name)) {
