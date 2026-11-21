@@ -723,6 +723,12 @@ const MESSAGE: Record<ErrorCode, string> = {
   assistant_not_archived: 'The conversation is not archived.',
   assistant_call_invalid: 'The request is not a read of the assistant.',
   assistant_route_closed: 'This route is not open to the assistant for this role.',
+  assistant_proposal_expired: 'The proposal was not confirmed within 15 minutes; ask again.',
+  assistant_proposal_decided: 'The proposal was already confirmed or declined.',
+  assistant_proposal_superseded: 'A newer proposal took the place of this one.',
+  assistant_step_outdated: 'The data this change was proposed on has changed since.',
+  assistant_step_same_record: 'A proposal holds one change per record.',
+  assistant_step_invalid: 'This change names no step of the assistant that is running now.',
 };
 
 function codeOfStatus(status: number): ErrorCode {

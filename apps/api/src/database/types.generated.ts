@@ -186,6 +186,37 @@ export interface AssistantModelCalls {
   tokens_out: number;
 }
 
+export interface AssistantProposalDecisions {
+  account_id: string;
+  branch_id: string;
+  decided_at: Timestamp;
+  decision: string;
+  proposal_id: string;
+}
+
+export interface AssistantProposals {
+  account_id: string;
+  branch_id: string;
+  conversation_id: string;
+  created_at: Timestamp;
+  expires_at: Timestamp;
+  id: Generated<string>;
+  question_id: string;
+  role: string;
+  steps: Json;
+}
+
+export interface AssistantProposalSteps {
+  branch_id: string;
+  code: string | null;
+  created_at: Timestamp;
+  proposal_id: string;
+  seq: number;
+  state: string;
+  status: number;
+  step_id: string;
+}
+
 export interface AssistantSettings {
   daily_limit: Generated<number>;
   id: Generated<boolean>;
@@ -198,6 +229,7 @@ export interface AuditLog {
   action: string;
   actor_id: string | null;
   assignment_id: string | null;
+  assistant_step_id: string | null;
   branch_id: string;
   details: Json | null;
   id: Generated<string>;
@@ -217,6 +249,7 @@ export interface AuditLogSchool {
   action: string;
   actor_id: string | null;
   assignment_id: string | null;
+  assistant_step_id: string | null;
   details: Json | null;
   id: Generated<string>;
   integration_key_id: string | null;
@@ -2480,6 +2513,9 @@ export interface DB {
   assistant_conversations: AssistantConversations;
   assistant_messages: AssistantMessages;
   assistant_model_calls: AssistantModelCalls;
+  assistant_proposal_decisions: AssistantProposalDecisions;
+  assistant_proposal_steps: AssistantProposalSteps;
+  assistant_proposals: AssistantProposals;
   assistant_settings: AssistantSettings;
   audit_log: AuditLog;
   audit_log_school: AuditLogSchool;
