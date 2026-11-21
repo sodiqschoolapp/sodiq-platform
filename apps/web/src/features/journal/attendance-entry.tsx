@@ -493,7 +493,11 @@ function CellHistoryDialog({
                           : yesNo(line.notHeldAfter)}
                     </TableCell>
                     <TableCell>
-                      {line.changedBy === null ? '—' : accountText(line.changedBy, '—')}
+                      {withViaKey(
+                        t,
+                        line.changedBy === null ? '—' : accountText(line.changedBy, '—'),
+                        line.viaKey,
+                      )}
                     </TableCell>
                     <TableCell>{momentText(language, line.changedAt)}</TableCell>
                     <TableCell>{t(`journal.works.changes.${line.changedHow}`)}</TableCell>

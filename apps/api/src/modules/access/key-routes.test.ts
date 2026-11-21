@@ -35,6 +35,11 @@ describe('the routes open to integration keys', () => {
   let branch: string;
   let secret: string;
   let staffId: string;
+  let south: string;
+  /** The session of a Teacher of the branch with no other role, for the comparison walk. */
+  let plainTeacher: string;
+  /** Each side's own staff record and name, put in the place of each other when comparing. */
+  const selves: { id: string; name: string }[] = [];
   const clock = new FixedClock(NOW);
 
   beforeAll(async () => {
@@ -54,6 +59,22 @@ describe('the routes open to integration keys', () => {
     const people = new ClassesKit(database.migrator);
     const made = await people.person(branch, ['uz'], { first: 'Gulnora', last: 'Saidova' });
     await kit.giveRole(made.accountId, { role: 'teacher', branchId: branch });
+    // The person on the key is also the branch's Academic Vice Principal (permission review
+    // must-fix 2): through the key that role must not count.
+    await kit.giveRole(made.accountId, { role: 'academic_vice_principal', branchId: branch });
+    south = await insertBranch(database.migrator, 'South');
+    const plain = await kit.completeSession('Zarina', 'Tursunova');
+    await kit.giveRole(plain.account.id, { role: 'teacher', branchId: branch });
+    plainTeacher = plain.cookie;
+    const plainStaff = await people.person(branch, ['uz'], {
+      accountId: plain.account.id,
+      first: 'Zarina',
+      last: 'Tursunova',
+    });
+    selves.push(
+      { id: made.staffId, name: 'Saidova Gulnora' },
+      { id: plainStaff.staffId, name: 'Tursunova Zarina' },
+    );
     const admin = await people.account();
     const staff = await database.migrator
       .selectFrom('staff')
@@ -158,6 +179,51 @@ describe('the routes open to integration keys', () => {
       }
     }
     expect(problems).toEqual([]);
+  });
+
+  it('gives the key person (a Teacher who is also Academic Vice Principal) on every open route what a Teacher alone gets in a session, and nothing in a branch without a key role', async () => {
+    const differences: string[] = [];
+    const elsewhere: string[] = [];
+    const some = '0199a000-0000-7000-8000-000000000999';
+    const same = (body: unknown, side: 0 | 1): string => {
+      const self = selves[side];
+      return self === undefined
+        ? JSON.stringify(body)
+        : JSON.stringify(body).replaceAll(self.id, 'SELF').replaceAll(self.name, 'SELF NAME');
+    };
+    for (const route of routesOf(app)) {
+      if (route.openToKeys !== 'person') continue;
+      const path = route.path.replace(/:[A-Za-z0-9_]+/g, () => some);
+      const method = route.method.toLowerCase() as 'get';
+      const byKey: Response = await keyed(route.method, path).send({});
+      const bySession: Response = await request(server)
+        [method](path)
+        .set('Cookie', plainTeacher)
+        .set(BRANCH_HEADER, branch)
+        .send({});
+      const outcome = (response: Response) =>
+        `${String(response.status)} ${response.status >= 400 ? errorCode(response) : ''}`;
+      // Neither teaches anything: a read answers both the same, so a role that counted through
+      // the key (the branch's journals, requests, reports of the Academic Vice Principal) shows.
+      if (
+        byKey.status === 200 &&
+        bySession.status === 200 &&
+        same(byKey.body, 0) !== same(bySession.body, 1)
+      ) {
+        differences.push(
+          `${route.name}: the key reads ${JSON.stringify(byKey.body).slice(0, 300)}, the Teacher ${JSON.stringify(bySession.body).slice(0, 300)}`,
+        );
+      }
+      if (outcome(byKey) !== outcome(bySession)) {
+        differences.push(`${route.name}: key ${outcome(byKey)}, Teacher ${outcome(bySession)}`);
+      }
+      const other: Response = await keyed(route.method, path).set(BRANCH_HEADER, south).send({});
+      if (other.status !== 403 || errorCode(other) !== 'permission_denied') {
+        elsewhere.push(`${route.name}: ${outcome(other)}`);
+      }
+    }
+    expect(differences).toEqual([]);
+    expect(elsewhere).toEqual([]);
   });
 
   it('is sent only over HTTPS (`13`, Security)', async () => {

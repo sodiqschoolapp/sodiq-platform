@@ -713,7 +713,7 @@ export class PlansService {
       (
         await dropReachOf(
           transaction,
-          scene.reader.access.accountId,
+          scene.reader.access,
           scene.branchId,
           scene.journal,
           scene.ownerId,

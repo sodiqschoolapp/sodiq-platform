@@ -115,6 +115,8 @@ export const workLineSchema = z.strictObject({
   changedHow: workChangeSchema,
   /** `null` for a line no person wrote (a migration). */
   changedBy: accountNamedSchema.nullable(),
+  /** Task 10.10: the integration key the change was made through ("via <key name>"). */
+  viaKey: z.object({ name: z.string() }).nullable(),
 });
 
 export type WorkLine = z.infer<typeof workLineSchema>;

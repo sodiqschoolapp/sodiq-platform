@@ -2,6 +2,7 @@ import type { INestApplication } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule, type OpenAPIObject } from '@nestjs/swagger';
 import { apiErrorSchema } from '@sodiq/shared';
 import { toOpenApiSchema } from '../http/schemas.js';
+import { ACTING_STAFF_ID_HEADER, INTEGRATION_KEY_HEADER } from '@sodiq/shared';
 
 const ERROR_SCHEMA_NAME = 'ApiError';
 const METHODS = ['get', 'put', 'post', 'delete', 'patch', 'options', 'head'] as const;
@@ -13,7 +14,30 @@ const METHODS = ['get', 'put', 'post', 'delete', 'patch', 'options', 'head'] as 
 export function buildOpenApiDocument(app: INestApplication): OpenAPIObject {
   const document = SwaggerModule.createDocument(
     app,
-    new DocumentBuilder().setTitle('Sodiq School platform API').setVersion('1').build(),
+    new DocumentBuilder()
+      .setTitle('Sodiq School platform API')
+      .setVersion('1')
+      // Task 10.10 (docs/integration-guide.md): the two headers of a request made through an
+      // integration key; the operations open to keys carry `x-open-to-integration-keys`.
+      .addApiKey(
+        {
+          type: 'apiKey',
+          in: 'header',
+          name: INTEGRATION_KEY_HEADER,
+          description: 'The secret of an integration key.',
+        },
+        'integrationKey',
+      )
+      .addApiKey(
+        {
+          type: 'apiKey',
+          in: 'header',
+          name: ACTING_STAFF_ID_HEADER,
+          description: 'The staff ID of the person a key request acts for.',
+        },
+        'actingStaffId',
+      )
+      .build(),
   );
 
   // Every route answers its errors in the one shape.

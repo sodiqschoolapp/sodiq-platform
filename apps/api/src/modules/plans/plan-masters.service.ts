@@ -29,7 +29,7 @@ import {
   startYearOf,
   type MasterRow,
 } from './plan-masters-read.js';
-import { postHolders, postsOf } from '../access/request-posts.js';
+import { postHolders, readerPostsOf } from '../access/request-posts.js';
 import { clockOf } from './plan-read.js';
 import { planReaderOf, type PlanReader } from './plan-scope.js';
 import { unitKeysOf } from './plan-separate.js';
@@ -79,7 +79,7 @@ export class PlanMastersService {
   ): Promise<string | null> {
     const now = await transactionMoment(transaction);
     const holders = await postHolders(transaction, branchId, subjectId, now);
-    const posts = postsOf(holders, access.accountId);
+    const posts = readerPostsOf(holders, access);
     const subject = subjectId.toLowerCase();
     const assignmentOf = (role: string, bySubject: boolean) =>
       access.permitting.find(

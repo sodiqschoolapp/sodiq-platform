@@ -643415,6 +643415,19 @@
                                     "name"
                                   ],
                                   "additionalProperties": false
+                                },
+                                "viaKey": {
+                                  "nullable": true,
+                                  "type": "object",
+                                  "properties": {
+                                    "name": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "name"
+                                  ],
+                                  "additionalProperties": false
                                 }
                               },
                               "required": [
@@ -643430,7 +643443,8 @@
                                 "titleBefore",
                                 "titleAfter",
                                 "changedHow",
-                                "changedBy"
+                                "changedBy",
+                                "viaKey"
                               ],
                               "additionalProperties": false
                             }
@@ -803696,6 +803710,19 @@
                                 ],
                                 "additionalProperties": false
                               },
+                              "viaKey": {
+                                "nullable": true,
+                                "type": "object",
+                                "properties": {
+                                  "name": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "name"
+                                ],
+                                "additionalProperties": false
+                              },
                               "branch": {
                                 "type": "string"
                               }
@@ -803714,6 +803741,7 @@
                               "titleAfter",
                               "changedHow",
                               "changedBy",
+                              "viaKey",
                               "branch"
                             ],
                             "additionalProperties": false
@@ -976883,6 +976911,19 @@
                               "name"
                             ],
                             "additionalProperties": false
+                          },
+                          "viaKey": {
+                            "nullable": true,
+                            "type": "object",
+                            "properties": {
+                              "name": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "name"
+                            ],
+                            "additionalProperties": false
                           }
                         },
                         "required": [
@@ -976898,7 +976939,8 @@
                           "titleBefore",
                           "titleAfter",
                           "changedHow",
-                          "changedBy"
+                          "changedBy",
+                          "viaKey"
                         ],
                         "additionalProperties": false
                       }
@@ -1166473,6 +1166515,20 @@
   "tags": [],
   "servers": [],
   "components": {
+    "securitySchemes": {
+      "integrationKey": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-Integration-Key",
+        "description": "The secret of an integration key."
+      },
+      "actingStaffId": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-Acting-Staff-Id",
+        "description": "The staff ID of the person a key request acts for."
+      }
+    },
     "schemas": {
       "ApiError": {
         "type": "object",

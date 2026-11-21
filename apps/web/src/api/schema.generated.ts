@@ -118691,6 +118691,9 @@ export interface operations {
                                     login: string | null;
                                     name: string | null;
                                 } | null;
+                                viaKey: {
+                                    name: string;
+                                } | null;
                             }[];
                             ratingEntries: {
                                 /** Format: uuid */
@@ -147270,6 +147273,9 @@ export interface operations {
                                     accountId: string;
                                     login: string | null;
                                     name: string | null;
+                                } | null;
+                                viaKey: {
+                                    name: string;
                                 } | null;
                                 branch: string;
                             }[];
@@ -176757,6 +176763,9 @@ export interface operations {
                                 accountId: string;
                                 login: string | null;
                                 name: string | null;
+                            } | null;
+                            viaKey: {
+                                name: string;
                             } | null;
                         }[];
                     };

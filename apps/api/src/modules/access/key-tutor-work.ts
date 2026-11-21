@@ -7,6 +7,8 @@ import type { Transaction } from '../../database/transactions.js';
  * (`on`) and the query, under the names the routes open to keys use.
  */
 export interface NamedRecords {
+  /** A subject named by the query (`GET /api/plans/parallel?subjectId=`). */
+  subjects: string[];
   lessons: string[];
   journals: string[];
   planItems: string[];
@@ -39,7 +41,9 @@ export function namedRecords(request: {
 }): NamedRecords {
   const { params, query, body } = request;
   const on = field(body, 'on');
+  const source = field(body, 'source');
   return {
+    subjects: ids(field(query, 'subjectId')),
     lessons: ids(
       field(params, 'lessonId'),
       field(on, 'lessonId'),
@@ -51,6 +55,8 @@ export function namedRecords(request: {
       field(on, 'journalId'),
       field(query, 'journalId'),
       field(body, 'journalId'),
+      // A copy names the plan it copies from (`POST /api/plans/journals/:journalId/copy`).
+      field(source, 'journalId'),
     ),
     planItems: request.path.startsWith('/api/plans/items/') ? ids(field(params, 'itemId')) : [],
     planFiles: request.path.startsWith('/api/plans/files/') ? ids(field(params, 'fileId')) : [],
@@ -84,6 +90,8 @@ export async function namesTutorWork(
       from subjects s
       join departments d on d.id = s.department_id
       where d.tutors and s.id in (
+        select id from subjects where id = any(${array(named.subjects)})
+        union all
         select l.subject_id from lessons l where l.id = any(${array(named.lessons)})
         union all
         select j.subject_id from journals j where j.id = any(${array(named.journals)})

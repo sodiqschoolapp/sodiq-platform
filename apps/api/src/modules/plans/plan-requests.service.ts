@@ -30,7 +30,7 @@ import { Notifications } from '../notifications/notifications.service.js';
 import { closingOf, lockOpenQuarter } from '../setup/closed-quarters.js';
 import { notFound } from '../setup/setup-refusals.js';
 import { dayMoments, storedWindowOf } from './plan-gate.js';
-import { accountOfStaff, postHolders, postsOf } from '../access/request-posts.js';
+import { accountOfStaff, postHolders, postsOf, readerPostsOf } from '../access/request-posts.js';
 import {
   clockOf,
   datedQuarters,
@@ -138,7 +138,7 @@ export class PlanRequestsService {
   ): Promise<'decide' | 'own' | 'none'> {
     const holders = await postHolders(transaction, branchId, journal.subjectId, now);
     return decisionReach(
-      { accountId: access.accountId, posts: postsOf(holders, access.accountId) },
+      { accountId: access.accountId, posts: readerPostsOf(holders, access) },
       { accountId: requester, posts: postsOf(holders, requester) },
     );
   }

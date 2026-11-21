@@ -41,7 +41,11 @@ export function viaKeyOf(
  * the history tables need no column of their own (decision 12 of pull request #369).
  */
 export function viaKeyIdColumn(
-  table: 'journal_cell_history' | 'journal_rating_history' | 'journal_comment_history',
+  table:
+    | 'journal_cell_history'
+    | 'journal_rating_history'
+    | 'journal_comment_history'
+    | 'journal_work_history',
 ) {
   const line = sql.table(table);
   return sql<string | null>`(

@@ -22,7 +22,6 @@ import { LoadKit } from '../../testing/load-kit.js';
 import { CellsKit } from '../../testing/cells-kit.js';
 import { MembersKit } from '../../testing/members-kit.js';
 import { publishedScene } from '../../testing/published-scene.js';
-import { SESSION_COOKIE } from '../../http/session-cookie.js';
 import { integrationKeySecretHash } from './integration-keys.service.js';
 
 // Task 10.10 (pull request #369; the owner's spec change of 21 November 2026). `02`, Integration
@@ -214,6 +213,13 @@ describe('requests made through an integration key', () => {
     });
     await give(vice, { role: 'academic_vice_principal', branchId: s.branch });
     await give(vice, { role: 'teacher', branchId: s.branch });
+    // The Academic Vice Principal is also a Head Teacher of another subject (permission review
+    // must-fix 1): through a key only that post counts.
+    await give(vice, {
+      role: 'head_teacher',
+      branchId: s.branch,
+      subjectIds: [await load.classes.subject({ grades: [7] })],
+    });
     const lessonsOf = async (classId: string) =>
       (
         await t.database.migrator
@@ -396,6 +402,28 @@ describe('requests made through an integration key', () => {
       );
     });
 
+    it('writes a comment whose history says "via <key name>" (spec review of the plan, finding 10)', async () => {
+      await at(async () => {
+        const on = { target: 'note', lessonId: x.third, studentId: x.ahmedov };
+        ok(
+          await via('put', '/api/journal/comments', asOwner(x)).send({
+            on,
+            body: 'Came late, worked well',
+            visibility: 'staff',
+            version: null,
+          }),
+        );
+        const history = ok(
+          await via(
+            'get',
+            `/api/journal/comments/history?target=note&lessonId=${x.third}&studentId=${x.ahmedov}`,
+            asOwner(x),
+          ),
+        ).body as { lines: { viaKey: { name: string } | null }[] };
+        expect(history.lines.map((line) => line.viaKey)).toEqual([{ name: x.key.name }]);
+      });
+    });
+
     it('enters a classwork with its total and a number', async () => {
       await at(
         async () => {
@@ -448,8 +476,11 @@ describe('requests made through an integration key', () => {
 
     it('is refused on another teacher’s lesson, on a locked lesson and on an outdated cell version', async () => {
       await at(async () => {
-        const other = await attendance(x, x.otherThird, x.boboyev, 1, asOwner(x));
-        expect(other.status).toBe(403);
+        refused(
+          await attendance(x, x.otherThird, x.boboyev, 1, asOwner(x)),
+          403,
+          'journal_entry_scope',
+        );
         expect(await cellOf(x.otherThird, x.boboyev)).toBeUndefined();
         // 19 October is locked at noon on the 27th (`07`, Editing rules and locks).
         refused(await attendance(x, x.second, x.ahmedov, 1, asOwner(x)), 409, 'journal_locked');
@@ -457,8 +488,7 @@ describe('requests made through an integration key', () => {
         // The cell was saved at version 2 above; a platform that read version 1 is refused
         // (`edge/journal`, "Two people … change the same cell").
         const stored = await cellOf(x.third, x.ahmedov);
-        const stale = await attendance(x, x.third, x.ahmedov, 0, asOwner(x), 1);
-        expect(stale.status).toBe(409);
+        refused(await attendance(x, x.third, x.ahmedov, 0, asOwner(x), 1), 409, 'cell_stale');
         expect((await cellOf(x.third, x.ahmedov))?.mark).toBe(stored?.mark);
       });
     });
@@ -525,8 +555,25 @@ describe('requests made through an integration key', () => {
               staffId,
               branch: x.branch,
             }).send({ decision: 'approve', days: 1, version: requested.version });
-          const other = await decide(x.people.otherHead.staffId);
-          expect(other.status).toBe(403);
+          refused(await decide(x.people.otherHead.staffId), 403, 'journal_unlock_scope');
+          // The Academic Vice Principal who is also a Head Teacher of another subject decides
+          // as the Academic Vice Principal in this platform, and only as that Head Teacher
+          // through the key: refused, and the request is not among those waiting for them.
+          refused(await decide(x.people.vice.staffId), 403, 'journal_unlock_scope');
+          const deciding = (answer: Response) =>
+            (ok(answer).body as { requests: { id: string }[] }).requests.map((one) => one.id);
+          expect(
+            deciding(
+              await via('get', '/api/journal/unlocks?view=deciding', {
+                secret: x.key.secret,
+                staffId: x.people.vice.staffId,
+                branch: x.branch,
+              }),
+            ),
+          ).not.toContain(requested.id);
+          expect(
+            deciding(await t.get('/api/journal/unlocks?view=deciding', x.branch, x.vice.cookie)),
+          ).toContain(requested.id);
           ok(await decide(x.people.head.staffId));
           const entry = await t.database.migrator
             .selectFrom('audit_log')
@@ -537,7 +584,7 @@ describe('requests made through an integration key', () => {
           expect(entry.integration_key_id).toBe(x.key.id);
         },
         MOMENT,
-        [x.owner],
+        [x.owner, x.vice],
       );
     });
   });
@@ -547,8 +594,10 @@ describe('requests made through an integration key', () => {
       await at(
         async () => {
           const call = { secret: x.key.secret, staffId: x.people.vice.staffId, branch: x.branch };
-          expect((await via('get', `/api/journal/journals/${x.otherJournal}`, call)).status).toBe(
+          refused(
+            await via('get', `/api/journal/journals/${x.otherJournal}`, call),
             403,
+            'journal_scope',
           );
           ok(await t.get(`/api/journal/journals/${x.otherJournal}`, x.branch, x.vice.cookie));
         },
@@ -585,11 +634,10 @@ describe('requests made through an integration key', () => {
   });
 
   describe('Tutor work is done in this platform (decision 6)', () => {
-    it('a Teacher who is also the class’s Tutor is refused the Tutor lesson and its journal through the key, and enters it in the own session', async () => {
-      const tutorTeacher = await account();
-      await give(tutorTeacher, { role: 'teacher', branchId: x.branch });
-      const tutorAssignment = await give(tutorTeacher, { role: 'tutor', branchId: x.branch });
-      const person = await staffFor(x.branch, tutorTeacher);
+    it('a Teacher who is also the class’s Tutor is refused the Tutor lesson, its journal and its plan through the key, keeps the own subject lessons, and enters the Tutor lesson in the own session', async () => {
+      // The scene's maths teacher is also the Tutor of the class (`edge/people-roles-accounts`:
+      // "A Teacher who is also a Tutor is on an integration key").
+      const tutorAssignment = await give(x.owner, { role: 'tutor', branchId: x.branch });
       await load.classes.tutorRow(x.branch, x.classId, tutorAssignment.id);
       // A subject of the Tutors department (the Homework slot row of 3.6c-2), held by the Tutor.
       const cells = await CellsKit.create(t.database.migrator);
@@ -606,18 +654,24 @@ describe('requests made through an integration key', () => {
         .execute();
       await t.database.migrator
         .updateTable('lessons')
-        .set({ teacher_id: person.id })
+        .set({ teacher_id: x.people.owner.id })
         .where('id', '=', tutorLesson)
         .execute();
+      // The Tutor subject's journal of the class, as a publish writes it (code review finding 1).
       const journal = await t.database.migrator
-        .selectFrom('journals')
-        .select('id')
-        .where('class_id', '=', x.classId)
-        .where('subject_id', '=', cells.subject)
-        .executeTakeFirst();
-      const key = await keyOf([person.id]);
-      const call = { secret: key.secret, staffId: person.staffId, branch: x.branch };
-      const save = { saves: [{ studentId: x.ahmedov, mark: 1, version: null }] };
+        .insertInto('journals')
+        .values({
+          branch_id: x.branch,
+          academic_year_id: x.year,
+          class_id: x.classId,
+          subject_id: cells.subject,
+          runs: '{[2026-09-07,)}',
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      const pupil = await student(x.branch, x.classId, 'Rasulov');
+      const call = asOwner(x);
+      const save = { saves: [{ studentId: pupil, mark: 1, version: null }] };
       await at(
         async () => {
           refused(
@@ -635,39 +689,57 @@ describe('requests made through an integration key', () => {
             403,
             'integration_key_tutor_lesson',
           );
-          expect(await cellOf(tutorLesson, x.ahmedov)).toBeUndefined();
-          if (journal !== undefined) {
-            refused(
-              await via('get', `/api/journal/journals/${journal.id}`, call),
-              403,
-              'integration_key_tutor_lesson',
-            );
-            const list = journalListSchema.parse(
-              ok(await via('get', '/api/journal/journals', call)).body,
-            );
-            expect(list.journals.map((one) => one.id)).not.toContain(journal.id);
-          }
+          refused(
+            await via('get', `/api/journal/journals/${journal.id}`, call),
+            403,
+            'integration_key_tutor_lesson',
+          );
+          refused(
+            await via('get', `/api/plans/journals/${journal.id}`, call),
+            403,
+            'integration_key_tutor_lesson',
+          );
+          refused(
+            await via('get', `/api/plans/parallel?subjectId=${cells.subject}`, call),
+            403,
+            'integration_key_tutor_lesson',
+          );
+          expect(await cellOf(tutorLesson, pupil)).toBeUndefined();
+          const list = journalListSchema.parse(
+            ok(await via('get', '/api/journal/journals', call)).body,
+          );
+          const listed = list.journals.map((one) => one.id);
+          expect(listed).not.toContain(journal.id);
+          expect(listed).toContain(x.journal);
+          // The teacher's own maths lesson stays open through the key (`02`: "Exactly what their
+          // Teacher … assignments allow"; code review finding 2).
+          ok(await attendance(x, x.third, pupil, 1, call));
+          expect((await cellOf(x.third, pupil))?.mark).toBe(1);
           // A Tutor's own route is closed to keys.
           refused(
-            await via('get', `/api/journal/student-absences/${x.ahmedov}/2026-10-27/file`, call),
+            await via('get', `/api/journal/student-absences/${pupil}/2026-10-27/file`, call),
             403,
             'integration_key_route_closed',
           );
-          // The same entry in the person's own session passes.
+          // The same entry in the person's own session passes, and the own Journals page lists it.
           ok(
             await t
               .post(
                 `/api/journal/lessons/${tutorLesson}/attendance`,
                 x.branch,
                 save,
-                tutorTeacher.cookie,
+                x.owner.cookie,
               )
               .set(REQUEST_KEY_HEADER, randomUUID()),
           );
-          expect((await cellOf(tutorLesson, x.ahmedov))?.mark).toBe(1);
+          expect((await cellOf(tutorLesson, pupil))?.mark).toBe(1);
+          const own = journalListSchema.parse(
+            ok(await t.get('/api/journal/journals', x.branch, x.owner.cookie)).body,
+          );
+          expect(own.journals.map((one) => one.id)).toContain(journal.id);
         },
         MOMENT,
-        [tutorTeacher],
+        [x.owner],
       );
     });
   });
@@ -804,8 +876,14 @@ describe('requests made through an integration key', () => {
             .select(['id', 'last_used_at'])
             .orderBy('id')
             .execute();
+          const accountsBefore = await t.database.migrator
+            .selectFrom('accounts')
+            .selectAll()
+            .where('id', 'in', [x.owner.account.id, x.vice.account.id])
+            .orderBy('id')
+            .execute();
           const since = new Date(MOMENT);
-          ok(
+          const answer = ok(
             await attendance(
               x,
               x.third,
@@ -821,16 +899,24 @@ describe('requests made through an integration key', () => {
             .orderBy('id')
             .execute();
           expect(sessionsAfter).toEqual(sessionsBefore);
+          // Nothing of either account changes, and no cookie is set (`02`, Not a sign-in).
+          expect(
+            await t.database.migrator
+              .selectFrom('accounts')
+              .selectAll()
+              .where('id', 'in', [x.owner.account.id, x.vice.account.id])
+              .orderBy('id')
+              .execute(),
+          ).toEqual(accountsBefore);
+          expect(answer.headers['set-cookie']).toBeUndefined();
           const entries = await journalEntriesSince(since);
           const last = entries.at(-1);
           expect(last?.actor_id).toBe(x.owner.account.id);
           expect(last?.integration_key_id).toBe(x.key.id);
-          // The cookie was not even read: no Set-Cookie, the vice's session unchanged above.
         },
         '2026-10-27T12:30:00+05:00',
         [x.vice],
       );
-      expect(SESSION_COOKIE).toBeTruthy();
     });
   });
 
@@ -852,6 +938,16 @@ describe('requests made through an integration key', () => {
       );
       refused(over, 429, 'integration_key_rate_limited');
       expect(over.headers['retry-after']).toBe('40');
+      // The refused request is counted and is the key's last use (code review finding 10).
+      const counted = await t.database.migrator
+        .selectFrom('integration_keys')
+        .select(['last_used_at', 'minute_requests'])
+        .where('id', '=', key.id)
+        .executeTakeFirstOrThrow();
+      expect(counted.minute_requests).toBe(301);
+      expect(counted.last_used_at?.toISOString()).toBe(
+        new Date('2026-10-27T12:00:20+05:00').toISOString(),
+      );
       ok(await at(() => via('get', '/api/journal/journals', call), '2026-10-27T12:01:00+05:00'));
       // A refused request (a closed route) is a use too.
       refused(

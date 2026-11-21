@@ -7,7 +7,7 @@ This guide is for the developers of a department platform (for example the Engli
 The Super Admin creates a key, puts people on it, and gives it to the owner of the department platform. The secret starts with `sodiq_ik_`. It is shown once and the school keeps only its hash, so a lost secret cannot be shown again. Ask the Super Admin to revoke the key and create a new one.
 
 - Keep the secret on the platform's **server** only, as you would a password. Never put it in a web page, a browser, a phone app, a repository or a log. A request made from a user's device would carry the secret to that device.
-- Send requests over **HTTPS** only. A request that reaches the server over plain HTTP is refused: `400 integration_key_https_required`.
+- Send requests over **HTTPS** only, to `https://`. A request that reaches the server over plain HTTP is refused (`400 integration_key_https_required`), but by then the secret has already crossed the network in plain text: treat a key ever sent over HTTP as leaked and ask for a new one.
 - A key works until the end of its end date (Tashkent time). After that it is refused until the Super Admin sets a new end date.
 
 ## Every request

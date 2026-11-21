@@ -6,6 +6,7 @@ import {
   namedAccounts,
   type LessonOfCell,
 } from './cell-lines.query.js';
+import { integrationKeyNames, viaKeyIdColumn, viaKeyOf } from '../audit/integration-key-names.js';
 
 /**
  * The lines of the works' history (0119; task 8.1: "the total kept beside
@@ -49,6 +50,7 @@ export async function workLines(
       'changed_by',
       'changed_how',
       'changed_at',
+      viaKeyIdColumn('journal_work_history'),
     ]);
   if (filter.workIds !== undefined) query = query.where('work_id', 'in', [...filter.workIds]);
   if (filter.branchId !== undefined) query = query.where('branch_id', '=', filter.branchId);
@@ -68,6 +70,10 @@ export async function workLines(
   const accounts = await namedAccounts(
     transaction,
     rows.map((row) => row.changed_by),
+  );
+  const keyNames = await integrationKeyNames(
+    transaction,
+    rows.map((row) => row.via_key_id),
   );
   const branches = new Map(
     (await transaction.selectFrom('branches').select(['id', 'name']).execute()).map((row) => [
@@ -93,6 +99,7 @@ export async function workLines(
       row.changed_by === null
         ? null
         : (accounts.get(row.changed_by) ?? { accountId: row.changed_by, login: null, name: null }),
+    viaKey: viaKeyOf(keyNames, row.via_key_id),
   }));
 }
 
@@ -112,5 +119,6 @@ export function withoutBranch(line: WorkLineWithBranch): WorkLine {
     titleAfter: line.titleAfter,
     changedHow: line.changedHow,
     changedBy: line.changedBy,
+    viaKey: line.viaKey,
   };
 }

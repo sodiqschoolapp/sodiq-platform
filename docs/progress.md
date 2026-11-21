@@ -11,13 +11,13 @@ Newest entry first. Each finished task adds an entry: what was built, what was l
 - **Audit**: migration `0176` adds `integration_key_id` to `audit_log` and `audit_log_school` (no foreign key) and the minute counter to `integration_keys`. `Audit.record` names the key from the request context (`http/request-context.ts`, `AsyncLocalStorage`). The Audit log page, the personal-data report and the cell, rating and comment histories show "via <key name>" (`viaKey`), read for history lines from the audit entry of their transaction.
 - **Same-site**: a request carrying the key header passes it (`carriesIntegrationKey`, one helper with the guard). No CORS is answered (a test).
 - Docs: `docs/integration-guide.md`; handbook `01-signing-in-and-roles.md`; the permission checklist's "Routes open to integration keys".
-- Tests: API `integration-key-requests.test.ts` (17), `key-routes.test.ts` (7), the route harness and lists; web `audit-page.test.tsx`, `attendance-entry.test.tsx`.
+- Tests: API `integration-key-requests.test.ts` (18), `key-routes.test.ts` (8, with a walk of every open route against a Teacher's session and another branch), `integration-key-requests.database.test.ts`, `key-tutor-work.test.ts`, the route harness and lists; web `audit-page.test.tsx`, `attendance-entry.test.tsx`.
 
 Left out:
 
 - **The person's notifications** (build plan 10.10 names them): closed to keys, decision 5 of the plan, Look first. A notice is sent to an account and does not say for which role. Proposed build-plan wording for a later task: "the person's notifications, once each notice names the role it was sent for".
 - Undo, exemptions, the class, group, student and search lists, Head Teacher lists and announcements stay closed (decision 1).
-- `decide-event` of plan requests decides by event; the Tutor-work check reads the ids of the path and the body, not the requests an event selects (Tutor subjects have no Head Teacher requests in practice).
+- Tutor work in lists read through a key: only the Journals list leaves it out. `GET /api/plans`, `GET /api/journal/reminders`, the unlock and plan request lists, `lessons-today` and the teacher's timetable view still show the Tutor's own Tutor lessons (read only; every write and every route naming such a record is refused). `decide-event` is checked by the ids of its body, not the requests an event selects.
 
 The next sessions must know:
 

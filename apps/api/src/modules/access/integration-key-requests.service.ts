@@ -59,7 +59,9 @@ export class IntegrationKeyRequests {
   async use(secret: string): Promise<FoundKey> {
     const now = this.clock.now();
     const limit = this.config.integrationKeyRequestsPerMinute;
-    return this.transactions.run([], async (transaction) => {
+    // The count and the last use commit before a refusal over the limit is answered (code
+    // review finding 10): a refused request counts too.
+    const outcome = await this.transactions.run([], async (transaction) => {
       const key = await transaction
         .selectFrom('integration_keys')
         .select(['id', 'name', 'ends_at', 'revoked_at'])
@@ -81,11 +83,9 @@ export class IntegrationKeyRequests {
         .set({
           minute_started_at: sql<Date>`case
             when minute_started_at is not null and minute_started_at > ${windowStart}
-              and minute_started_at <= ${now}
             then minute_started_at else ${now}::timestamptz end`,
           minute_requests: sql<number>`case
             when minute_started_at is not null and minute_started_at > ${windowStart}
-              and minute_started_at <= ${now}
             then minute_requests + 1 else 1 end`,
           // Never backwards: of two requests at the same moment the later clock stays.
           last_used_at: sql<Date>`greatest(last_used_at, ${now})`,
@@ -98,17 +98,19 @@ export class IntegrationKeyRequests {
         // Revoked between the read and the count (correction 2 of the plan review).
         throw new ApiException('integration_key_revoked', 401);
       }
-      if (counted.minute_requests > limit) {
-        const started =
-          counted.minute_started_at === null ? now : new Date(counted.minute_started_at);
-        const seconds = Math.max(
-          1,
-          Math.ceil((started.getTime() + MINUTE_MS - now.getTime()) / 1000),
-        );
-        throw new ApiException('integration_key_rate_limited', 429, seconds);
-      }
-      return { id: key.id, name: key.name };
+      const started =
+        counted.minute_started_at === null ? now : new Date(counted.minute_started_at);
+      return {
+        key: { id: key.id, name: key.name },
+        over: counted.minute_requests > limit,
+        // A window started by a server whose clock is ahead keeps its start (finding 12).
+        retryAfter: Math.max(1, Math.ceil((started.getTime() + MINUTE_MS - now.getTime()) / 1000)),
+      };
     });
+    if (outcome.over) {
+      throw new ApiException('integration_key_rate_limited', 429, outcome.retryAfter);
+    }
+    return outcome.key;
   }
 
   /**
