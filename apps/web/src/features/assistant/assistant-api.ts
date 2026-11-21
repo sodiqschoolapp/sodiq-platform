@@ -10,7 +10,7 @@ import {
   type AssistantSettingsRecord,
 } from '@sodiq/shared';
 import { queryOptions } from '@tanstack/react-query';
-import { api } from '@/api/client';
+import { api, branchHeader } from '@/api/client';
 import { answerOf } from '@/api/failure';
 
 /**
@@ -25,7 +25,9 @@ export const assistantStatusQuery = (role: AssistantRole, enabled: boolean) =>
     enabled,
     queryFn: async () =>
       assistantStatusSchema.parse(
-        await answerOf(api.GET('/api/assistant/status', { params: { query: { role } } })),
+        await answerOf(
+          api.GET('/api/assistant/status', { params: { query: { role }, header: branchHeader() } }),
+        ),
       ),
   });
 
@@ -35,7 +37,9 @@ export const assistantConversationsQuery = (enabled: boolean) =>
     enabled,
     queryFn: async () =>
       assistantConversationListSchema.parse(
-        await answerOf(api.GET('/api/assistant/conversations')),
+        await answerOf(
+          api.GET('/api/assistant/conversations', { params: { header: branchHeader() } }),
+        ),
       ),
   });
 
@@ -46,7 +50,9 @@ export const assistantConversationQuery = (id: string | null) =>
     queryFn: async () =>
       assistantConversationSchema.parse(
         await answerOf(
-          api.GET('/api/assistant/conversations/{id}', { params: { path: { id: id ?? '' } } }),
+          api.GET('/api/assistant/conversations/{id}', {
+            params: { path: { id: id ?? '' }, header: branchHeader() },
+          }),
         ),
       ),
   });
@@ -55,7 +61,12 @@ export const askAssistant = async (body: {
   role: AssistantRole;
   text: string;
   conversationId?: string;
-}) => assistantAnswerSchema.parse(await answerOf(api.POST('/api/assistant/questions', { body })));
+}) =>
+  assistantAnswerSchema.parse(
+    await answerOf(
+      api.POST('/api/assistant/questions', { params: { header: branchHeader() }, body }),
+    ),
+  );
 
 export const ASSISTANT_SETTINGS_KEY = [...ASSISTANT_KEY, 'settings'] as const;
 

@@ -238,7 +238,7 @@ function auditSchoolPartitions(): Record<string, string> {
  */
 const SECURITY_DEFINER_FUNCTIONS: Record<string, string> = {
   'assistant_questions_between(uuid,timestamp with time zone,timestamp with time zone)':
-    "The number of questions an account asked the assistant between two moments in every branch, a count asked by the daily limit per person, whose request sees one branch (02, Assistant, Limits; task 11.12, plan of pull request #374).",
+    'The number of questions an account asked the assistant between two moments in every branch, a count asked by the daily limit per person, whose request sees one branch (02, Assistant, Limits; task 11.12, plan of pull request #374).',
   'assistant_spend_between(timestamp with time zone,timestamp with time zone)':
     "The sum in micro-dollars of the assistant's model calls of the whole school between two moments, a sum asked by the monthly cap, whose request sees one branch (02, Assistant, Limits; task 11.12, plan of pull request #374).",
   'student_sex_rows_elsewhere(uuid,text)':

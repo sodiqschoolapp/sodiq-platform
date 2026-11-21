@@ -12,7 +12,11 @@ import {
   withKeyOperations,
   type GuideDocument,
 } from './integration-guide.js';
-import { ASSISTANT_TOOLS_FILE, renderAssistantTools, type ToolsDocument } from './assistant-tools.js';
+import {
+  ASSISTANT_TOOLS_FILE,
+  renderAssistantTools,
+  type ToolsDocument,
+} from './assistant-tools.js';
 
 // First half of `pnpm api:client`: writes the OpenAPI document of the routes,
 // and the operations open to integration keys into the integration guide.

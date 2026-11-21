@@ -35,6 +35,14 @@ const REFUSALS = [
   'assistant_model_unavailable',
 ] as const;
 
+type Refusal = (typeof REFUSALS)[number];
+
+/** The refusal of a limit or of the model that a failed question answered, or `null`. */
+function refusalOf(error: unknown): Refusal | null {
+  if (!(error instanceof ApiFailure)) return null;
+  return REFUSALS.find((code) => code === error.code) ?? null;
+}
+
 /**
  * The assistant's button in the top bar (task 11.12; `02`, Assistant: "A button in the top bar
  * opens a chat panel beside the page; on a phone it fills the screen"). Shown only while the
@@ -150,10 +158,8 @@ export function AssistantPanel({ role, status, statusError, onRetryStatus, onClo
   // A conversation of another branch or role is read only: a question runs in this tab's
   // branch and role (plan decision 9).
   const readOnly = open !== undefined && (open.branchId !== branchId || open.role !== role);
-  const refusal =
-    ask.error instanceof ApiFailure && REFUSALS.some((code) => code === ask.error.code)
-      ? ask.error.code
-      : (status?.refusal ?? null);
+  const refusedBy = refusalOf(ask.error);
+  const refusal = refusedBy ?? status?.refusal ?? null;
 
   const submit = (event: FormEvent): void => {
     event.preventDefault();
@@ -263,10 +269,7 @@ export function AssistantPanel({ role, status, statusError, onRetryStatus, onClo
             </Button>
           </form>
         )}
-        {ask.error !== null &&
-          !(
-            ask.error instanceof ApiFailure && REFUSALS.some((code) => code === ask.error.code)
-          ) && <FailureAlert error={ask.error} />}
+        {ask.error !== null && refusedBy === null && <FailureAlert error={ask.error} />}
       </footer>
     </aside>
   );
