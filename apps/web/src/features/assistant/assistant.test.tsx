@@ -1,0 +1,292 @@
+import type { AssistantConversation, AssistantMessage } from '@sodiq/shared';
+import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
+import { describe, expect, it } from 'vitest';
+import { en } from '@/i18n/locales/en';
+import { fakeApi, json, NORTH, refusal, renderApp, sessionOf } from '@/testing/render-app';
+
+// Task 11.12 (pull request #374). `02`, Assistant: "A button in the top bar opens a chat panel
+// beside the page; on a phone it fills the screen. … A person whose chosen role is another role
+// does not see it. … it is off until switched on"; Limits: "When either is reached, or the model
+// cannot be reached, the panel says so; every screen works as before". All names are invented.
+
+const uid = (n: number): string => `0199a000-0000-7000-8000-${String(n).padStart(12, '0')}`;
+
+const admin = (extra: { role: 'teacher'; branchId: string }[] = []) =>
+  sessionOf({
+    assignments: [{ role: 'super_admin', branchId: null }, ...extra],
+    branches: [NORTH],
+  });
+
+const ON = { available: true, refusal: null, questionsLeftToday: 30 };
+
+const message = (seq: number, fields: Partial<AssistantMessage> & Pick<AssistantMessage, 'kind'>) =>
+  ({ id: uid(500 + seq), seq, at: '2026-11-20T05:00:00.000Z', ...fields }) as AssistantMessage;
+
+const conversation = (
+  messages: AssistantMessage[],
+  fields: Partial<AssistantConversation> = {},
+) => ({
+  id: uid(1),
+  branchId: NORTH.id,
+  branchName: NORTH.name,
+  role: 'super_admin' as const,
+  title: 'Which classes have no Tutor?',
+  createdAt: '2026-11-20T05:00:00.000Z',
+  lastActivityAt: '2026-11-20T05:00:00.000Z',
+  archived: false,
+  archivesAt: '2027-02-18T05:00:00.000Z',
+  messages,
+  ...fields,
+});
+
+const button = () => screen.queryByRole('button', { name: en.assistant.open });
+
+async function openPanel() {
+  fireEvent.click(await screen.findByRole('button', { name: en.assistant.open }));
+  return within(await screen.findByRole('complementary', { name: en.assistant.title }));
+}
+
+describe('the assistant in the top bar', () => {
+  it('shows the button to the Super Admin while it is on, and none while it is off', async () => {
+    fakeApi({
+      'GET /api/auth/session': () => json(admin()),
+      'GET /api/assistant/status': () => json(ON),
+    });
+    renderApp('/', 'en');
+    expect(await screen.findByRole('button', { name: en.assistant.open })).toBeTruthy();
+  });
+
+  it('shows no button while it is switched off', async () => {
+    const calls = fakeApi({
+      'GET /api/auth/session': () => json(admin()),
+      'GET /api/assistant/status': () =>
+        json({ ...ON, available: false, refusal: 'assistant_off' }),
+    });
+    renderApp('/', 'en');
+    await waitFor(() => {
+      expect(calls.some((call) => call.route === 'GET /api/assistant/status')).toBe(true);
+    });
+    expect(button()).toBeNull();
+  });
+
+  it('shows no button and asks nothing for a role the table does not give the panel (a Teacher)', async () => {
+    const calls = fakeApi({ 'GET /api/auth/session': () => json(sessionOf()) });
+    renderApp('/', 'en');
+    await screen.findByRole('heading', { level: 1 });
+    expect(button()).toBeNull();
+    expect(calls.some((call) => call.route.startsWith('GET /api/assistant'))).toBe(false);
+  });
+
+  it('asks a question with the chosen role, shows the answer as plain text, the reads and the linked pages', async () => {
+    const answered = conversation([
+      message(1, { kind: 'question', text: 'Which classes have no Tutor?' }),
+      message(2, { kind: 'read', group: 'classes', status: 200 }),
+      message(3, { kind: 'answer', text: '<b>Oxford B</b>, Oxford C', pages: ['setup'] }),
+    ]);
+    const calls = fakeApi({
+      'GET /api/auth/session': () => json(admin()),
+      'GET /api/assistant/status': () => json(ON),
+      'GET /api/assistant/conversations': () => json({ conversations: [] }),
+      'POST /api/assistant/questions': () => json({ conversation: answered }),
+      [`GET /api/assistant/conversations/${uid(1)}`]: () => json(answered),
+    });
+    renderApp('/', 'en');
+    const panel = await openPanel();
+    expect(await panel.findByText(en.assistant.empty)).toBeTruthy();
+    fireEvent.change(panel.getByLabelText(en.assistant.question), {
+      target: { value: 'Which classes have no Tutor?' },
+    });
+    fireEvent.click(panel.getByRole('button', { name: en.assistant.send }));
+    // Plain text: the markup of an answer is shown as typed, never drawn.
+    expect(await panel.findByText('<b>Oxford B</b>, Oxford C')).toBeTruthy();
+    expect(document.querySelector('aside b')).toBeNull();
+    expect(
+      panel.getByText(en.assistant.read.replace('{{what}}', en.assistant.groups.classes)),
+    ).toBeTruthy();
+    expect(panel.getByRole('link', { name: en.menu.setup }).getAttribute('href')).toBe('/setup');
+    expect(calls.find((call) => call.route === 'POST /api/assistant/questions')?.body).toEqual({
+      role: 'super_admin',
+      text: 'Which classes have no Tutor?',
+    });
+    // The typed question is cleared once the server took it.
+    expect(panel.getByLabelText<HTMLTextAreaElement>(en.assistant.question).value).toBe('');
+  });
+
+  it('keeps the typed question and says so when a limit refuses it (`12`, No lost work)', async () => {
+    for (const code of [
+      'assistant_daily_limit',
+      'assistant_cap_reached',
+      'assistant_model_unavailable',
+    ] as const) {
+      fakeApi({
+        'GET /api/auth/session': () => json(admin()),
+        'GET /api/assistant/status': () => json(ON),
+        'GET /api/assistant/conversations': () => json({ conversations: [] }),
+        'POST /api/assistant/questions': () =>
+          refusal(code, code === 'assistant_model_unavailable' ? 503 : 409),
+      });
+      renderApp('/', 'en');
+      const panel = await openPanel();
+      fireEvent.change(panel.getByLabelText(en.assistant.question), {
+        target: { value: 'Still here?' },
+      });
+      fireEvent.click(panel.getByRole('button', { name: en.assistant.send }));
+      expect(await panel.findByText(en.assistant.refusals[code])).toBeTruthy();
+      expect(panel.getByLabelText<HTMLTextAreaElement>(en.assistant.question).value).toBe(
+        'Still here?',
+      );
+      cleanup();
+    }
+  });
+
+  it('opens a conversation of another branch read only, with no question field', async () => {
+    const other = conversation([message(1, { kind: 'question', text: 'Earlier.' })], {
+      branchId: uid(77),
+      branchName: 'South',
+    });
+    fakeApi({
+      'GET /api/auth/session': () => json(admin()),
+      'GET /api/assistant/status': () => json(ON),
+      'GET /api/assistant/conversations': () =>
+        json({
+          conversations: [
+            {
+              id: other.id,
+              branchId: other.branchId,
+              branchName: 'South',
+              role: 'super_admin',
+              title: 'Earlier question',
+              createdAt: other.createdAt,
+              lastActivityAt: other.lastActivityAt,
+            },
+          ],
+        }),
+      [`GET /api/assistant/conversations/${uid(1)}`]: () => json(other),
+    });
+    renderApp('/', 'en');
+    const panel = await openPanel();
+    fireEvent.click(await panel.findByRole('button', { name: /Earlier question/ }));
+    expect(await panel.findByText(en.assistant.readOnly)).toBeTruthy();
+    expect(panel.queryByLabelText(en.assistant.question)).toBeNull();
+  });
+
+  it('fills the screen on a phone', async () => {
+    fakeApi({
+      'GET /api/auth/session': () => json(admin()),
+      'GET /api/assistant/status': () => json(ON),
+      'GET /api/assistant/conversations': () => json({ conversations: [] }),
+    });
+    renderApp('/', 'en');
+    await openPanel();
+    const aside = screen.getByRole('complementary', { name: en.assistant.title });
+    expect(aside.className).toContain('max-sm:w-full');
+    expect(aside.className).toContain('fixed');
+  });
+});
+
+describe('the assistant’s settings and conversations of the Super Admin', () => {
+  const settings = {
+    schoolOn: false,
+    rolesOn: [],
+    dailyLimit: 30,
+    monthlyCapDollars: 300,
+    roles: ['super_admin'],
+    spentThisMonthCents: 1234,
+    modelConfigured: true,
+    model: 'gemini-2.5-flash',
+  };
+
+  it('switches the assistant on for the school and the Super Admin, with the limit and the cap', async () => {
+    const calls = fakeApi({
+      'GET /api/auth/session': () => json(admin()),
+      'GET /api/setup/settings': () =>
+        json({
+          editDays: 7,
+          lowResult: 50,
+          resultDrop: 15,
+          attendancePercent: 80,
+          absencesInRow: 3,
+          classDailyLessons: null,
+          planWindows: true,
+        }),
+      'GET /api/setup/attendance-values': () => json({ years: [] }),
+      'GET /api/setup/school-settings/digest': () =>
+        json({ sendAt: '19:00', quietFrom: '21:00', quietUntil: '08:00' }),
+      'GET /api/setup/school-settings/assistant': () => json(settings),
+      'PUT /api/setup/school-settings/assistant': (body) =>
+        json({ ...settings, ...(body as object) }),
+    });
+    renderApp('/setup/settings', 'en');
+    const section = within(
+      await screen.findByRole('region', { name: en.assistant.settings.title }),
+    );
+    fireEvent.click(await section.findByLabelText(en.assistant.settings.schoolOn));
+    fireEvent.click(
+      section.getByLabelText(
+        en.assistant.settings.roleOn.replace('{{role}}', en.roles.super_admin),
+      ),
+    );
+    fireEvent.change(section.getByLabelText(en.assistant.settings.dailyLimit), {
+      target: { value: '12' },
+    });
+    fireEvent.click(section.getByRole('button', { name: en.form.save }));
+    await waitFor(() => {
+      expect(
+        calls.find((call) => call.route === 'PUT /api/setup/school-settings/assistant')?.body,
+      ).toEqual({
+        schoolOn: true,
+        rolesOn: ['super_admin'],
+        dailyLimit: 12,
+        monthlyCapDollars: 300,
+      });
+    });
+  });
+
+  it('lists every conversation, reads one and restores an archived one after asking', async () => {
+    const archived = {
+      id: uid(9),
+      branchId: NORTH.id,
+      branchName: NORTH.name,
+      role: 'super_admin' as const,
+      title: 'From August',
+      createdAt: '2026-08-01T05:00:00.000Z',
+      lastActivityAt: '2026-08-01T05:00:00.000Z',
+      archived: true,
+      personName: 'Karimova Dilnoza',
+    };
+    const calls = fakeApi({
+      'GET /api/auth/session': () => json(admin()),
+      'GET /api/assistant/all-conversations': () => json({ conversations: [archived] }),
+      [`GET /api/assistant/all-conversations/${uid(9)}`]: () =>
+        json({
+          ...conversation([message(1, { kind: 'question', text: 'In August.' })], {
+            id: uid(9),
+            archived: true,
+          }),
+          personName: 'Karimova Dilnoza',
+        }),
+      [`POST /api/assistant/all-conversations/${uid(9)}/restore`]: () =>
+        json({ ...conversation([], { id: uid(9) }), personName: 'Karimova Dilnoza' }),
+    });
+    renderApp('/assistant-conversations', 'en');
+    await screen.findByRole('heading', { name: en.assistant.conversationsPage.title });
+    await waitFor(() => {
+      expect(document.querySelectorAll('tbody tr').length).toBe(1);
+    });
+    const row = document.querySelector('tbody tr button');
+    if (!(row instanceof HTMLElement)) throw new Error('No row.');
+    fireEvent.click(row);
+    const panel = within(await screen.findByRole('complementary'));
+    expect(await panel.findByText('In August.')).toBeTruthy();
+    fireEvent.click(panel.getByRole('button', { name: en.assistant.conversationsPage.restore }));
+    const dialog = within(await screen.findByRole('alertdialog'));
+    fireEvent.click(dialog.getByRole('button', { name: en.assistant.conversationsPage.restore }));
+    await waitFor(() => {
+      expect(
+        calls.some(
+          (call) => call.route === `POST /api/assistant/all-conversations/${uid(9)}/restore`,
+        ),
+      ).toBe(true);
+    });
+  });
+});

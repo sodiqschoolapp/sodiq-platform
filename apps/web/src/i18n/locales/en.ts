@@ -1263,6 +1263,16 @@ export const en = {
     tooMany_other: 'You have sent {{n}} reports in the last 24 hours. Try again later.',
   },
   assistant: {
+    refusals: {
+      assistant_off:
+        'The assistant is switched off for the school or for this role. The Super Admin switches it on in School setup, Settings.',
+      assistant_daily_limit:
+        'You have asked as many questions today as the daily limit allows. Ask again tomorrow; every page works as usual.',
+      assistant_cap_reached:
+        'The school’s monthly spending cap of the assistant is reached. Every page works as usual; the Super Admin can raise the cap.',
+      assistant_model_unavailable:
+        'The assistant cannot reach its language model now. Try again later; every page works as usual.',
+    },
     open: 'Assistant',
     title: 'Assistant',
     newConversation: 'New conversation',

@@ -2,6 +2,32 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 21 November 2026: task 11.12, the assistant: the engine, reading, and the Super Admin
+
+- **The module `assistant`** (API and web feature). The Super Admin, in the Super Admin role chosen in the role switcher, opens the chat panel from the top bar (full screen on a phone) and asks in Uzbek, Russian or English. The engine (`assistant.engine.ts`) gives the model the tools of the chosen role and runs each call as a GET through the platform's own route on the server's own address (`dispatcher.ts`), with the person's cookie, the tab's branch and the process's mark (`X-Assistant-Call`, `X-Assistant-Role`). It changes nothing in the school's data.
+- **The guard** (`PermissionGuard`): a marked request is decided before every kind of declaration; the secret is compared in constant time; only a route on the chosen role's list passes (`assistant_route_closed` otherwise); the assignments are narrowed to that role, and `readerPostsOf` keeps to its post. `Access.assistantRole` marks the request.
+- **The list fixed in code**: `ASSISTANT_ROUTES` (`modules/access/assistant-routes.ts`, 73 GET routes for the Super Admin), an independent copy in `testing/assistant-route-list.ts`, `AssistantRoutes` checks it at start against `NEVER_THROUGH_ASSISTANT` (exports, journal data and corrections, exemptions, closing, recalculation, forced delete, accounts and access, parent slips, keys, publish, withdraw, start year).
+- **Tools**: `pnpm api:client` writes `src/modules/assistant/tools.generated.ts` from the OpenAPI document; the engine checks every argument against its parameter's schema before a URL is built.
+- **The field filter** (`field-filter.ts`): the keys of the Contact, Identity and Financial groups and the diagnostic score (from the shared schemas), secrets and medical keys, at any depth; phone, JSHSHIR and document-number shapes in free texts and in the person's words only (review correction 1).
+- **The model**: `GeminiModel` (Vertex AI, `europe-west3`, the only importer of `@google/genai` 2.32.0), `FakeModel` in the tests, `ScriptedModel` for the browser tests (`ASSISTANT_SCRIPTED_MODEL=1`, refused outside test and development).
+- **Migration `0178`**: `assistant_settings` (school-wide), `assistant_conversations`, `assistant_messages`, `assistant_model_calls`, `assistant_conversation_restores` (branch filter, insert-only, no delete), and two `SECURITY DEFINER` counts for the limits.
+- **Routes**: `GET /api/assistant/status`, `GET /api/assistant/conversations`, `GET /api/assistant/conversations/:id`, `POST /api/assistant/questions` (`assistant` view); `GET /api/assistant/all-conversations`, `GET /api/assistant/all-conversations/:id`, `POST /api/assistant/all-conversations/:id/restore` (`monitoring`); `GET`/`PUT /api/setup/school-settings/assistant` (`school_settings`). Audit `assistant_settings.change` and `assistant_conversation.restore`.
+- **Screens**: the top-bar button and panel; the Assistant section of School setup → Settings; School setup → Assistant conversations (archived filter, Restore). Texts in three languages. Handbook: `01-signing-in-and-roles.md`, The assistant. `docs/deploy.md`: the owner's steps for the model.
+- **The test set**: 80 instructions (`modules/assistant/eval/cases.ts`) against the demo school's setup; CI replays them with the fake model (`eval.test.ts`, about a minute); `pnpm assistant:eval` runs them against the real model and prints accuracy and cost per request (the owner only).
+
+Left out:
+
+- Proposals and Confirm, "via assistant" in the audit log, the Academic Vice Principal (11.13); the Teacher (11.14).
+- The Super Admin's reads of accounts, keys, the audit log, the personal-data report, monitoring, the demo clock, relatives, parent accounts and the student Contact, Identity, Financial, diagnostic and history routes (decision 4, Look first): a later task may add them.
+- The choice of the Gemini model: after the owner's `pnpm assistant:eval`, into `docs/decisions.md`.
+- The owner's steps (stop-list item 1): the Google Cloud project, the key on Render, the lawyer's check.
+
+The next sessions must know:
+
+- A route opened to the assistant goes into `ASSISTANT_ROUTES` and the copy of `testing/assistant-route-list.ts`, then `pnpm api:client`; `AssistantRoutes` refuses a change route until 11.13 lifts the "reads only" fault.
+- A decision a route reads from the database for the reader passes `access` to `readerPostsOf`, so the assistant's chosen role counts.
+- The browser tests' API runs `ScriptedModel`; the API tests pass `assistantModel` and `listen: true` to `createTestApp` (`testing/assistant-kit.ts`).
+
 ## 21 November 2026: task 10.11, a person's notifications through an integration key
 
 - Every notice names the roles it was sent for (`notifications.for_roles`, migration `0177`; a check holds the staff roles, an insert trigger refuses a new notice without; old rows stay `null`). `Notifications.send` takes `to: [{ accountId, for }]` at all 52 calls; `notice-roles.test.ts` walks them and holds the list.

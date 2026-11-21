@@ -181,6 +181,10 @@ const environmentSchema = z.object({
       .regex(/^[a-z0-9][a-z0-9.-]{1,98}[a-z0-9]$/)
       .default('gemini-2.5-flash'),
   ),
+  // The browser tests only: a scripted model that reads the classes and lists those with no
+  // Tutor (`ScriptedModel`), never a call outside the server. Refused outside the environments
+  // of the demo clock and on the production address, as DEMO_CLOCK is.
+  ASSISTANT_SCRIPTED_MODEL: z.preprocess(emptyAsUnset, z.enum(['0', '1']).optional()),
   // Micro-dollars per million tokens (plan decision 11; `13`, Running cost: "About $2 per
   // million tokens in and $10 to $12 out for a middle model").
   ASSISTANT_PRICE_IN_MICROS: z.preprocess(
@@ -277,10 +281,14 @@ const PROBLEM: Record<VariableName, string> = {
     'TELEGRAM_WEBHOOK_SECRET must be 16 to 256 letters, digits, _ or -, or unset',
   ASSISTANT_VERTEX_PROJECT:
     'ASSISTANT_VERTEX_PROJECT must be a Google Cloud project id, and is set with ASSISTANT_VERTEX_CREDENTIALS, or unset',
-  ASSISTANT_VERTEX_LOCATION: 'ASSISTANT_VERTEX_LOCATION must be a Google Cloud region, for example europe-west3',
+  ASSISTANT_VERTEX_LOCATION:
+    'ASSISTANT_VERTEX_LOCATION must be a Google Cloud region, for example europe-west3',
   ASSISTANT_VERTEX_CREDENTIALS:
     'ASSISTANT_VERTEX_CREDENTIALS must be the JSON key of a service account, and is set with ASSISTANT_VERTEX_PROJECT, or unset',
-  ASSISTANT_MODEL: 'ASSISTANT_MODEL must be the name of a Gemini model, for example gemini-2.5-flash',
+  ASSISTANT_MODEL:
+    'ASSISTANT_MODEL must be the name of a Gemini model, for example gemini-2.5-flash',
+  ASSISTANT_SCRIPTED_MODEL:
+    'ASSISTANT_SCRIPTED_MODEL must be 0 or 1, and 1 only for the browser tests (SENTRY_ENVIRONMENT test or development, never the production address)',
   ASSISTANT_PRICE_IN_MICROS:
     'ASSISTANT_PRICE_IN_MICROS must be a whole number of micro-dollars per million tokens in',
   ASSISTANT_PRICE_OUT_MICROS:
@@ -337,6 +345,8 @@ export interface AssistantConfig {
       }
     | undefined;
   model: string;
+  /** The browser tests only: the scripted model in place of Gemini. */
+  scripted: boolean;
   /** Micro-dollars per million tokens. */
   priceInMicros: number;
   priceOutMicros: number;
@@ -456,6 +466,13 @@ export function loadConfig(environment: Record<string, string | undefined>): App
   ) {
     wrong.push('DEMO_CLOCK');
   }
+  if (
+    data.ASSISTANT_SCRIPTED_MODEL === '1' &&
+    (!DEMO_CLOCK_ENVIRONMENTS.includes(data.SENTRY_ENVIRONMENT) ||
+      new URL(data.WEB_ORIGIN).origin === PRODUCTION_WEB_ORIGIN)
+  ) {
+    wrong.push('ASSISTANT_SCRIPTED_MODEL');
+  }
   // Task 11.12: the project and the credentials of the assistant's model, both or none.
   if (
     (data.ASSISTANT_VERTEX_PROJECT === undefined) !==
@@ -537,7 +554,8 @@ export function loadConfig(environment: Record<string, string | undefined>): App
           },
     assistant: {
       vertex:
-        data.ASSISTANT_VERTEX_PROJECT !== undefined && data.ASSISTANT_VERTEX_CREDENTIALS !== undefined
+        data.ASSISTANT_VERTEX_PROJECT !== undefined &&
+        data.ASSISTANT_VERTEX_CREDENTIALS !== undefined
           ? {
               project: data.ASSISTANT_VERTEX_PROJECT,
               location: data.ASSISTANT_VERTEX_LOCATION,
@@ -545,6 +563,7 @@ export function loadConfig(environment: Record<string, string | undefined>): App
             }
           : undefined,
       model: data.ASSISTANT_MODEL,
+      scripted: data.ASSISTANT_SCRIPTED_MODEL === '1',
       priceInMicros: data.ASSISTANT_PRICE_IN_MICROS,
       priceOutMicros: data.ASSISTANT_PRICE_OUT_MICROS,
     },

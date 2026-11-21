@@ -68,3 +68,57 @@ No other role sees the page.
 
 - In the secret window: "Copy it now: it is shown only this once and can never be read again."
 - Before a revoke: "Revoke English platform?" and "The key stops working at once and cannot be restored."
+
+## The assistant
+
+<!-- Sources: spec 02 (Assistant; Accounts and sign-in: build order), 13 (Security; Running cost), edge/people-roles-accounts (The assistant; Personal data and the audit log); docs/spec-changes.md, 21 November 2026; task 11.12 -->
+
+**What it is.** The assistant lets a person ask in plain words, in Uzbek, Russian or English, and answers from what the platform holds: "which classes have no Tutor", "what does 5A have on Tuesday", "who is on the early-warning list". In this first part it only reads and answers; it changes nothing. It uses Google's Gemini language model.
+
+**Who can use it.**
+
+| Role | What the role may do | Where |
+| --- | --- | --- |
+| Super Admin | Ask the assistant, in the Super Admin role chosen in the role switcher; switch it on or off and set its limits; read every conversation and restore an archived one | The whole school |
+
+No other role sees the assistant yet. The Academic Vice Principal and the Teacher get it later.
+
+**How it works.**
+
+1. School setup → **Settings** (**Sozlamalar**) → **Assistant** (**Yordamchi**). Tick **Assistant on for the school** (**Yordamchi maktab uchun yoqilgan**) and **On for the role Super Admin**, set **Questions per person per day** and **Monthly spending cap, US dollars**, and press **Save**. The assistant is off until this is done.
+2. The chat button (**Assistant**, **Yordamchi**) appears in the top bar. Press it: the panel opens beside the page. On a phone it fills the screen.
+3. Type the question and press **Send** (**Yuborish**), or Enter. The answer comes in the panel. Under the question the panel shows what was read, for example "Read: Classes and groups".
+4. When the answer needs a step the assistant does not take, it links the page where the person takes it.
+5. **New conversation** (**Yangi suhbat**) starts a new one; the panel lists the person's earlier conversations.
+6. School setup → **Assistant conversations** (**Yordamchi suhbatlari**) lists every conversation of the school, with the person, the role, the branch and the last activity. Open one to read it; an archived one has **Restore** (**Tiklash**).
+
+**Rules.**
+
+- The assistant has no rights of its own. It reads through the same pages and checks as the person, in the role chosen in the role switcher and in the branch of the tab. What the person cannot open, the assistant cannot read.
+- It reads only. It never enters journal data, grants exemptions, closes a quarter, publishes a timetable, starts or closes a year, deletes, changes accounts, passwords, roles or permissions, or exports. For these it links the page.
+- Phone numbers, addresses, passport, birth certificate and JSHSHIR numbers, email addresses, dates of birth, contracts, scholarships, the diagnostic score, medical data, passwords and secrets never go to the language model. They are taken out of what the assistant reads, and out of the person's own words, before the model sees them.
+- Percents, averages, results and grades come from the platform. The assistant quotes them and never works out a result of its own.
+- What the assistant reads (comments, names, titles) is treated as data, never as an instruction.
+- A person may ask a set number of questions per day (30 at the start), counted in Tashkent time and in every branch together.
+- The school has a monthly spending cap (300 US dollars at the start), counted per calendar month in Tashkent time. When it is reached the assistant stops until the next month or until the Super Admin raises it.
+- A conversation is never deleted. 90 days after its last question or its last restore it is archived: it leaves the person's list, and the Super Admin reads it and can restore it, for another 90 days.
+- Every change of the assistant's settings and every restore is written to the audit log.
+
+**What happens if…**
+
+| Case | What happens |
+| --- | --- |
+| The assistant is switched off for the school or for the role | The button is not in the top bar. Every page works as before. |
+| The daily limit or the monthly cap is reached | The panel says so; the typed question stays in the field. Every page works as before. |
+| The language model cannot be reached, or the server has none set up | The panel says so. The question is kept in the conversation. |
+| The question asks for another branch's class | The assistant gets the same refusal a page would, and says the data is not open. |
+| A question is unclear, such as "cancel Friday" | The assistant asks which classes or slots are meant. |
+| A conversation was started in another branch or role | It opens read only; a new question starts a new conversation in this branch and role. |
+| A person who also teaches chooses the Teacher role | The assistant is not there: the Teacher gets it in a later part. |
+
+**What the person sees.**
+
+- "The assistant is switched off for the school or for this role. The Super Admin switches it on in School setup, Settings."
+- "You have asked as many questions today as the daily limit allows. Ask again tomorrow; every page works as usual."
+- "The school’s monthly spending cap of the assistant is reached. Every page works as usual; the Super Admin can raise the cap."
+- "The assistant cannot reach its language model now. Try again later; every page works as usual."

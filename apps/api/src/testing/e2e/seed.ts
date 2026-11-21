@@ -8765,6 +8765,81 @@ try {
     password: announcementsParent.firstPassword,
   };
 
+  // Task 11.12: the Super Admin of assistant.spec.ts, one account of its own, in a branch of its
+  // own with two classes and no Tutor, so the scripted model's list holds exactly them. The
+  // assistant is switched on for the school and the Super Admin (it is off until switched on).
+  {
+    const assistantBranch = await insertBranch(migrator, 'Assistant browser test branch');
+    const year = await migrator
+      .insertInto('academic_years')
+      .values({
+        branch_id: assistantBranch,
+        start_date: startDate,
+        end_date: isoDate(new Date(yearStart.getTime() + 364 * dayMs)),
+      })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    await migrator
+      .insertInto('quarters')
+      .values(
+        [1, 2, 3, 4].map((number) => ({
+          branch_id: assistantBranch,
+          academic_year_id: year.id,
+          number,
+        })),
+      )
+      .execute();
+    await migrator
+      .updateTable('academic_years')
+      .set({ status: 'current' })
+      .where('id', '=', year.id)
+      .execute();
+    for (const name of ['Assistant A', 'Assistant B']) {
+      await migrator
+        .insertInto('classes')
+        .values({
+          branch_id: assistantBranch,
+          academic_year_id: year.id,
+          grade: 6,
+          name,
+          language: 'uz',
+          max_size: 24,
+        })
+        .execute();
+    }
+    const assistantAdmin = await create('Feruza', 'Rahimova');
+    await transactions.run([], (transaction) =>
+      assignments.give(transaction, {
+        accountId: assistantAdmin.id,
+        role: 'super_admin',
+        branchId: null,
+        givenBy: null,
+      }),
+    );
+    await migrator
+      .updateTable('assistant_settings')
+      .set({ school_on: true, roles_on: ['super_admin'] })
+      .execute();
+    seeded.assistantAdmin = {
+      login: assistantAdmin.login,
+      password: assistantAdmin.firstPassword,
+    };
+    // A Teacher of the same branch, who sees no assistant (11.14 gives the Teacher one).
+    const assistantTeacher = await create('Bobur', 'Aliyev');
+    await transactions.run([assistantBranch], (transaction) =>
+      assignments.give(transaction, {
+        accountId: assistantTeacher.id,
+        role: 'teacher',
+        branchId: assistantBranch,
+        givenBy: null,
+      }),
+    );
+    seeded.assistantTeacher = {
+      login: assistantTeacher.login,
+      password: assistantTeacher.firstPassword,
+    };
+  }
+
   // Task 11.2: Biology for "7 Seeded" of the portal branch every day from a week ago to a week
   // ahead, at 08:00, and a homework given by hand with a title at the lesson two days ago,
   // checked at yesterday's: the portal shows the week and the homework of Kamron.

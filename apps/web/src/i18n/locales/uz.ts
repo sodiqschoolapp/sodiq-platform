@@ -1284,6 +1284,16 @@ export const uz: Texts<'one' | 'other'> = {
     tooMany_other: 'Soʻnggi 24 soatda {{n}} ta xabar yubordingiz. Keyinroq urinib koʻring.',
   },
   assistant: {
+    refusals: {
+      assistant_off:
+        'Yordamchi maktab yoki bu rol uchun oʻchirilgan. Super Admin uni Maktab sozlamalari, Sozlamalar boʻlimida yoqadi.',
+      assistant_daily_limit:
+        'Bugun kunlik cheklov ruxsat bergancha savol berdingiz. Ertaga yana soʻrang; barcha sahifalar odatdagidek ishlaydi.',
+      assistant_cap_reached:
+        'Maktabning yordamchi uchun oylik xarajat chegarasiga yetildi. Barcha sahifalar odatdagidek ishlaydi; Super Admin chegarani oshirishi mumkin.',
+      assistant_model_unavailable:
+        'Yordamchi hozir til modeliga ulana olmayapti. Keyinroq urinib koʻring; barcha sahifalar odatdagidek ishlaydi.',
+    },
     open: 'Yordamchi',
     title: 'Yordamchi',
     newConversation: 'Yangi suhbat',

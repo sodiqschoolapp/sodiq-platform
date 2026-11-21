@@ -21,7 +21,7 @@ Decided once, valid for every task. A session reads this section at its start (`
 | A session asks before dropping, resetting or recreating anything in `sodiq_dev`; test databases are its own `sodiq_test_*` | The owner's local data. |
 | Claude Code never reads `.env` (`.claude/settings.json` denies it); the local `SECOND_STEP_KEY` is public, a server gets its own random key in task 0.10 | Secrets never enter a transcript. |
 | No real personal data anywhere: code, tests, seeds, logs, commit messages, pull requests. Invented names only | `CLAUDE.md`. |
-| The module and feature names are `auth`, `access`, `audit`, `notifications`, `setup`, `people`, `classes`, `timetable`, `journal`, `plans`, `results`, `feedback`, `portal`, `announcements` | `CLAUDE.md`, Repository layout; `feedback` was added for task 0.8b-3; `portal` for task 11.2 (reading 3 of the Release 2 plan; the owner adds it to `CLAUDE.md`, review correction 1 of pull request #294); `announcements` for task 11.7 (decision 2 of pull request #306, Look first; the owner adds it to `CLAUDE.md`). |
+| The module and feature names are `auth`, `access`, `audit`, `notifications`, `setup`, `people`, `classes`, `timetable`, `journal`, `plans`, `results`, `feedback`, `portal`, `announcements`, `assistant` | `CLAUDE.md`, Repository layout; `feedback` was added for task 0.8b-3; `portal` for task 11.2 (reading 3 of the Release 2 plan; the owner adds it to `CLAUDE.md`, review correction 1 of pull request #294); `announcements` for task 11.7 (decision 2 of pull request #306, Look first; the owner adds it to `CLAUDE.md`); `assistant` for task 11.12 (build plan 11.12 names the module; the owner adds it to `CLAUDE.md`). |
 | At most 3 Super Admins (`MAX_SUPER_ADMINS` in `packages/shared/src/roles.ts`); changing it means the constant, its test and the spec row together | Decided by the owner in 0.7a. |
 
 ## Decided ahead for Phase 10 (owner, 26 October 2026)
@@ -64,6 +64,26 @@ The owner's answers to the decided-ahead questions for Phase 10, given in chat o
 18. The pilot: several groups at school from Wednesday 28 October 2026 (above).
 19. Production deploys only after 18:00 or at the weekend, Tashkent time.
 20. The test environment stays after go-live; every change is tried there first.
+
+## 21 November 2026: the assistant, the engine, reading and the Super Admin (task 11.12)
+
+Plan approved on pull request #374 with correction 1 (the value shapes of the field filter apply to free texts only; dates, year names, rooms and UIDs stay). Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first.** New dependency `@google/genai` 2.32.0 (Apache-2.0, Google's SDK); its optional peer `@modelcontextprotocol/sdk` is removed by an override, and its install scripts are not run | Build plan 11.12; the peer brought audit findings and is not used (decision 1) |
+| **Look first.** The fields that never go to the model are the whole Contact, Identity and Financial groups and the diagnostic score, derived from the shared schemas. Proposed `/spec-change` of `02`, What never goes to the model: "The Contact, Identity and Financial fields of a student, a relative and a staff record (`edge/people-roles-accounts`, Personal data and the audit log), passport and birth certificate numbers, the diagnostic score, medical data, passwords and secrets." | `02`: other data goes "only as far as the request needs them" (decision 2) |
+| **Look first.** Every conversation and its restore under the existing `monitoring`, the switches and limits under `school_settings`; the guard narrows a read marked as the assistant's to the chosen role and its list, before every kind of declaration, and `readerPostsOf` to the chosen role's post | Within the owner's approval of 11.12 (stop-list item 5); no role gains a right (decision 3) |
+| **Look first.** The Super Admin's reading list leaves out, in this task, accounts, keys, the audit log, the personal-data report, monitoring, the demo clock, relatives, parent accounts and the student Contact, Identity, Financial, diagnostic and history routes; `NEVER_THROUGH_ASSISTANT` holds only the spec's Never list | Work left, not a rule (decision 4) |
+| **Look first.** `assistant_settings` is a school-wide table (`SCHOOL_WIDE_TABLES`), and `assistant_questions_between` and `assistant_spend_between` are `SECURITY DEFINER` counts of the allow-list | The limits count every branch while a request sees one; a count or a sum only, no row |
+| **Look first.** A scripted model (`ASSISTANT_SCRIPTED_MODEL=1`) for the browser tests, refused by the configuration outside the test and development environments and on the production address, as `DEMO_CLOCK` is | The browser tests run the real `main.js`, where no provider can be swapped |
+| **Look first.** `settings-page.test.tsx` lets the new `GET /api/setup/school-settings/assistant` through its check that nothing else of the school settings is asked | The assistant's settings are a section of that page (the requirement changed) |
+| Vertex AI only, `europe-west3`; reads go to the server's own address with the person's cookie and a per-process secret; the chosen role is sent with each question | Decisions 5 to 7 |
+| Archived when the last message or restore and 90 days are not after now; the person's list holds own conversations of every branch, one of another branch or role read only | Decisions 8 and 9 |
+| Daily limit 30, cap $300, every model call counted in whole micro-dollars rounded up once, thinking tokens as output, prices and model by configuration | Decisions 10 to 12 |
+| The person's words are stored as typed and filtered each time they are sent; answers are plain text; the last 20 questions and answers without their reads; at most 6 reads of 20,000 characters | Decisions 13 to 15 |
+| `suggest_page` names menu items of the chosen role; the test set of 80 instructions against the demo school's setup; reading a conversation is not audited; conversations are not in the personal-data report; the switch screen shows the roles the table gives `assistant`; "via assistant" with 11.13 | Decisions 16 to 21 |
+| The module and feature name `assistant` | Build plan 11.12 names it; the owner adds it to `CLAUDE.md` |
 
 ## 21 November 2026: a person's notifications through an integration key (task 10.11)
 

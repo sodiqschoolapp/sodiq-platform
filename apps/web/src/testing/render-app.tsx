@@ -135,6 +135,10 @@ const SHELL_ANSWERS: Record<string, Handler> = {
       prepared: { updatedAt: null, updating: false },
     }),
   'GET /api/timetable/conflicts-summary': () => json({ drafts: [], published: null }),
+  // Task 11.12: the top bar asks whether the assistant is open to the chosen role; off until
+  // switched on (`02`, Assistant), so no button shows.
+  'GET /api/assistant/status': () =>
+    json({ available: false, refusal: 'assistant_off', questionsLeftToday: 30 }),
   'GET /api/results/branch-summary': () =>
     json({
       date: '2026-10-19',

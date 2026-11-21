@@ -13,6 +13,7 @@ import { AssistantConversations } from './assistant.service.js';
 import { AssistantDispatcher } from './dispatcher.js';
 import { GeminiModel } from './gemini-model.js';
 import { ASSISTANT_MODEL } from './model.js';
+import { ScriptedModel } from './scripted-model.js';
 
 /**
  * The assistant (`02`, Assistant; task 11.12): the engine, its reads as the person, the
@@ -28,7 +29,8 @@ import { ASSISTANT_MODEL } from './model.js';
     AssistantDispatcher,
     {
       provide: ASSISTANT_MODEL,
-      useFactory: (config: AppConfig) => new GeminiModel(config.assistant),
+      useFactory: (config: AppConfig) =>
+        config.assistant.scripted ? new ScriptedModel() : new GeminiModel(config.assistant),
       inject: [CONFIG],
     },
     {

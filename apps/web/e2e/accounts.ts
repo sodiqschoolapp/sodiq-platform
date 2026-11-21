@@ -126,7 +126,10 @@ export type AccountKey =
   | 'portal'
   | 'telegramParent'
   | 'announcementsAuthor'
-  | 'announcementsParent';
+  | 'announcementsParent'
+  // Task 11.12: the Super Admin of assistant.spec.ts.
+  | 'assistantAdmin'
+  | 'assistantTeacher';
 
 /** Invented for the tests. */
 export const NEW_PASSWORD = 'a-new-password-73';
