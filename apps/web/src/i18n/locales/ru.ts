@@ -4211,6 +4211,8 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       '{{name}}: удалено окончательно. Восстановить можно в течение 30 дней в разделе «Удалённые окончательно».',
   },
   audit: {
+    // Task 10.10: a change made through an integration key.
+    viaKey: '{{who}} через {{key}}',
     title: 'Журнал аудита',
     caption: 'Записи журнала аудита',
     emptyTitle: 'Записей нет',

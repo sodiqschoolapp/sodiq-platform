@@ -24,6 +24,7 @@ import {
 import { useView } from '@/features/access/use-view';
 import { momentText } from '@/lib/dates';
 import { commentHistoryQuery, invalidateJournal, saveComment } from './journal-api';
+import { withViaKey } from '../../lib/via-key';
 
 /**
  * Comments in the journal (task 8.2, pull request #218; `07`, Entering data,
@@ -296,7 +297,7 @@ function CommentSection({
             <li key={`${String(line.version)}:${line.changedAt}`}>
               {t('journal.comments.line', {
                 text: line.bodyAfter ?? t('journal.comments.cleared'),
-                who: line.changedBy ?? '—',
+                who: withViaKey(t, line.changedBy ?? '—', line.viaKey),
                 when: momentText(i18n.language, line.changedAt),
               })}
             </li>

@@ -2,6 +2,28 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 21 November 2026: task 10.10, integration keys: requests made through a key
+
+- **Key requests** (`X-Integration-Key`, `X-Acting-Staff-Id`, `X-Branch-Id`): `SessionGuard` decides a request with the key header before anything else, the public routes included, and never reads its cookie. It checks HTTPS behind the proxy, then the key (unknown, revoked, ended: 401), counts it against 300 requests a minute in one update on the key row (with `last_used_at`, before the route; 429 with `Retry-After`), checks the route mark, and finds the person (on the key, active, not locked, not left), with only their Teacher, Head Teacher and Senior Head Teacher assignments. `PermissionGuard` decides role, branch and scope from those exactly as for a session (`Access.integrationKeyId` marks the request).
+- **The routes open to keys**: `@OpenToKeys()` on 94 routes (journal, unlocks, plans, plan requests and windows, master plans, timetable views, rating, early warning, the reports of these roles), `KEY_ROUTES` in `apps/api/src/testing/key-route-list.ts`, held exact by `key-routes.test.ts`, which also calls every other route with a valid key. `KeyRoutesCheck` stops the app at start for a mark on an export, a never-list area (`students`, `student_*`, `group_transfers`, `classes`, `groups`, `accounts`, `account_access`), a public, portal, own-account or sign-in step route.
+- **`GET /api/integration/people`** (`@KeyOnly()`): the key's people with staff ID, name, usable, branches; every session 403 `integration_key_required`.
+- **Tutor work** (subjects of the Tutors department): refused through a key on a lesson, journal, plan item, plan file, unlock or plan request (`key-tutor-work.ts`), and left out of the Journals list.
+- **Audit**: migration `0176` adds `integration_key_id` to `audit_log` and `audit_log_school` (no foreign key) and the minute counter to `integration_keys`. `Audit.record` names the key from the request context (`http/request-context.ts`, `AsyncLocalStorage`). The Audit log page, the personal-data report and the cell, rating and comment histories show "via <key name>" (`viaKey`), read for history lines from the audit entry of their transaction.
+- **Same-site**: a request carrying the key header passes it (`carriesIntegrationKey`, one helper with the guard). No CORS is answered (a test).
+- Docs: `docs/integration-guide.md`; handbook `01-signing-in-and-roles.md`; the permission checklist's "Routes open to integration keys".
+- Tests: API `integration-key-requests.test.ts` (17), `key-routes.test.ts` (7), the route harness and lists; web `audit-page.test.tsx`, `attendance-entry.test.tsx`.
+
+Left out:
+
+- **The person's notifications** (build plan 10.10 names them): closed to keys, decision 5 of the plan, Look first. A notice is sent to an account and does not say for which role. Proposed build-plan wording for a later task: "the person's notifications, once each notice names the role it was sent for".
+- Undo, exemptions, the class, group, student and search lists, Head Teacher lists and announcements stay closed (decision 1).
+- `decide-event` of plan requests decides by event; the Tutor-work check reads the ids of the path and the body, not the requests an event selects (Tutor subjects have no Head Teacher requests in practice).
+
+The next sessions must know:
+
+- A route opened to keys later gets `@OpenToKeys()` and a line in `KEY_ROUTES`; a route that reads `CurrentSession` cannot be opened (it throws on a key request).
+- `Access.integrationKeyId` is set only for a key request; a list that holds Tutor work for a Teacher who is also a Tutor leaves it out with `tutorSubjectIds`.
+
 ## 21 November 2026: task 10.9, integration keys: the keys and the Super Admin page
 
 - **Integration keys** (School setup → Integration keys, the Super Admin alone, area `integration_keys`): the list (name, people, end date, last use, state), create with the secret shown once and a copy button, the people and the end date changed in the side panel, Revoke (final). Migration `0175`: `integration_keys` and `integration_key_people`, school-wide; only the SHA-256 of the secret is stored; a revoked key is guarded by a trigger.

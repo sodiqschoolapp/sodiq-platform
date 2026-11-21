@@ -128,6 +128,8 @@ const HISTORY: CellHistory = {
       changedBy: { accountId: uid(90), login: 'aziza.k', name: 'Karimova Aziza' },
       changedHow: 'entry',
       changedAt: '2026-10-27T03:05:00.000Z',
+      // Task 10.10: entered through a department platform's key.
+      viaKey: { name: 'Mathematics platform' },
     },
   ],
   workLines: [],
@@ -273,7 +275,9 @@ describe('attendance entry in the grid', () => {
     fireEvent.keyDown(target, { key: 'h' });
     const dialog = await screen.findByRole('dialog');
     const table = await within(dialog).findByRole('table');
-    expect(within(table).getAllByRole('row')[1]?.textContent).toContain('Karimova Aziza');
+    expect(within(table).getAllByRole('row')[1]?.textContent).toContain(
+      'Karimova Aziza via Mathematics platform',
+    );
     expect(within(table).getAllByRole('row')[1]?.textContent).toContain('2 (Late)');
   });
 

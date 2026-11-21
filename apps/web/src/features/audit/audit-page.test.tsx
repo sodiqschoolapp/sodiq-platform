@@ -16,6 +16,8 @@ const EDIT: AuditEntryAnswer = {
   branchId: NORTH.id,
   action: 'student.edit',
   actor: { id: uid(21), name: 'Saidova Dilnoza' },
+  // Task 10.10: a change made through an integration key names it.
+  viaKey: { name: 'English platform' },
   assignment: { id: uid(31), role: 'academic_vice_principal' },
   person: null,
   record: { type: 'student', id: uid(41), name: 'Qodirova Madina' },
@@ -39,6 +41,7 @@ const EXPORT: AuditEntryAnswer = {
   branchId: null,
   action: 'staff.export',
   actor: null,
+  viaKey: null,
   assignment: null,
   person: null,
   record: null,
@@ -115,7 +118,8 @@ describe('the audit log page', () => {
     const [edit, exported] = rowsDrawn();
     expect(edit?.slice(1)).toEqual([
       en.audit.actions.student.edit,
-      'Saidova Dilnoza',
+      // Task 10.10 (`02`, Audit: "with the key named").
+      'Saidova Dilnoza via English platform',
       '',
       `${en.audit.recordTypes.student}: Qodirova Madina`,
     ]);

@@ -4036,6 +4036,8 @@ export const uz: Texts<'one' | 'other'> = {
       '{{name}} butunlay oʻchirildi. Uni 30 kun ichida «Butunlay oʻchirilganlar» boʻlimidan tiklash mumkin.',
   },
   audit: {
+    // Task 10.10: a change made through an integration key.
+    viaKey: '{{who}}, {{key}} orqali',
     title: 'Audit jurnali',
     caption: 'Audit jurnali yozuvlari',
     emptyTitle: 'Yozuvlar yoʻq',

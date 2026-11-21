@@ -65,6 +65,25 @@ The owner's answers to the decided-ahead questions for Phase 10, given in chat o
 19. Production deploys only after 18:00 or at the weekend, Tashkent time.
 20. The test environment stays after go-live; every change is tried there first.
 
+## 21 November 2026: integration keys, requests made through a key (task 10.10)
+
+Plan approved on pull request #369 with corrections 1 to 3. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first.** The routes open to keys are the 95 of `KEY_ROUTES`; "the reports these roles view" are `plan_reports`, `journal_discipline`, `results_reports` and the current period; undo, exemptions, the class, group, student and search lists stay closed | `02`: "a route added later stays closed to keys until a task adds it"; closed is the safe reading of each silence (decision 1) |
+| **Look first.** `GET /api/integration/people` gives the key's people (names, staff IDs, branches) of every branch to the key holder | Build plan 10.10; the Super Admin chose the people (decision 2) |
+| **Look first.** A new access kind `@KeyOnly()`; the guards take the actor from a session or a key | Within the owner's approval of 10.10, stop-list item 5; no role gains a right (decision 3) |
+| **Look first.** A first or reset password or a missing second step does not refuse a key | A key is not a sign-in (`02`) (decision 4) |
+| **Look first.** The person's notifications are closed to keys | A notice does not say for which role it was sent; `02`: other roles do not count (decision 5, correction 3) |
+| **Look first.** Tutor lessons (Tutors department subjects) are refused through a key | `edge/people-roles-accounts`: "Tutor work is done in this platform" (decision 6) |
+| One code `integration_key_person_refused`; separate 401 codes for unknown, revoked, ended | Decisions 7 and 13 |
+| 300 requests a minute per key, a fixed window on the key row, every request with a valid key counted; `last_used_at` before the route, never backwards | Decisions 8 and 9 |
+| HTTPS enforced where `trustProxy` is on; headers `X-Integration-Key` and `X-Acting-Staff-Id` | `13`; decisions 10 and 11 |
+| The key reaches the audit through `AsyncLocalStorage`; history lines read it from the audit entry of their transaction; `integration_key_id` has no foreign key | No rewrite of the live log; a key is never deleted (decision 12, review finding 11) |
+| **Build decision.** The per-minute limit is `AppConfig.integrationKeyRequestsPerMinute`, always the shared constant outside tests | The walk of every route in `key-routes.test.ts` sends one request per route with one key |
+| **Build decision.** The Tutor-work check runs in `PermissionGuard` after the role check, from the ids of the path, the query and the body's comment target | One place for every listed route, instead of one per service |
+
 ## 21 November 2026: integration keys, the keys and the Super Admin page (task 10.9)
 
 Plan approved on pull request #368 with corrections 1 and 2. Flagged on issue #42.

@@ -7,6 +7,7 @@ import type { FileRoute } from '../http/file-routes.js';
 import { RETURNS_FILE, TAKES_FILE } from '../http/schemas.js';
 import { declarationsOf, type RouteAccess } from '../modules/access/access.decorators.js';
 import { owedStepsAllowedOn } from '../modules/auth/session.guard.js';
+import { keyRouteOf, type KeyRouteKind } from '../modules/access/key-routes.js';
 
 export interface Route {
   /** Method and path, for example `GET /api/auth/session`. */
@@ -21,6 +22,8 @@ export interface Route {
   describesAnswer: boolean;
   /** The declared file route the handler reads its body from (`@ValidFile`), if any. */
   takesFile: FileRoute | undefined;
+  /** Task 10.10: how the route is open to integration keys (`OpenToKeys`, `KeyOnly`), or closed. */
+  openToKeys: KeyRouteKind | undefined;
 }
 
 /** The method in the name of a route that answers every method (`@All()`). */
@@ -92,6 +95,7 @@ export function routesOf(app: INestApplication): Route[] {
                 Reflect.getMetadata(HTTP_CODE, handler) === 204 ||
                 Reflect.getMetadata(HTTP_CODE, handler) === 202,
               takesFile: Reflect.getMetadata(TAKES_FILE, handler) as FileRoute | undefined,
+              openToKeys: keyRouteOf(handler),
             });
           }
         }

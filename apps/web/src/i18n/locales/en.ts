@@ -3990,6 +3990,8 @@ export const en = {
       '{{name}} was deleted for good. It can be restored from Deleted for good for 30 days.',
   },
   audit: {
+    // Task 10.10: a change made through an integration key.
+    viaKey: '{{who}} via {{key}}',
     title: 'Audit log',
     caption: 'Entries of the audit log',
     emptyTitle: 'No entries',
