@@ -1296,6 +1296,63 @@ describe('requests made through an integration key', () => {
       expect(throughKey.items.map((one) => one.kind)).toContain('journal.unlock_requested');
     });
 
+    /** A notice sent for `roles`, unread, as `Notifications.send` stores it. */
+    const sentFor = async (accountId: string, roles: string[]): Promise<string> =>
+      (
+        await t.database.migrator
+          .insertInto('notifications')
+          .values({
+            account_id: accountId,
+            branch_id: x.branch,
+            kind: 'sample.message',
+            data: sql<string>`'{"text": "A notice."}'::jsonb`,
+            for_roles: roles,
+            created_at: new Date('2026-10-23T09:00:00+05:00'),
+          })
+          .returning('id')
+          .executeTakeFirstOrThrow()
+      ).id;
+    const readAtOf = async (id: string) =>
+      (
+        await t.database.migrator
+          .selectFrom('notifications')
+          .select('read_at')
+          .where('id', '=', id)
+          .executeTakeFirstOrThrow()
+      ).read_at;
+
+    it('never reads or marks another person’s notice through the key, one the key could read included (permission review, must-fix 1)', async () => {
+      const theirs = await sentFor(x.head.account.id, ['teacher']);
+      const call = { secret: x.key.secret, staffId: x.people.owner.staffId };
+      await at(async () => {
+        const ids = listed(await via('get', '/api/notifications', call)).items.map((one) => one.id);
+        expect(ids).not.toContain(theirs);
+        refused(await via('post', `/api/notifications/${theirs}/read`, call), 404, 'not_found');
+        ok(await via('post', '/api/notifications/read-all', call), 204);
+      });
+      expect(await readAtOf(theirs)).toBeNull();
+    });
+
+    it('a Senior Head Teacher and a Head Teacher read and mark the notices of their posts; a notice sent for a Teacher and a Tutor at once is read through the key', async () => {
+      const senior = await sentFor(x.senior.account.id, ['senior_head_teacher']);
+      const head = await sentFor(x.head.account.id, ['head_teacher']);
+      const both = await sentFor(x.owner.account.id, ['teacher', 'tutor']);
+      await at(async () => {
+        for (const [staffId, id] of [
+          [x.people.senior.staffId, senior],
+          [x.people.head.staffId, head],
+          [x.people.owner.staffId, both],
+        ] as const) {
+          const call = { secret: x.key.secret, staffId };
+          expect(
+            listed(await via('get', '/api/notifications', call)).items.map((one) => one.id),
+          ).toContain(id);
+          ok(await via('post', `/api/notifications/${id}/read`, call), 204);
+        }
+      });
+      for (const id of [senior, head, both]) expect(await readAtOf(id)).not.toBeNull();
+    });
+
     it('a notice of the Academic Vice Principal post is never read through the key', async () => {
       const told = (await noticesOf(x.vice.account.id)).filter((one) =>
         (one.for_roles ?? []).includes('academic_vice_principal'),
