@@ -212,6 +212,20 @@ describe('the School setup entry', () => {
     },
   );
 
+  // Task 10.9: the integration keys are the Super Admin's alone (integration_keys).
+  it.each([
+    ['super_admin', true],
+    ['principal', false],
+    ['academic_vice_principal', false],
+    ['teacher', false],
+  ] as const)('links the integration keys for the %s: %s', async (role, shown) => {
+    fakeApi({ 'GET /api/auth/session': () => json(sessionAs(role)) });
+    renderApp('/setup');
+    await screen.findByRole('heading', { name: en.setup.title });
+    const link = screen.queryByRole('link', { name: en.setup.integrationKeysLink });
+    expect(link?.getAttribute('href') ?? null).toBe(shown ? '/integration-keys' : null);
+  });
+
   it('says that a role without setup rights has no setup pages', async () => {
     fakeApi({ 'GET /api/auth/session': () => json(sessionAs('teacher')) });
     renderApp('/setup');

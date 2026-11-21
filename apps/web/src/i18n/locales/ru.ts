@@ -66,6 +66,12 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
     telegram_chat_linked:
       'Этот Telegram уже привязан к другому родительскому аккаунту. Сначала выйдите из него там или откройте портал в браузере.',
     no_telegram_link: 'Этот аккаунт не привязан к Telegram.',
+    integration_key_person_refused:
+      'Выбранного сотрудника нельзя добавить в ключ: он должен быть активен, с незаблокированным аккаунтом и с ролью учителя, руководителя предмета или старшего руководителя предмета. Уберите его из списка.',
+    integration_key_end_refused:
+      'Дата окончания должна быть не раньше сегодняшней и не позже чем через год. Выберите другую дату.',
+    integration_key_revoked:
+      'Этот ключ отозван и не может быть изменён. При необходимости создайте новый ключ.',
     password_unchanged: 'Новый пароль совпадает с текущим. Выберите другой.',
     second_step_required: 'Прежде чем продолжить, введите код второго шага.',
     second_step_set_up_required: 'Прежде чем продолжить, настройте второй шаг.',
@@ -1237,6 +1243,37 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
     tooMany_many: 'За последние 24 часа вы отправили {{n}} сообщений. Попробуйте позже.',
     tooMany_other: 'За последние 24 часа вы отправили {{n}} сообщения. Попробуйте позже.',
   },
+  integrationKeys: {
+    title: 'Ключи интеграции',
+    caption: 'Ключи интеграции',
+    name: 'Название',
+    people: 'Сотрудники',
+    endsOn: 'Дата окончания',
+    endsOnNote: 'Не позже чем через год.',
+    lastUsed: 'Последнее использование',
+    neverUsed: 'Не использовался',
+    state: 'Состояние',
+    state_active: 'Действует',
+    state_ended: 'Срок истёк',
+    state_revoked: 'Отозван',
+    created: 'Создан',
+    revokedOn: 'Отозван {{moment}}',
+    create: 'Создать ключ',
+    findPerson: 'Поиск по имени или табельному номеру',
+    noKeyRole: 'больше не имеет роли для ключа',
+    secretTitle: 'Секрет ключа {{name}}',
+    secretOnce:
+      'Скопируйте его сейчас: он показывается только один раз и больше никогда не будет доступен.',
+    copy: 'Копировать',
+    copied: 'Скопировано',
+    done: 'Готово',
+    revoke: 'Отозвать',
+    revokeTitle: 'Отозвать {{name}}?',
+    revokeText: 'Ключ сразу перестанет работать, восстановить его нельзя.',
+    emptyTitle: 'Ключей интеграции нет',
+    empty:
+      'Ключ позволяет платформе кафедры работать за указанных в нём сотрудников. Создайте первый.',
+  },
   feedbackReports: {
     title: 'Отзывы',
     caption: 'Отзывы',
@@ -1535,6 +1572,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
     subjectsLink: 'Предметы',
     forcedDeletesLink: 'Удалённые окончательно',
     feedbackReportsLink: 'Отзывы',
+    integrationKeysLink: 'Ключи интеграции',
     systemStatusLink: 'Состояние системы',
     branches: {
       title: 'Филиалы',
@@ -4215,6 +4253,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       plans: 'Планы уроков',
       announcements: 'Объявления',
       feedback: 'Отзывы',
+      integration_keys: 'Ключи интеграции',
     },
     scopes: {
       branch: 'Этот филиал',
@@ -4302,6 +4341,12 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       feedback: {
         handled: 'Отзыв отмечен как обработанный',
         reopened: 'Отзыв снова отмечен как новый',
+      },
+      integration_key: {
+        create: 'Ключ интеграции создан',
+        people_changed: 'Изменены сотрудники ключа интеграции',
+        end_date_changed: 'Изменена дата окончания ключа интеграции',
+        revoke: 'Ключ интеграции отозван',
       },
       telegram: {
         linked: 'Telegram привязан',

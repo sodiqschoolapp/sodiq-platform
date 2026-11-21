@@ -72,6 +72,12 @@ export const en = {
     telegram_chat_linked:
       'This Telegram is already linked to another parent account. Sign out of it there first, or use the portal in a browser.',
     no_telegram_link: 'This account is not linked to Telegram.',
+    integration_key_person_refused:
+      'A person you chose may not be put on the key: they must be active, with an account that is not locked, and hold the Teacher, Head Teacher or Senior Head Teacher role. Take them off the list.',
+    integration_key_end_refused:
+      'The end date must be between today and one year from today. Choose another date.',
+    integration_key_revoked:
+      'This key is revoked and cannot be changed. Create a new key if one is needed.',
     password_unchanged: 'The new password is the same as the current one. Choose another one.',
     second_step_required: 'Enter the code of the second step before you continue.',
     second_step_set_up_required: 'Set up the second step before you continue.',
@@ -1233,6 +1239,35 @@ export const en = {
     tooMany_one: 'You have sent {{n}} report in the last 24 hours. Try again later.',
     tooMany_other: 'You have sent {{n}} reports in the last 24 hours. Try again later.',
   },
+  integrationKeys: {
+    title: 'Integration keys',
+    caption: 'Integration keys',
+    name: 'Name',
+    people: 'People',
+    endsOn: 'End date',
+    endsOnNote: 'At most one year from today.',
+    lastUsed: 'Last use',
+    neverUsed: 'Never used',
+    state: 'State',
+    state_active: 'Active',
+    state_ended: 'Past its end date',
+    state_revoked: 'Revoked',
+    created: 'Created',
+    revokedOn: 'Revoked {{moment}}',
+    create: 'Create key',
+    findPerson: 'Find by name or staff ID',
+    noKeyRole: 'no longer holds a key role',
+    secretTitle: 'Secret of {{name}}',
+    secretOnce: 'Copy it now: it is shown only this once and can never be read again.',
+    copy: 'Copy',
+    copied: 'Copied',
+    done: 'Done',
+    revoke: 'Revoke',
+    revokeTitle: 'Revoke {{name}}?',
+    revokeText: 'The key stops working at once and cannot be restored.',
+    emptyTitle: 'No integration keys',
+    empty: 'A key lets a department platform work for the people on it. Create the first one.',
+  },
   feedbackReports: {
     title: 'Feedback reports',
     caption: 'Feedback reports',
@@ -1498,6 +1533,7 @@ export const en = {
     subjectsLink: 'Subjects',
     forcedDeletesLink: 'Deleted for good',
     feedbackReportsLink: 'Feedback reports',
+    integrationKeysLink: 'Integration keys',
     systemStatusLink: 'System status',
     branches: {
       title: 'Branches',
@@ -3996,6 +4032,7 @@ export const en = {
       plans: 'Lesson plans',
       announcements: 'Announcements',
       feedback: 'Feedback',
+      integration_keys: 'Integration keys',
     },
     scopes: {
       branch: 'This branch',
@@ -4083,6 +4120,12 @@ export const en = {
       feedback: {
         handled: 'Feedback marked handled',
         reopened: 'Feedback marked new again',
+      },
+      integration_key: {
+        create: 'Integration key created',
+        people_changed: 'People of an integration key changed',
+        end_date_changed: 'End date of an integration key changed',
+        revoke: 'Integration key revoked',
       },
       telegram: {
         linked: 'Telegram linked',
