@@ -62,6 +62,14 @@ export const integrationKeyEndDateSchema = z.strictObject({ endsOn: schoolDateSc
 
 export type IntegrationKeyEndDate = z.infer<typeof integrationKeyEndDateSchema>;
 
+/** The side panel's form of a key: its end date and its people, each sent to its own route when changed. */
+export const integrationKeyChangeSchema = z.strictObject({
+  endsOn: schoolDateSchema,
+  staffRecordIds,
+});
+
+export type IntegrationKeyChange = z.infer<typeof integrationKeyChangeSchema>;
+
 export const integrationKeyParamsSchema = z.strictObject({ id: z.uuid() });
 
 export type IntegrationKeyParams = z.infer<typeof integrationKeyParamsSchema>;

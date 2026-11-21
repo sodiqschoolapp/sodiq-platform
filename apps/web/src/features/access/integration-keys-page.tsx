@@ -1,6 +1,5 @@
 import {
-  integrationKeyEndDateSchema,
-  integrationKeyPeopleSchema,
+  integrationKeyChangeSchema,
   integrationKeyRecordSchema,
   type IntegrationKey,
   type IntegrationKeyPerson,
@@ -393,21 +392,24 @@ function KeyPanel({
   const confirm = useConfirm();
   const revoked = integrationKey.state === 'revoked';
   const refresh = () => queryClient.invalidateQueries({ queryKey: INTEGRATION_KEYS_KEY });
-  const endForm = useRecordForm({
-    schema: integrationKeyEndDateSchema,
-    initial: { endsOn: integrationKey.endsOn },
-    save: async ({ endsOn }) => {
-      await changeIntegrationKeyEnd(integrationKey.id, endsOn);
-      await refresh();
-    },
-  });
-  const peopleForm = useRecordForm({
-    schema: integrationKeyPeopleSchema,
-    initial: { staffRecordIds: listValue(integrationKey.people.map((one) => one.staffRecordId)) },
+  const people = integrationKey.people.map((one) => one.staffRecordId);
+  // One form, one Save (one primary in the side panel): each part goes to its own route, and
+  // only when it changed.
+  const form = useRecordForm({
+    schema: integrationKeyChangeSchema,
+    initial: { endsOn: integrationKey.endsOn, staffRecordIds: listValue(people) },
     checkedOnSave: ['staffRecordIds'],
-    read: (typed) => ({ staffRecordIds: listValues(typed.staffRecordIds) }),
-    save: async ({ staffRecordIds }) => {
-      await changeIntegrationKeyPeople(integrationKey.id, staffRecordIds);
+    read: (typed) => ({ endsOn: typed.endsOn, staffRecordIds: listValues(typed.staffRecordIds) }),
+    save: async ({ endsOn, staffRecordIds }) => {
+      if (endsOn !== integrationKey.endsOn) {
+        await changeIntegrationKeyEnd(integrationKey.id, endsOn);
+      }
+      const same =
+        staffRecordIds.length === people.length &&
+        staffRecordIds.every((one) => people.includes(one));
+      if (!same) {
+        await changeIntegrationKeyPeople(integrationKey.id, staffRecordIds);
+      }
       await refresh();
     },
   });
@@ -482,19 +484,14 @@ function KeyPanel({
         </section>
       ) : (
         <>
-          <RecordForm form={endForm} label={t('integrationKeys.endsOn')}>
+          <RecordForm form={form} label={integrationKey.name}>
             <DateField
               label={t('integrationKeys.endsOn')}
               min={today}
               max={latest}
-              {...endForm.bind('endsOn')}
+              {...form.bind('endsOn')}
             />
-          </RecordForm>
-          <RecordForm form={peopleForm} label={t('integrationKeys.people')}>
-            <PeoplePicker
-              binding={peopleForm.bind('staffRecordIds')}
-              kept={integrationKey.people}
-            />
+            <PeoplePicker binding={form.bind('staffRecordIds')} kept={integrationKey.people} />
           </RecordForm>
         </>
       )}

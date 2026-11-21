@@ -235,7 +235,7 @@ describe('the integration keys', () => {
     });
     renderApp('/integration-keys', 'ru');
     const panel = await openRow('Platform 1');
-    const form = await within(panel).findByRole('form', { name: ru.integrationKeys.people });
+    const form = await within(panel).findByRole('form', { name: 'Platform 1' });
     fireEvent.click(await within(form).findByLabelText(/Headova Malika/));
     fireEvent.click(within(form).getByRole('button', { name: ru.form.save }));
     expect(await within(panel).findByText(ru.errors.integration_key_person_refused)).toBeDefined();

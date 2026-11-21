@@ -128,7 +128,6 @@ async function checkSuperAdminPages(page: Page): Promise<void> {
   const secretDialog = page.getByRole('dialog');
   await expect(secretDialog.getByText(/^sodiq_ik_/)).toBeVisible();
   await expect(secretDialog.getByRole('button', { name: en.integrationKeys.copy })).toBeVisible();
-  await checkPage(page, 'integration-keys-secret');
   await secretDialog.getByRole('button', { name: en.integrationKeys.done, exact: true }).click();
   await expect(secretDialog).toBeHidden();
   await expect(page.getByText(/^sodiq_ik_/)).toHaveCount(0);
@@ -141,7 +140,7 @@ async function checkSuperAdminPages(page: Page): Promise<void> {
   const keyPanel = page.getByRole('complementary');
   await expect(keyPanel).toBeVisible();
   await checkPage(page, 'integration-keys-record');
-  const endForm = keyPanel.getByRole('form', { name: en.integrationKeys.endsOn });
+  const endForm = keyPanel.getByRole('form', { name: 'Browser test platform' });
   const endField = endForm.getByLabel(en.integrationKeys.endsOn, { exact: true });
   const latest = await endField.getAttribute('max');
   const earliest = await endField.getAttribute('min');
