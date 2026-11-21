@@ -1,4 +1,4 @@
-import type { NoticeRole } from '@sodiq/shared';
+import { OWN_CLASS_ROLES, type NoticeRole } from '@sodiq/shared';
 import type { Transaction } from '../../database/transactions.js';
 
 /**
@@ -17,6 +17,12 @@ export interface TaughtUnit {
   subjectId: string;
   /** The class of a class unit; `null` for a group. */
   classId: string | null;
+  /**
+   * The staff record told, when the call knows it. A Tutor lesson's holder who never held the
+   * class's Tutor row (a substitute) holds it as a Teacher (decision 10; spec review of the
+   * code, must-fix 1); one who did is told by the stored post of that row.
+   */
+  holderStaffId?: string | null;
 }
 
 /** The highest grade of a Class teacher's class (`02`: "one class of grades 0–4"). */
@@ -47,6 +53,30 @@ export async function teachingRolesOf(
     ),
   ];
   const grades = new Map<string, number>();
+  // The posts by which each holder named holds (or held) the class's Tutor row, by class.
+  const posts = new Map<string, TeachingRole>();
+  const holders = units.flatMap((unit) =>
+    tutorSubjects.has(unit.subjectId) &&
+    unit.classId !== null &&
+    unit.holderStaffId !== undefined &&
+    unit.holderStaffId !== null
+      ? [unit.holderStaffId]
+      : [],
+  );
+  if (holders.length > 0 && classIds.length > 0) {
+    const rows = await transaction
+      .selectFrom('class_tutors')
+      .innerJoin('assignments', 'assignments.id', 'class_tutors.assignment_id')
+      .innerJoin('staff', 'staff.account_id', 'assignments.account_id')
+      .select(['class_tutors.class_id', 'staff.id as staff_id', 'assignments.role'])
+      .where('class_tutors.class_id', 'in', classIds)
+      .where('staff.id', 'in', [...new Set(holders)])
+      .execute();
+    for (const row of rows) {
+      const post = OWN_CLASS_ROLES.find((one) => one === row.role);
+      if (post !== undefined) posts.set(`${row.class_id}|${row.staff_id}`, post);
+    }
+  }
   if (classIds.length > 0) {
     const rows = await transaction
       .selectFrom('classes')
@@ -58,6 +88,9 @@ export async function teachingRolesOf(
   return units.map((unit) => {
     if (!tutorSubjects.has(unit.subjectId)) {
       return 'teacher';
+    }
+    if (unit.classId !== null && unit.holderStaffId !== undefined && unit.holderStaffId !== null) {
+      return posts.get(`${unit.classId}|${unit.holderStaffId}`) ?? 'teacher';
     }
     const grade = unit.classId === null ? undefined : grades.get(unit.classId);
     return grade !== undefined && grade <= CLASS_TEACHER_TOP_GRADE ? 'class_teacher' : 'tutor';

@@ -517,9 +517,20 @@ export class DailyWork {
       await this.notifications.send(transaction, {
         kind: 'journal.lesson_about_to_lock',
         branchId,
-        // The holder of the journal's lesson: its Teacher, or its Tutor for a Tutor lesson
-        // (task 10.11; a substitute of a Tutor lesson is told as its Tutor, out of a key).
-        to: [{ accountId: account, for: [await teachingRoleOf(transaction, journal)] }],
+        // The holder of the journal's lesson: its Teacher, or its Tutor for a Tutor lesson; a
+        // substitute holds it as a Teacher (task 10.11, decision 10).
+        to: [
+          {
+            accountId: account,
+            for: [
+              await teachingRoleOf(transaction, {
+                subjectId: journal.subjectId,
+                classId: journal.classId,
+                holderStaffId: staffId,
+              }),
+            ],
+          },
+        ],
         data: {
           date: lesson.lesson_date,
           unit: unitOf(journal).name,

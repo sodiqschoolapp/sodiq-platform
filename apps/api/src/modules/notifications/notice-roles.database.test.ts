@@ -59,6 +59,29 @@ describe('the role by which a lesson is held', () => {
     expect(roles).toEqual(['teacher', 'teacher', 'teacher', 'tutor', 'class_teacher', 'tutor']);
   });
 
+  it('as the Tutor or the Class teacher by the stored post of the class row, a holder without that row (a substitute) as the Teacher', async () => {
+    const kit = new ClassesKit(database.migrator);
+    const tutor = await kit.person(branch, ['uz']);
+    const classTeacher = await kit.person(branch, ['uz']);
+    const substitute = await kit.person(branch, ['uz']);
+    await kit.tutorRow(branch, grade7, await kit.role(tutor.accountId, branch, 'tutor'));
+    await kit.tutorRow(
+      branch,
+      grade3,
+      await kit.role(classTeacher.accountId, branch, 'class_teacher'),
+    );
+    const roles = await transactions.run([branch], (transaction) =>
+      teachingRolesOf(transaction, [
+        { subjectId: tutorSubject, classId: grade7, holderStaffId: tutor.staffId },
+        { subjectId: tutorSubject, classId: grade3, holderStaffId: classTeacher.staffId },
+        { subjectId: tutorSubject, classId: grade7, holderStaffId: substitute.staffId },
+        { subjectId: tutorSubject, classId: grade3, holderStaffId: tutor.staffId },
+        { subjectId: maths, classId: grade7, holderStaffId: tutor.staffId },
+      ]),
+    );
+    expect(roles).toEqual(['tutor', 'class_teacher', 'teacher', 'teacher', 'teacher']);
+  });
+
   it('joined once for a notice of several lessons, the Teacher when it names none', async () => {
     await transactions.run([branch], async (transaction) => {
       expect(

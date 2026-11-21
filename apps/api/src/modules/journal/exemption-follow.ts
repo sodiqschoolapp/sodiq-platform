@@ -324,6 +324,7 @@ export async function noticeKeptLessons(
     start: string;
     unit: string;
     teacher_account: string | null;
+    teacher_id: string | null;
     classes: string;
     tutors: string[] | null;
     tutor_posts: string[] | null;
@@ -346,6 +347,7 @@ export async function noticeKeptLessons(
       to_char(k.starts_at at time zone k.time_zone, 'HH24:MI') as start,
       coalesce(g.name, c.grade::text || ' ' || c.name) as unit,
       st.account_id as teacher_account,
+      k.teacher_id,
       string_agg(distinct oc.grade::text || ' ' || oc.name, ', ') as classes,
       array_remove(array_agg(distinct a.account_id), null) as tutors,
       array_remove(array_agg(distinct a.account_id::text || ':' || a.role), null) as tutor_posts
@@ -359,7 +361,8 @@ export async function noticeKeptLessons(
       and t.valid_from < ((k.lesson_date + 1)::timestamp at time zone k.time_zone)
       and (t.valid_until is null or t.valid_until > (k.lesson_date::timestamp at time zone k.time_zone))
     left join assignments a on a.id = t.assignment_id
-    group by k.id, k.lesson_date, k.starts_at, k.time_zone, g.name, c.grade, c.name, st.account_id
+    group by k.id, k.lesson_date, k.starts_at, k.time_zone, g.name, c.grade, c.name, st.account_id,
+      k.teacher_id
     order by k.starts_at, k.id
   `.execute(transaction);
   let sent = 0;
@@ -379,7 +382,11 @@ export async function noticeKeptLessons(
     if (row.teacher_account !== null) {
       to.push({
         accountId: row.teacher_account,
-        for: [unit === undefined ? 'teacher' : await teachingRoleOf(transaction, unit)],
+        for: [
+          unit === undefined
+            ? 'teacher'
+            : await teachingRoleOf(transaction, { ...unit, holderStaffId: row.teacher_id }),
+        ],
       });
     }
     const told = to

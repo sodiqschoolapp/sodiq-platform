@@ -66,10 +66,13 @@ async function teachersTold(
     input.lessonTeacherId,
     owner !== null && owner.kind !== 'none' ? owner.staffId : null,
   ];
-  const accounts = new Set<string>();
+  const accounts = new Map<string, string>();
   for (const one of staff) {
+    if (one === null) continue;
     const account = await accountOfStaff(transaction, one);
-    if (account !== null && account !== input.correctorId) accounts.add(account);
+    if (account !== null && account !== input.correctorId && !accounts.has(account)) {
+      accounts.set(account, one);
+    }
   }
   if (accounts.size === 0) return [];
   const unit =
@@ -81,8 +84,19 @@ async function teachersTold(
           .select(['subject_id as subjectId', 'class_id as classId'])
           .where('id', '=', input.journalId)
           .executeTakeFirst());
-  const role = unit === undefined ? 'teacher' : await teachingRoleOf(transaction, unit);
-  return [...accounts].sort().map((accountId) => ({ accountId, for: [role] }));
+  const told: NotificationRecipient[] = [];
+  for (const [accountId, staffId] of [...accounts].sort(([a], [b]) => a.localeCompare(b))) {
+    // The lesson's substitute holds it as a Teacher; its own holder by their post (task 10.11).
+    told.push({
+      accountId,
+      for: [
+        unit === undefined
+          ? 'teacher'
+          : await teachingRoleOf(transaction, { ...unit, holderStaffId: staffId }),
+      ],
+    });
+  }
+  return told;
 }
 
 async function send(

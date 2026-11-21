@@ -419,6 +419,15 @@ describe('the forced delete of a dated lesson and its restore', () => {
       expect(
         (await noticesOf(await accountOfAssignment(t.viceAssignment))).map((one) => one.for_roles),
       ).toEqual([['academic_vice_principal']]);
+      const principal = await t.database.migrator
+        .selectFrom('assignments')
+        .select('account_id')
+        .where('role', '=', 'principal')
+        .where('branch_id', '=', s.branch)
+        .executeTakeFirstOrThrow();
+      expect((await noticesOf(principal.account_id)).map((one) => one.for_roles)).toEqual([
+        ['principal'],
+      ]);
       expect(await noticesOf(s.otherTeacher.accountId)).toHaveLength(0);
       // The other class's lesson at the same time stays.
       expect(await rowOf((await lessonOf(s, NEXT_MONDAY, s.otherClass)).id)).toBeDefined();

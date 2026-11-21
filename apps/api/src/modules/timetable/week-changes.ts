@@ -745,7 +745,8 @@ export async function sendTeacherWeeks(
       .slice(0, WEEK_LESSONS_MAX);
   };
   // A lesson's unit from the lesson as compared: a class lesson's one class is its unit.
-  const unitOf = (one: StoredLesson): TaughtUnit => ({
+  const unitOf = (one: StoredLesson, holderStaffId: string): TaughtUnit => ({
+    holderStaffId,
     subjectId: one.lesson.subjectId,
     classId:
       one.lesson.classIds.length === 1 && one.lesson.classIds[0] === one.lesson.unitId
@@ -762,7 +763,7 @@ export async function sendTeacherWeeks(
     const all = [...input.before, ...input.after].filter((one) =>
       one.lesson.teacherIds.includes(teacherId),
     );
-    return (changed.length > 0 ? changed : all).map(unitOf);
+    return (changed.length > 0 ? changed : all).map((one) => unitOf(one, teacherId));
   };
   let count = 0;
   for (const one of notified) {

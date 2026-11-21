@@ -684,7 +684,11 @@ export async function toldOf(
   }));
   const roles = await teachingRolesOf(
     transaction,
-    teachers.rows.map((row) => ({ subjectId: row.subject_id, classId: row.class_id })),
+    teachers.rows.map((row) => ({
+      subjectId: row.subject_id,
+      classId: row.class_id,
+      holderStaffId: row.teacher_id,
+    })),
   );
   for (const [index, row] of teachers.rows.entries()) {
     const account = await accountOfStaff(transaction, row.teacher_id);
@@ -711,9 +715,11 @@ export async function noticeReopened(
     transaction,
     input.reopened.map((one) => one.lessonId),
   );
+  const staffOf = new Map<string, string>();
   for (const one of input.reopened) {
     const account = await accountOfStaff(transaction, one.teacherId);
     if (account === null || account === input.actorId) continue;
+    staffOf.set(account, one.teacherId);
     const students = byTeacher.get(account) ?? new Map<string, Set<string>>();
     const lessons = students.get(one.studentId) ?? new Set<string>();
     lessons.add(one.lessonId);
@@ -740,7 +746,9 @@ export async function noticeReopened(
             transaction,
             [...lessons].flatMap((id) => {
               const unit = units.get(id);
-              return unit === undefined ? [] : [unit];
+              return unit === undefined
+                ? []
+                : [{ ...unit, holderStaffId: staffOf.get(account) ?? null }];
             }),
           ),
         },

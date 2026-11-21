@@ -1353,6 +1353,46 @@ describe('requests made through an integration key', () => {
       for (const id of [senior, head, both]) expect(await readAtOf(id)).not.toBeNull();
     });
 
+    it('a notice of a Tutor lesson to its Tutor names the Tutor and is never read through the key', async () => {
+      // The Tutor's own unlock request of the locked Ma'naviyat soati lesson of 13 October (made
+      // by the test of Tutor work above), granted by the Academic Vice Principal.
+      const waiting = await t.database.migrator
+        .selectFrom('journal_unlocks')
+        .innerJoin('lessons', 'lessons.id', 'journal_unlocks.lesson_id')
+        .innerJoin('subjects', 'subjects.id', 'lessons.subject_id')
+        .innerJoin('departments', 'departments.id', 'subjects.department_id')
+        .select(['journal_unlocks.id', 'journal_unlocks.version'])
+        .where('journal_unlocks.requested_by', '=', x.owner.account.id)
+        .where('journal_unlocks.status', '=', 'sent')
+        .where('departments.tutors', '=', true)
+        .executeTakeFirstOrThrow();
+      const before = new Set((await noticesOf(x.owner.account.id)).map((one) => one.id));
+      await at(
+        async () => {
+          ok(
+            await t
+              .post(
+                `/api/journal/unlocks/${waiting.id}/decide`,
+                x.branch,
+                { decision: 'approve', days: 1, version: waiting.version },
+                x.vice.cookie,
+              )
+              .set(REQUEST_KEY_HEADER, randomUUID()),
+          );
+        },
+        MOMENT,
+        [x.vice],
+      );
+      const granted = (await noticesOf(x.owner.account.id)).filter(
+        (one) => !before.has(one.id) && one.kind === 'journal.unlock_approved',
+      );
+      expect(granted.map((one) => one.for_roles)).toEqual([['tutor']]);
+      const ids = listed(await at(() => via('get', '/api/notifications', asOwner(x)))).items.map(
+        (one) => one.id,
+      );
+      expect(ids).not.toContain(granted[0]?.id);
+    });
+
     it('a notice of the Academic Vice Principal post is never read through the key', async () => {
       const told = (await noticesOf(x.vice.account.id)).filter((one) =>
         (one.for_roles ?? []).includes('academic_vice_principal'),

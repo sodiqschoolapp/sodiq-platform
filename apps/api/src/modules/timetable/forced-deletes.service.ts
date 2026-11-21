@@ -640,6 +640,7 @@ export class LessonForcedDeletes implements OnModuleInit {
                 await teachingRoleOf(transaction, {
                   subjectId: lesson.subject_id,
                   classId: lesson.class_id,
+                  holderStaffId: lesson.teacher_id,
                 }),
               ],
             },

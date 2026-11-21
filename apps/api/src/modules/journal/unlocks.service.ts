@@ -511,6 +511,8 @@ export class UnlocksService {
                 await teachingRoleOf(transaction, {
                   subjectId: subject.subjectId,
                   classId: subject.unit.kind === 'class' ? subject.unit.id : null,
+                  // A substitute who asked holds the lesson as a Teacher (decision 10).
+                  holderStaffId: row.staff_id,
                 }),
               ],
             },
