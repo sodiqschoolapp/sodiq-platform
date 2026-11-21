@@ -15,6 +15,7 @@ import { AuditPage } from '@/features/audit/audit-page';
 import { auditSearch } from '@/features/audit/audit-search';
 import { ForcedDeletesPage } from '@/features/audit/forced-deletes-page';
 import { FeedbackReportsPage } from '@/features/feedback/feedback-reports-page';
+import { AssistantConversationsPage } from '@/features/assistant/assistant-conversations-page';
 import { IntegrationKeysPage } from '@/features/access/integration-keys-page';
 import { SystemStatusPage } from '@/features/feedback/system-status-page';
 import { CodePage } from '@/features/auth/code-page';
@@ -871,6 +872,14 @@ const feedbackReportsRoute = createRoute({
   component: guarded('monitoring', FeedbackReportsPage),
 });
 
+// Task 11.12: every conversation of the assistant, the Super Admin's (monitoring), school-wide.
+const assistantConversationsRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/assistant-conversations',
+  validateSearch: listSearch,
+  component: guarded('monitoring', AssistantConversationsPage),
+});
+
 // Task 10.9: the Super Admin's integration keys, school-wide.
 const integrationKeysRoute = createRoute({
   getParentRoute: () => appRoute,
@@ -1113,6 +1122,7 @@ const routeTree = rootRoute.addChildren([
     auditRoute,
     forcedDeletesRoute,
     feedbackReportsRoute,
+    assistantConversationsRoute,
     integrationKeysRoute,
     systemStatusRoute,
     personalDataRoute,

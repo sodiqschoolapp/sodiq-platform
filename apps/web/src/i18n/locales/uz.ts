@@ -1044,6 +1044,19 @@ export const uz: Texts<'one' | 'other'> = {
     return_outside_year:
       'Sana bu sinfning oʻquv yilida emas. Qaytish yoki tiklash bugungi yoki oldingi kunga, sinf oʻquv yilining biror kuniga yoziladi: joriy yilning sinfini tanlang.',
     group_transfer_subject: 'Bu guruh boshqa fanga tegishli. Shu fanning guruhini tanlang.',
+    assistant_off:
+      'Yordamchi maktab yoki bu rol uchun oʻchirilgan. Super Admin uni Maktab sozlamalari, Sozlamalar boʻlimida yoqadi.',
+    assistant_daily_limit:
+      'Bugun kunlik cheklov ruxsat bergancha savol berdingiz. Ertaga yana soʻrang; barcha sahifalar odatdagidek ishlaydi.',
+    assistant_cap_reached:
+      'Maktabning yordamchi uchun oylik xarajat chegarasiga yetildi. Barcha sahifalar odatdagidek ishlaydi; Super Admin chegarani oshirishi mumkin.',
+    assistant_model_unavailable:
+      'Yordamchi hozir til modeliga ulana olmayapti. Keyinroq urinib koʻring; barcha sahifalar odatdagidek ishlaydi.',
+    assistant_role_not_held: 'Yordamchi bu filialda ushbu rol uchun ochiq emas.',
+    assistant_conversation_other_role: 'Bu suhbat boshqa rolda boshlangan. Yangi suhbat boshlang.',
+    assistant_not_archived: 'Bu suhbat arxivlanmagan, tiklash uchun hech narsa yoʻq.',
+    assistant_call_invalid: 'Bu soʻrov yordamchi tomonidan yuborilmagan.',
+    assistant_route_closed: 'Bu sahifa yordamchi uchun ochiq emas.',
     request_refused:
       'Soʻrov rad etildi. Qayta urinib koʻring yoki administratorga murojaat qiling.',
     already_exists: 'Bu nomdagi yozuv bu yerda allaqachon bor. Boshqa nom tanlang.',
@@ -1269,6 +1282,64 @@ export const uz: Texts<'one' | 'other'> = {
     sent: 'Rahmat. Xabaringiz yuborildi.',
     tooMany_one: 'Soʻnggi 24 soatda {{n}} ta xabar yubordingiz. Keyinroq urinib koʻring.',
     tooMany_other: 'Soʻnggi 24 soatda {{n}} ta xabar yubordingiz. Keyinroq urinib koʻring.',
+  },
+  assistant: {
+    open: 'Yordamchi',
+    title: 'Yordamchi',
+    newConversation: 'Yangi suhbat',
+    close: 'Yordamchini yopish',
+    question: 'Savolingiz',
+    placeholder: 'Oddiy soʻzlar bilan soʻrang…',
+    send: 'Yuborish',
+    sending: 'Yuborilmoqda…',
+    empty: 'Hali suhbatlar yoʻq. Boshlash uchun savol bering.',
+    conversations: 'Suhbatlar',
+    readOnly:
+      'Bu suhbat boshqa filial yoki rolga tegishli: bu yerda faqat oʻqiladi. Soʻrash uchun yangi suhbat boshlang.',
+    read: 'Oʻqildi: {{what}}',
+    readFailed: '{{what}}: sizga ochiq emas yoki topilmadi',
+    readRefused: 'Yordamchiga ruxsat etilmagan oʻqish bajarilmadi.',
+    groups: {
+      setup: 'Maktab sozlamalari',
+      calendar: 'Kalendar va davrlar',
+      staff: 'Xodimlar',
+      students: 'Oʻquvchilar',
+      classes: 'Sinflar va guruhlar',
+      timetable: 'Dars jadvali',
+      journal: 'Jurnallar',
+      plans: 'Dars rejalari',
+      results: 'Natijalar va hisobotlar',
+      announcements: 'Eʼlonlar',
+      search: 'Qidiruv',
+    },
+    settings: {
+      title: 'Yordamchi',
+      schoolOn: 'Yordamchi maktab uchun yoqilgan',
+      roleOn: '{{role}} roli uchun yoqilgan',
+      roles: 'Yoqilgan rollar',
+      dailyLimit: 'Bir kishi uchun kunlik savollar',
+      monthlyCap: 'Oylik xarajat chegarasi, AQSh dollari',
+      spent: 'Shu oy sarflandi: {{amount}} (model {{model}}).',
+      noModel:
+        'Serverda til modeli sozlanmagan: yordamchi buni aytadi, barcha sahifalar odatdagidek ishlaydi.',
+    },
+    conversationsPage: {
+      title: 'Yordamchi suhbatlari',
+      titleColumn: 'Suhbat',
+      person: 'Xodim',
+      role: 'Rol',
+      branch: 'Filial',
+      lastActivity: 'Oxirgi faollik',
+      state: 'Holat',
+      state_active: 'Faol',
+      state_archived: 'Arxivlangan',
+      emptyTitle: 'Hali suhbatlar yoʻq',
+      empty: 'Har bir xodimning yordamchi bilan suhbatlari shu yerda koʻrinadi.',
+      restore: 'Tiklash',
+      restoreTitle: 'Suhbat tiklansinmi?',
+      restoreText: '“{{title}}” 90 kunga egasining roʻyxatiga qaytadi.',
+      restoredAt: 'Tiklangan vaqt',
+    },
   },
   integrationKeys: {
     title: 'Integratsiya kalitlari',
@@ -1572,6 +1643,7 @@ export const uz: Texts<'one' | 'other'> = {
     forcedDeletesLink: 'Butunlay oʻchirilganlar',
     feedbackReportsLink: 'Fikr-mulohazalar',
     integrationKeysLink: 'Integratsiya kalitlari',
+    assistantConversationsLink: 'Yordamchi suhbatlari',
     systemStatusLink: 'Tizim holati',
     branches: {
       title: 'Filiallar',
@@ -4090,6 +4162,7 @@ export const uz: Texts<'one' | 'other'> = {
       announcements: 'Eʼlonlar',
       feedback: 'Fikr-mulohazalar',
       integration_keys: 'Integratsiya kalitlari',
+      assistant: 'Yordamchi',
     },
     scopes: {
       branch: 'Shu filial',
@@ -4132,6 +4205,7 @@ export const uz: Texts<'one' | 'other'> = {
       teaching_load_row: 'Oʻquv yuklamasi qatori',
       feedback_report: 'Fikr-mulohaza',
       integration_key: 'Integratsiya kaliti',
+      assistant_conversation: 'Yordamchi suhbati',
     },
     actions: {
       auth: {
@@ -4178,6 +4252,12 @@ export const uz: Texts<'one' | 'other'> = {
       feedback: {
         handled: 'Fikr-mulohaza koʻrib chiqildi deb belgilandi',
         reopened: 'Fikr-mulohaza yana yangi deb belgilandi',
+      },
+      assistant_settings: {
+        change: 'Yordamchi sozlamalari oʻzgartirildi',
+      },
+      assistant_conversation: {
+        restore: 'Yordamchi suhbati tiklandi',
       },
       integration_key: {
         create: 'Integratsiya kaliti yaratildi',

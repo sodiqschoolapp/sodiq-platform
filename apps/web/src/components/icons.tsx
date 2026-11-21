@@ -6,6 +6,9 @@ import BarChartSvg from '@material-symbols/svg-500/rounded/bar_chart-fill.svg?re
 import CalendarMonthSvg from '@material-symbols/svg-500/rounded/calendar_month-fill.svg?react';
 import ChevronLeftSvg from '@material-symbols/svg-500/rounded/chevron_left-fill.svg?react';
 import DarkModeSvg from '@material-symbols/svg-500/rounded/dark_mode-fill.svg?react';
+import ChatSvg from '@material-symbols/svg-500/rounded/chat-fill.svg?react';
+import SendSvg from '@material-symbols/svg-500/rounded/send-fill.svg?react';
+import AddCommentSvg from '@material-symbols/svg-500/rounded/add_comment-fill.svg?react';
 import ForumSvg from '@material-symbols/svg-500/rounded/forum-fill.svg?react';
 import GridViewSvg from '@material-symbols/svg-500/rounded/grid_view-fill.svg?react';
 import HistorySvg from '@material-symbols/svg-500/rounded/history-fill.svg?react';
@@ -86,6 +89,10 @@ export const CalendarMonthIcon = icon(CalendarMonthSvg);
 export const ChevronLeftIcon = icon(ChevronLeftSvg);
 export const DarkModeIcon = icon(DarkModeSvg);
 export const ForumIcon = icon(ForumSvg);
+// Task 11.12: the assistant's button, its Send and its new conversation.
+export const ChatIcon = icon(ChatSvg);
+export const SendIcon = icon(SendSvg);
+export const AddCommentIcon = icon(AddCommentSvg);
 export const GridViewIcon = icon(GridViewSvg);
 export const GroupIcon = icon(GroupSvg);
 export const HistoryIcon = icon(HistorySvg);

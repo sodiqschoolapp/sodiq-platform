@@ -18,6 +18,7 @@ import { UnsentBanner, UnsentGuard, useLeave } from '@/components/unsent/unsent-
 import { OutdatedAlert } from './outdated-alert';
 import { sessionQuery } from '@/features/auth/session';
 import { FeedbackButton } from '@/features/feedback/feedback-button';
+import { AssistantButton } from '@/features/assistant/assistant-panel';
 import { NotificationsButton } from '@/features/notifications/notifications-button';
 import { CurrentPeriod } from '@/features/setup/current-period';
 import { rememberTrustAsked, trustWasAsked } from '@/features/auth/trust-asked';
@@ -132,6 +133,8 @@ export function AppLayout() {
           <UnsentBanner />
           <div className="ml-auto flex min-w-0 items-center gap-2 lg:shrink-0">
             <CommandSearch />
+            {/* Task 11.12: the assistant's chat panel, for the roles it is given to. */}
+            <AssistantButton />
             <NotificationsButton />
             <div className="max-sm:hidden">
               <FeedbackButton />

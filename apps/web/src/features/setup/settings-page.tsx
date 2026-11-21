@@ -45,6 +45,7 @@ import {
 } from '@/components/ui/table';
 import { useView } from '@/features/access/use-view';
 import { invalidatePlans } from '@/features/plans/plans-api';
+import { AssistantSettingsSection } from '@/features/assistant/assistant-settings-section';
 import { DigestSettingsSection } from './digest-settings-section';
 import { attendanceValuesQuery, invalidateSettings, settingsQuery } from './settings-api';
 import { cn } from 'cn';
@@ -537,6 +538,7 @@ export function SettingsPage() {
         />
         <AttendanceValuesSection key={branchId} branchId={branchId} canEdit={canEdit} />
         <DigestSettingsSection />
+        <AssistantSettingsSection />
         <FixedSections />
       </>
     );
