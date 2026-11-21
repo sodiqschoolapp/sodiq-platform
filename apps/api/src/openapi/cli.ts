@@ -12,6 +12,7 @@ import {
   withKeyOperations,
   type GuideDocument,
 } from './integration-guide.js';
+import { ASSISTANT_TOOLS_FILE, renderAssistantTools, type ToolsDocument } from './assistant-tools.js';
 
 // First half of `pnpm api:client`: writes the OpenAPI document of the routes,
 // and the operations open to integration keys into the integration guide.
@@ -36,3 +37,8 @@ const guide = path.join(repositoryRoot, INTEGRATION_GUIDE);
 const operations = renderKeyOperations(JSON.parse(text) as GuideDocument);
 writeFileSync(guide, withKeyOperations(readFileSync(guide, 'utf8'), operations));
 console.log(`Wrote ${guide}`);
+
+// Task 11.12: the assistant's tools, from the same text.
+const tools = path.resolve(import.meta.dirname, '../..', ASSISTANT_TOOLS_FILE);
+writeFileSync(tools, renderAssistantTools(JSON.parse(text) as ToolsDocument));
+console.log(`Wrote ${tools}`);

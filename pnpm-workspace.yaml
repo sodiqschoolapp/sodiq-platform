@@ -17,11 +17,19 @@ allowBuilds:
   # downloads its binary in a postinstall; the binary comes from its platform package
   # (@sentry/cli-linux-x64 and the others) instead, so the script is not run.
   '@sentry/cli': false
+  # @google/genai (task 11.12, the assistant) and its protobufjs run only a version notice at
+  # install; neither needs it.
+  '@google/genai': false
+  protobufjs: false
 
 # ExcelJS 4.4.0 (task 2.2c-1) depends on uuid 8, which has a moderate audit
 # finding (GHSA-w5hq-g745-h8pq) in v3/v5/v6; ExcelJS calls only v4. uuid 11
 # keeps a CommonJS entry, so the override clears the finding without a fork.
 overrides:
+  # @google/genai (task 11.12) takes the MCP SDK as an optional peer for its MCP tools, which the
+  # assistant does not use; installed, it brings hono, ip-address and fast-uri with audit
+  # findings. Removed, so only the SDK's four dependencies are installed.
+  '@google/genai>@modelcontextprotocol/sdk': '-'
   'uuid@<11.1.1': ^11.1.1
   # @nestjs/platform-express 12.x pins multer at exactly 2.4.0, which has a high
   # audit finding (GHSA-q7qp-rjg7-q26m, fixed in 2.5.0). Owner, 24 October 2026;

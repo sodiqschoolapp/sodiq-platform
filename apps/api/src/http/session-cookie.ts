@@ -94,3 +94,26 @@ export const SessionCookie = createParamDecorator(
     };
   },
 );
+
+/**
+ * Task 11.12: the session of the request as a `Cookie` header, for the assistant's reads,
+ * which go to the server's own address as the person (plan decision 6). Only the dispatcher
+ * sends it, to that address only; it is never logged, stored or answered.
+ */
+export interface SessionPass {
+  readonly cookieHeader: string;
+}
+
+/**
+ * The session pass of the request, or `undefined` without a session cookie.
+ *
+ *     ask(@RequestSessionPass() pass: SessionPass | undefined)
+ */
+export const RequestSessionPass = createParamDecorator(
+  (_data: unknown, context: ExecutionContext): SessionPass | undefined => {
+    const token = readSessionToken(context.switchToHttp().getRequest<Request>());
+    return token === undefined
+      ? undefined
+      : Object.freeze({ cookieHeader: `${SESSION_COOKIE}=${token}` });
+  },
+);

@@ -1,0 +1,160 @@
+import { Controller, Get, HttpCode, Post, Put } from '@nestjs/common';
+import {
+  assistantAllConversationsQuerySchema,
+  assistantAllConversationsSchema,
+  assistantAnswerSchema,
+  assistantAnyConversationDetailSchema,
+  assistantConversationListSchema,
+  assistantConversationParamsSchema,
+  assistantConversationSchema,
+  assistantQuestionSchema,
+  assistantSettingsRecordSchema,
+  assistantSettingsSchema,
+  assistantStatusQuerySchema,
+  assistantStatusSchema,
+  type AssistantAllConversations,
+  type AssistantAllConversationsQuery,
+  type AssistantAnswer,
+  type AssistantAnyConversationDetail,
+  type AssistantConversation,
+  type AssistantConversationList,
+  type AssistantConversationParams,
+  type AssistantQuestion,
+  type AssistantSettings,
+  type AssistantSettingsRecord,
+  type AssistantStatus,
+  type AssistantStatusQuery,
+} from '@sodiq/shared';
+import { ApiException } from '../../http/api-exception.js';
+import { RequestId } from '../../http/request-id.js';
+import { Returns, ValidBody, ValidParams, ValidQuery } from '../../http/schemas.js';
+import { RequestSessionPass, type SessionPass } from '../../http/session-cookie.js';
+import { Requires } from '../access/access.decorators.js';
+import { CurrentAccess, type Access } from '../access/permission.guard.js';
+import { CurrentSession } from '../auth/session.guard.js';
+import type { ActiveSession } from '../auth/sessions.service.js';
+import { AssistantEngine } from './assistant.engine.js';
+import { AssistantSettingsService } from './assistant-settings.service.js';
+import { AssistantConversations } from './assistant.service.js';
+
+/**
+ * The chat panel of the assistant (`02`, Assistant; task 11.12), for the person in the role
+ * chosen in the role switcher. The area `assistant` (view) is the Super Admin's in this task,
+ * approved by the owner (build plan 11.12).
+ */
+@Controller('assistant')
+export class AssistantController {
+  constructor(
+    private readonly engine: AssistantEngine,
+    private readonly conversations: AssistantConversations,
+  ) {}
+
+  @Get('status')
+  @Requires('assistant', 'view')
+  @Returns(assistantStatusSchema)
+  status(
+    @CurrentAccess() access: Access,
+    @ValidQuery(assistantStatusQuerySchema) query: AssistantStatusQuery,
+  ): Promise<AssistantStatus> {
+    return this.conversations.status(access, query.role);
+  }
+
+  @Get('conversations')
+  @Requires('assistant', 'view')
+  @Returns(assistantConversationListSchema)
+  list(@CurrentAccess() access: Access): Promise<AssistantConversationList> {
+    return this.conversations.own(access);
+  }
+
+  @Get('conversations/:id')
+  @Requires('assistant', 'view')
+  @Returns(assistantConversationSchema)
+  read(
+    @CurrentAccess() access: Access,
+    @ValidParams(assistantConversationParamsSchema) params: AssistantConversationParams,
+  ): Promise<AssistantConversation> {
+    return this.conversations.ownOne(access, params.id);
+  }
+
+  /** A question; the answer holds the conversation with its new messages. */
+  @Post('questions')
+  @HttpCode(200)
+  @Requires('assistant', 'view')
+  @Returns(assistantAnswerSchema)
+  ask(
+    @CurrentAccess() access: Access,
+    @CurrentSession() session: ActiveSession,
+    @RequestSessionPass() pass: SessionPass | undefined,
+    @ValidBody(assistantQuestionSchema) question: AssistantQuestion,
+  ): Promise<AssistantAnswer> {
+    if (pass === undefined) {
+      // The guard read a session from this cookie: never reached.
+      throw new ApiException('not_signed_in', 401);
+    }
+    return this.engine.ask({ access, pass, language: session.language }, question);
+  }
+}
+
+/**
+ * The Super Admin's page of every conversation (`02`: "the Super Admin sees all of them … reads
+ * it and can restore it"), under the existing area `monitoring`, the Super Admin's alone (plan
+ * decision 3, Look first).
+ */
+@Controller('assistant/all-conversations')
+export class AssistantAdminController {
+  constructor(private readonly conversations: AssistantConversations) {}
+
+  @Get()
+  @Requires('monitoring', 'view', { branch: 'none' })
+  @Returns(assistantAllConversationsSchema)
+  list(
+    @ValidQuery(assistantAllConversationsQuerySchema) query: AssistantAllConversationsQuery,
+  ): Promise<AssistantAllConversations> {
+    return this.conversations.all(query);
+  }
+
+  @Get(':id')
+  @Requires('monitoring', 'view', { branch: 'none' })
+  @Returns(assistantAnyConversationDetailSchema)
+  read(
+    @ValidParams(assistantConversationParamsSchema) params: AssistantConversationParams,
+  ): Promise<AssistantAnyConversationDetail> {
+    return this.conversations.any(params.id);
+  }
+
+  @Post(':id/restore')
+  @HttpCode(200)
+  @Requires('monitoring', 'edit', { branch: 'none' })
+  @Returns(assistantAnyConversationDetailSchema)
+  restore(
+    @CurrentAccess() access: Access,
+    @ValidParams(assistantConversationParamsSchema) params: AssistantConversationParams,
+    @RequestId() requestId: string,
+  ): Promise<AssistantAnyConversationDetail> {
+    return this.conversations.restore(access, params.id, requestId);
+  }
+}
+
+/** The assistant's switches and limits (`02`, Limits), under `school_settings` (decision 3). */
+@Controller('setup/school-settings/assistant')
+export class AssistantSettingsController {
+  constructor(private readonly settings: AssistantSettingsService) {}
+
+  @Get()
+  @Requires('school_settings', 'view', { branch: 'none' })
+  @Returns(assistantSettingsSchema)
+  read(): Promise<AssistantSettings> {
+    return this.settings.view();
+  }
+
+  @Put()
+  @Requires('school_settings', 'edit', { branch: 'none' })
+  @Returns(assistantSettingsSchema)
+  change(
+    @CurrentAccess() access: Access,
+    @ValidBody(assistantSettingsRecordSchema) record: AssistantSettingsRecord,
+    @RequestId() requestId: string,
+  ): Promise<AssistantSettings> {
+    return this.settings.change(access, record, requestId);
+  }
+}

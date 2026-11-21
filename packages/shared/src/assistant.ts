@@ -122,7 +122,8 @@ export const assistantMessageSchema = z.discriminatedUnion('kind', [
   z.object({
     ...messageBase,
     kind: z.literal('read'),
-    group: assistantReadGroupSchema,
+    /** `null`: the model asked for something not open to it, and nothing was read. */
+    group: assistantReadGroupSchema.nullable(),
     /** The HTTP status the platform answered, or 0 when the read was not sent. */
     status: z.int().nonnegative(),
   }),
@@ -173,7 +174,8 @@ export type AssistantAnswer = z.infer<typeof assistantAnswerSchema>;
 /** A conversation in the Super Admin's list of every conversation. */
 export const assistantAnyConversationSchema = assistantConversationSummarySchema.extend({
   archived: z.boolean(),
-  person: z.object({ firstName: z.string(), lastName: z.string() }),
+  /** "Last first", as the audit log names its actors. */
+  personName: z.string(),
 });
 
 export type AssistantAnyConversation = z.infer<typeof assistantAnyConversationSchema>;
@@ -191,7 +193,8 @@ export const assistantAllConversationsSchema = z.object({
 export type AssistantAllConversations = z.infer<typeof assistantAllConversationsSchema>;
 
 export const assistantAnyConversationDetailSchema = assistantConversationSchema.extend({
-  person: z.object({ firstName: z.string(), lastName: z.string() }),
+  /** "Last first", as the audit log names its actors. */
+  personName: z.string(),
 });
 
 export type AssistantAnyConversationDetail = z.infer<typeof assistantAnyConversationDetailSchema>;
