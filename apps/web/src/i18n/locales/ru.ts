@@ -4295,6 +4295,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       journal: 'Журнал',
       teaching_load_row: 'Строка учебной нагрузки',
       feedback_report: 'Отзыв',
+      integration_key: 'Ключ интеграции',
     },
     actions: {
       auth: {

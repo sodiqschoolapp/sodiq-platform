@@ -4120,6 +4120,7 @@ export const uz: Texts<'one' | 'other'> = {
       journal: 'Jurnal',
       teaching_load_row: 'Oʻquv yuklamasi qatori',
       feedback_report: 'Fikr-mulohaza',
+      integration_key: 'Integratsiya kaliti',
     },
     actions: {
       auth: {

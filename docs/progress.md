@@ -2,6 +2,21 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 21 November 2026: task 10.9, integration keys: the keys and the Super Admin page
+
+- **Integration keys** (School setup → Integration keys, the Super Admin alone, area `integration_keys`): the list (name, people, end date, last use, state), create with the secret shown once and a copy button, the people and the end date changed in the side panel, Revoke (final). Migration `0175`: `integration_keys` and `integration_key_people`, school-wide; only the SHA-256 of the secret is stored; a revoked key is guarded by a trigger.
+- A person is put on a key only while active, with an account not locked, holding a current Teacher, Head Teacher or Senior Head Teacher assignment; one who later loses that stays on the key, marked. End date: today to one year ahead in Asia/Tashkent (28 February after a 29 February).
+- Audit: `integration_key.create`, `.people_changed`, `.end_date_changed`, `.revoke` (group "Integration keys"). Handbook: `01-signing-in-and-roles.md`, Integration keys.
+
+Left out:
+
+- Requests made with a key (the guard, the routes open to keys, the limit per minute, `last_used_at`, "via <key name>", the integration guide): task 10.10.
+
+The next sessions must know:
+
+- `integrationKeySecretHash` and `INTEGRATION_KEY_ROLES` are what 10.10 uses to find a key and to count the assignments; `last_used_at` is the one column of a revoked key the application may still write.
+- The key routes run with every branch in their transaction: `staff` is filtered by membership.
+
 ## 20 November 2026: simpler plans and journal
 
 Not a task of the build plan: the owner's request "a lot of the things are overcomplicated" (decisions in `docs/decisions.md`; handbook `06-journal.md`, "Not graded" and "Editing a lesson"; `07-lesson-plans.md`, "Switching plan windows off").

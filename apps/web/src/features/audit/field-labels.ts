@@ -203,6 +203,13 @@ const LABELS: Record<string, Record<string, ParseKeys>> = {
   vacancy: VACANCY,
   account: ACCOUNT,
   assignment: ACCOUNT,
+  // Task 10.9: the fields of an integration key, as its form names them.
+  integration_key: {
+    name: 'integrationKeys.name',
+    staffRecordIds: 'integrationKeys.people',
+    endsOn: 'integrationKeys.endsOn',
+    revokedAt: 'integrationKeys.state_revoked',
+  },
 };
 
 /**

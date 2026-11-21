@@ -65,6 +65,21 @@ The owner's answers to the decided-ahead questions for Phase 10, given in chat o
 19. Production deploys only after 18:00 or at the weekend, Tashkent time.
 20. The test environment stays after go-live; every change is tried there first.
 
+## 21 November 2026: integration keys, the keys and the Super Admin page (task 10.9)
+
+Plan approved on pull request #368 with corrections 1 and 2. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first.** `integration_keys` and `integration_key_people` are school-wide tables (`SCHOOL_WIDE_TABLES`) | Build plan 10.9: "with the branch rule of the school-wide records (a key is of the whole school)"; one key may list people of several branches (decision 1) |
+| **Look first.** The people picker and the list read names and staff IDs of every branch, for the Super Admin only; the routes run with every branch in their transaction because `staff` is filtered by membership | The Super Admin already reads every branch (`02`); no role reads more (decision 2) |
+| The secret is `sodiq_ik_` and 32 random bytes in base64url, stored as SHA-256 hex, as session tokens and reset links are | `13`: "long random secrets, stored only as a hash"; 10.10 finds a key by its hash on each request (decisions 3 and 12) |
+| Revoke is an `edit` and final, guarded by the route and by `integration_keys_guard`; only `last_used_at` changes on a revoked key | The approved area has view, create and edit; the task line: "cannot be restored" (decision 4) |
+| The end date is a school date in Asia/Tashkent, from today to one year ahead (28 February after a 29 February), stored with the moment it stops; "ended" is read from the clock | A key has no branch, so the school's zone (as task 11.2); `edge/developer-rules`, Time-based state (decision 5) |
+| A person is added only while active, with an account not locked, and holding a current Teacher, Head Teacher or Senior Head Teacher assignment; one who loses it later stays on the key, marked | `02`, "Each person on the list holds…"; correction 1 of the plan review (decision 6) |
+| 1 to 200 people; the name fixed at create and unique among keys not revoked; a removed person's row is ended, not deleted | Decisions 7, 8 and 9 |
+| **Build decision.** The handbook part is in a new `01-signing-in-and-roles.md`, not `09-integration-keys.md` as the plan said | `09` is already the page of notices and the log in the handbook's list; keys belong with roles and access |
+
 ## 20 November 2026: simpler plans and journal (owner's request, not a build-plan task)
 
 The owner, 20 November 2026: "A lot of the things are overcomplicated." (1) a switch to turn plan windows off, so teachers edit their plans at any time, "for the first year completely independent"; (2) no "Berilmadi", "Mavzu oʻtilmadi", "Oʻtkazilmadi", "Tekshirilmadi", "Keyingi darsda tekshirish": the teacher adds and deletes topics, classwork and homework whenever they want inside the journal's edit period; (3) "-" in a cell in place of the "Baholanmagan" button; then (4) the four attendance marks at the top of the journal, in full screen too; (5) no "Bu dars rejasini oʻzgartirish" and "Dars ishlari" buttons, lesson editing in the journal simple; (6) C on an attendance cell opens its comment and the lesson note, on a work's cell only its own; a new comment is for parents by default. The owner asked in the session, so the stop list's items 3 to 5 (a migration on existing rows, `packages/calc`, permissions) are the owner's own decision here; `packages/calc` is not touched. To be flagged on issue #42, with the `/spec-change` wording of the pull request.

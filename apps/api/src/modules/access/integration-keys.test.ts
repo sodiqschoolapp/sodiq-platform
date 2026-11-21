@@ -14,6 +14,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import type { Database } from '../../database/database.js';
 import { ShippingLogger } from '../../monitoring/monitoring.service.js';
 import { insertBranch } from '../../testing/branch-filter-sql.js';
+import { LoadKit } from '../../testing/load-kit.js';
 import { ClassesKit } from '../../testing/classes-kit.js';
 import { createTestApp } from '../../testing/create-test-app.js';
 import { FixedClock } from '../../testing/fixed-clock.js';
@@ -315,8 +316,18 @@ describe('integration keys: the keys and the Super Admin page', () => {
         noAccount: true,
       });
 
+      // A vacancy (a staff record with no staff ID and no account, `04`, Vacancy).
+      const vacancy = { id: await new LoadKit(database.migrator).vacancy(north) };
       const key = await created([teacher.staffId]);
-      for (const one of [tutor, principal, ended, inactive, locked, noAccount]) {
+      for (const one of [
+        tutor,
+        principal,
+        ended,
+        inactive,
+        locked,
+        noAccount,
+        { staffId: vacancy.id },
+      ]) {
         const before = await everything();
         const answer = await create({
           name: name(),
@@ -496,6 +507,8 @@ describe('integration keys: the keys and the Super Admin page', () => {
       create({ name: keyName, staffRecordIds: [headTeacher.staffId], endsOn: LATEST }),
     ]);
     expect(answers.map((one) => one.status).sort()).toEqual([201, 409]);
+    const loser = answers.find((one) => one.status === 409);
+    expect(loser === undefined ? undefined : errorCode(loser)).toBe('already_exists');
     expect((await keyRows()).filter((row) => row.name === keyName)).toHaveLength(1);
   });
 

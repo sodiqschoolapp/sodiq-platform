@@ -4074,6 +4074,7 @@ export const en = {
       pattern_entry: 'Lesson of a pattern block',
       journal: 'Journal',
       feedback_report: 'Feedback report',
+      integration_key: 'Integration key',
     },
     actions: {
       auth: {

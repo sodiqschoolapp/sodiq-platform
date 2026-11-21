@@ -47,6 +47,8 @@ const RECORD_TYPES = [
   'audit_entry',
   // Pull request #361: the handled mark of a feedback report.
   'feedback_report',
+  // Task 10.9: an integration key.
+  'integration_key',
 ] as const;
 
 /** The name of a kind of record; a kind the list does not hold shows as stored. */

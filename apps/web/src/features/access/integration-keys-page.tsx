@@ -11,7 +11,6 @@ import { useNavigate, useSearch } from '@tanstack/react-router';
 import { useId, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useConfirm } from '@/components/confirm-dialog';
-import { FailureAlert } from '@/components/failure-alert';
 import { DateField, Field, listValue, listValues } from '@/components/field';
 import { RecordForm } from '@/components/form/record-form';
 import { useRecordForm, type FieldBinding } from '@/components/form/use-record-form';
@@ -28,7 +27,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { PANEL } from '@/components/ui/control';
+import { CHECKBOX, CHECKBOX_TARGET, PANEL, SECTION_TITLE } from '@/components/ui/control';
+import { ErrorState, LoadingOutline } from '@/components/states';
 import { formatMoment, schoolDateText } from '@/lib/dates';
 import { cn } from '@/lib/utils';
 import {
@@ -232,26 +232,34 @@ function PeoplePicker({
           setText(event.target.value);
         }}
       />
-      {choices.error !== null && <FailureAlert error={choices.error} />}
+      {choices.isError && (
+        <ErrorState
+          error={choices.error}
+          onRetry={() => {
+            void choices.refetch();
+          }}
+        />
+      )}
+      {choices.isPending && <LoadingOutline lines={2} />}
       <ul className="grid max-h-64 gap-1 overflow-y-auto">
         {shown.map((person) => {
           const inputId = `${id}-${person.staffRecordId}`;
           return (
-            <li key={person.staffRecordId} className="flex items-center gap-2">
-              <input
-                id={inputId}
-                type="checkbox"
-                className="size-4"
-                checked={chosen.includes(person.staffRecordId)}
-                onChange={(event) => {
-                  onChange(
-                    event.target.checked
-                      ? [...chosen, person.staffRecordId]
-                      : chosen.filter((one) => one !== person.staffRecordId),
-                  );
-                }}
-              />
-              <label htmlFor={inputId} className="text-sm">
+            <li key={person.staffRecordId}>
+              <label htmlFor={inputId} className={cn(CHECKBOX_TARGET, 'text-sm')}>
+                <input
+                  id={inputId}
+                  type="checkbox"
+                  className={CHECKBOX}
+                  checked={chosen.includes(person.staffRecordId)}
+                  onChange={(event) => {
+                    onChange(
+                      event.target.checked
+                        ? [...chosen, person.staffRecordId]
+                        : chosen.filter((one) => one !== person.staffRecordId),
+                    );
+                  }}
+                />
                 {personName(person)} · {person.staffId}
                 {!person.holdsKeyRole && (
                   <span className="ml-2 text-muted-foreground">
@@ -288,6 +296,7 @@ function CreateKeyForm({
   const form = useRecordForm({
     schema: integrationKeyRecordSchema,
     initial: { name: '', endsOn: latest, staffRecordIds: '' },
+    checkedOnSave: ['staffRecordIds'],
     read: (typed) => ({ ...typed, staffRecordIds: listValues(typed.staffRecordIds) }),
     // Called directly, not through a query or a mutation: the secret goes into no cache
     // (`.claude/rules/web.md`, a secret an answer holds once) and only into the dialog's state.
@@ -395,6 +404,7 @@ function KeyPanel({
   const peopleForm = useRecordForm({
     schema: integrationKeyPeopleSchema,
     initial: { staffRecordIds: listValue(integrationKey.people.map((one) => one.staffRecordId)) },
+    checkedOnSave: ['staffRecordIds'],
     read: (typed) => ({ staffRecordIds: listValues(typed.staffRecordIds) }),
     save: async ({ staffRecordIds }) => {
       await changeIntegrationKeyPeople(integrationKey.id, staffRecordIds);
@@ -461,7 +471,7 @@ function KeyPanel({
       </dl>
       {revoked ? (
         <section className="grid gap-2">
-          <h3 className="text-sm font-semibold">{t('integrationKeys.people')}</h3>
+          <h3 className={SECTION_TITLE}>{t('integrationKeys.people')}</h3>
           <ul className="grid gap-1 text-sm">
             {integrationKey.people.map((person) => (
               <li key={person.staffRecordId}>

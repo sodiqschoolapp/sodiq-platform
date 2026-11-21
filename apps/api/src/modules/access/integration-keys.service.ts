@@ -388,15 +388,21 @@ export class IntegrationKeys {
         .execute();
     }
     const people = await this.people(transaction, sorted, now);
-    const refused: ErrorDetail[] = people
-      .filter((person) => !person.holdsKeyRole)
-      .map((person) => ({
+    // A vacancy is found above but is not a person (it has no staff ID): refused and named too.
+    const allowed = new Set(
+      people
+        .filter((person) => person.holdsKeyRole)
+        .map((person) => person.staffRecordId.toLowerCase()),
+    );
+    const refused: ErrorDetail[] = sorted
+      .filter((id) => !allowed.has(id))
+      .map((id) => ({
         path: 'staffRecordIds',
         code: 'integration_key_person_refused',
         message: 'The person may not be put on an integration key.',
-        recordId: person.staffRecordId,
+        recordId: id,
       }));
-    if (refused.length > 0 || people.length !== sorted.length) {
+    if (refused.length > 0) {
       throw new ApiException('integration_key_person_refused', 422, undefined, refused);
     }
   }

@@ -46,7 +46,7 @@ const K = 'src/modules/access/integration-keys.test.ts';
 const KEY = `${K} > answers 404 for an unknown key on each route, and writes nothing`;
 const KEY_RULE = 'db/migrations/0175: a key is of the whole school';
 const KEY_PEOPLE_RULE =
-  'task 10.9, decision 2 of pull request #368: the Super Admin puts on a key people of any branch';
+  'task 10.9, decision 2 of pull request #368: the Super Admin puts on a key people of any branch; an unknown one is 404 (integration-keys.test.ts > answers 404 for an unknown staff record on create and on a people change, and writes nothing)';
 
 const OWN_RULE = '.claude/rules/api.md, @AnySignedIn: never on one named in the request';
 
