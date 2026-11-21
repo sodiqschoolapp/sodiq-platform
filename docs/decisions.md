@@ -79,6 +79,9 @@ Plan approved on pull request #368 with corrections 1 and 2. Flagged on issue #4
 | A person is added only while active, with an account not locked, and holding a current Teacher, Head Teacher or Senior Head Teacher assignment; one who loses it later stays on the key, marked | `02`, "Each person on the list holds…"; correction 1 of the plan review (decision 6) |
 | 1 to 200 people; the name fixed at create and unique among keys not revoked; a removed person's row is ended, not deleted | Decisions 7, 8 and 9 |
 | **Build decision.** The handbook part is in a new `01-signing-in-and-roles.md`, not `09-integration-keys.md` as the plan said | `09` is already the page of notices and the log in the handbook's list; keys belong with roles and access |
+| **Build decision.** The browser step is part of the Super Admin's walk in `setup.spec.ts` | The seed holds no spare Super Admin |
+| **Build decision.** A vacancy chosen as a person is refused and named in the details | Permission review of the code, must-fix 1 |
+| **Build decision.** The side panel of a key has one form (end date and people) under one Save; each part goes to its own route only when it changed | One primary button in a side panel (`docs/design-system.md`); each change keeps its own audit entry |
 
 ## 20 November 2026: simpler plans and journal (owner's request, not a build-plan task)
 
