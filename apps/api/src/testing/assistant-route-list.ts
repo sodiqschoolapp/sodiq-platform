@@ -9,7 +9,6 @@ const SUPER_ADMIN_READS = 'the Super Admin reads it (build plan 11.12)';
 
 /** The Super Admin's reads in 11.12; plan decision 4 (Look first) names what is left out. */
 const SUPER_ADMIN: Readonly<Record<string, string>> = {
-  'GET /api/setup/branches': SUPER_ADMIN_READS,
   'GET /api/setup/branch': SUPER_ADMIN_READS,
   'GET /api/setup/buildings': SUPER_ADMIN_READS,
   'GET /api/setup/rooms': SUPER_ADMIN_READS,
@@ -35,7 +34,6 @@ const SUPER_ADMIN: Readonly<Record<string, string>> = {
   'GET /api/people/students/:id': SUPER_ADMIN_READS,
   'GET /api/people/students/no-class': SUPER_ADMIN_READS,
   'GET /api/access/head-teachers': SUPER_ADMIN_READS,
-  'GET /api/access/branches-without-vice-principal': SUPER_ADMIN_READS,
   'GET /api/classes': SUPER_ADMIN_READS,
   'GET /api/classes/:id': SUPER_ADMIN_READS,
   'GET /api/classes/:id/members': SUPER_ADMIN_READS,

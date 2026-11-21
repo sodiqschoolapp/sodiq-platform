@@ -75,7 +75,11 @@ export class GeminiModel implements AssistantModel {
     const texts: string[] = [];
     for (const part of parts) {
       if (part.functionCall?.name !== undefined) {
-        calls.push({ name: part.functionCall.name, args: part.functionCall.args ?? {} });
+        calls.push({
+          name: part.functionCall.name,
+          args: part.functionCall.args ?? {},
+          ...(part.thoughtSignature === undefined ? {} : { signature: part.thoughtSignature }),
+        });
       } else if (typeof part.text === 'string' && part.thought !== true) {
         texts.push(part.text);
       }
@@ -105,7 +109,10 @@ function partOf(part: ModelPart): Part {
     case 'text':
       return { text: part.text };
     case 'call':
-      return { functionCall: { name: part.name, args: part.args } };
+      return {
+        functionCall: { name: part.name, args: part.args },
+        ...(part.signature === undefined ? {} : { thoughtSignature: part.signature }),
+      };
     case 'result':
       return { functionResponse: { name: part.name, response: { result: part.result } } };
   }

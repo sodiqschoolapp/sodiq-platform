@@ -1,6 +1,8 @@
 import {
   ASSISTANT_QUESTION_MAX_LENGTH,
   isAssistantRole,
+  PERMISSIONS,
+  permits,
   type AssistantConversation,
   type AssistantMessage,
   type AssistantRole,
@@ -53,9 +55,17 @@ export function AssistantButton() {
   const { t } = useTranslation();
   const { role } = useView();
   const assistantRole: AssistantRole | null = role !== null && isAssistantRole(role) ? role : null;
-  const mayOpen = useMayView('assistant') && assistantRole !== null;
+  // The role chosen in the switcher, not any assignment: a Super Admin who is also a Teacher sees
+  // no assistant while the Teacher role is chosen (`02`: "A person whose chosen role is another
+  // role does not see it").
+  const mayOpen =
+    useMayView('assistant') &&
+    assistantRole !== null &&
+    permits(PERMISSIONS, assistantRole, 'assistant', 'view');
   const status = useQuery(assistantStatusQuery(assistantRole ?? 'super_admin', mayOpen));
   const [open, setOpen] = useState(false);
+  // Kept here, so a question typed and not sent stays while the panel is closed (`12`, No lost work).
+  const [text, setText] = useState('');
   const button = useRef<HTMLButtonElement>(null);
 
   if (!mayOpen || assistantRole === null) return null;
@@ -83,6 +93,8 @@ export function AssistantButton() {
         createPortal(
           <AssistantPanel
             role={assistantRole}
+            text={text}
+            onTextChange={setText}
             status={status.data}
             statusError={status.error}
             onRetryStatus={() => {
@@ -105,16 +117,25 @@ interface PanelProps {
   statusError: unknown;
   onRetryStatus: () => void;
   onClose: () => void;
+  text: string;
+  onTextChange: (text: string) => void;
 }
 
 /** The chat panel: the own conversations, the open one, and the question. */
-export function AssistantPanel({ role, status, statusError, onRetryStatus, onClose }: PanelProps) {
+export function AssistantPanel({
+  role,
+  status,
+  statusError,
+  onRetryStatus,
+  onClose,
+  text,
+  onTextChange: setText,
+}: PanelProps) {
   const { t } = useTranslation();
   const { branchId } = useView();
   const queryClient = useQueryClient();
   const heading = useRef<HTMLHeadingElement>(null);
   const [conversationId, setConversationId] = useState<string | null>(null);
-  const [text, setText] = useState('');
   const conversations = useQuery(assistantConversationsQuery(true));
   const conversation = useQuery(assistantConversationQuery(conversationId));
 

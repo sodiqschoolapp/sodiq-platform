@@ -1,5 +1,5 @@
 import type { NestExpressApplication } from '@nestjs/platform-express';
-import { BRANCH_HEADER, type AssistantRole } from '@sodiq/shared';
+import { BRANCH_HEADER, type AssistantRole, type PermissionTable } from '@sodiq/shared';
 import request from 'supertest';
 import type { AssistantRouteLists } from '../modules/access/assistant-routes.js';
 import { insertBranch } from './branch-filter-sql.js';
@@ -36,7 +36,11 @@ export interface AssistantScene {
  * that the reads reach it. Names are invented.
  */
 export async function assistantScene(
-  options: { routeLists?: AssistantRouteLists; on?: boolean } = {},
+  options: {
+    routeLists?: AssistantRouteLists;
+    on?: boolean;
+    permissionTable?: PermissionTable;
+  } = {},
 ): Promise<AssistantScene> {
   const database = await createTestDatabase();
   const north = await insertBranch(database.migrator, 'North');
@@ -49,6 +53,7 @@ export async function assistantScene(
     assistantModel: model,
     listen: true,
     ...(options.routeLists === undefined ? {} : { assistantRouteLists: options.routeLists }),
+    ...(options.permissionTable === undefined ? {} : { permissionTable: options.permissionTable }),
   });
   const kit = signInKit(app);
   const people = new ClassesKit(database.migrator);

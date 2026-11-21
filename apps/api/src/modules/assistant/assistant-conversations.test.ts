@@ -86,6 +86,13 @@ describe('the assistant: conversations, archive and restore', () => {
     conversations: (
       await scene.database.migrator.selectFrom('assistant_conversations').selectAll().execute()
     ).length,
+    calls: (await scene.database.migrator.selectFrom('assistant_model_calls').selectAll().execute())
+      .length,
+    audit: (
+      await sql<{ n: number }>`select count(*)::int as n from audit_log`.execute(
+        scene.database.migrator,
+      )
+    ).rows[0]?.n,
   });
 
   beforeAll(async () => {
@@ -215,6 +222,39 @@ describe('the assistant: conversations, archive and restore', () => {
         .where('conversation_id', '=', recent)
         .execute(),
     ).toEqual([]);
+    expect(
+      await scene.database.migrator
+        .selectFrom('audit_log')
+        .select('id')
+        .where('action', '=', 'assistant_conversation.restore')
+        .where('record_id', 'in', [recent, UNKNOWN])
+        .execute(),
+    ).toEqual([]);
+  });
+
+  it('restores a conversation of South in South: the restore row and the audit entry name its branch', async () => {
+    const southern = await conversation({
+      branch: scene.south,
+      account: scene.adminAccount,
+      at: ago(95),
+    });
+    const restored = await scene.kit
+      .post(`/api/assistant/all-conversations/${southern}/restore`, other)
+      .send({});
+    expect(restored.status, JSON.stringify(restored.body)).toBe(200);
+    const row = await scene.database.migrator
+      .selectFrom('assistant_conversation_restores')
+      .selectAll()
+      .where('conversation_id', '=', southern)
+      .executeTakeFirstOrThrow();
+    expect(row.branch_id).toBe(scene.south);
+    const entry = await scene.database.migrator
+      .selectFrom('audit_log')
+      .selectAll()
+      .where('action', '=', 'assistant_conversation.restore')
+      .where('record_id', '=', southern)
+      .executeTakeFirstOrThrow();
+    expect(entry.branch_id).toBe(scene.south);
   });
 
   it('lists the person’s own conversations of every branch, and no other person’s (plan decision 9)', async () => {

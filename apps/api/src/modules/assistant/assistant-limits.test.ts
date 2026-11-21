@@ -225,23 +225,32 @@ describe('the assistant: the switch, the daily limit and the monthly cap', () =>
     await put(settingsBody({ monthlyCapDollars: 1 }));
     scene.model.script(calls({ name: 'ClassesController_list' }), answer('Read.'));
     expect((await ask(scene, scene.admin, scene.north, { text: 'Read once.' })).status).toBe(200);
-    scene.model.script(fails({ tokensIn: 500, tokensOut: 0 }));
+    // A question that reads, then fails after it was billed: both calls count.
+    scene.model.script(
+      calls({ name: 'ClassesController_list' }),
+      fails({ tokensIn: 500, tokensOut: 0 }),
+    );
     expect((await ask(scene, scene.admin, scene.north, { text: 'Fail.' })).status).toBe(503);
     const rows = await scene.database.migrator
       .selectFrom('assistant_model_calls')
       .selectAll()
+      .orderBy('created_at')
+      .orderBy('id')
       .execute();
-    // Two calls for the question with a read, one billed call for the failed one.
+    // Two calls for the first question; for the second, its read's call and the billed failure.
     expect(rows.map((row) => row.cost_micros).map(String)).toEqual([
+      String(costMicros(FAKE_TOKENS, PRICES)),
       String(costMicros(FAKE_TOKENS, PRICES)),
       String(costMicros(FAKE_TOKENS, PRICES)),
       String(costMicros({ tokensIn: 500, tokensOut: 0 }, PRICES)),
     ]);
+    // The spend is the school's: a question asked in South is counted for North.
+    expect((await ask(scene, scene.admin, scene.south, { text: 'From South.' })).status).toBe(200);
     // Reaching the cap: the month's spend from earlier calls of the school.
     await sql`
       insert into assistant_model_calls (message_id, branch_id, model, tokens_in, tokens_out, cost_micros, created_at)
       select m.id, m.branch_id, 'fake-model', 0, 0, 1000000, ${new Date('2026-11-01T00:00:00+05:00')}
-      from assistant_messages m where m.kind = 'question' limit 1
+      from assistant_messages m where m.kind = 'question' and m.branch_id = ${scene.south} limit 1
     `.execute(scene.database.migrator);
     expect(await status()).toEqual(
       expect.objectContaining({ available: false, refusal: 'assistant_cap_reached' }),

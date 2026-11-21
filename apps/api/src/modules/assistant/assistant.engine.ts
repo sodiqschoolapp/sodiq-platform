@@ -40,6 +40,11 @@ import { routeOfTool, SUGGEST_PAGE, toolsOf, urlOf } from './tools.js';
 
 /** At most this many reads per question; then the model answers without tools (decision 15). */
 export const MAX_READS = 6;
+/**
+ * At most this many calls of the model per question, whatever it asks for (a page link included):
+ * the last is asked for an answer without tools (spec review of the code, must fix 5).
+ */
+export const MAX_MODEL_CALLS = MAX_READS + 2;
 /** The earlier questions and answers sent with a question, never their reads (decision 15). */
 export const HISTORY_MESSAGES = 20;
 /** A read given to the model is cut at this many characters. */
@@ -103,7 +108,7 @@ export class AssistantEngine {
   roleHeld(access: Access, role: AssistantRole): boolean {
     return (
       permits(this.table, role, 'assistant', 'view') &&
-      access.assignments.some((assignment) => assignment.role === role)
+      access.permitting.some((assignment) => assignment.role === role)
     );
   }
 
@@ -181,20 +186,24 @@ export class AssistantEngine {
     });
     const linked: MenuItem[] = [];
     let reads = 0;
+    let modelCalls = 0;
     let text = '';
     for (;;) {
-      const reply = await this.call(start, {
-        system,
-        turns,
-        tools: reads >= MAX_READS ? [] : tools,
-      });
-      if (reply.calls.length === 0 || reads >= MAX_READS) {
+      modelCalls += 1;
+      const last = reads >= MAX_READS || modelCalls >= MAX_MODEL_CALLS;
+      const reply = await this.call(start, { system, turns, tools: last ? [] : tools });
+      if (reply.calls.length === 0 || last) {
         text = reply.text;
         break;
       }
       turns.push({
         role: 'model',
-        parts: reply.calls.map((call) => ({ kind: 'call', name: call.name, args: call.args })),
+        parts: reply.calls.map((call) => ({
+          kind: 'call',
+          name: call.name,
+          args: call.args,
+          ...(call.signature === undefined ? {} : { signature: call.signature }),
+        })),
       });
       const results: ModelTurn = { role: 'person', parts: [] };
       for (const call of reply.calls) {

@@ -141,7 +141,7 @@ describe(
     }, 1_200_000);
 
     afterAll(async () => {
-      if (outcomes.length > 0) {
+      if (REAL && outcomes.length > 0) {
         const passed = outcomes.filter((one) => one.passed).length;
         const cost = outcomes.reduce((sum, one) => sum + one.costMicros, 0n);
         const lines = [
@@ -244,8 +244,9 @@ describe(
         if (!REAL) {
           // The replay must do what the case expects: the engine and the list are what is tested.
           expect(why, one.id).toBe('');
-          for (const read of made) {
-            expect(read.status, `${one.id} ${read.tool}`).toBeLessThan(500);
+          // Every replayed read is answered by the platform (spec review of the code, should fix 5).
+          for (const read of made.filter((entry) => entry.route !== null)) {
+            expect(read.status, `${one.id} ${read.tool}`).toBe(200);
           }
           if (intent.kind === 'forbidden') {
             const given = lastResults(fake.requests.at(-1) as ModelRequest);

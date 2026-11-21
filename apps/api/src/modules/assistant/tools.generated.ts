@@ -3,12 +3,6 @@
 import type { GeneratedTool } from './tools.js';
 
 export const GENERATED_TOOLS: Readonly<Record<string, GeneratedTool>> = {
-  "GET /api/access/branches-without-vice-principal": {
-    "name": "StaffAccountsController_branchesWithoutVice",
-    "method": "GET",
-    "path": "/api/access/branches-without-vice-principal",
-    "parameters": []
-  },
   "GET /api/access/head-teachers": {
     "name": "HeadTeachersController_list",
     "method": "GET",
@@ -953,12 +947,6 @@ export const GENERATED_TOOLS: Readonly<Record<string, GeneratedTool>> = {
     "name": "BranchesController_read",
     "method": "GET",
     "path": "/api/setup/branch",
-    "parameters": []
-  },
-  "GET /api/setup/branches": {
-    "name": "BranchesController_list",
-    "method": "GET",
-    "path": "/api/setup/branches",
     "parameters": []
   },
   "GET /api/setup/buildings": {

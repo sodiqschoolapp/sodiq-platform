@@ -143,6 +143,16 @@ describe('loadConfig', () => {
       );
     });
 
+    it('refuses credentials that are not a JSON key at the start, with its message', () => {
+      expect(
+        problemOf({
+          ...VALID,
+          ASSISTANT_VERTEX_PROJECT: 'sodiq-assistant',
+          ASSISTANT_VERTEX_CREDENTIALS: 'not json',
+        }),
+      ).toContain('ASSISTANT_VERTEX_CREDENTIALS must');
+    });
+
     it('refuses the scripted model of the browser tests outside the test and development environments and on the production address', () => {
       expect(loadConfig({ ...VALID, ASSISTANT_SCRIPTED_MODEL: '1' }).assistant.scripted).toBe(true);
       expect(

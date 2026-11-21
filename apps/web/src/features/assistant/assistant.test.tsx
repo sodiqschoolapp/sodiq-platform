@@ -2,6 +2,7 @@ import type { AssistantConversation, AssistantMessage } from '@sodiq/shared';
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { en } from '@/i18n/locales/en';
+import { ROLE_STORAGE_KEY } from '@/features/access/view-store';
 import { fakeApi, json, NORTH, refusal, renderApp, sessionOf } from '@/testing/render-app';
 
 // Task 11.12 (pull request #374). `02`, Assistant: "A button in the top bar opens a chat panel
@@ -75,6 +76,43 @@ describe('the assistant in the top bar', () => {
     await screen.findByRole('heading', { level: 1 });
     expect(button()).toBeNull();
     expect(calls.some((call) => call.route.startsWith('GET /api/assistant'))).toBe(false);
+  });
+
+  it('shows no button and asks nothing while a Super Admin who is also a Teacher has the Teacher role chosen', async () => {
+    window.sessionStorage.setItem(ROLE_STORAGE_KEY, 'teacher');
+    try {
+      const calls = fakeApi({
+        'GET /api/auth/session': () => json(admin([{ role: 'teacher', branchId: NORTH.id }])),
+        'GET /api/assistant/status': () => json(ON),
+      });
+      renderApp('/', 'en');
+      await screen.findByRole('heading', { level: 1 });
+      expect(button()).toBeNull();
+      expect(calls.some((call) => call.route.startsWith('GET /api/assistant'))).toBe(false);
+    } finally {
+      window.sessionStorage.removeItem(ROLE_STORAGE_KEY);
+    }
+  });
+
+  it('keeps a question typed and not sent while the panel is closed and opened again (`12`, No lost work)', async () => {
+    fakeApi({
+      'GET /api/auth/session': () => json(admin()),
+      'GET /api/assistant/status': () => json(ON),
+      'GET /api/assistant/conversations': () => json({ conversations: [] }),
+    });
+    renderApp('/', 'en');
+    let panel = await openPanel();
+    fireEvent.change(panel.getByLabelText(en.assistant.question), {
+      target: { value: 'Half a question' },
+    });
+    fireEvent.click(panel.getByRole('button', { name: en.assistant.close }));
+    await waitFor(() => {
+      expect(screen.queryByRole('complementary', { name: en.assistant.title })).toBeNull();
+    });
+    panel = await openPanel();
+    expect(panel.getByLabelText<HTMLTextAreaElement>(en.assistant.question).value).toBe(
+      'Half a question',
+    );
   });
 
   it('asks a question with the chosen role, shows the answer as plain text, the reads and the linked pages', async () => {

@@ -173,7 +173,22 @@ const environmentSchema = z.object({
       .default('europe-west3'),
   ),
   // The JSON key of the service account, as Google gives it.
-  ASSISTANT_VERTEX_CREDENTIALS: z.preprocess(emptyAsUnset, z.string().min(2).optional()),
+  // Checked here, so that a malformed key stops the start with its message (spec review of the
+  // code, should fix 8), never later inside the model.
+  ASSISTANT_VERTEX_CREDENTIALS: z.preprocess(
+    emptyAsUnset,
+    z
+      .string()
+      .refine((text) => {
+        try {
+          const parsed: unknown = JSON.parse(text);
+          return parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed);
+        } catch {
+          return false;
+        }
+      })
+      .optional(),
+  ),
   ASSISTANT_MODEL: z.preprocess(
     emptyAsUnset,
     z

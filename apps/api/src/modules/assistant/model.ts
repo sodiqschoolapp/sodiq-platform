@@ -30,7 +30,13 @@ export interface ModelTool {
 
 export type ModelPart =
   | { kind: 'text'; text: string }
-  | { kind: 'call'; name: string; args: Record<string, unknown> }
+  | {
+      kind: 'call';
+      name: string;
+      args: Record<string, unknown>;
+      /** Gemini's thought signature of the call, sent back with it on the next turn. */
+      signature?: string;
+    }
   | { kind: 'result'; name: string; result: unknown };
 
 /** One turn of the conversation as the model reads it. */
@@ -49,7 +55,7 @@ export interface ModelRequest {
 
 export interface ModelReply {
   text: string;
-  calls: { name: string; args: Record<string, unknown> }[];
+  calls: { name: string; args: Record<string, unknown>; signature?: string }[];
   /** Billed at the input price: the prompt and the tool-use prompt. */
   tokensIn: number;
   /** Billed at the output price: the answer and the model's thinking (plan decision 11). */

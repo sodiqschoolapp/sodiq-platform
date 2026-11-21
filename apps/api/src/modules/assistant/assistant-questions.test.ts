@@ -1,11 +1,12 @@
 import { assistantAnswerSchema, classListSchema, type AssistantAnswer } from '@sodiq/shared';
 import { sql } from 'kysely';
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { answer, calls, fails, lastResults } from '../../testing/assistant-model.js';
 import { ask, assistantScene, read, type AssistantScene } from '../../testing/assistant-kit.js';
 import { errorCode } from '../../testing/sign-in-kit.js';
 import type { ModelRequest } from './model.js';
-import { MAX_READS } from './assistant.engine.js';
+import { MAX_MODEL_CALLS, MAX_READS } from './assistant.engine.js';
+import { AssistantDispatcher } from './dispatcher.js';
 
 // Task 11.12 (pull request #374; the owner's spec change of 21 November 2026). `02`, Assistant:
 // "It reads at once", "only through the platform's own actions, with the person's session and
@@ -110,6 +111,9 @@ describe('the assistant: questions, reads and answers', () => {
   });
 
   it('runs nothing for a tool that is not on the role’s list, or for arguments its schema refuses', async () => {
+    // Every read the engine sends goes through the dispatcher: none may be sent here.
+    const dispatcher = scene.app.get(AssistantDispatcher);
+    const sent = vi.spyOn(dispatcher, 'read');
     scene.model.script(
       calls(
         { name: 'IntegrationKeysController_list' },
@@ -139,6 +143,8 @@ describe('the assistant: questions, reads and answers', () => {
     expect(stored.map((row) => (row.content as { status: number }).status)).toEqual([
       0, 0, 0, 0, 0,
     ]);
+    expect(sent).not.toHaveBeenCalled();
+    sent.mockRestore();
   });
 
   it(`makes at most ${String(MAX_READS)} reads for a question, then asks for an answer without tools`, async () => {
@@ -149,6 +155,16 @@ describe('the assistant: questions, reads and answers', () => {
     expect(
       reads.filter((message) => message.kind === 'read' && message.status === 200),
     ).toHaveLength(MAX_READS);
+    expect(scene.model.requests.at(-1)?.tools).toEqual([]);
+  });
+
+  it(`calls the model at most ${String(MAX_MODEL_CALLS)} times for a question, whatever it asks for (spec review of the code, must fix 5)`, async () => {
+    const pages = Array.from({ length: MAX_MODEL_CALLS + 3 }, () =>
+      calls({ name: 'suggest_page', args: { page: 'people' } }),
+    );
+    scene.model.script(...pages);
+    answered(await ask(scene, scene.admin, scene.north, { text: 'Link a page, again and again.' }));
+    expect(scene.model.requests).toHaveLength(MAX_MODEL_CALLS);
     expect(scene.model.requests.at(-1)?.tools).toEqual([]);
   });
 

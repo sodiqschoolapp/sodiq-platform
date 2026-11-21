@@ -23,10 +23,6 @@ export interface AssistantRouteLine {
  * routes, and exports.
  */
 const SUPER_ADMIN: Readonly<Record<string, AssistantRouteLine>> = {
-  'GET /api/setup/branches': {
-    group: 'setup',
-    description: 'The branches of the school, with their names and time zones.',
-  },
   'GET /api/setup/branch': {
     group: 'setup',
     description: 'The branch of the request: its name, working weekdays and settings.',
@@ -126,10 +122,6 @@ const SUPER_ADMIN: Readonly<Record<string, AssistantRouteLine>> = {
   'GET /api/access/head-teachers': {
     group: 'staff',
     description: 'The Head Teachers and Senior Head Teachers of the branch and their subjects.',
-  },
-  'GET /api/access/branches-without-vice-principal': {
-    group: 'staff',
-    description: 'The branches that have no active Academic Vice Principal.',
   },
   'GET /api/classes': {
     group: 'classes',
@@ -358,6 +350,8 @@ export const NEVER_CHANGED_THROUGH_ASSISTANT: readonly string[] = [
   'account_access',
   'parent_accounts',
   'integration_keys',
+  // Journal data: the reason of an absence (spec review of the code, should fix 7).
+  'absence_reasons',
 ];
 
 /**
@@ -369,6 +363,12 @@ export const NEVER_ROUTES_THROUGH_ASSISTANT: readonly string[] = [
   'POST /api/timetable/versions/:id/publish',
   'POST /api/timetable/versions/:id/withdraw',
   'POST /api/setup/academic-years/:id/start',
+  // Appointments (`02`: "roles, appointments and permissions"): a class's Tutor and an acting
+  // teacher, whose areas also hold changes 11.13 may open (spec review of the code, should fix 7).
+  'POST /api/classes/:id/tutors',
+  'POST /api/classes/:id/tutors/:tutorId/end',
+  'POST /api/timetable/acting-teachers',
+  'POST /api/timetable/acting-teachers/:id/end',
 ];
 
 /** What a listed route declares, as `assistantRouteFault` reads it. */
@@ -404,8 +404,9 @@ export function assistantRouteFault(facts: AssistantRouteFacts): string | undefi
   ) {
     return `changes the area ${String(declaration.area)}, never through the assistant`;
   }
-  // Task 11.12 reads only; 11.13 brings the proposals and their Confirm.
-  if (facts.method !== 'GET') {
+  // Task 11.12 reads only; 11.13 brings the proposals and their Confirm. A read is a GET of a
+  // `view`: a GET gated by another action reads what that action's holders alone may see.
+  if (facts.method !== 'GET' || declaration.action !== 'view') {
     return 'is not a read; the assistant reads only until its proposals are built (11.13)';
   }
   return undefined;
