@@ -168,6 +168,44 @@ describe('notifications', () => {
       expect(await auditRows()).toBe(auditBefore);
     });
 
+    // Task 10.11: the roles each notice was sent for.
+    it('names the roles of each person, one notice for an account told by two posts', async () => {
+      const { account } = await kit.fullSession('Gulnora', 'Sobirova');
+      const { account: other } = await kit.fullSession('Bahodir', 'Sobirov');
+      await transactions.run([], (transaction) =>
+        notifications.send(transaction, {
+          kind: 'sample.message',
+          data: { text: 'Two posts.' },
+          branchId: null,
+          to: [
+            { accountId: account.id, for: ['tutor'] },
+            { accountId: other.id, for: ['head_teacher'] },
+            { accountId: account.id.toUpperCase(), for: ['teacher', 'tutor'] },
+          ],
+        }),
+      );
+      const mine = await rowsOf(account.id);
+      expect(mine.map((row) => row.for_roles)).toEqual([['teacher', 'tutor']]);
+      expect((await rowsOf(other.id)).map((row) => row.for_roles)).toEqual([['head_teacher']]);
+    });
+
+    it('refuses a person told for no role, and nothing stays, no job either', async () => {
+      const { account } = await kit.fullSession('Shahlo', 'Sobirova');
+      const before = (await storedJobs(database.migrator)).length;
+      await expect(
+        transactions.run([], (transaction) =>
+          notifications.send(transaction, {
+            kind: 'sample.message',
+            data: { text: 'No role.' },
+            branchId: null,
+            to: [{ accountId: account.id, for: [] }],
+          }),
+        ),
+      ).rejects.toMatchObject({ code: '23514' });
+      expect(await rowsOf(account.id)).toEqual([]);
+      expect((await storedJobs(database.migrator)).length).toBe(before);
+    });
+
     it('and nothing stays when the transaction rolls back', async () => {
       const { account } = await kit.fullSession('Dilnoza', 'Qodirova');
       const before = (await storedJobs(database.migrator)).length;

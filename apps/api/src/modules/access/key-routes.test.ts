@@ -62,6 +62,19 @@ describe('the routes open to integration keys', () => {
     // The person on the key is also the branch's Academic Vice Principal (permission review
     // must-fix 2): through the key that role must not count.
     await kit.giveRole(made.accountId, { role: 'academic_vice_principal', branchId: branch });
+    // Task 10.11 (review finding 12 of the plan of #371): a notice sent for that role, which the
+    // walk shows if it counted on the person's notifications through the key.
+    await database.migrator
+      .insertInto('notifications')
+      .values({
+        account_id: made.accountId,
+        branch_id: branch,
+        kind: 'sample.message',
+        data: sql<string>`'{"text": "For the vice principal."}'::jsonb`,
+        for_roles: ['academic_vice_principal'],
+        created_at: new Date(NOW),
+      })
+      .execute();
     south = await insertBranch(database.migrator, 'South');
     const plain = await kit.completeSession('Zarina', 'Tursunova');
     await kit.giveRole(plain.account.id, { role: 'teacher', branchId: branch });
@@ -239,6 +252,8 @@ describe('the routes open to integration keys', () => {
       if (outcome(byKey) !== outcome(bySession)) {
         differences.push(`${route.name}: key ${outcome(byKey)}, Teacher ${outcome(bySession)}`);
       }
+      // The person's notifications read no branch (task 10.11): another branch changes nothing.
+      if (route.access[0]?.kind === 'any_signed_in') continue;
       const other: Response = await keyed(route.method, path).set(BRANCH_HEADER, south).send({});
       if (other.status !== 403 || errorCode(other) !== 'permission_denied') {
         elsewhere.push(`${route.name}: ${outcome(other)}`);

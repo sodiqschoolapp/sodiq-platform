@@ -11,6 +11,7 @@ import {
   integrationKeyActingPeopleSchema,
   journalGridSchema,
   journalListSchema,
+  notificationListSchema,
 } from '@sodiq/shared';
 import { randomUUID } from 'node:crypto';
 import { sql } from 'kysely';
@@ -320,6 +321,17 @@ describe('requests made through an integration key', () => {
 
   let x: Scene;
 
+  /** A key of one new Teacher of the scene's branch, with the person. */
+  async function single() {
+    const browser = await account();
+    const assignment = await give(browser, { role: 'teacher', branchId: x.branch });
+    const person = await staffFor(x.branch, browser);
+    const key = await keyOf([person.id]);
+    const call = { secret: key.secret, staffId: person.staffId, branch: x.branch };
+    const read = () => via('get', '/api/journal/journals', call);
+    return { browser, assignment, person, key, call, read };
+  }
+
   beforeAll(async () => {
     t = await dayTemplatesKit({ jobs: true });
     load = new LoadKit(t.database.migrator);
@@ -493,7 +505,7 @@ describe('requests made through an integration key', () => {
       });
     });
 
-    it('is refused an export, a student’s profile, a group transfer, the own password and the sign-in (closed to keys)', async () => {
+    it('is refused an export, a student’s profile, a group transfer, the own password, sessions and language, and the sign-in (closed to keys)', async () => {
       await at(async () => {
         const call = asOwner(x);
         refused(
@@ -529,7 +541,14 @@ describe('requests made through an integration key', () => {
           403,
           'integration_key_route_closed',
         );
-        refused(await via('get', '/api/notifications', call), 403, 'integration_key_route_closed');
+        // Task 10.11 opened the person's notifications to keys (review correction of the plan of
+        // #371, decision 5); the rest of the own account stays closed: the sessions, the language.
+        refused(await via('get', '/api/auth/sessions', call), 403, 'integration_key_route_closed');
+        refused(
+          await via('put', '/api/auth/language', call).send({ language: 'en' }),
+          403,
+          'integration_key_route_closed',
+        );
       });
     });
   });
@@ -822,17 +841,6 @@ describe('requests made through an integration key', () => {
   });
 
   describe('checked again on every request', () => {
-    /** A key of one new Teacher of the scene's branch, with the person. */
-    async function single() {
-      const browser = await account();
-      const assignment = await give(browser, { role: 'teacher', branchId: x.branch });
-      const person = await staffFor(x.branch, browser);
-      const key = await keyOf([person.id]);
-      const call = { secret: key.secret, staffId: person.staffId, branch: x.branch };
-      const read = () => via('get', '/api/journal/journals', call);
-      return { browser, assignment, person, key, call, read };
-    }
-
     it('a revoked key is refused at the next request', async () => {
       const k = await single();
       await at(async () => {
@@ -1028,7 +1036,7 @@ describe('requests made through an integration key', () => {
       ok(await at(() => via('get', '/api/journal/journals', call), '2026-10-27T12:01:00+05:00'));
       // A refused request (a closed route) is a use too.
       refused(
-        await at(() => via('get', '/api/notifications', call), '2026-10-27T12:02:00+05:00'),
+        await at(() => via('get', '/api/auth/sessions', call), '2026-10-27T12:02:00+05:00'),
         403,
         'integration_key_route_closed',
       );
@@ -1082,6 +1090,275 @@ describe('requests made through an integration key', () => {
       expect(byId.get(x.people.senior.staffId)).toMatchObject({ usable: true, allBranches: true });
       // A session never reaches it, the Super Admin's included (the harness tries every role).
       refused(await t.get('/api/integration/people', x.branch), 403, 'integration_key_required');
+    });
+  });
+  // Task 10.11 (pull request #371): the person's notifications through a key, only the notices
+  // sent for their Teacher, Head Teacher or Senior Head Teacher role ("Their other roles do not
+  // count through a key"). Done when: "a person who is a Teacher and a Tutor gets one notice for
+  // each role; through the key the list shows the Teacher's only, marking the Tutor's as read is
+  // 404 and leaves it unread, and 'mark all as read' marks only the Teacher's; in the person's
+  // own session both show and both can be marked; a notice stored before this task is never
+  // shown through a key".
+  describe('the person’s notifications', () => {
+    const noticesOf = (accountId: string) =>
+      t.database.migrator
+        .selectFrom('notifications')
+        .select(['id', 'kind', 'for_roles', 'read_at'])
+        .where('account_id', '=', accountId)
+        .orderBy('created_at')
+        .orderBy('id')
+        .execute();
+    const listed = (response: Response) => notificationListSchema.parse(ok(response).body);
+
+    /** A notice as 0013 left it (before 10.11): written by the owner with the insert trigger off. */
+    const storedBefore = (accountId: string): Promise<string> =>
+      t.database.migrator.transaction().execute(async (owner) => {
+        await sql`alter table notifications disable trigger notifications_for_roles_required`.execute(
+          owner,
+        );
+        const row = await owner
+          .insertInto('notifications')
+          .values({
+            account_id: accountId,
+            branch_id: null,
+            kind: 'sample.message',
+            data: sql`'{"text": "Stored before."}'::jsonb`,
+            created_at: new Date('2026-10-20T09:00:00+05:00'),
+          })
+          .returning('id')
+          .executeTakeFirstOrThrow();
+        await sql`alter table notifications enable trigger notifications_for_roles_required`.execute(
+          owner,
+        );
+        return row.id;
+      });
+
+    it('a Teacher who is also a Tutor gets one notice for each role; the key reads and marks the Teacher’s only, the session both', async () => {
+      // The scene's maths teacher is also the class's Tutor (once, as an earlier test may have
+      // made them).
+      const tutorRows = await t.database.migrator
+        .selectFrom('class_tutors')
+        .innerJoin('assignments', 'assignments.id', 'class_tutors.assignment_id')
+        .select('class_tutors.id')
+        .where('class_tutors.class_id', '=', x.classId)
+        .where('assignments.account_id', '=', x.owner.account.id)
+        .execute();
+      if (tutorRows.length === 0) {
+        const tutorAssignment = await give(x.owner, { role: 'tutor', branchId: x.branch });
+        await load.classes.tutorRow(x.branch, x.classId, tutorAssignment.id);
+      }
+      const mine = x.owner.account.id;
+      const before = new Set((await noticesOf(mine)).map((one) => one.id));
+      const headBefore = new Set((await noticesOf(x.head.account.id)).map((one) => one.id));
+      await at(
+        async () => {
+          // As the Teacher: an unlock of the own locked lesson of 19 October, granted by the Head
+          // Teacher in this platform.
+          const requested = ok(
+            await t
+              .post(
+                `/api/journal/lessons/${x.second}/unlocks`,
+                x.branch,
+                { reason: 'The register was at home' },
+                x.owner.cookie,
+              )
+              .set(REQUEST_KEY_HEADER, randomUUID()),
+            201,
+          ).body as { id: string; version: number };
+          ok(
+            await t
+              .post(
+                `/api/journal/unlocks/${requested.id}/decide`,
+                x.branch,
+                { decision: 'approve', days: 1, version: requested.version },
+                x.head.cookie,
+              )
+              .set(REQUEST_KEY_HEADER, randomUUID()),
+          );
+          // As the Tutor: an exemption of a student of the class, on days the person teaches the
+          // student nothing, granted by the Academic Vice Principal.
+          ok(
+            await t
+              .post(
+                '/api/exemptions',
+                x.branch,
+                {
+                  studentIds: [x.ahmedov],
+                  kind: 'temporary',
+                  subjectIds: null,
+                  startDate: '2026-11-17',
+                  endDate: '2026-11-18',
+                  slots: null,
+                  category: 'illness',
+                  detail: 'A certificate from the clinic',
+                  choices: [],
+                },
+                x.vice.cookie,
+              )
+              .set(REQUEST_KEY_HEADER, randomUUID()),
+          );
+        },
+        MOMENT,
+        [x.owner, x.head, x.vice],
+      );
+      const fresh = (await noticesOf(mine)).filter((one) => !before.has(one.id));
+      const teacher = fresh.find((one) => one.kind === 'journal.unlock_approved');
+      const tutor = fresh.find((one) => one.kind === 'journal.exemption_granted');
+      expect(teacher?.for_roles).toEqual(['teacher']);
+      expect(tutor?.for_roles).toEqual(['tutor']);
+      if (teacher === undefined || tutor === undefined) throw new Error('Both notices are sent.');
+      // The Head Teacher was told of the request as the Head Teacher of the subject.
+      const asked = (await noticesOf(x.head.account.id)).filter(
+        (one) => !headBefore.has(one.id) && one.kind === 'journal.unlock_requested',
+      );
+      expect(asked.map((one) => one.for_roles)).toEqual([['head_teacher']]);
+      const old = await storedBefore(mine);
+      // More than one live payload's worth of notices for the Teacher (review finding 2).
+      await t.database.migrator
+        .insertInto('notifications')
+        .values(
+          Array.from({ length: 101 }, (_, index) => ({
+            account_id: mine,
+            branch_id: null,
+            kind: 'sample.message',
+            data: sql<string>`${JSON.stringify({ text: `Notice ${String(index)}` })}::jsonb`,
+            for_roles: ['teacher'],
+            created_at: new Date('2026-10-21T09:00:00+05:00'),
+          })),
+        )
+        .execute();
+
+      const call = asOwner(x);
+      await at(
+        async () => {
+          const all = await noticesOf(mine);
+          const keyReadable = all.filter((one) =>
+            (one.for_roles ?? []).some((role) =>
+              ['teacher', 'head_teacher', 'senior_head_teacher'].includes(role),
+            ),
+          );
+          const throughKey = listed(await via('get', '/api/notifications', call));
+          const ids = throughKey.items.map((one) => one.id);
+          expect(ids).toContain(teacher.id);
+          expect(ids).not.toContain(tutor.id);
+          expect(ids).not.toContain(old);
+          expect(throughKey.unreadCount).toBe(
+            keyReadable.filter((one) => one.read_at === null).length,
+          );
+          // The Tutor's and the old notice are unknown to the key, and stay unread.
+          for (const id of [tutor.id, old]) {
+            refused(await via('post', `/api/notifications/${id}/read`, call), 404, 'not_found');
+          }
+          ok(await via('post', `/api/notifications/${teacher.id}/read`, call), 204);
+          // A branch is not needed: the notices of every branch, as for a session.
+          ok(await via('post', '/api/notifications/read-all', { ...call, branch: undefined }), 204);
+          const after = await noticesOf(mine);
+          const state = (id: string) => after.find((one) => one.id === id)?.read_at ?? null;
+          expect(state(tutor.id)).toBeNull();
+          expect(state(old)).toBeNull();
+          expect(
+            after.filter((one) => keyReadable.some((k) => k.id === one.id) && one.read_at === null),
+          ).toEqual([]);
+          expect(listed(await via('get', '/api/notifications', call)).unreadCount).toBe(0);
+
+          // The person's own session reads and marks both.
+          const session = listed(await t.get('/api/notifications', x.branch, x.owner.cookie));
+          expect(session.unreadCount).toBe(2);
+          expect(session.items.map((one) => one.id)).toEqual(expect.arrayContaining([tutor.id]));
+          ok(
+            await t
+              .post(`/api/notifications/${tutor.id}/read`, x.branch, {}, x.owner.cookie)
+              .set(REQUEST_KEY_HEADER, randomUUID()),
+            204,
+          );
+          ok(
+            await t
+              .post('/api/notifications/read-all', x.branch, {}, x.owner.cookie)
+              .set(REQUEST_KEY_HEADER, randomUUID()),
+            204,
+          );
+          expect((await noticesOf(mine)).filter((one) => one.read_at === null)).toEqual([]);
+        },
+        MOMENT,
+        [x.owner],
+      );
+    });
+
+    it('a Head Teacher on the key reads the notices of the Head Teacher post', async () => {
+      const throughKey = listed(
+        await at(() =>
+          via('get', '/api/notifications', {
+            secret: x.key.secret,
+            staffId: x.people.head.staffId,
+          }),
+        ),
+      );
+      expect(throughKey.items.map((one) => one.kind)).toContain('journal.unlock_requested');
+    });
+
+    it('a notice of the Academic Vice Principal post is never read through the key', async () => {
+      const told = (await noticesOf(x.vice.account.id)).filter((one) =>
+        (one.for_roles ?? []).includes('academic_vice_principal'),
+      );
+      const own = await t.database.migrator
+        .insertInto('notifications')
+        .values({
+          account_id: x.vice.account.id,
+          branch_id: x.branch,
+          kind: 'sample.message',
+          data: sql<string>`'{"text": "For the vice principal."}'::jsonb`,
+          for_roles: ['academic_vice_principal'],
+          created_at: new Date('2026-10-22T09:00:00+05:00'),
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      const throughKey = listed(
+        await at(() =>
+          via('get', '/api/notifications', {
+            secret: x.key.secret,
+            staffId: x.people.vice.staffId,
+          }),
+        ),
+      );
+      const ids = throughKey.items.map((one) => one.id);
+      for (const one of [...told, own]) expect(ids).not.toContain(one.id);
+    });
+
+    it('a revoked key, a person removed from the key and a locked account are refused at the next request', async () => {
+      const k = await single();
+      const read = () =>
+        at(() => via('get', '/api/notifications', { ...k.call, branch: undefined }));
+      ok(await read());
+      await t.database.migrator
+        .updateTable('integration_keys')
+        .set({ revoked_at: new Date(MOMENT), revoked_by: await adminAccount() })
+        .where('id', '=', k.key.id)
+        .execute();
+      refused(await read(), 401, 'integration_key_revoked');
+      for (const change of ['removed', 'locked'] as const) {
+        const one = await single();
+        const again = () =>
+          at(() => via('get', '/api/notifications', { ...one.call, branch: undefined }));
+        ok(await again());
+        if (change === 'removed') {
+          await t.database.migrator
+            .updateTable('integration_key_people')
+            .set({ removed_at: new Date(MOMENT), removed_by: await adminAccount() })
+            .where('key_id', '=', one.key.id)
+            .execute();
+        } else {
+          await t.database.migrator
+            .updateTable('accounts')
+            .set({
+              locked_at: new Date(MOMENT),
+              locked_by: await adminAccount(),
+              lock_reason: 'Reported lost phone',
+            })
+            .where('id', '=', one.browser.account.id)
+            .execute();
+        }
+        refused(await again(), 403, 'integration_key_person_refused');
+      }
     });
   });
 });
