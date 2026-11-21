@@ -1312,6 +1312,20 @@ export const ERROR_CODES = [
   'integration_key_end_refused',
   /** Task 10.9: the integration key is revoked; nothing of it changes and it cannot be restored. */
   'integration_key_revoked',
+  /** Task 10.10: the `X-Integration-Key` of the request is not a key of the school. */
+  'integration_key_invalid',
+  /** Task 10.10: the integration key is past its end date. */
+  'integration_key_ended',
+  /** Task 10.10: the key made more requests in this minute than the limit; `Retry-After` says when to try again. */
+  'integration_key_rate_limited',
+  /** Task 10.10: the route is not open to integration keys (`02`, Integration keys: "a list fixed in code"). */
+  'integration_key_route_closed',
+  /** Task 10.10: the route answers only a request made with an integration key. */
+  'integration_key_required',
+  /** Task 10.10: a key is sent only over HTTPS (`13`, Security). */
+  'integration_key_https_required',
+  /** Task 10.10: Tutor work (Ma'naviyat soati, the Homework slot) is done in this platform, never through a key. */
+  'integration_key_tutor_lesson',
   /** Any other refusal that has no code of its own yet. */
   'request_refused',
   /** A fault on the server. The answer says nothing about it; the log does. */

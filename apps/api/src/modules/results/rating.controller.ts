@@ -25,6 +25,7 @@ import type { XlsxFile } from '../../http/xlsx.js';
 import { Requires } from '../access/access.decorators.js';
 import { CurrentAccess, type Access } from '../access/permission.guard.js';
 import { RatingService } from './rating.service.js';
+import { OpenToKeys } from '../access/key-routes.js';
 
 /**
  * The rating (task 9.3a, pull request #234; `08`, Rating), area `rating` (plan decision 1, Look
@@ -37,6 +38,7 @@ export class RatingController {
 
   @Get('choices')
   @Requires('rating', 'view')
+  @OpenToKeys()
   @Returns(ratingChoicesSchema)
   choices(
     @CurrentAccess() access: Access,
@@ -47,6 +49,7 @@ export class RatingController {
 
   @Get('subject')
   @Requires('rating', 'view')
+  @OpenToKeys()
   @Returns(ratingSubjectListSchema)
   subject(
     @CurrentAccess() access: Access,
@@ -57,6 +60,7 @@ export class RatingController {
 
   @Get('class')
   @Requires('rating', 'view')
+  @OpenToKeys()
   @Returns(ratingClassListSchema)
   classRating(
     @CurrentAccess() access: Access,
@@ -67,6 +71,7 @@ export class RatingController {
 
   @Get('classes')
   @Requires('rating', 'view')
+  @OpenToKeys()
   @Returns(ratingClassesListSchema)
   classes(
     @CurrentAccess() access: Access,

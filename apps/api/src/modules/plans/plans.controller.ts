@@ -54,6 +54,7 @@ import { CurrentAccess, type Access } from '../access/permission.guard.js';
 import { PlanFiles } from './plan-files.service.js';
 import { PlanSharing } from './plan-sharing.service.js';
 import { PlansService } from './plans.service.js';
+import { OpenToKeys } from '../access/key-routes.js';
 
 /**
  * Lesson plans (task 7.1a, pull request #212, decision 2, Look first): the
@@ -73,6 +74,7 @@ export class PlansController {
 
   @Get()
   @Requires('plans', 'view')
+  @OpenToKeys()
   @Returns(planListSchema)
   list(
     @CurrentAccess() access: Access,
@@ -83,6 +85,7 @@ export class PlansController {
 
   @Get('journals/:journalId')
   @Requires('plans', 'view')
+  @OpenToKeys()
   @Returns(planSchema)
   plan(
     @CurrentAccess() access: Access,
@@ -95,6 +98,7 @@ export class PlansController {
   /** Task 7.1b: the item of one lesson, for a reader of its plan or the lesson's substitute. */
   @Get('lessons/:lessonId')
   @Requires('plans', 'view')
+  @OpenToKeys()
   @Returns(planLessonItemSchema)
   lessonItem(
     @CurrentAccess() access: Access,
@@ -105,6 +109,7 @@ export class PlansController {
 
   @Post('journals/:journalId/items')
   @Requires('plans', 'edit')
+  @OpenToKeys()
   @Returns(planItemSchema, 201)
   createItem(
     @CurrentAccess() access: Access,
@@ -119,6 +124,7 @@ export class PlansController {
   @Post('journals/:journalId/share')
   @HttpCode(200)
   @Requires('plans', 'edit')
+  @OpenToKeys()
   @Returns(planSchema)
   share(
     @CurrentAccess() access: Access,
@@ -133,6 +139,7 @@ export class PlansController {
   @Post('journals/:journalId/separate')
   @HttpCode(200)
   @Requires('plans', 'edit')
+  @OpenToKeys()
   @Returns(planSchema)
   separate(
     @CurrentAccess() access: Access,
@@ -147,6 +154,7 @@ export class PlansController {
   @Post('journals/:journalId/copy')
   @HttpCode(200)
   @Requires('plans', 'edit')
+  @OpenToKeys()
   @Returns(planSchema)
   copy(
     @CurrentAccess() access: Access,
@@ -160,6 +168,7 @@ export class PlansController {
   /** Task 7.2: insert, delete, merge and reorder of the queue (review decision 6). */
   @Put('journals/:journalId/queue')
   @Requires('plans', 'edit')
+  @OpenToKeys()
   @Returns(planSchema)
   editQueue(
     @CurrentAccess() access: Access,
@@ -172,6 +181,7 @@ export class PlansController {
 
   @Put('items/:itemId')
   @Requires('plans', 'edit')
+  @OpenToKeys()
   @Returns(planItemSchema)
   saveItem(
     @CurrentAccess() access: Access,
@@ -184,6 +194,7 @@ export class PlansController {
 
   @Post('items/:itemId/clear')
   @Requires('plans', 'edit')
+  @OpenToKeys()
   @ReturnsNothing()
   clearItem(
     @CurrentAccess() access: Access,
@@ -195,6 +206,7 @@ export class PlansController {
 
   @Put('items/:itemId/files')
   @Requires('plans', 'edit')
+  @OpenToKeys()
   @Returns(planItemFileSchema)
   addFile(
     @CurrentAccess() access: Access,
@@ -208,6 +220,7 @@ export class PlansController {
 
   @Delete('files/:fileId')
   @Requires('plans', 'edit')
+  @OpenToKeys()
   @ReturnsNothing()
   removeFile(
     @CurrentAccess() access: Access,
@@ -219,6 +232,7 @@ export class PlansController {
 
   @Get('files/:fileId')
   @Requires('plans', 'view')
+  @OpenToKeys()
   @ReturnsStoredFile(PLAN_FILE_TYPES)
   readFile(
     @CurrentAccess() access: Access,

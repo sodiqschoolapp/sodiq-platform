@@ -16,6 +16,7 @@ import { Returns, ValidBody, ValidParams, ValidQuery } from '../../http/schemas.
 import { Requires } from '../access/access.decorators.js';
 import { CurrentAccess, type Access } from '../access/permission.guard.js';
 import { PlanWindowsService } from './plan-windows.service.js';
+import { OpenToKeys } from '../access/key-routes.js';
 
 /**
  * The plan window (task 7.2, pull request #215, decision 1, Look first): the
@@ -28,6 +29,7 @@ export class PlanWindowsController {
 
   @Get()
   @Requires('plan_windows', 'view')
+  @OpenToKeys()
   @Returns(planWindowsSchema)
   list(
     @CurrentAccess() access: Access,

@@ -31,6 +31,7 @@ import { Requires } from '../access/access.decorators.js';
 import { CurrentAccess, type Access } from '../access/permission.guard.js';
 import { ExtensionsService } from './extensions.service.js';
 import { UnlocksService } from './unlocks.service.js';
+import { OpenToKeys } from '../access/key-routes.js';
 
 /**
  * Unlock requests (task 8.4, pull request #222, decision 5, Look first): the
@@ -48,6 +49,7 @@ export class UnlocksController {
 
   @Get('unlocks')
   @Requires('journal_unlocks', 'view')
+  @OpenToKeys()
   @Returns(journalUnlocksSchema)
   list(
     @CurrentAccess() access: Access,
@@ -58,6 +60,7 @@ export class UnlocksController {
 
   @Post('lessons/:lessonId/unlocks')
   @Requires('journal_unlocks', 'create')
+  @OpenToKeys()
   @Returns(journalUnlockSchema, 201)
   requestLesson(
     @CurrentAccess() access: Access,
@@ -70,6 +73,7 @@ export class UnlocksController {
 
   @Post('journals/:journalId/rating/:quarterId/unlocks')
   @Requires('journal_unlocks', 'create')
+  @OpenToKeys()
   @Returns(journalUnlockSchema, 201)
   requestRating(
     @CurrentAccess() access: Access,
@@ -83,6 +87,7 @@ export class UnlocksController {
   @Post('unlocks/:unlockId/decide')
   @HttpCode(200)
   @Requires('journal_unlocks', 'edit')
+  @OpenToKeys()
   @Returns(journalUnlockSchema)
   decide(
     @CurrentAccess() access: Access,
@@ -96,6 +101,7 @@ export class UnlocksController {
   @Post('unlocks/:unlockId/withdraw')
   @HttpCode(200)
   @Requires('journal_unlocks', 'create')
+  @OpenToKeys()
   @Returns(journalUnlockSchema)
   withdraw(
     @CurrentAccess() access: Access,

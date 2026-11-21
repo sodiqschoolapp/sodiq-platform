@@ -643,6 +643,11 @@ export const auditEntrySchema = z.object({
   action: z.string(),
   /** `null` for the system (a server command, a job). */
   actor: namedSchema.nullable(),
+  /**
+   * Task 10.10 (`02`, Audit: "recorded as the person's change, with the key named"): the
+   * integration key the change was made through, shown "via <key name>"; `null` otherwise.
+   */
+  viaKey: z.object({ name: z.string() }).nullable(),
   /** The assignment that allowed the action, with its role, when the reader may see it. */
   assignment: z.object({ id: z.uuid(), role: roleSchema }).nullable(),
   person: namedSchema.nullable(),

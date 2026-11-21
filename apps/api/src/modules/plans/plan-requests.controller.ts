@@ -30,6 +30,7 @@ import { Returns, ValidBody, ValidParams, ValidQuery } from '../../http/schemas.
 import { Requires } from '../access/access.decorators.js';
 import { CurrentAccess, type Access } from '../access/permission.guard.js';
 import { PlanRequestsService } from './plan-requests.service.js';
+import { OpenToKeys } from '../access/key-routes.js';
 
 /**
  * Plan edit requests (task 7.2, pull request #215, decision 1, Look first):
@@ -43,6 +44,7 @@ export class PlanRequestsController {
 
   @Get('requests')
   @Requires('plan_requests', 'view')
+  @OpenToKeys()
   @Returns(planRequestsSchema)
   list(
     @CurrentAccess() access: Access,
@@ -54,6 +56,7 @@ export class PlanRequestsController {
   /** `09`: "The teacher sends an edit request: which lessons, and the reason." */
   @Post('journals/:journalId/requests')
   @Requires('plan_requests', 'create')
+  @OpenToKeys()
   @Returns(planRequestSchema, 201)
   create(
     @CurrentAccess() access: Access,
@@ -68,6 +71,7 @@ export class PlanRequestsController {
   @Post('journals/:journalId/requests/prepared')
   @HttpCode(200)
   @Requires('plan_requests', 'create')
+  @OpenToKeys()
   @Returns(planRequestSchema)
   sendPrepared(
     @CurrentAccess() access: Access,
@@ -82,6 +86,7 @@ export class PlanRequestsController {
   @Post('journals/:journalId/requests/prepared/decide')
   @HttpCode(200)
   @Requires('plan_requests', 'edit')
+  @OpenToKeys()
   @Returns(planRequestSchema)
   decidePrepared(
     @CurrentAccess() access: Access,
@@ -96,6 +101,7 @@ export class PlanRequestsController {
   @Post('requests/:requestId/send')
   @HttpCode(200)
   @Requires('plan_requests', 'create')
+  @OpenToKeys()
   @Returns(planRequestSchema)
   send(
     @CurrentAccess() access: Access,
@@ -110,6 +116,7 @@ export class PlanRequestsController {
   @Post('requests/:requestId/decide')
   @HttpCode(200)
   @Requires('plan_requests', 'edit')
+  @OpenToKeys()
   @Returns(planRequestSchema)
   decide(
     @CurrentAccess() access: Access,
@@ -124,6 +131,7 @@ export class PlanRequestsController {
   @Post('requests/decide-event')
   @HttpCode(200)
   @Requires('plan_requests', 'edit')
+  @OpenToKeys()
   @Returns(planEventDecidedSchema)
   decideEvent(
     @CurrentAccess() access: Access,
@@ -137,6 +145,7 @@ export class PlanRequestsController {
   @Post('requests/:requestId/finish')
   @HttpCode(200)
   @Requires('plan_requests', 'create')
+  @OpenToKeys()
   @Returns(planRequestSchema)
   finish(
     @CurrentAccess() access: Access,

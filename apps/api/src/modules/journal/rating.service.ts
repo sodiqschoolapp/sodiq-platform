@@ -42,6 +42,7 @@ import {
   requestsUnlocks,
   writeDetails,
 } from './edit-window.js';
+import { integrationKeyNames, viaKeyIdColumn, viaKeyOf } from '../audit/integration-key-names.js';
 
 /**
  * The rating exam routes (task 8.2, pull request #218): the hand-set date,
@@ -434,6 +435,7 @@ export class RatingService {
           'reason',
           'changed_by',
           'changed_at',
+          viaKeyIdColumn('journal_rating_history'),
         ])
         .where('journal_id', '=', journalId)
         .where('quarter_id', '=', quarterId)
@@ -447,6 +449,10 @@ export class RatingService {
       const names = await namedAccounts(
         transaction,
         rows.map((row) => row.changed_by),
+      );
+      const keyNames = await integrationKeyNames(
+        transaction,
+        rows.map((row) => row.via_key_id),
       );
       return {
         lines: rows.map((row) => {
@@ -463,6 +469,7 @@ export class RatingService {
             reason: row.reason,
             changedBy: named?.name ?? named?.login ?? null,
             changedAt: row.changed_at.toISOString(),
+            viaKey: viaKeyOf(keyNames, row.via_key_id),
           };
         }),
       };

@@ -14,6 +14,7 @@ import { Returns, ValidBody, ValidQuery } from '../../http/schemas.js';
 import { Requires } from '../access/access.decorators.js';
 import { CurrentAccess, type Access } from '../access/permission.guard.js';
 import { EarlyWarningService } from './early-warning.service.js';
+import { OpenToKeys } from '../access/key-routes.js';
 
 /**
  * The early-warning list (task 9.4a, pull request #235; `08`, Early-warning list), area
@@ -27,6 +28,7 @@ export class EarlyWarningController {
 
   @Get()
   @Requires('early_warning', 'view')
+  @OpenToKeys()
   @Returns(earlyWarningListSchema)
   list(
     @CurrentAccess() access: Access,
@@ -38,6 +40,7 @@ export class EarlyWarningController {
   /** A staff-only note and the mark "handled" on one reason of an entry (`08`, Handled). */
   @Post('handled')
   @Requires('early_warning', 'edit')
+  @OpenToKeys()
   @Returns(earlyWarningHandledSchema)
   handle(
     @CurrentAccess() access: Access,

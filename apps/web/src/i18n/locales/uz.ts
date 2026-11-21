@@ -76,6 +76,15 @@ export const uz: Texts<'one' | 'other'> = {
       'Tugash sanasi bugundan oldin va bir yildan keyin boʻlmasligi kerak. Boshqa sanani tanlang.',
     integration_key_revoked:
       'Bu kalit bekor qilingan va uni oʻzgartirib boʻlmaydi. Kerak boʻlsa, yangi kalit yarating.',
+    integration_key_invalid: 'Bu integratsiya kaliti nomaʼlum.',
+    integration_key_ended: 'Bu integratsiya kalitining muddati tugagan.',
+    integration_key_rate_limited:
+      'Bu integratsiya kaliti bilan soʻrovlar juda koʻp. Bir daqiqadan keyin qayta urinib koʻring.',
+    integration_key_route_closed: 'Bu boʻlim integratsiya kalitlari uchun yopiq.',
+    integration_key_required: 'Bu javobni faqat integratsiya kaliti bilan qilingan soʻrov oladi.',
+    integration_key_https_required: 'Integratsiya kaliti faqat HTTPS orqali yuboriladi.',
+    integration_key_tutor_lesson:
+      'Tyutor darslari integratsiya kaliti orqali emas, shu platformada kiritiladi.',
     password_unchanged: 'Yangi parol joriy parol bilan bir xil. Boshqasini tanlang.',
     second_step_required: 'Davom etishdan oldin ikkinchi bosqich kodini kiriting.',
     second_step_set_up_required: 'Davom etishdan oldin ikkinchi bosqichni sozlang.',

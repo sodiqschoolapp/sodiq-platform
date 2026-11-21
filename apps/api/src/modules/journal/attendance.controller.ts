@@ -26,6 +26,7 @@ import { CurrentAccess, type Access } from '../access/permission.guard.js';
 import { AttendanceService } from './attendance.service.js';
 import { CellActionsService } from './cell-actions.service.js';
 import { SaveRefusals } from './save-refusals.js';
+import { OpenToKeys } from '../access/key-routes.js';
 
 /**
  * Attendance entry and the history of a cell (task 6.3, pull request #211;
@@ -47,6 +48,7 @@ export class AttendanceController {
   @Post(':lessonId/attendance')
   @HttpCode(200)
   @Requires('journal', 'edit')
+  @OpenToKeys()
   @Returns(attendanceSavedSchema)
   save(
     @CurrentAccess() access: Access,
@@ -75,6 +77,7 @@ export class AttendanceController {
   @Post(':lessonId/all-present')
   @HttpCode(200)
   @Requires('journal', 'edit')
+  @OpenToKeys()
   @Returns(allPresentSchema)
   allPresent(
     @CurrentAccess() access: Access,
@@ -102,6 +105,7 @@ export class AttendanceController {
   @Post(':lessonId/copy-attendance')
   @HttpCode(200)
   @Requires('journal', 'edit')
+  @OpenToKeys()
   @Returns(attendanceCopySchema)
   copyAttendance(
     @CurrentAccess() access: Access,
@@ -113,6 +117,7 @@ export class AttendanceController {
 
   @Get(':lessonId/students/:studentId/history')
   @Requires('journal', 'view')
+  @OpenToKeys()
   @Returns(cellHistorySchema)
   history(
     @CurrentAccess() access: Access,

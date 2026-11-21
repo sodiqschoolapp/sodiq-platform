@@ -14,6 +14,7 @@ import { Returns, ValidBody, ValidQuery } from '../../http/schemas.js';
 import { Requires } from '../access/access.decorators.js';
 import { CurrentAccess, type Access } from '../access/permission.guard.js';
 import { CommentsService } from './comments.service.js';
+import { OpenToKeys } from '../access/key-routes.js';
 
 /**
  * Comments on a mark, a number or a rating entry, and a student's note for a
@@ -28,6 +29,7 @@ export class CommentsController {
 
   @Put()
   @Requires('journal', 'edit')
+  @OpenToKeys()
   @Returns(journalCommentSchema)
   save(
     @CurrentAccess() access: Access,
@@ -39,6 +41,7 @@ export class CommentsController {
 
   @Get('history')
   @Requires('journal', 'view')
+  @OpenToKeys()
   @Returns(commentHistorySchema)
   history(
     @CurrentAccess() access: Access,

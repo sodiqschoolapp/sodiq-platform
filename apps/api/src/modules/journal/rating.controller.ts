@@ -21,6 +21,7 @@ import { Requires } from '../access/access.decorators.js';
 import { CurrentAccess, type Access } from '../access/permission.guard.js';
 import { SaveRefusals } from './save-refusals.js';
 import { RatingService } from './rating.service.js';
+import { OpenToKeys } from '../access/key-routes.js';
 
 /**
  * The rating exam of a journal in a quarter (task 8.2, pull request #218;
@@ -40,6 +41,7 @@ export class RatingController {
 
   @Put(':journalId/rating/:quarterId/date')
   @Requires('journal', 'edit')
+  @OpenToKeys()
   @Returns(ratingExamSchema)
   date(
     @CurrentAccess() access: Access,
@@ -52,6 +54,7 @@ export class RatingController {
 
   @Put(':journalId/rating/:quarterId/not-held')
   @Requires('journal', 'edit')
+  @OpenToKeys()
   @Returns(ratingExamSchema)
   notHeld(
     @CurrentAccess() access: Access,
@@ -65,6 +68,7 @@ export class RatingController {
   @Post(':journalId/rating/:quarterId/entries')
   @HttpCode(200)
   @Requires('journal', 'edit')
+  @OpenToKeys()
   @Returns(ratingExamSchema)
   entry(
     @CurrentAccess() access: Access,
@@ -95,6 +99,7 @@ export class RatingController {
 
   @Get(':journalId/rating/:quarterId/students/:studentId/history')
   @Requires('journal', 'view')
+  @OpenToKeys()
   @Returns(ratingHistorySchema)
   history(
     @CurrentAccess() access: Access,

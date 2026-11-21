@@ -43,6 +43,7 @@ import { Requires } from '../access/access.decorators.js';
 import { CurrentAccess, type Access } from '../access/permission.guard.js';
 import { PlanMasterTakes } from './plan-master-takes.service.js';
 import { PlanMastersService } from './plan-masters.service.js';
+import { OpenToKeys } from '../access/key-routes.js';
 
 /**
  * Master plans (task 7.3, pull request #216, decision 2, Look first): the
@@ -58,6 +59,7 @@ export class PlanMastersController {
 
   @Get('masters')
   @Requires('plan_masters', 'view')
+  @OpenToKeys()
   @Returns(planMastersSchema)
   list(
     @CurrentAccess() access: Access,
@@ -68,6 +70,7 @@ export class PlanMastersController {
 
   @Post('masters')
   @Requires('plan_masters', 'create')
+  @OpenToKeys()
   @Returns(planMasterSchema)
   create(
     @CurrentAccess() access: Access,
@@ -79,6 +82,7 @@ export class PlanMastersController {
 
   @Get('masters/:masterId')
   @Requires('plan_masters', 'view')
+  @OpenToKeys()
   @Returns(planMasterSchema)
   master(
     @CurrentAccess() access: Access,
@@ -89,6 +93,7 @@ export class PlanMastersController {
 
   @Patch('masters/:masterId')
   @Requires('plan_masters', 'edit')
+  @OpenToKeys()
   @Returns(planMasterSchema)
   rename(
     @CurrentAccess() access: Access,
@@ -102,6 +107,7 @@ export class PlanMastersController {
   @Post('masters/:masterId/archive')
   @HttpCode(200)
   @Requires('plan_masters', 'edit')
+  @OpenToKeys()
   @Returns(planMasterSchema)
   archive(
     @CurrentAccess() access: Access,
@@ -115,6 +121,7 @@ export class PlanMastersController {
   @Post('masters/:masterId/restore')
   @HttpCode(200)
   @Requires('plan_masters', 'edit')
+  @OpenToKeys()
   @Returns(planMasterSchema)
   restore(
     @CurrentAccess() access: Access,
@@ -128,6 +135,7 @@ export class PlanMastersController {
   @Post('masters/:masterId/items')
   @HttpCode(200)
   @Requires('plan_masters', 'edit')
+  @OpenToKeys()
   @Returns(planMasterSchema)
   createItem(
     @CurrentAccess() access: Access,
@@ -140,6 +148,7 @@ export class PlanMastersController {
 
   @Put('masters/:masterId/items/:itemId')
   @Requires('plan_masters', 'edit')
+  @OpenToKeys()
   @Returns(planMasterSchema)
   saveItem(
     @CurrentAccess() access: Access,
@@ -153,6 +162,7 @@ export class PlanMastersController {
   @Post('masters/:masterId/items/:itemId/remove')
   @HttpCode(200)
   @Requires('plan_masters', 'edit')
+  @OpenToKeys()
   @Returns(planMasterSchema)
   removeItem(
     @CurrentAccess() access: Access,
@@ -165,6 +175,7 @@ export class PlanMastersController {
 
   @Put('masters/:masterId/order')
   @Requires('plan_masters', 'edit')
+  @OpenToKeys()
   @Returns(planMasterSchema)
   order(
     @CurrentAccess() access: Access,
@@ -178,6 +189,7 @@ export class PlanMastersController {
   /** The "master updated" comparison of a plan (decision 5). */
   @Get('journals/:journalId/master-compare')
   @Requires('plans', 'view')
+  @OpenToKeys()
   @Returns(planMasterCompareSchema)
   compare(
     @CurrentAccess() access: Access,
@@ -191,6 +203,7 @@ export class PlanMastersController {
   @Post('journals/:journalId/master-take')
   @HttpCode(200)
   @Requires('plans', 'edit')
+  @OpenToKeys()
   @Returns(planSchema)
   take(
     @CurrentAccess() access: Access,
@@ -205,6 +218,7 @@ export class PlanMastersController {
   @Post('journals/:journalId/master-keep')
   @HttpCode(200)
   @Requires('plans', 'edit')
+  @OpenToKeys()
   @Returns(planSchema)
   keep(
     @CurrentAccess() access: Access,
@@ -218,6 +232,7 @@ export class PlanMastersController {
   /** The parallel classes of a grade (decision 13). */
   @Get('parallel')
   @Requires('plans', 'view')
+  @OpenToKeys()
   @Returns(planParallelSchema)
   parallel(
     @CurrentAccess() access: Access,

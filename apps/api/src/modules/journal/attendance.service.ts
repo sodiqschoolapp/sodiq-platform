@@ -26,6 +26,7 @@ import { cellsAsSaved, storedCells } from './saved-cells.js';
 import { refuseOtherStudents } from './students-of-branch.js';
 import { workLines, withoutBranch } from './work-lines.query.js';
 import { JournalGridReader } from './journal-grid.service.js';
+import { integrationKeyNames, viaKeyIdColumn, viaKeyOf } from '../audit/integration-key-names.js';
 
 /**
  * "Keep or clear" (task 8.1, decision 15; `edge/journal`: "A mark change
@@ -431,6 +432,7 @@ export class AttendanceService {
           'journal_cell_history.changed_by',
           'journal_cell_history.changed_how',
           'journal_cell_history.changed_at',
+          viaKeyIdColumn('journal_cell_history'),
         ])
         .where('journal_cell_history.lesson_id', '=', lesson.id)
         .where('journal_cell_history.student_id', '=', student.id);
@@ -443,6 +445,10 @@ export class AttendanceService {
       const names = await namedAccounts(
         transaction,
         rows.map((row) => row.changed_by),
+      );
+      const keyNames = await integrationKeyNames(
+        transaction,
+        rows.map((row) => row.via_key_id),
       );
       // Task 8.1 (From 6.3 decision 16): the total and "not held" lines of the lesson's works.
       const workIds =
@@ -475,6 +481,7 @@ export class AttendanceService {
           },
           changedHow: cellChange(row.changed_how),
           changedAt: new Date(row.changed_at).toISOString(),
+          viaKey: viaKeyOf(keyNames, row.via_key_id),
         })),
       };
     });

@@ -1,14 +1,31 @@
 import {
   createParamDecorator,
+  Inject,
   Injectable,
   SetMetadata,
   type CanActivate,
   type ExecutionContext,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
+import {
+  ACTING_STAFF_ID_HEADER,
+  INTEGRATION_KEY_HEADER,
+  INTEGRATION_KEY_SECRET_FORMAT,
+  staffIdSchema,
+} from '@sodiq/shared';
 import type { Request } from 'express';
+import { CONFIG } from '../../config/config.module.js';
+import type { AppConfig } from '../../config/config.js';
 import { ApiException } from '../../http/api-exception.js';
+import { currentRequestContext } from '../../http/request-context.js';
+import { carriesIntegrationKey } from '../../http/same-site.js';
 import { readSessionToken } from '../../http/session-cookie.js';
+import {
+  IntegrationKeyRequests,
+  type FoundKey,
+  type KeyPerson,
+} from '../access/integration-key-requests.service.js';
+import { keyRouteOf } from '../access/key-routes.js';
 import { Sessions, type ActiveSession } from './sessions.service.js';
 
 /** Metadata key of `@Public()`. The test of the public routes reads it. */
@@ -70,6 +87,41 @@ const SESSIONS = new WeakMap<Request, ActiveSession>();
 export const sessionOf = (request: Request): ActiveSession | undefined => SESSIONS.get(request);
 
 /**
+ * A request made through an integration key (task 10.10): the key, and the person it acts
+ * for, `null` on the key's own route (`KeyOnly`). Never a session: nothing of the account.
+ */
+export interface KeyActor {
+  key: FoundKey;
+  person: KeyPerson | null;
+}
+
+/** Not on the request object either: nothing else can set it. */
+const KEY_ACTORS = new WeakMap<Request, KeyActor>();
+
+/** The key actor `SessionGuard` found for the request; none for a session or a public route. */
+export const keyActorOf = (request: Request): KeyActor | undefined => KEY_ACTORS.get(request);
+
+/**
+ * The key of a `KeyOnly` route (task 10.10).
+ *
+ *     people(@CurrentIntegrationKey() key: FoundKey)
+ */
+export const CurrentIntegrationKey = createParamDecorator(
+  (_data: unknown, context: ExecutionContext): FoundKey => {
+    const actor = KEY_ACTORS.get(context.switchToHttp().getRequest<Request>());
+    if (actor === undefined) {
+      throw new Error('CurrentIntegrationKey was used on a route that is not KeyOnly.');
+    }
+    return actor.key;
+  },
+);
+
+/** One value of a header, or `undefined` when it is missing, empty or repeated. */
+function oneValue(header: string | string[] | undefined): string | undefined {
+  return typeof header === 'string' && header !== '' ? header : undefined;
+}
+
+/**
  * The session of the request, as the guard read it from the database.
  *
  *     read(@CurrentSession() session: ActiveSession)
@@ -78,7 +130,9 @@ export const CurrentSession = createParamDecorator(
   (_data: unknown, context: ExecutionContext): ActiveSession => {
     const session = SESSIONS.get(context.switchToHttp().getRequest<Request>());
     if (session === undefined) {
-      throw new Error('CurrentSession was used on a route that is public.');
+      throw new Error(
+        'CurrentSession was used on a route that is public, or on a request made through a key.',
+      );
     }
     return session;
   },
@@ -98,16 +152,24 @@ export class SessionGuard implements CanActivate {
   constructor(
     private readonly reflector: Reflector,
     private readonly sessions: Sessions,
+    private readonly keyRequests: IntegrationKeyRequests,
+    @Inject(CONFIG) private readonly config: AppConfig,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const handler = context.getHandler();
+    const request = context.switchToHttp().getRequest<Request>();
+    // Task 10.10: a request with the key header is a key request, before anything else, the
+    // public routes included (review finding 7 of the plan): its cookie is never read.
+    if (carriesIntegrationKey(request.headers)) {
+      await this.keyRequest(request, handler);
+      return true;
+    }
     // Only the handler is asked: a whole controller cannot be made public.
     if (this.reflector.get<boolean | undefined>(PUBLIC_ROUTE, handler) === true) {
       // A public route does not read the session at all.
       return true;
     }
-    const request = context.switchToHttp().getRequest<Request>();
     const token = readSessionToken(request);
     const session = token === undefined ? undefined : await this.sessions.resolve(token);
     if (session === undefined) {
@@ -134,5 +196,51 @@ export class SessionGuard implements CanActivate {
     }
     SESSIONS.set(request, session);
     return true;
+  }
+
+  /**
+   * A request made through an integration key (`02`, Integration keys; task 10.10, the plan
+   * of pull request #369): HTTPS where the proxy says it, the key (not revoked, not ended,
+   * counted against the limit, its last use written), the route on the list of routes open to
+   * keys, and the person named by staff ID, on the key and active, with only their Teacher,
+   * Head Teacher and Senior Head Teacher assignments. Read again on every request. No session
+   * is read, used or opened.
+   */
+  private async keyRequest(request: Request, handler: object): Promise<void> {
+    if (this.config.trustProxy && request.protocol !== 'https') {
+      throw new ApiException('integration_key_https_required', 400);
+    }
+    const secret = oneValue(request.headers[INTEGRATION_KEY_HEADER.toLowerCase()]);
+    if (secret === undefined || !INTEGRATION_KEY_SECRET_FORMAT.test(secret)) {
+      throw new ApiException('integration_key_invalid', 401);
+    }
+    const key = await this.keyRequests.use(secret);
+    const mark = keyRouteOf(handler);
+    if (mark === undefined) {
+      throw new ApiException('integration_key_route_closed', 403);
+    }
+    let person: KeyPerson | null = null;
+    if (mark === 'person') {
+      const staffId = staffIdSchema.safeParse(
+        oneValue(request.headers[ACTING_STAFF_ID_HEADER.toLowerCase()]),
+      );
+      if (!staffId.success) {
+        throw new ApiException('validation_failed', 400, undefined, [
+          {
+            path: ACTING_STAFF_ID_HEADER,
+            code: 'invalid',
+            message: 'The staff ID of the person the request acts for, S-YYNNNN.',
+          },
+        ]);
+      }
+      person = await this.keyRequests.person(key, staffId.data);
+    }
+    KEY_ACTORS.set(request, { key, person });
+    const store = currentRequestContext();
+    if (store === undefined) {
+      // Without the context the audit entries would not name the key: never run the route.
+      throw new Error('A key request reached the guard outside the request context.');
+    }
+    store.integrationKey = { id: key.id, name: key.name };
   }
 }

@@ -19,6 +19,8 @@ export interface StoredEntry {
   new_value: Json | null;
   details: Json | null;
   reason: string | null;
+  /** Task 10.10: the key the change was made through. */
+  integration_key_id: string | null;
 }
 
 /**
@@ -117,6 +119,7 @@ const COLUMNS = [
   'new_value',
   'details',
   'reason',
+  'integration_key_id',
 ] as const;
 
 /**

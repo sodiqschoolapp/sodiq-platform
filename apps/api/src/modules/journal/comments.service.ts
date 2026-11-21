@@ -36,6 +36,7 @@ import { JournalGridReader } from './journal-grid.service.js';
 import { journalRows, switchesIn } from './journal-grid.query.js';
 import { ratingRightsOf, ratingRowOf } from './rating.js';
 import { refuseOtherStudents } from './students-of-branch.js';
+import { integrationKeyNames, viaKeyIdColumn, viaKeyOf } from '../audit/integration-key-names.js';
 
 /**
  * Comments in the journal (task 8.2, pull request #218; `07`, Entering data,
@@ -252,6 +253,7 @@ export class CommentsService {
           'changed_by',
           'changed_how',
           'changed_at',
+          viaKeyIdColumn('journal_comment_history'),
         ])
         .where('comment_id', '=', stored.id)
         .orderBy('changed_at')
@@ -260,6 +262,10 @@ export class CommentsService {
       const names = await namedAccounts(
         transaction,
         rows.map((row) => row.changed_by),
+      );
+      const keyNames = await integrationKeyNames(
+        transaction,
+        rows.map((row) => row.via_key_id),
       );
       return {
         lines: rows.map((row) => {
@@ -276,6 +282,7 @@ export class CommentsService {
                 ? row.changed_how
                 : 'entry',
             changedAt: row.changed_at.toISOString(),
+            viaKey: viaKeyOf(keyNames, row.via_key_id),
           };
         }),
       };

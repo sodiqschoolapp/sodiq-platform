@@ -13,6 +13,7 @@ import { fileBodyMiddleware } from './http/file-routes.js';
 import { jsonOnlyMiddleware } from './http/json-only.js';
 import { noStoreMiddleware } from './http/no-store.js';
 import { requestIdMiddleware } from './http/request-id.js';
+import { requestContextMiddleware } from './http/request-context.js';
 import { sameSiteMiddleware } from './http/same-site.js';
 import { securityHeadersMiddleware } from './http/security-headers.js';
 import { ResponseSchemaInterceptor } from './http/response-schema.interceptor.js';
@@ -46,6 +47,8 @@ export function configureApp(app: NestExpressApplication): void {
   }
   // Before the body parser, so that its refusals carry a request id too.
   app.use(requestIdMiddleware);
+  // The request's own context (task 10.10): the guard names the integration key in it, the audit reads it.
+  app.use(requestContextMiddleware);
   // Every answer from here on is timed and counted, refusals of the middlewares below too (task 10.2a).
   app.use(app.get(RequestMetrics).middleware());
   app.use(noStoreMiddleware);

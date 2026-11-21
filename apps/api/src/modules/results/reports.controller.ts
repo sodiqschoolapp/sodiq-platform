@@ -27,6 +27,7 @@ import type { XlsxFile } from '../../http/xlsx.js';
 import { Requires } from '../access/access.decorators.js';
 import { CurrentAccess, type Access } from '../access/permission.guard.js';
 import { ResultsReportsService } from './reports.service.js';
+import { OpenToKeys } from '../access/key-routes.js';
 
 /**
  * The reports of `08`, Analytics in Release 1, over the journal (task 9.3b-2, pull request #260):
@@ -62,6 +63,7 @@ export class ResultsReportsController {
 
   @Get('choices')
   @Requires('results_reports', 'view')
+  @OpenToKeys()
   @Returns(resultsReportChoicesSchema)
   choices(
     @CurrentAccess() access: Access,
@@ -72,6 +74,7 @@ export class ResultsReportsController {
 
   @Get('results-table')
   @Requires('results_reports', 'view')
+  @OpenToKeys()
   @Returns(resultsTableSchema)
   table(
     @CurrentAccess() access: Access,
@@ -82,6 +85,7 @@ export class ResultsReportsController {
 
   @Get('subject-mastery')
   @Requires('results_reports', 'view')
+  @OpenToKeys()
   @Returns(subjectMasterySchema)
   mastery(
     @CurrentAccess() access: Access,

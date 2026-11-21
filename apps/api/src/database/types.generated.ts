@@ -154,6 +154,7 @@ export interface AuditLog {
   branch_id: string;
   details: Json | null;
   id: Generated<string>;
+  integration_key_id: string | null;
   new_value: Json | null;
   occurred_at: Timestamp;
   old_value: Json | null;
@@ -171,6 +172,7 @@ export interface AuditLogSchool {
   assignment_id: string | null;
   details: Json | null;
   id: Generated<string>;
+  integration_key_id: string | null;
   new_value: Json | null;
   occurred_at: Timestamp;
   old_value: Json | null;
@@ -737,6 +739,8 @@ export interface IntegrationKeys {
   ends_on: string;
   id: Generated<string>;
   last_used_at: Timestamp | null;
+  minute_requests: Generated<number>;
+  minute_started_at: Timestamp | null;
   name: string;
   revoked_at: Timestamp | null;
   revoked_by: string | null;

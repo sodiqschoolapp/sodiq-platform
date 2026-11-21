@@ -18,6 +18,7 @@ import { Returns, ValidBody, ValidParams } from '../../http/schemas.js';
 import { Requires } from '../access/access.decorators.js';
 import { CurrentAccess, type Access } from '../access/permission.guard.js';
 import { PlanOutcomesService } from './plan-outcomes.service.js';
+import { OpenToKeys } from '../access/key-routes.js';
 
 /**
  * The outcomes of "not covered" items and the "carried in" tray (task 9.2d, pull request #233).
@@ -31,6 +32,7 @@ export class PlanOutcomesController {
   @Post('journals/:journalId/not-covered/:itemId/merge')
   @HttpCode(200)
   @Requires('plans', 'edit')
+  @OpenToKeys()
   @Returns(planSchema)
   merge(
     @CurrentAccess() access: Access,
@@ -44,6 +46,7 @@ export class PlanOutcomesController {
   @Post('journals/:journalId/not-covered/:itemId/carry')
   @HttpCode(200)
   @Requires('plans', 'edit')
+  @OpenToKeys()
   @Returns(planSchema)
   carry(
     @CurrentAccess() access: Access,
@@ -57,6 +60,7 @@ export class PlanOutcomesController {
   @Post('journals/:journalId/not-covered/:itemId/drop')
   @HttpCode(200)
   @Requires('plan_requests', 'edit')
+  @OpenToKeys()
   @Returns(planSchema)
   drop(
     @CurrentAccess() access: Access,
@@ -70,6 +74,7 @@ export class PlanOutcomesController {
   @Post('journals/:journalId/carried/:itemId/place')
   @HttpCode(200)
   @Requires('plans', 'edit')
+  @OpenToKeys()
   @Returns(planSchema)
   place(
     @CurrentAccess() access: Access,
