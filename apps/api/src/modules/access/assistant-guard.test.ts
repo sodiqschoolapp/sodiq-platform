@@ -44,7 +44,7 @@ describe('the permission guard for the assistant’s reads', () => {
 
   beforeAll(async () => {
     scene = await assistantScene({ routeLists: LISTS });
-    server = scene.app.getHttpServer() as Parameters<typeof request>[0];
+    server = scene.app.getHttpServer();
     calls_ = scene.app.get(AssistantCalls);
     const both = await scene.kit.fullSession('Gulnora', 'Principalova');
     await scene.kit.giveRole(both.account.id, { role: 'principal', branchId: scene.north });
@@ -141,7 +141,7 @@ describe('the permission guard for the assistant’s reads', () => {
       lines.push(text);
     };
     const secret = calls_.headersFor('super_admin')[ASSISTANT_CALL_HEADER] ?? '';
-    let body = '';
+    let body: string;
     try {
       scene.model.script(
         calls({ name: 'ClassesController_list' }, { name: 'IntegrationKeysController_list' }),

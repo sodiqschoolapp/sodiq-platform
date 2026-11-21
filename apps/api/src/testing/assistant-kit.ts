@@ -103,8 +103,6 @@ export function read(
   path: string,
   branch?: string,
 ) {
-  const call = request(scene.app.getHttpServer() as Parameters<typeof request>[0])
-    .get(path)
-    .set('Cookie', cookie);
+  const call = request(scene.app.getHttpServer()).get(path).set('Cookie', cookie);
   return branch === undefined ? call : call.set(BRANCH_HEADER, branch);
 }

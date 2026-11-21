@@ -83,9 +83,9 @@ export class AssistantDispatcher {
     if (text === undefined) {
       return { status: 0, failure: 'too_large' };
     }
-    let body: unknown = null;
+    let body: unknown;
     try {
-      body = text === '' ? null : JSON.parse(text);
+      body = text === '' ? null : (JSON.parse(text) as unknown);
     } catch {
       body = null;
     }
@@ -93,22 +93,17 @@ export class AssistantDispatcher {
   }
 }
 
-/** The answer's text, or `undefined` past `READ_MAX_BYTES`. */
+/** The answer's text, or `undefined` past `READ_MAX_BYTES` (leaving the loop cancels the stream). */
 async function readCapped(response: Response): Promise<string | undefined> {
-  const reader = response.body?.getReader();
-  if (reader === undefined) {
+  const stream = response.body;
+  if (stream === null) {
     return '';
   }
   const chunks: Uint8Array[] = [];
   let size = 0;
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) {
-      break;
-    }
+  for await (const value of stream as unknown as AsyncIterable<Uint8Array>) {
     size += value.byteLength;
     if (size > READ_MAX_BYTES) {
-      await reader.cancel();
       return undefined;
     }
     chunks.push(value);

@@ -75,9 +75,7 @@ export class AssistantRoutes implements OnApplicationBootstrap {
           continue;
         }
         for (const name of routeNamesOf(type, handler)) {
-          const roles = ASSISTANT_ROLES.filter((role) =>
-            Object.hasOwn(this.listOf(role), name),
-          );
+          const roles = ASSISTANT_ROLES.filter((role) => Object.hasOwn(this.listOf(role), name));
           if (roles.length === 0) {
             continue;
           }

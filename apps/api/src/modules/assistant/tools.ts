@@ -45,7 +45,7 @@ const UUID = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 function asSchema(value: unknown): ParameterSchema {
-  return value !== null && typeof value === 'object' ? (value as ParameterSchema) : {};
+  return value !== null && typeof value === 'object' ? value : {};
 }
 
 /** The schema the model reads: the type, enum and format; the long patterns are left to the check. */

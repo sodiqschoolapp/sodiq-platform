@@ -48,7 +48,7 @@ describe('the assistant: the switch, the daily limit and the monthly cap', () =>
 
   beforeAll(async () => {
     scene = await assistantScene({ on: false });
-    server = scene.app.getHttpServer() as Parameters<typeof request>[0];
+    server = scene.app.getHttpServer();
   }, 120_000);
 
   afterAll(async () => {
@@ -121,8 +121,8 @@ describe('the assistant: the switch, the daily limit and the monthly cap', () =>
     expect(after.at(-1)).toEqual(
       expect.objectContaining({
         actor_id: scene.adminAccount,
-        old_value: expect.objectContaining({ dailyLimit: 30, monthlyCapDollars: 300 }),
-        new_value: expect.objectContaining({ dailyLimit: 12, monthlyCapDollars: 250 }),
+        old_value: expect.objectContaining({ dailyLimit: 30, monthlyCapDollars: 300 }) as unknown,
+        new_value: expect.objectContaining({ dailyLimit: 12, monthlyCapDollars: 250 }) as unknown,
       }),
     );
     // A value outside its bounds is refused by the schema.
