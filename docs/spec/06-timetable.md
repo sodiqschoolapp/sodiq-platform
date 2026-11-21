@@ -82,7 +82,7 @@ Preferences, each with a weight set by the Academic Vice Principal:
 | A part-time teacher's lessons fall on as few days as possible. |
 | A teacher's preferred days and slots are respected. |
 
-Later and optional (Release 2): an assistant that takes a request in plain words, such as "free Friday for this teacher", turns it into a proposed change, has it checked by the same rule engine and shows it for approval.
+The assistant (`02`, Assistant) turns a request in plain words, such as "free Friday for this teacher" or "cancel lessons 4 to 8 today, the power is out", into a proposed change that passes the same rules and is shown for approval before anything changes. It never publishes a version.
 
 ## Rules
 
