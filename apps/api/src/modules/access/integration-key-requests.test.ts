@@ -24,6 +24,13 @@ import { CellsKit } from '../../testing/cells-kit.js';
 import { MembersKit } from '../../testing/members-kit.js';
 import { publishedScene } from '../../testing/published-scene.js';
 import { integrationKeySecretHash } from './integration-keys.service.js';
+import {
+  LIVE_CHANNEL,
+  LIVE_CHUNK,
+  livePayloadSchema,
+  type LivePayload,
+} from '../notifications/live/live-payload.js';
+import { Client } from 'pg';
 
 // Task 10.10 (pull request #369; the owner's spec change of 21 November 2026). `02`, Integration
 // keys: a request made with a key acts for one named person, by staff ID, "checked on every
@@ -1250,8 +1257,40 @@ describe('requests made through an integration key', () => {
             refused(await via('post', `/api/notifications/${id}/read`, call), 404, 'not_found');
           }
           ok(await via('post', `/api/notifications/${teacher.id}/read`, call), 204);
-          // A branch is not needed: the notices of every branch, as for a session.
-          ok(await via('post', '/api/notifications/read-all', { ...call, branch: undefined }), 204);
+          // A branch is not needed: the notices of every branch, as for a session. The tabs are
+          // told by ids, at most LIVE_CHUNK a payload, then with a fresh state; never `read_all`
+          // (review finding 2 of the plan of #371).
+          const listener = new Client({ connectionString: t.database.migrationUrl });
+          await listener.connect();
+          const heard: LivePayload[] = [];
+          listener.on('notification', (message) => {
+            if (message.payload !== undefined) {
+              heard.push(livePayloadSchema.parse(JSON.parse(message.payload)));
+            }
+          });
+          await listener.query(`listen ${LIVE_CHANNEL}`);
+          const unreadBefore = (await noticesOf(mine)).filter(
+            (one) => keyReadable.some((k) => k.id === one.id) && one.read_at === null,
+          ).length;
+          try {
+            ok(
+              await via('post', '/api/notifications/read-all', { ...call, branch: undefined }),
+              204,
+            );
+            for (let tries = 0; tries < 100; tries += 1) {
+              if (heard.some((one) => one.kind === 'state')) break;
+              await new Promise((resolve) => setTimeout(resolve, 20));
+            }
+          } finally {
+            await listener.end();
+          }
+          const own = heard.filter((one) => 'accountId' in one && one.accountId === mine);
+          const reads = own.flatMap((one) => (one.kind === 'read' ? [one.ids] : []));
+          expect(unreadBefore).toBeGreaterThan(LIVE_CHUNK);
+          expect(reads.every((ids) => ids.length <= LIVE_CHUNK)).toBe(true);
+          expect(reads.flat()).toHaveLength(unreadBefore);
+          expect(reads.flat()).not.toContain(tutor.id);
+          expect(own.map((one) => one.kind).filter((kind) => kind !== 'read')).toEqual(['state']);
           const after = await noticesOf(mine);
           const state = (id: string) => after.find((one) => one.id === id)?.read_at ?? null;
           expect(state(tutor.id)).toBeNull();

@@ -90,8 +90,7 @@ interface Site {
   fault: string | undefined;
 }
 
-function sitesOf(path: string): Site[] {
-  const text = readFileSync(path, 'utf8');
+function sitesOf(path: string, text = readFileSync(path, 'utf8')): Site[] {
   const file = ts.createSourceFile(path, text, ts.ScriptTarget.Latest, true);
   const name = relative(SOURCE, path).split('\\').join('/');
   const found: Site[] = [];
@@ -132,7 +131,7 @@ function sitesOf(path: string): Site[] {
 }
 
 describe('every call of notifications.send', () => {
-  const sites = sources(SOURCE).flatMap(sitesOf);
+  const sites = sources(SOURCE).flatMap((path) => sitesOf(path));
 
   it('names the roles of each person it tells', () => {
     expect(sites.filter((site) => site.fault !== undefined)).toEqual([]);
@@ -143,19 +142,22 @@ describe('every call of notifications.send', () => {
     expect(SITES).toHaveLength(52);
   });
 
-  it('would catch a call that names no role', () => {
-    const file = ts.createSourceFile(
-      'sample.ts',
-      "await this.notifications.send(transaction, { kind: 'sample.message', accountIds: [id] });",
-      ts.ScriptTarget.Latest,
-      true,
-    );
-    const calls: ts.CallExpression[] = [];
-    const visit = (node: ts.Node): void => {
-      if (ts.isCallExpression(node) && isNoticeSend(node, file)) calls.push(node);
-      ts.forEachChild(node, visit);
-    };
-    visit(file);
-    expect(calls).toHaveLength(1);
+  it('would catch a call that names no role, or gives no recipients with roles', () => {
+    const sample = (call: string) =>
+      sitesOf(join(SOURCE, 'sample.ts'), call).map((site) => site.fault);
+    expect(
+      sample(
+        "await this.notifications.send(transaction, { kind: 'sample.message', accountIds: [id] });",
+      ),
+    ).toEqual(['gives accountIds, which name no role']);
+    expect(
+      sample("await notifications.send(transaction, { kind: 'sample.message', data });"),
+    ).toEqual(['names no recipient with roles (to)']);
+    expect(sample('await app.get(Notifications).send(transaction, notice);')).toEqual([
+      'the notice is not written at the call',
+    ]);
+    expect(
+      sample("await this.notifications.send(transaction, { kind: 'sample.message', to });"),
+    ).toEqual([undefined]);
   });
 });
