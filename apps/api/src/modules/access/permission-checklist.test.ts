@@ -10,6 +10,7 @@ import {
   withGenerated,
 } from '../../testing/permission-checklist.js';
 import { PUBLIC_ROUTES, ROUTE_ACCESS, STEP_ROUTES } from '../../testing/route-access-list.js';
+import { KEY_ROUTES } from '../../testing/key-route-list.js';
 import { ROUTE_IDS } from '../../testing/route-id-list.js';
 import { ROUTE_SCOPE } from '../../testing/route-scope-list.js';
 
@@ -30,6 +31,7 @@ describe('the permission checklist', () => {
     access: ROUTE_ACCESS,
     scopes: ROUTE_SCOPE,
     ids: ROUTE_IDS,
+    keyRoutes: KEY_ROUTES,
   });
 
   it('shows the permission table and the route lists as the code has them', () => {

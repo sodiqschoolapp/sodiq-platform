@@ -18,6 +18,7 @@ import { Returns, ValidBody, ValidParams } from '../../http/schemas.js';
 import { Requires } from '../access/access.decorators.js';
 import { CurrentAccess, type Access } from '../access/permission.guard.js';
 import { PlanDelivery } from './plan-delivery.service.js';
+import { OpenToKeys } from '../access/key-routes.js';
 
 /**
  * The lesson card of the journal and its marks (task 8.8, pull request #226;
@@ -32,6 +33,7 @@ export class LessonCardController {
 
   @Get(':lessonId/card')
   @Requires('journal', 'view')
+  @OpenToKeys()
   @Returns(lessonCardSchema)
   card(
     @CurrentAccess() access: Access,
@@ -43,6 +45,7 @@ export class LessonCardController {
   /** "Topic not delivered", set or undone. */
   @Put(':lessonId/delivery')
   @Requires('journal', 'edit')
+  @OpenToKeys()
   @Returns(lessonDeliveryAnswerSchema)
   setDelivery(
     @CurrentAccess() access: Access,
@@ -56,6 +59,7 @@ export class LessonCardController {
   /** "Not given" on some or all of the item's homeworks, or its undo. */
   @Put(':lessonId/homework-given')
   @Requires('journal', 'edit')
+  @OpenToKeys()
   @Returns(homeworkGivenAnswerSchema)
   setHomework(
     @CurrentAccess() access: Access,

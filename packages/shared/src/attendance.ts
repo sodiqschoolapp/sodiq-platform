@@ -123,6 +123,8 @@ export const cellHistorySchema = z.object({
       changedBy: accountNamedSchema,
       changedHow: cellChangeSchema,
       changedAt: z.iso.datetime(),
+      /** Task 10.10: the integration key the change was made through ("via <key name>"). */
+      viaKey: z.object({ name: z.string() }).nullable(),
     }),
   ),
   /** The total and "not held" lines of the lesson's works the grid shows (task 8.1; From 6.3 decision 16). */

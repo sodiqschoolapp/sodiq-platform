@@ -9,21 +9,24 @@ import {
 } from '@sodiq/shared';
 import { toOpenApiSchema } from '../../http/schemas.js';
 import { PUBLIC_ROUTE } from '../auth/session.guard.js';
+import { markKeyOnly } from './key-routes.js';
 import type { Requirement } from './permission-check.js';
 
 /**
- * Who may call a route. Every route declares exactly one of the four, on the
+ * Who may call a route. Every route declares exactly one of the five, on the
  * handler itself:
  *
  * - `@Public()`: works without sign-in (the short list of `public-routes.test.ts`);
  * - `@AnySignedIn()`: every signed-in account, for its own account only;
  * - `@Requires(area, action)`: a role that the permission table gives the action;
- * - `@PortalChild()`: a parent session, for a child of its own (task 11.2).
+ * - `@PortalChild()`: a parent session, for a child of its own (task 11.2);
+ * - `@KeyOnly()`: a request made with an integration key, for the key itself (task 10.10).
  */
 export type RouteAccess =
   | { kind: 'public' }
   | { kind: 'any_signed_in'; parent: boolean }
   | { kind: 'portal' }
+  | { kind: 'integration_key' }
   | ({ kind: 'requires' } & Requirement);
 
 const ACCESS = Symbol('ACCESS');
@@ -75,6 +78,19 @@ export const AnySignedIn = (options: { parent?: true } = {}): MethodDecorator =>
 export const PortalChild = (): MethodDecorator =>
   applyDecorators(
     declare({ kind: 'portal' }),
+    ApiResponse({ status: 403, schema: toOpenApiSchema(apiErrorSchema, 'output') }),
+  );
+
+/**
+ * A route of the integration key itself (task 10.10, decision 3 of pull request #369, Look
+ * first): answered only to a request made with a key, without a person; every session is
+ * refused 403 `integration_key_required`, the Super Admin's too. Today the key's own people
+ * list, which the build plan asks for.
+ */
+export const KeyOnly = (): MethodDecorator =>
+  applyDecorators(
+    declare({ kind: 'integration_key' }),
+    markKeyOnly(),
     ApiResponse({ status: 403, schema: toOpenApiSchema(apiErrorSchema, 'output') }),
   );
 

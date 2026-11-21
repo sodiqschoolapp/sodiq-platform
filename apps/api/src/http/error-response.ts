@@ -707,6 +707,13 @@ const MESSAGE: Record<ErrorCode, string> = {
     'A person may not be put on an integration key: not active, locked or without a key role.',
   integration_key_end_refused: 'The end date is before today or more than a year ahead.',
   integration_key_revoked: 'The integration key is revoked.',
+  integration_key_invalid: 'The integration key is not known.',
+  integration_key_ended: 'The integration key is past its end date.',
+  integration_key_rate_limited: 'Too many requests with this integration key; try again later.',
+  integration_key_route_closed: 'This route is not open to integration keys.',
+  integration_key_required: 'This route answers only a request made with an integration key.',
+  integration_key_https_required: 'An integration key is sent only over HTTPS.',
+  integration_key_tutor_lesson: 'Tutor lessons are not open to integration keys.',
 };
 
 function codeOfStatus(status: number): ErrorCode {

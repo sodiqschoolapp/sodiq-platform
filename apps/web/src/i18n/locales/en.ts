@@ -78,6 +78,15 @@ export const en = {
       'The end date must be between today and one year from today. Choose another date.',
     integration_key_revoked:
       'This key is revoked and cannot be changed. Create a new key if one is needed.',
+    integration_key_invalid: 'This integration key is not known.',
+    integration_key_ended: 'This integration key is past its end date.',
+    integration_key_rate_limited:
+      'Too many requests with this integration key. Try again in a minute.',
+    integration_key_route_closed: 'This page is not open to integration keys.',
+    integration_key_required: 'Only a request made with an integration key gets this answer.',
+    integration_key_https_required: 'An integration key is sent only over HTTPS.',
+    integration_key_tutor_lesson:
+      'Tutor lessons are entered in this platform, not through an integration key.',
     password_unchanged: 'The new password is the same as the current one. Choose another one.',
     second_step_required: 'Enter the code of the second step before you continue.',
     second_step_set_up_required: 'Set up the second step before you continue.',
@@ -3981,6 +3990,8 @@ export const en = {
       '{{name}} was deleted for good. It can be restored from Deleted for good for 30 days.',
   },
   audit: {
+    // Task 10.10: a change made through an integration key.
+    viaKey: '{{who}} via {{key}}',
     title: 'Audit log',
     caption: 'Entries of the audit log',
     emptyTitle: 'No entries',

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { INTEGRATION_KEY_REQUESTS_PER_MINUTE } from '@sodiq/shared';
 
 /** A variable that is set but empty counts as not set. */
 const emptyAsUnset = (value: unknown): unknown => (value === '' ? undefined : value);
@@ -246,6 +247,12 @@ export interface AppConfig {
   secondStepKey: string;
   /** Whether the first hop in front of the API (a load balancer that ends TLS) is trusted. */
   trustProxy: boolean;
+  /**
+   * Requests per minute per integration key (task 10.10, decision 8 of pull request #369).
+   * Not read from the environment: always `INTEGRATION_KEY_REQUESTS_PER_MINUTE`, except in a
+   * test app that walks every route with one key.
+   */
+  integrationKeyRequestsPerMinute: number;
   /** The directory of the web app's built files to serve, or none. */
   webFiles: string | undefined;
   /** Where error reports go, or nowhere. */
@@ -393,6 +400,7 @@ export function loadConfig(environment: Record<string, string | undefined>): App
     databaseUrl: result.data.DATABASE_URL,
     secondStepKey: result.data.SECOND_STEP_KEY,
     trustProxy: result.data.TRUST_PROXY === '1',
+    integrationKeyRequestsPerMinute: INTEGRATION_KEY_REQUESTS_PER_MINUTE,
     webFiles: result.data.WEB_FILES,
     reporting: {
       dsn: result.data.SENTRY_DSN,

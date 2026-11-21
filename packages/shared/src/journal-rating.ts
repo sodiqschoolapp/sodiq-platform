@@ -141,6 +141,8 @@ export const ratingHistorySchema = z.object({
       reason: z.string().nullable(),
       changedBy: z.string().nullable(),
       changedAt: z.iso.datetime(),
+      /** Task 10.10: the integration key the change was made through ("via <key name>"). */
+      viaKey: z.object({ name: z.string() }).nullable(),
     }),
   ),
 });
@@ -222,6 +224,8 @@ export const commentHistorySchema = z.object({
       changedBy: z.string().nullable(),
       changedHow: z.enum(['entry', 'restored', 'forced_delete']),
       changedAt: z.iso.datetime(),
+      /** Task 10.10: the integration key the change was made through ("via <key name>"). */
+      viaKey: z.object({ name: z.string() }).nullable(),
     }),
   ),
 });

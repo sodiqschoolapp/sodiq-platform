@@ -52,6 +52,22 @@ export function postsOf(
   };
 }
 
+/**
+ * The posts of the reader of a request among the holders. Through an integration key (task
+ * 10.10, permission review must-fix 1) only the Head Teacher and Senior Head Teacher posts
+ * count: `02`, "Their other roles do not count through a key", so a key person who is also
+ * the branch's Academic Vice Principal or a Super Admin decides only as a Head Teacher.
+ */
+export function readerPostsOf(
+  holders: readonly { accountId: string; post: Post }[],
+  reader: { readonly accountId: string; readonly integrationKeyId?: string | undefined },
+): Posts {
+  const posts = postsOf(holders, reader.accountId);
+  return reader.integrationKeyId === undefined
+    ? posts
+    : { ...posts, superAdmin: false, academicVicePrincipal: false };
+}
+
 /** The account of a staff record, if it has one. */
 export async function accountOfStaff(
   transaction: Transaction,

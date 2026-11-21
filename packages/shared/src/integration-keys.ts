@@ -155,3 +155,46 @@ export function latestIntegrationKeyEnd(today: string): string {
   const lastDay = month === 2 && day === 29 && !leap ? 28 : day;
   return `${String(next).padStart(4, '0')}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
 }
+
+/**
+ * Requests made through a key (task 10.10, pull request #369). `13`, Security:
+ * "sent only over HTTPS in a header". The secret of the key, and the staff ID
+ * of the person the request acts for (`02`: "Every request made with a key
+ * names one person on that key, by staff ID"). Custom headers, not
+ * `Authorization` (decision 11 of the plan).
+ */
+export const INTEGRATION_KEY_HEADER = 'X-Integration-Key';
+export const ACTING_STAFF_ID_HEADER = 'X-Acting-Staff-Id';
+
+/**
+ * Requests per minute per key (`02`: "The server limits how many requests a
+ * key may make per minute"; decision 8 of the plan): about five a second.
+ */
+export const INTEGRATION_KEY_REQUESTS_PER_MINUTE = 300;
+
+/** A person on the key, as the key's own people route answers them to the department platform. */
+export const integrationKeyActingPersonSchema = z.object({
+  /** The staff ID to send in `X-Acting-Staff-Id`. */
+  staffId: z.string(),
+  firstName: z.string(),
+  lastName: z.string(),
+  /** Whether a request may act for the person now (active, account not locked, a key role held). */
+  usable: z.boolean(),
+  /**
+   * The branches of the person's Teacher and Head Teacher assignments now, for
+   * `X-Branch-Id`; `allBranches` for a Senior Head Teacher, who works in every
+   * branch.
+   */
+  branches: z.array(z.object({ id: z.uuid(), name: z.string() })),
+  allBranches: z.boolean(),
+});
+
+export type IntegrationKeyActingPerson = z.infer<typeof integrationKeyActingPersonSchema>;
+
+export const integrationKeyActingPeopleSchema = z.object({
+  /** The name of the key, as the Super Admin gave it. */
+  key: z.string(),
+  people: z.array(integrationKeyActingPersonSchema),
+});
+
+export type IntegrationKeyActingPeople = z.infer<typeof integrationKeyActingPeopleSchema>;

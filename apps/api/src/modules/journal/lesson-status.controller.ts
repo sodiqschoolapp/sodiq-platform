@@ -41,6 +41,9 @@ import type { XlsxFile } from '../../http/xlsx.js';
 import { Requires } from '../access/access.decorators.js';
 import { CurrentAccess, type Access } from '../access/permission.guard.js';
 import { LessonStatusService } from './lesson-status.service.js';
+import { OpenToKeys } from '../access/key-routes.js';
+import { Transactions } from '../../database/transactions.js';
+import { withoutTutorWorkForKey } from '../access/key-tutor-work.js';
 
 /**
  * The reminders of the teaching home, the counts per teacher and the orphan
@@ -52,23 +55,35 @@ import { LessonStatusService } from './lesson-status.service.js';
  */
 @Controller('journal')
 export class LessonStatusController {
-  constructor(private readonly status: LessonStatusService) {}
+  constructor(
+    private readonly status: LessonStatusService,
+    private readonly transactions: Transactions,
+  ) {}
 
   /** `07`, Reminders: the panel of the teacher home page, the caller's own lessons (decision 13). */
   @Get('reminders')
   @Requires('journal', 'view')
+  @OpenToKeys()
   @Returns(remindersSchema)
-  reminders(
+  async reminders(
     // Strict and empty: a field naming a person is refused.
     @ValidQuery(ownRemindersQuerySchema) _query: OwnRemindersQuery,
     @CurrentAccess() access: Access,
   ): Promise<Reminders> {
-    return this.status.ownReminders(access);
+    const answer = await this.status.ownReminders(access);
+    // Task 10.10: a key request lists no Tutor work (decision 6).
+    return {
+      ...answer,
+      reminders: await withoutTutorWorkForKey(this.transactions, access, answer.reminders, (one) =>
+        one.kind === 'rating_missing' ? one.journal.subject.id : one.lesson.subject.id,
+      ),
+    };
   }
 
   /** Task 9.4b: `08`, Home pages by role, Academic Vice Principal, "Lessons today and their status". */
   @Get('lessons-today')
   @Requires('journal_discipline', 'view')
+  @OpenToKeys()
   @Returns(lessonsTodaySchema)
   lessonsToday(
     @ValidQuery(lessonsTodayQuerySchema) _query: LessonsTodayQuery,
@@ -80,6 +95,7 @@ export class LessonStatusController {
   /** `07`, Lesson status: "Head Teachers and the Academic Vice Principal see the same counts per teacher". */
   @Get('discipline')
   @Requires('journal_discipline', 'view')
+  @OpenToKeys()
   @Returns(disciplineSchema)
   discipline(
     @ValidQuery(disciplineQuerySchema) query: DisciplineQuery,
@@ -91,6 +107,7 @@ export class LessonStatusController {
   /** Task 9.3b-2: the items behind one count of one teacher (review finding 7). */
   @Get('discipline/items')
   @Requires('journal_discipline', 'view')
+  @OpenToKeys()
   @Returns(disciplineItemsSchema)
   disciplineItems(
     @ValidQuery(disciplineItemsQuerySchema) query: DisciplineItemsQuery,

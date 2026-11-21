@@ -93,6 +93,7 @@ import {
   subjectQuarterLessons,
   type StudentSubjectQuarter,
 } from './subject-quarter-lessons.js';
+import { tutorSubjectIds } from '../access/key-tutor-work.js';
 
 /**
  * The journal grid, read only (task 6.2, pull request #210; `07`, Opening a
@@ -198,8 +199,13 @@ export class JournalGridReader {
           years[0]?.id ??
           null;
       }
-      const journals =
+      let journals =
         yearId === null ? [] : await readableJournals(transaction, access, branchId, yearId);
+      if (access.integrationKeyId !== undefined) {
+        // Task 10.10 (decision 6 of pull request #369): Tutor work is done in this platform.
+        const tutors = await tutorSubjectIds(transaction);
+        journals = journals.filter((journal) => !tutors.has(journal.subjectId));
+      }
       return journalListSchema.parse({
         years,
         yearId,

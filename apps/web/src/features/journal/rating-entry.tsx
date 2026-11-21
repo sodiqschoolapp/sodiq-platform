@@ -32,6 +32,7 @@ import {
   setRatingDate,
   setRatingNotHeld,
 } from './journal-api';
+import { withViaKey } from '../../lib/via-key';
 
 /**
  * The rating exam of the quarter shown (task 8.2, pull request #218;
@@ -403,7 +404,7 @@ function EntryDialog({
                                 after: entryText(line.after),
                               }),
                         reason: line.reason ?? '',
-                        who: line.changedBy ?? '—',
+                        who: withViaKey(t, line.changedBy ?? '—', line.viaKey),
                         when: momentText(i18n.language, line.changedAt),
                       },
                     )}

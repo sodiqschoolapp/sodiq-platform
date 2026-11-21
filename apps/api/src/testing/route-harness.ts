@@ -36,6 +36,8 @@ export type ExpectedAccess =
   | 'any_signed_in_parent'
   /** A route of the parent portal (task 11.2): a Parent account only, no staff role. */
   | 'portal'
+  /** A route of an integration key itself (task 10.10): a key request only, every session refused. */
+  | 'integration_key'
   | { roles: readonly Role[]; branch: 'request' | 'none' };
 
 const REACHED_HEADER = 'X-Harness-Reached-Handler';
@@ -206,7 +208,7 @@ function expectedOutcome(listed: ExpectedAccess, caller: Caller, inHomeBranch: b
   if (caller.parentAccount === true) {
     return listed === 'any_signed_in_parent' || listed === 'portal' ? 'allowed' : 'refused';
   }
-  if (listed === 'portal') {
+  if (listed === 'portal' || listed === 'integration_key') {
     return 'refused';
   }
   if (listed === 'any_signed_in' || listed === 'any_signed_in_parent') {
@@ -287,7 +289,10 @@ async function compare(
             ? 'allowed'
             : response.status === 401 && code === 'not_signed_in'
               ? 'not_signed_in'
-              : response.status === 403 && code === 'permission_denied'
+              : response.status === 403 &&
+                  (code === 'permission_denied' ||
+                    // Task 10.10: the route of a key refuses every session with its own code.
+                    (listed === 'integration_key' && code === 'integration_key_required'))
                 ? 'refused'
                 : `answered ${String(response.status)} ${code ?? ''}`.trim();
         // Task 0.7c: every answer carries `Cache-Control: no-store`, allowed or refused.

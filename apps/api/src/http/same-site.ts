@@ -1,4 +1,5 @@
 import type { IncomingMessage } from 'node:http';
+import { INTEGRATION_KEY_HEADER } from '@sodiq/shared';
 import type { NextFunction, Request, Response } from 'express';
 import { ApiException } from './api-exception.js';
 import { sendError } from './error-response.js';
@@ -67,6 +68,16 @@ function firstValue(header: string | string[] | undefined): string | undefined {
 }
 
 /**
+ * Whether a request is made through an integration key (task 10.10): the header is there at
+ * all, also empty or repeated. One test for the same-site check below and for `SessionGuard`,
+ * so the two cannot disagree: a request let past this check as a key request is always
+ * decided as one by the guard, which never reads its cookie (review finding 8 of the plan).
+ */
+export function carriesIntegrationKey(headers: IncomingMessage['headers']): boolean {
+  return headers[INTEGRATION_KEY_HEADER.toLowerCase()] !== undefined;
+}
+
+/**
  * Refuses a changing request that another site started (cross-site request
  * forgery). The session cookie is `SameSite=Strict` already; this is the second
  * guard, and it needs no token because web app and API share one origin.
@@ -74,6 +85,13 @@ function firstValue(header: string | string[] | undefined): string | undefined {
 export function sameSiteMiddleware(trustProxy: boolean) {
   return (request: Request, response: Response, next: NextFunction): void => {
     if (READING_METHODS.has(request.method)) {
+      next();
+      return;
+    }
+    // Task 10.10 (decision 11 of pull request #369): a key request never reads the cookie, and a
+    // page of another site cannot add this header without a CORS preflight, which this API never
+    // answers; the forgery this check stops cannot happen through it.
+    if (carriesIntegrationKey(request.headers)) {
       next();
       return;
     }

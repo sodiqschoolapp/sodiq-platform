@@ -996,6 +996,8 @@ export const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
   'DELETE /api/feedback-reports/:id/handled': { branch: 'none', roles: ['super_admin'] },
   'GET /api/system-status': { branch: 'none', roles: ['super_admin'] },
   'GET /api/system-status/providers': { branch: 'none', roles: ['super_admin'] },
+  // Task 10.10 (pull request #369, decision 3): the key's own people, to a key request only.
+  'GET /api/integration/people': 'integration_key',
   // Task 10.9 (pull request #368; the owner on 21 November 2026): the integration keys,
   // school-wide, the Super Admin's alone (integration_keys).
   'GET /api/integration-keys': { branch: 'none', roles: ['super_admin'] },

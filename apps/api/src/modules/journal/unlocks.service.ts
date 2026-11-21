@@ -15,7 +15,7 @@ import { Transactions, transactionMoment, type Transaction } from '../../databas
 import { ApiException } from '../../http/api-exception.js';
 import { refuseOwnRequest } from '../access/own-request.js';
 import type { Access } from '../access/permission.guard.js';
-import { postHolders, postsOf } from '../access/request-posts.js';
+import { postHolders, postsOf, readerPostsOf } from '../access/request-posts.js';
 import { decisionReach, firstTier, type RequestOn } from '../access/request-routing.js';
 import { Audit } from '../audit/audit.service.js';
 import { branchOf } from '../classes/classes.service.js';
@@ -196,7 +196,7 @@ export class UnlocksService {
       const cancelled = row.status === 'sent' && out(row.staff_id, today);
       const status: UnlockStatus = cancelled ? 'cancelled' : statusOf(row.status);
       const reach = decisionReach(
-        { accountId: access.accountId, posts: postsOf(holders, access.accountId) },
+        { accountId: access.accountId, posts: readerPostsOf(holders, access) },
         { accountId: row.requested_by, posts: postsOf(holders, row.requested_by) },
         subject.on,
       );
@@ -400,7 +400,7 @@ export class UnlocksService {
     });
     const holders = await postHolders(transaction, branchId, subject.subjectId, now);
     const told = firstTier(
-      { accountId: access.accountId, posts: postsOf(holders, access.accountId) },
+      { accountId: access.accountId, posts: readerPostsOf(holders, access) },
       holders,
       subject.on,
     );
@@ -453,7 +453,7 @@ export class UnlocksService {
         const subject = await subjectOf(transaction, branchId, row);
         const holders = await postHolders(transaction, branchId, subject.subjectId, now);
         const reach = decisionReach(
-          { accountId: access.accountId, posts: postsOf(holders, access.accountId) },
+          { accountId: access.accountId, posts: readerPostsOf(holders, access) },
           { accountId: row.requested_by, posts: postsOf(holders, row.requested_by) },
           subject.on,
         );

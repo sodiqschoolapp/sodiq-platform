@@ -1,7 +1,7 @@
 import { planOutcomeKindSchema, type PlanOutcome } from '@sodiq/shared';
 import { sql } from 'kysely';
 import { transactionMoment, type Transaction } from '../../database/transactions.js';
-import { accountOfStaff, postHolders, postsOf } from '../access/request-posts.js';
+import { accountOfStaff, postHolders, postsOf, readerPostsOf } from '../access/request-posts.js';
 import { decisionReach } from '../access/request-routing.js';
 import type { Audit } from '../audit/audit.service.js';
 import { plannedJournal, staffNames, type JournalRow } from '../journal/journal-grid.query.js';
@@ -439,7 +439,7 @@ export async function separateTray(
  */
 export async function dropReachOf(
   transaction: Transaction,
-  accountId: string,
+  reader: { readonly accountId: string; readonly integrationKeyId?: string | undefined },
   branchId: string,
   journal: Pick<JournalRow, 'subjectId'>,
   ownerStaffId: string | null,
@@ -448,7 +448,7 @@ export async function dropReachOf(
   const ownerAccountId = await accountOfStaff(transaction, ownerStaffId);
   const holders = await postHolders(transaction, branchId, journal.subjectId, now);
   const reach = decisionReach(
-    { accountId, posts: postsOf(holders, accountId) },
+    { accountId: reader.accountId, posts: readerPostsOf(holders, reader) },
     { accountId: ownerAccountId, posts: postsOf(holders, ownerAccountId) },
   );
   return { reach, ownerAccountId };

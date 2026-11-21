@@ -380,7 +380,7 @@ export class PlanOutcomesService {
       if (known === undefined) throw notFound();
       const { reach, ownerAccountId } = await dropReachOf(
         transaction,
-        access.accountId,
+        access,
         branchId,
         scene.journal,
         scene.ownerId,

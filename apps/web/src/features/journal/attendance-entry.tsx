@@ -47,6 +47,7 @@ import {
   saveAttendance,
   showTyped,
 } from './journal-api';
+import { withViaKey } from '../../lib/via-key';
 
 /**
  * Attendance entry in the journal (task 6.3, pull request #211; `07`,
@@ -448,7 +449,9 @@ function CellHistoryDialog({
                     <TableCell>{cellKindText(t, cell)}</TableCell>
                     <TableCell>{cellValueText(t, cell, line.before)}</TableCell>
                     <TableCell>{cellValueText(t, cell, line.after)}</TableCell>
-                    <TableCell>{accountText(line.changedBy, '—')}</TableCell>
+                    <TableCell>
+                      {withViaKey(t, accountText(line.changedBy, '—'), line.viaKey)}
+                    </TableCell>
                     <TableCell>{momentText(language, line.changedAt)}</TableCell>
                     <TableCell>{t(`journal.changes.${line.changedHow}`)}</TableCell>
                   </TableRow>
@@ -490,7 +493,11 @@ function CellHistoryDialog({
                           : yesNo(line.notHeldAfter)}
                     </TableCell>
                     <TableCell>
-                      {line.changedBy === null ? '—' : accountText(line.changedBy, '—')}
+                      {withViaKey(
+                        t,
+                        line.changedBy === null ? '—' : accountText(line.changedBy, '—'),
+                        line.viaKey,
+                      )}
                     </TableCell>
                     <TableCell>{momentText(language, line.changedAt)}</TableCell>
                     <TableCell>{t(`journal.works.changes.${line.changedHow}`)}</TableCell>

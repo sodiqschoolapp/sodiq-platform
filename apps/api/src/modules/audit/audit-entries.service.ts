@@ -24,6 +24,7 @@ import type { Access } from '../access/permission.guard.js';
 import { notFound } from '../setup/setup-refusals.js';
 import { readEntries, type EntriesSearch, type StoredEntry } from './audit-entries.query.js';
 import { Audit } from './audit.service.js';
+import { integrationKeyNames, viaKeyOf } from './integration-key-names.js';
 
 function branchOf(access: Access): string {
   if (access.branchId === null) {
@@ -292,6 +293,10 @@ export async function entryAnswers(
       }
     }
   }
+  const keyNames = await integrationKeyNames(
+    transaction,
+    rows.map((row) => row.integration_key_id),
+  );
   return rows.map((row) => {
     const values = hide
       ? hideIdentity({
@@ -312,6 +317,7 @@ export async function entryAnswers(
       action: row.action,
       actor:
         row.actor_id === null ? null : { id: row.actor_id, name: names.get(row.actor_id) ?? null },
+      viaKey: viaKeyOf(keyNames, row.integration_key_id),
       assignment:
         row.assignment_id !== null && parsedRole?.success === true
           ? { id: row.assignment_id, role: parsedRole.data }

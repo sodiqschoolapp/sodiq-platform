@@ -15,6 +15,7 @@ import { Returns, ValidParams, ValidQuery } from '../../http/schemas.js';
 import { Requires } from '../access/access.decorators.js';
 import { CurrentAccess, type Access } from '../access/permission.guard.js';
 import { JournalGridReader } from './journal-grid.service.js';
+import { OpenToKeys } from '../access/key-routes.js';
 
 /**
  * The Journals page and the journal grid, read only (task 6.2, pull request
@@ -30,6 +31,7 @@ export class JournalsController {
 
   @Get()
   @Requires('journal', 'view')
+  @OpenToKeys()
   @Returns(journalListSchema)
   list(
     @ValidQuery(journalListQuerySchema) query: JournalListQuery,
@@ -40,6 +42,7 @@ export class JournalsController {
 
   @Get(':journalId')
   @Requires('journal', 'view')
+  @OpenToKeys()
   @Returns(journalGridSchema)
   grid(
     @ValidParams(journalParamsSchema) params: JournalParams,

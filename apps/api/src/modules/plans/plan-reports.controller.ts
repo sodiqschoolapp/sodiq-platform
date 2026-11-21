@@ -28,6 +28,7 @@ import { CurrentAccess, type Access } from '../access/permission.guard.js';
 import { PlanExports } from './plan-exports.service.js';
 import { PlanMinimumsService } from './plan-minimums.js';
 import { PlanReportsService } from './plan-reports.service.js';
+import { OpenToKeys } from '../access/key-routes.js';
 
 /**
  * The plan reports and their export (task 8.8, pull request #226; `09`,
@@ -44,6 +45,7 @@ export class PlanReportsController {
 
   @Get('completeness')
   @Requires('plan_reports', 'view')
+  @OpenToKeys()
   @Returns(planCompletenessSchema)
   completeness(
     @CurrentAccess() access: Access,
@@ -54,6 +56,7 @@ export class PlanReportsController {
 
   @Get('progress')
   @Requires('plan_reports', 'view')
+  @OpenToKeys()
   @Returns(planProgressSchema)
   progress(
     @CurrentAccess() access: Access,
@@ -64,6 +67,7 @@ export class PlanReportsController {
 
   @Get('requests')
   @Requires('plan_reports', 'view')
+  @OpenToKeys()
   @Returns(planRequestsReportSchema)
   requests(
     @CurrentAccess() access: Access,
@@ -92,6 +96,7 @@ export class PlanMinimumsController {
 
   @Get()
   @Requires('plan_windows', 'view')
+  @OpenToKeys()
   @Returns(planMinimumsSchema)
   list(@CurrentAccess() access: Access): Promise<PlanMinimums> {
     return this.minimums.list(access);

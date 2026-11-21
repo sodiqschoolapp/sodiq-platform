@@ -27,6 +27,8 @@ describe('loadConfig', () => {
       databaseUrl: DATABASE_URL,
       secondStepKey: SECOND_STEP_KEY,
       trustProxy: false,
+      // Task 10.10: not read from the environment.
+      integrationKeyRequestsPerMinute: 300,
       webFiles: undefined,
       reporting: { dsn: undefined, environment: 'development', release: undefined },
       photos: { store: 'none' },

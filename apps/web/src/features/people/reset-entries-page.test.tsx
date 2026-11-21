@@ -58,6 +58,7 @@ const BY_ADMIN: Reset = {
       titleAfter: null,
       changedHow: 'entry',
       changedBy: { accountId: uid(2), login: 'n.rahimova', name: 'Rahimova Nodira' },
+      viaKey: null,
     },
   ],
   ratingEntries: [],

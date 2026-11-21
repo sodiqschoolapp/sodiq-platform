@@ -14,6 +14,8 @@ export interface ChecklistSources {
   access: Readonly<Record<string, ExpectedAccess>>;
   scopes: RouteScopes;
   ids: RouteIds;
+  /** Task 10.10: the routes open to integration keys, with why (`KEY_ROUTES`). */
+  keyRoutes: Readonly<Record<string, string>>;
 }
 
 function cell(text: string): string {
@@ -86,6 +88,14 @@ function routesWithoutRole(sources: ChecklistSources): string[] {
   }
   lines.push(
     '',
+    'A request made with an integration key only, for the key itself (`@KeyOnly`, task 10.10; every session refused 403 `integration_key_required`):',
+    '',
+  );
+  for (const [route, listed] of Object.entries(sources.access).sort()) {
+    if (listed === 'integration_key') lines.push(`- \`${route}\``);
+  }
+  lines.push(
+    '',
     'Reachable while a step of sign-in is still owed (`STEP_ROUTES`; held exact by `route-permissions.test.ts`):',
     '',
     '| Route | Owed steps |',
@@ -140,6 +150,21 @@ function idsOf(sources: ChecklistSources): string[] {
   return lines;
 }
 
+function keyRoutesOf(sources: ChecklistSources): string[] {
+  const lines = ['## Routes open to integration keys', ''];
+  lines.push(
+    'A request made with an integration key acts for the person it names, with only their Teacher, Head Teacher and Senior Head Teacher assignments, on these routes only (`02`, Integration keys; task 10.10). Every other route answers a key 403 `integration_key_route_closed` (`KEY_ROUTES`, `apps/api/src/testing/key-route-list.ts`; held exact by `key-routes.test.ts`, which also calls every other route with a key). `GET /api/integration/people` answers a key only, never a session (`@KeyOnly`).',
+    '',
+    '| Route | Part of the list |',
+    '| --- | --- |',
+  );
+  for (const [route, reason] of Object.entries(sources.keyRoutes).sort()) {
+    lines.push(`| \`${route}\` | ${cell(reason)} |`);
+  }
+  lines.push('');
+  return lines;
+}
+
 function countsOf(sources: ChecklistSources): string[] {
   const routes = Object.values(sources.access);
   const withRole = routes.filter((listed) => typeof listed !== 'string').length;
@@ -148,6 +173,7 @@ function countsOf(sources: ChecklistSources): string[] {
     '',
     `- Routes of the application: ${String(routes.length)}, each called by the role harness as the 15 roles, an account without a role, a Parent account (task 11.1) and nobody, in the own and in another branch.`,
     `- Without sign-in: ${String(Object.keys(sources.publicRoutes).length)}. For the own account: ${String(routes.filter((listed) => listed === 'any_signed_in' || listed === 'any_signed_in_parent').length)}. The parent portal: ${String(routes.filter((listed) => listed === 'portal').length)}. With a permission of the table: ${String(withRole)}.`,
+    `- Open to integration keys: ${String(Object.keys(sources.keyRoutes).length)} (task 10.10).`,
     `- Routes with a limit inside the route: ${String(Object.keys(sources.scopes).length)}.`,
     `- Routes that take an id: ${String(Object.keys(sources.ids).length)}, with ${String(idCount(sources.ids))} ids (${(['branch', 'school', 'own', 'none'] as const).map((kind) => `${kind} ${String(idCount(sources.ids, kind))}`).join(', ')}).`,
     `- Areas of the permission table: ${String(Object.keys(sources.table).length)}.`,
@@ -168,6 +194,7 @@ export function renderGenerated(sources: ChecklistSources): string {
     '',
     ...countsOf(sources),
     ...routesWithoutRole(sources),
+    ...keyRoutesOf(sources),
     ...limitsOf(sources),
     ...idsOf(sources),
     ...tableOf(sources.table),

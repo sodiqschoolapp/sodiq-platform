@@ -18,12 +18,13 @@ import type { Request } from 'express';
 import { Transactions } from '../../database/transactions.js';
 import { ApiException } from '../../http/api-exception.js';
 import { HeaderPipe } from '../../http/validation.js';
-import { owedStepsAllowedOn, sessionOf } from '../auth/session.guard.js';
-import { declarationsOf } from './access.decorators.js';
+import { keyActorOf, owedStepsAllowedOn, sessionOf } from '../auth/session.guard.js';
+import { declarationsOf, type RouteAccess } from './access.decorators.js';
 import { CLASS_SCOPED_AREAS, tutorClassesAt } from './class-scope.js';
 import type { CurrentAssignment } from './current-assignments.js';
 import { taughtAt } from './taught-scope.js';
 import { permitting, reachingBranch } from './permission-check.js';
+import { namedRecords, namesTutorWork } from './key-tutor-work.js';
 import { PERMISSION_TABLE } from './permission-table.token.js';
 
 /** What the guard allowed for a request of a `@Requires` route. */
@@ -50,6 +51,12 @@ export interface Access {
    * the one whose classes fit (`inClassScope`, task 3.1c).
    */
   permitting: readonly CurrentAssignment[];
+  /**
+   * Task 10.10: the integration key the request was made through; left out for a session.
+   * A list that holds Tutor work for a Teacher who is also a Tutor leaves it out for a key
+   * request (decision 6 of pull request #369).
+   */
+  integrationKeyId?: string;
 }
 
 /** Not on the request object: nothing else can set it. */
@@ -112,6 +119,30 @@ export class PermissionGuard implements CanActivate {
       return true;
     }
     const request = context.switchToHttp().getRequest<Request>();
+    // Task 10.10 (decision 3 of pull request #369, Look first): a request made through a key
+    // acts for its person with only their Teacher, Head Teacher and Senior Head Teacher
+    // assignments, read by `SessionGuard` for this request; the route of the key itself
+    // answers the key and no session.
+    const keyActor = keyActorOf(request);
+    if (keyActor !== undefined) {
+      if (access.kind === 'integration_key') {
+        return true;
+      }
+      if (access.kind !== 'requires' || keyActor.person === null) {
+        // `KeyRoutesCheck` keeps every other kind off the list; refused all the same.
+        throw new ApiException('integration_key_route_closed', 403);
+      }
+      await this.decide(context, access, request, {
+        accountId: keyActor.person.accountId,
+        assignments: keyActor.person.assignments,
+        integrationKeyId: keyActor.key.id,
+      });
+      await this.refuseTutorWork(request);
+      return true;
+    }
+    if (access.kind === 'integration_key') {
+      throw new ApiException('integration_key_required', 403);
+    }
     const session = sessionOf(request);
     if (session === undefined) {
       throw new Error('The permission guard ran before the session guard.');
@@ -140,6 +171,24 @@ export class PermissionGuard implements CanActivate {
     if (access.kind === 'any_signed_in') {
       return true;
     }
+    return this.decide(context, access, request, session);
+  }
+
+  /**
+   * The role and the branch of a `Requires` route, for the account and the assignments of a
+   * session or of the person of a key request, alike (task 10.10).
+   */
+  private async decide(
+    context: ExecutionContext,
+    access: Extract<RouteAccess, { kind: 'requires' }>,
+    request: Request,
+    actor: {
+      accountId: string;
+      assignments: readonly CurrentAssignment[];
+      integrationKeyId?: string;
+    },
+  ): Promise<boolean> {
+    const handler = context.getHandler();
     if (owedStepsAllowedOn(handler).length > 0) {
       // Found by the review: such a mark would let a session that has not passed
       // the second step, or still has a first password, act with its roles.
@@ -151,7 +200,7 @@ export class PermissionGuard implements CanActivate {
       access.branch === 'none'
         ? null
         : branchHeader.transform(request.headers[BRANCH_HEADER.toLowerCase()]).toLowerCase();
-    const first = permitting(access, session.assignments, branchId, this.table);
+    const first = permitting(access, actor.assignments, branchId, this.table);
     if (first.length === 0) {
       throw new ApiException('permission_denied', 403);
     }
@@ -165,34 +214,32 @@ export class PermissionGuard implements CanActivate {
     // also when another assignment is what lets the request in (permission
     // review must-fix 1).
     let monitoring = false;
-    if (
-      branchId !== null &&
-      session.assignments.some((assignment) => assignment.branchId === null)
-    ) {
+    if (branchId !== null && actor.assignments.some((assignment) => assignment.branchId === null)) {
       const branch = await this.branchOf(branchId);
       if (branch === undefined && first.some((assignment) => assignment.branchId === null)) {
         throw new ApiException('permission_denied', 403);
       }
       monitoring = branch?.monitoring ?? false;
     }
-    const reaching = reachingBranch(session.assignments, monitoring);
+    const reaching = reachingBranch(actor.assignments, monitoring);
     const assignments =
       branchId === null || !CLASS_SCOPED_AREAS.includes(access.area)
         ? reaching
-        : await this.withClasses(reaching, session.accountId, branchId);
+        : await this.withClasses(reaching, actor.accountId, branchId);
     const allowing = permitting(access, assignments, branchId, this.table);
     const [assignment] = allowing;
     if (assignment === undefined) {
       throw new ApiException('permission_denied', 403);
     }
     ACCESSES.set(request, {
-      accountId: session.accountId,
+      accountId: actor.accountId,
       assignmentId: assignment.id,
       role: assignment.role,
       branchId,
       branchIds: branchId === null ? [] : [branchId],
       assignments,
       permitting: allowing,
+      ...(actor.integrationKeyId === undefined ? {} : { integrationKeyId: actor.integrationKeyId }),
     });
     return true;
   }
@@ -207,6 +254,26 @@ export class PermissionGuard implements CanActivate {
    * no class. A Teacher assignment of the branch gets the classes and groups
    * the published load in force gives the teacher (task 3.6a, `taughtAt`).
    */
+  /**
+   * Task 10.10 (decision 6 of pull request #369, Look first): a key request never reaches a
+   * Tutor lesson (Ma'naviyat soati, the Homework slot), its journal or its plan, although the
+   * Tutor is that lesson's teacher and the Teacher assignment lets the route in
+   * (`edge/people-roles-accounts`: "Tutor work is done in this platform").
+   */
+  private async refuseTutorWork(request: Request): Promise<void> {
+    const access = ACCESSES.get(request);
+    if (access === undefined || access.branchId === null) {
+      return;
+    }
+    const named = namedRecords(request);
+    const tutor = await this.transactions.run(access.branchIds, (transaction) =>
+      namesTutorWork(transaction, named),
+    );
+    if (tutor) {
+      throw new ApiException('integration_key_tutor_lesson', 403);
+    }
+  }
+
   private async withClasses(
     assignments: readonly CurrentAssignment[],
     accountId: string,

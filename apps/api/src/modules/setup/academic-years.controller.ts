@@ -21,6 +21,7 @@ import { Requires } from '../access/access.decorators.js';
 import { CurrentAccess, type Access } from '../access/permission.guard.js';
 import { AcademicYears } from './academic-years.service.js';
 import { branchOf } from './branches.controller.js';
+import { OpenToKeys } from '../access/key-routes.js';
 
 /**
  * Academic years and quarters (docs/spec/03-school-setup.md, Academic year,
@@ -107,6 +108,7 @@ export class AcademicYearsController {
   /** The top bar of every role (`03`; `12`, Context; decision 8 of pull request #44). */
   @Get('current-period')
   @Requires('current_period', 'view')
+  @OpenToKeys()
   @Returns(currentPeriodSchema)
   currentPeriod(@CurrentAccess() access: Access): Promise<CurrentPeriod> {
     return this.years.currentPeriod(access, branchOf(access));

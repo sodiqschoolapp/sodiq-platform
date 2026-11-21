@@ -4,6 +4,7 @@ import { sql, type RawBuilder } from 'kysely';
 import { CLOCK } from '../../clock/clock.module.js';
 import type { Transaction } from '../../database/transactions.js';
 import type { JsonValue } from '../../database/types.generated.js';
+import { currentRequestContext } from '../../http/request-context.js';
 
 export interface AuditEntry {
   /**
@@ -73,6 +74,9 @@ export class Audit {
       reason: entry.reason ?? null,
       details: jsonb(entry.details),
       request_id: entry.requestId ?? null,
+      // Task 10.10 (`02`, Audit: "recorded as the person's change, with the key named"):
+      // every entry written while a request made through a key runs names that key.
+      integration_key_id: currentRequestContext()?.integrationKey?.id ?? null,
     };
     if (entry.branchId === null) {
       await transaction.insertInto('audit_log_school').values(values).execute();

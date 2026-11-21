@@ -40,6 +40,7 @@ import { Requires } from '../access/access.decorators.js';
 import { CurrentAccess, type Access } from '../access/permission.guard.js';
 import { SaveRefusals } from './save-refusals.js';
 import { WorksService } from './works.service.js';
+import { OpenToKeys } from '../access/key-routes.js';
 
 /**
  * Classwork and homework of a lesson (task 8.1, pull request #217; `07`,
@@ -59,6 +60,7 @@ export class WorksController {
   @Post(':lessonId/works')
   @HttpCode(200)
   @Requires('journal', 'edit')
+  @OpenToKeys()
   @Returns(workAddedSchema)
   add(
     @CurrentAccess() access: Access,
@@ -75,6 +77,7 @@ export class WorksController {
    */
   @Put(':lessonId/topic')
   @Requires('journal', 'edit')
+  @OpenToKeys()
   @Returns(lessonTopicSavedSchema)
   saveTopic(
     @CurrentAccess() access: Access,
@@ -88,6 +91,7 @@ export class WorksController {
   /** Task 10.8, widened by the owner on 20 November 2026: rename a work of the lesson's plan item. */
   @Put(':lessonId/plan-works/:planWorkId/title')
   @Requires('journal', 'edit')
+  @OpenToKeys()
   @Returns(workAddedSchema)
   renamePlanWork(
     @CurrentAccess() access: Access,
@@ -101,6 +105,7 @@ export class WorksController {
   /** Task 10.8: remove an empty work added in the journal while its plan item has no topic. */
   @Delete(':lessonId/plan-works/:planWorkId')
   @Requires('journal', 'edit')
+  @OpenToKeys()
   @ReturnsNothing()
   removePlanWork(
     @CurrentAccess() access: Access,
@@ -113,6 +118,7 @@ export class WorksController {
   /** Task 10.6: rename a work added by hand while the lesson can be edited. */
   @Put(':lessonId/works/:workId/title')
   @Requires('journal', 'edit')
+  @OpenToKeys()
   @Returns(workSavedSchema)
   rename(
     @CurrentAccess() access: Access,
@@ -125,6 +131,7 @@ export class WorksController {
 
   @Delete(':lessonId/works/:workId')
   @Requires('journal', 'edit')
+  @OpenToKeys()
   @ReturnsNothing()
   remove(
     @CurrentAccess() access: Access,
@@ -136,6 +143,7 @@ export class WorksController {
 
   @Put(':lessonId/works/total')
   @Requires('journal', 'edit')
+  @OpenToKeys()
   @Returns(workSavedSchema)
   total(
     @CurrentAccess() access: Access,
@@ -148,6 +156,7 @@ export class WorksController {
 
   @Put(':lessonId/works/not-held')
   @Requires('journal', 'edit')
+  @OpenToKeys()
   @Returns(workSavedSchema)
   notHeld(
     @CurrentAccess() access: Access,
@@ -161,6 +170,7 @@ export class WorksController {
   @Post(':lessonId/works/carry')
   @HttpCode(200)
   @Requires('journal', 'edit')
+  @OpenToKeys()
   @Returns(workSavedSchema)
   carry(
     @CurrentAccess() access: Access,
@@ -174,6 +184,7 @@ export class WorksController {
   @Post(':lessonId/scores')
   @HttpCode(200)
   @Requires('journal', 'edit')
+  @OpenToKeys()
   @Returns(scoresSavedSchema)
   scores(
     @CurrentAccess() access: Access,
@@ -209,6 +220,7 @@ export class WorksController {
   @Post(':lessonId/not-graded')
   @HttpCode(200)
   @Requires('journal', 'edit')
+  @OpenToKeys()
   @Returns(notGradedAnswerSchema)
   notGraded(
     @CurrentAccess() access: Access,

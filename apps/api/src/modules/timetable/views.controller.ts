@@ -25,6 +25,7 @@ import { Requires } from '../access/access.decorators.js';
 import { CurrentAccess, type Access } from '../access/permission.guard.js';
 import { TimetableViewExports } from './views-export.service.js';
 import { TimetableViews } from './views.service.js';
+import { OpenToKeys } from '../access/key-routes.js';
 
 /**
  * The read-only timetable views (task 5.9a, pull request #197): the area
@@ -42,6 +43,7 @@ export class TimetableViewsController {
 
   @Get('choices')
   @Requires('timetable_views', 'view')
+  @OpenToKeys()
   @Returns(viewChoicesSchema)
   choices(
     @CurrentAccess() access: Access,
@@ -52,6 +54,7 @@ export class TimetableViewsController {
 
   @Get('branch')
   @Requires('timetable_views', 'view')
+  @OpenToKeys()
   @Returns(timetableViewSchema)
   branch(
     @CurrentAccess() access: Access,
@@ -62,6 +65,7 @@ export class TimetableViewsController {
 
   @Get('class')
   @Requires('timetable_views', 'view')
+  @OpenToKeys()
   @Returns(timetableViewSchema)
   class(
     @CurrentAccess() access: Access,
@@ -72,6 +76,7 @@ export class TimetableViewsController {
 
   @Get('teacher')
   @Requires('timetable_views', 'view')
+  @OpenToKeys()
   @Returns(timetableViewSchema)
   teacher(
     @CurrentAccess() access: Access,
@@ -82,6 +87,7 @@ export class TimetableViewsController {
 
   @Get('room')
   @Requires('timetable_views', 'view')
+  @OpenToKeys()
   @Returns(timetableViewSchema)
   room(
     @CurrentAccess() access: Access,

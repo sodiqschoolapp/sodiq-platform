@@ -134,8 +134,9 @@ Neither was done by hand (owner, 29 October 2026, issue #42). In their place: th
 
 ## The routes in numbers
 
-- Routes of the application: 544, each called by the role harness as the 15 roles, an account without a role, a Parent account (task 11.1) and nobody, in the own and in another branch.
+- Routes of the application: 545, each called by the role harness as the 15 roles, an account without a role, a Parent account (task 11.1) and nobody, in the own and in another branch.
 - Without sign-in: 5. For the own account: 24. The parent portal: 8. With a permission of the table: 507.
+- Open to integration keys: 95 (task 10.10).
 - Routes with a limit inside the route: 158.
 - Routes that take an id: 423, with 870 ids (branch 760, school 79, own 12, none 19).
 - Areas of the permission table: 65.
@@ -190,6 +191,10 @@ A Parent account only, for a child of its own (`@PortalChild`, task 11.2; every 
 - `GET /api/portal/children/:studentId/rating`
 - `GET /api/portal/children/:studentId/timetable`
 
+A request made with an integration key only, for the key itself (`@KeyOnly`, task 10.10; every session refused 403 `integration_key_required`):
+
+- `GET /api/integration/people`
+
 Reachable while a step of sign-in is still owed (`STEP_ROUTES`; held exact by `route-permissions.test.ts`):
 
 | Route | Owed steps |
@@ -201,6 +206,108 @@ Reachable while a step of sign-in is still owed (`STEP_ROUTES`; held exact by `r
 | `POST /api/auth/second-step/confirm` | second_step_set_up |
 | `POST /api/auth/second-step/set-up` | second_step_set_up |
 | `POST /api/auth/sign-out` | second_step, password_change, second_step_set_up |
+
+## Routes open to integration keys
+
+A request made with an integration key acts for the person it names, with only their Teacher, Head Teacher and Senior Head Teacher assignments, on these routes only (`02`, Integration keys; task 10.10). Every other route answers a key 403 `integration_key_route_closed` (`KEY_ROUTES`, `apps/api/src/testing/key-route-list.ts`; held exact by `key-routes.test.ts`, which also calls every other route with a key). `GET /api/integration/people` answers a key only, never a session (`@KeyOnly`).
+
+| Route | Part of the list |
+| --- | --- |
+| `DELETE /api/journal/lessons/:lessonId/plan-works/:planWorkId` | the journal: attendance, works and their totals, numbers, topics, comments |
+| `DELETE /api/journal/lessons/:lessonId/works/:workId` | the journal: attendance, works and their totals, numbers, topics, comments |
+| `DELETE /api/plans/files/:fileId` | lesson plans |
+| `GET /api/integration/people` | the key’s own people (KeyOnly), never a session |
+| `GET /api/journal/comments/history` | the journal: attendance, works and their totals, numbers, topics, comments |
+| `GET /api/journal/discipline` | the reports these roles view |
+| `GET /api/journal/discipline/items` | the reports these roles view |
+| `GET /api/journal/journals` | the journal: attendance, works and their totals, numbers, topics, comments |
+| `GET /api/journal/journals/:journalId` | the journal: attendance, works and their totals, numbers, topics, comments |
+| `GET /api/journal/journals/:journalId/rating/:quarterId/students/:studentId/history` | the journal: attendance, works and their totals, numbers, topics, comments |
+| `GET /api/journal/lessons-today` | the reports these roles view |
+| `GET /api/journal/lessons/:lessonId/card` | the journal: attendance, works and their totals, numbers, topics, comments |
+| `GET /api/journal/lessons/:lessonId/students/:studentId/history` | the journal: attendance, works and their totals, numbers, topics, comments |
+| `GET /api/journal/reminders` | the journal: attendance, works and their totals, numbers, topics, comments |
+| `GET /api/journal/unlocks` | unlock requests, sent by the Teacher and decided by the Head Teacher |
+| `GET /api/plans` | lesson plans |
+| `GET /api/plans/files/:fileId` | lesson plans |
+| `GET /api/plans/journals/:journalId` | lesson plans |
+| `GET /api/plans/journals/:journalId/master-compare` | lesson plans |
+| `GET /api/plans/lessons/:lessonId` | lesson plans |
+| `GET /api/plans/masters` | master plans of the Head Teacher and the Senior Head Teacher |
+| `GET /api/plans/masters/:masterId` | master plans of the Head Teacher and the Senior Head Teacher |
+| `GET /api/plans/minimums` | plan requests and the plan windows they depend on |
+| `GET /api/plans/parallel` | lesson plans |
+| `GET /api/plans/reports/completeness` | the reports these roles view |
+| `GET /api/plans/reports/progress` | the reports these roles view |
+| `GET /api/plans/reports/requests` | the reports these roles view |
+| `GET /api/plans/requests` | plan requests and the plan windows they depend on |
+| `GET /api/plans/windows` | plan requests and the plan windows they depend on |
+| `GET /api/results/early-warning` | the early-warning list |
+| `GET /api/results/rating/choices` | rating |
+| `GET /api/results/rating/class` | rating |
+| `GET /api/results/rating/classes` | rating |
+| `GET /api/results/rating/subject` | rating |
+| `GET /api/results/reports/choices` | the reports these roles view |
+| `GET /api/results/reports/results-table` | the reports these roles view |
+| `GET /api/results/reports/subject-mastery` | the reports these roles view |
+| `GET /api/setup/current-period` | the reports these roles view |
+| `GET /api/timetable/views/branch` | timetable views |
+| `GET /api/timetable/views/choices` | timetable views |
+| `GET /api/timetable/views/class` | timetable views |
+| `GET /api/timetable/views/room` | timetable views |
+| `GET /api/timetable/views/teacher` | timetable views |
+| `PATCH /api/plans/masters/:masterId` | master plans of the Head Teacher and the Senior Head Teacher |
+| `POST /api/journal/journals/:journalId/rating/:quarterId/entries` | the journal: attendance, works and their totals, numbers, topics, comments |
+| `POST /api/journal/journals/:journalId/rating/:quarterId/unlocks` | unlock requests, sent by the Teacher and decided by the Head Teacher |
+| `POST /api/journal/lessons/:lessonId/all-present` | the journal: attendance, works and their totals, numbers, topics, comments |
+| `POST /api/journal/lessons/:lessonId/attendance` | the journal: attendance, works and their totals, numbers, topics, comments |
+| `POST /api/journal/lessons/:lessonId/copy-attendance` | the journal: attendance, works and their totals, numbers, topics, comments |
+| `POST /api/journal/lessons/:lessonId/not-graded` | the journal: attendance, works and their totals, numbers, topics, comments |
+| `POST /api/journal/lessons/:lessonId/scores` | the journal: attendance, works and their totals, numbers, topics, comments |
+| `POST /api/journal/lessons/:lessonId/unlocks` | unlock requests, sent by the Teacher and decided by the Head Teacher |
+| `POST /api/journal/lessons/:lessonId/works` | the journal: attendance, works and their totals, numbers, topics, comments |
+| `POST /api/journal/lessons/:lessonId/works/carry` | the journal: attendance, works and their totals, numbers, topics, comments |
+| `POST /api/journal/unlocks/:unlockId/decide` | unlock requests, sent by the Teacher and decided by the Head Teacher |
+| `POST /api/journal/unlocks/:unlockId/withdraw` | unlock requests, sent by the Teacher and decided by the Head Teacher |
+| `POST /api/plans/items/:itemId/clear` | lesson plans |
+| `POST /api/plans/journals/:journalId/carried/:itemId/place` | lesson plans |
+| `POST /api/plans/journals/:journalId/copy` | lesson plans |
+| `POST /api/plans/journals/:journalId/items` | lesson plans |
+| `POST /api/plans/journals/:journalId/master-keep` | lesson plans |
+| `POST /api/plans/journals/:journalId/master-take` | lesson plans |
+| `POST /api/plans/journals/:journalId/not-covered/:itemId/carry` | lesson plans |
+| `POST /api/plans/journals/:journalId/not-covered/:itemId/drop` | plan requests and the plan windows they depend on |
+| `POST /api/plans/journals/:journalId/not-covered/:itemId/merge` | lesson plans |
+| `POST /api/plans/journals/:journalId/requests` | plan requests and the plan windows they depend on |
+| `POST /api/plans/journals/:journalId/requests/prepared` | plan requests and the plan windows they depend on |
+| `POST /api/plans/journals/:journalId/requests/prepared/decide` | plan requests and the plan windows they depend on |
+| `POST /api/plans/journals/:journalId/separate` | lesson plans |
+| `POST /api/plans/journals/:journalId/share` | lesson plans |
+| `POST /api/plans/masters` | master plans of the Head Teacher and the Senior Head Teacher |
+| `POST /api/plans/masters/:masterId/archive` | master plans of the Head Teacher and the Senior Head Teacher |
+| `POST /api/plans/masters/:masterId/items` | master plans of the Head Teacher and the Senior Head Teacher |
+| `POST /api/plans/masters/:masterId/items/:itemId/remove` | master plans of the Head Teacher and the Senior Head Teacher |
+| `POST /api/plans/masters/:masterId/restore` | master plans of the Head Teacher and the Senior Head Teacher |
+| `POST /api/plans/requests/:requestId/decide` | plan requests and the plan windows they depend on |
+| `POST /api/plans/requests/:requestId/finish` | plan requests and the plan windows they depend on |
+| `POST /api/plans/requests/:requestId/send` | plan requests and the plan windows they depend on |
+| `POST /api/plans/requests/decide-event` | plan requests and the plan windows they depend on |
+| `POST /api/results/early-warning/handled` | the early-warning list |
+| `PUT /api/journal/comments` | the journal: attendance, works and their totals, numbers, topics, comments |
+| `PUT /api/journal/journals/:journalId/rating/:quarterId/date` | the journal: attendance, works and their totals, numbers, topics, comments |
+| `PUT /api/journal/journals/:journalId/rating/:quarterId/not-held` | the journal: attendance, works and their totals, numbers, topics, comments |
+| `PUT /api/journal/lessons/:lessonId/delivery` | the journal: attendance, works and their totals, numbers, topics, comments |
+| `PUT /api/journal/lessons/:lessonId/homework-given` | the journal: attendance, works and their totals, numbers, topics, comments |
+| `PUT /api/journal/lessons/:lessonId/plan-works/:planWorkId/title` | the journal: attendance, works and their totals, numbers, topics, comments |
+| `PUT /api/journal/lessons/:lessonId/topic` | the journal: attendance, works and their totals, numbers, topics, comments |
+| `PUT /api/journal/lessons/:lessonId/works/:workId/title` | the journal: attendance, works and their totals, numbers, topics, comments |
+| `PUT /api/journal/lessons/:lessonId/works/not-held` | the journal: attendance, works and their totals, numbers, topics, comments |
+| `PUT /api/journal/lessons/:lessonId/works/total` | the journal: attendance, works and their totals, numbers, topics, comments |
+| `PUT /api/plans/items/:itemId` | lesson plans |
+| `PUT /api/plans/items/:itemId/files` | lesson plans |
+| `PUT /api/plans/journals/:journalId/queue` | lesson plans |
+| `PUT /api/plans/masters/:masterId/items/:itemId` | master plans of the Head Teacher and the Senior Head Teacher |
+| `PUT /api/plans/masters/:masterId/order` | master plans of the Head Teacher and the Senior Head Teacher |
 
 ## Limits inside the routes
 

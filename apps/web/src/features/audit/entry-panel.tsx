@@ -19,6 +19,7 @@ import { showEntry } from './audit-api';
 import { codesOf, fieldLabel, fieldsTypeOf } from './field-labels';
 import { formatMoment } from '@/lib/dates';
 import { SECTION_TITLE } from '@/components/ui/control';
+import { withViaKey } from '../../lib/via-key';
 
 /** The name of an action on the screen; an action the list does not hold shows as stored. */
 export function actionName(t: TFunction, action: string): string {
@@ -191,7 +192,11 @@ export function EntryPanel({ entry }: { entry: AuditEntryAnswer }) {
     [t('audit.action'), actionName(t, current.action)],
     [
       t('audit.by'),
-      current.actor === null ? t('audit.system') : (current.actor.name ?? t('audit.unnamed')),
+      withViaKey(
+        t,
+        current.actor === null ? t('audit.system') : (current.actor.name ?? t('audit.unnamed')),
+        current.viaKey,
+      ),
     ],
     ...(current.assignment === null
       ? []
