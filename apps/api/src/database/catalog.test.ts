@@ -66,6 +66,8 @@ const SCHOOL_WIDE_TABLES: Record<string, string> = {
     'The Telegram chat link of a Parent account, which has no branch, written at sign-in before any branch is known; a row holds ids, a Telegram user id and moments (task 11.4, pull request #298).',
   digest_settings:
     "The parents' digest time and quiet hours of the whole school, one row set by the Super Admin (10, The parents' digest; task 11.5, pull request #299). Clock times only.",
+  assistant_settings:
+    "The assistant's switches for the school and its three roles, the daily limit per person and the monthly cap of the whole school, one row set by the Super Admin (02, Assistant; task 11.12, pull request #374). Switches and whole numbers only.",
   digest_frequencies:
     'The digest frequency a Parent account chose; an account has no branch (task 11.5, pull request #299). An id, a frequency and a moment.',
   digests:
@@ -235,6 +237,10 @@ function auditSchoolPartitions(): Record<string, string> {
  * Look first).
  */
 const SECURITY_DEFINER_FUNCTIONS: Record<string, string> = {
+  'assistant_questions_between(uuid,timestamp with time zone,timestamp with time zone)':
+    "The number of questions an account asked the assistant between two moments in every branch, a count asked by the daily limit per person, whose request sees one branch (02, Assistant, Limits; task 11.12, plan of pull request #374).",
+  'assistant_spend_between(timestamp with time zone,timestamp with time zone)':
+    "The sum in micro-dollars of the assistant's model calls of the whole school between two moments, a sum asked by the monthly cap, whose request sees one branch (02, Assistant, Limits; task 11.12, plan of pull request #374).",
   'student_sex_rows_elsewhere(uuid,text)':
     "Whether a student's rows in other branches than the request's hold them, from today on, in a group for the other sex, a yes or no asked by the guard of a sex correction, whose row filter hides the old branch's rows up to an accepted move (05, Group: a group for one sex takes only students of that sex; review of pull request #341, correction 1).",
   'is_parent_account(uuid)':
