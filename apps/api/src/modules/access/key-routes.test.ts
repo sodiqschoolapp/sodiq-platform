@@ -41,15 +41,15 @@ describe('the routes open to integration keys', () => {
     database = await createTestDatabase();
     branch = await insertBranch(database.migrator, 'North');
     // Behind the proxy as on Render, and a limit no walk of every route reaches.
-    app = (await createTestApp({
+    app = await createTestApp({
       database: database.app,
       clock,
       config: { trustProxy: true, integrationKeyRequestsPerMinute: 1_000_000 },
-    }));
+    });
     const kit = signInKit(app);
     server = kit.server;
     await app.listen(0, '127.0.0.1');
-    const address = (app.getHttpServer()).address() as AddressInfo;
+    const address = app.getHttpServer().address() as AddressInfo;
     url = `http://127.0.0.1:${String(address.port)}`;
     const people = new ClassesKit(database.migrator);
     const made = await people.person(branch, ['uz'], { first: 'Gulnora', last: 'Saidova' });
