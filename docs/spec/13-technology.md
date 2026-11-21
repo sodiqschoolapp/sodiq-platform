@@ -40,6 +40,7 @@ All result calculations live in one module with no other dependencies. The journ
 - Two-step sign-in for the Super Admin and Academic Vice Principal.
 - Permissions are checked on the server for every request, by role, branch, subjects and own classes. The menu hides what a role cannot use, but the server is what enforces it. The few routes that work without sign-in are listed in Roles and access.
 - Integration keys (Roles and access) are long random secrets, stored only as a hash and sent only over HTTPS in a header. They are limited in requests per minute and checked against the named person's rights on every request.
+- The assistant (Roles and access) runs inside the person's session and reaches the platform only through the actions open to it for the person's role, checked as every other request. The key of the language model is a secret of the server, never sent to a browser. Fields that never go to the model are listed in Roles and access.
 - Every change to timetable, journal, results, people and settings is written to an audit log that cannot be edited: who, when, old value, new value.
 - Personal data is encrypted in transit and at rest. Passport and birth certificate numbers and medical data are shown only to roles that need them, and each viewing is logged.
 - Parents see only their own children.
@@ -75,7 +76,8 @@ Prices for Release 1, read on each provider's own pricing page on 3 October 2026
 | UptimeRobot | Free | Free | $0 |
 | Resend | Free, 3,000 emails a month | Free | $0 |
 | GitHub | Team, 1 user | $4 per user | $4 |
-| **Total** |  |  | **about $231 to $316** |
+| Google Gemini API | Paid plan, pay per use, Frankfurt region where the model is offered; the model chosen by the test of the first assistant task | About $2 per million tokens in and $10 to $12 out for a middle model (November 2026; read on Google's pricing page when the model is chosen) | at most $300: the monthly cap (owner, 21 November 2026) |
+| **Total** |  |  | **about $231 to $316, and the assistant up to its cap of $300** |
 
 Servers of 2 CPU and 4 GB cost $85 each instead of $25, which adds $120 a month. Later or optional: Sentry Team at $29 a month ($26 if paid yearly), Resend Pro at $20 a month for 50,000 emails, and AG Grid Enterprise at $999 once per developer.
 
