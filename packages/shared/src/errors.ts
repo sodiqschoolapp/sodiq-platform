@@ -1326,6 +1326,24 @@ export const ERROR_CODES = [
   'integration_key_https_required',
   /** Task 10.10: Tutor work (Ma'naviyat soati, the Homework slot) is done in this platform, never through a key. */
   'integration_key_tutor_lesson',
+  /** Task 11.12: the assistant is switched off for the school or for the chosen role (`02`, Assistant: "it is off until switched on"). */
+  'assistant_off',
+  /** Task 11.12: the person asked as many questions today as the daily limit allows (`02`, Limits). */
+  'assistant_daily_limit',
+  /** Task 11.12: the school's monthly spending cap of the assistant is reached (`02`, Limits). */
+  'assistant_cap_reached',
+  /** Task 11.12: the language model cannot be reached, or the server has none set up (`02`, Limits). */
+  'assistant_model_unavailable',
+  /** Task 11.12: the role sent is not one the person holds now in this branch, or not one the assistant is given to. */
+  'assistant_role_not_held',
+  /** Task 11.12: the conversation was started in another role; a new conversation is asked in this one. */
+  'assistant_conversation_other_role',
+  /** Task 11.12: the conversation is not archived, so there is nothing to restore. */
+  'assistant_not_archived',
+  /** Task 11.12: a request marked as the assistant's does not carry the server's own mark. */
+  'assistant_call_invalid',
+  /** Task 11.12: the route is not on the assistant's list for the chosen role (`02`: "a list fixed in code for each of the three roles"). */
+  'assistant_route_closed',
   /** Any other refusal that has no code of its own yet. */
   'request_refused',
   /** A fault on the server. The answer says nothing about it; the log does. */

@@ -153,6 +153,63 @@ const environmentSchema = z.object({
       .regex(/^[A-Za-z0-9_-]{16,256}$/)
       .optional(),
   ),
+  // Task 11.12: the assistant's model, Gemini on Vertex AI (plan decision 5: the Frankfurt
+  // region, `13`, Running cost). The project and the service account's credentials are the
+  // owner's, set on Render (`sync: false`), never in the repository (stop-list item 1). Unset:
+  // the assistant says the model cannot be reached and every screen works as before. Only
+  // `GeminiModel` reads the credentials; they are never logged.
+  ASSISTANT_VERTEX_PROJECT: z.preprocess(
+    emptyAsUnset,
+    z
+      .string()
+      .regex(/^[a-z][a-z0-9-]{4,28}[a-z0-9]$/)
+      .optional(),
+  ),
+  ASSISTANT_VERTEX_LOCATION: z.preprocess(
+    emptyAsUnset,
+    z
+      .string()
+      .regex(/^[a-z]+-[a-z]+\d+$/)
+      .default('europe-west3'),
+  ),
+  // The JSON key of the service account, as Google gives it.
+  // Checked here, so that a malformed key stops the start with its message (spec review of the
+  // code, should fix 8), never later inside the model.
+  ASSISTANT_VERTEX_CREDENTIALS: z.preprocess(
+    emptyAsUnset,
+    z
+      .string()
+      .refine((text) => {
+        try {
+          const parsed: unknown = JSON.parse(text);
+          return parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed);
+        } catch {
+          return false;
+        }
+      })
+      .optional(),
+  ),
+  ASSISTANT_MODEL: z.preprocess(
+    emptyAsUnset,
+    z
+      .string()
+      .regex(/^[a-z0-9][a-z0-9.-]{1,98}[a-z0-9]$/)
+      .default('gemini-2.5-flash'),
+  ),
+  // The browser tests only: a scripted model that reads the classes and lists those with no
+  // Tutor (`ScriptedModel`), never a call outside the server. Refused outside the environments
+  // of the demo clock and on the production address, as DEMO_CLOCK is.
+  ASSISTANT_SCRIPTED_MODEL: z.preprocess(emptyAsUnset, z.enum(['0', '1']).optional()),
+  // Micro-dollars per million tokens (plan decision 11; `13`, Running cost: "About $2 per
+  // million tokens in and $10 to $12 out for a middle model").
+  ASSISTANT_PRICE_IN_MICROS: z.preprocess(
+    emptyAsUnset,
+    z.coerce.number().int().min(0).max(1_000_000_000).default(2_000_000),
+  ),
+  ASSISTANT_PRICE_OUT_MICROS: z.preprocess(
+    emptyAsUnset,
+    z.coerce.number().int().min(0).max(1_000_000_000).default(12_000_000),
+  ),
 });
 
 /**
@@ -237,6 +294,20 @@ const PROBLEM: Record<VariableName, string> = {
     'TELEGRAM_BOT_TOKEN must be the token @BotFather gave (digits, a colon, then letters), or unset',
   TELEGRAM_WEBHOOK_SECRET:
     'TELEGRAM_WEBHOOK_SECRET must be 16 to 256 letters, digits, _ or -, or unset',
+  ASSISTANT_VERTEX_PROJECT:
+    'ASSISTANT_VERTEX_PROJECT must be a Google Cloud project id, and is set with ASSISTANT_VERTEX_CREDENTIALS, or unset',
+  ASSISTANT_VERTEX_LOCATION:
+    'ASSISTANT_VERTEX_LOCATION must be a Google Cloud region, for example europe-west3',
+  ASSISTANT_VERTEX_CREDENTIALS:
+    'ASSISTANT_VERTEX_CREDENTIALS must be the JSON key of a service account, and is set with ASSISTANT_VERTEX_PROJECT, or unset',
+  ASSISTANT_MODEL:
+    'ASSISTANT_MODEL must be the name of a Gemini model, for example gemini-2.5-flash',
+  ASSISTANT_SCRIPTED_MODEL:
+    'ASSISTANT_SCRIPTED_MODEL must be 0 or 1, and 1 only for the browser tests (SENTRY_ENVIRONMENT test or development, never the production address)',
+  ASSISTANT_PRICE_IN_MICROS:
+    'ASSISTANT_PRICE_IN_MICROS must be a whole number of micro-dollars per million tokens in',
+  ASSISTANT_PRICE_OUT_MICROS:
+    'ASSISTANT_PRICE_OUT_MICROS must be a whole number of micro-dollars per million tokens out',
 };
 
 export interface AppConfig {
@@ -274,6 +345,26 @@ export interface AppConfig {
   parentBotUsername: string | null;
   /** Task 11.4: the school's Telegram bot; undefined while the owner has not set it. */
   telegram: TelegramConfig | undefined;
+  /** Task 11.12: the assistant's model and its prices. */
+  assistant: AssistantConfig;
+}
+
+export interface AssistantConfig {
+  /** Vertex AI; undefined while the owner has not set it: the model is unavailable. */
+  vertex:
+    | {
+        project: string;
+        location: string;
+        /** The service account's JSON key. Only `GeminiModel` reads it. Never logged. */
+        credentials: string;
+      }
+    | undefined;
+  model: string;
+  /** The browser tests only: the scripted model in place of Gemini. */
+  scripted: boolean;
+  /** Micro-dollars per million tokens. */
+  priceInMicros: number;
+  priceOutMicros: number;
 }
 
 export interface TelegramConfig {
@@ -390,6 +481,24 @@ export function loadConfig(environment: Record<string, string | undefined>): App
   ) {
     wrong.push('DEMO_CLOCK');
   }
+  if (
+    data.ASSISTANT_SCRIPTED_MODEL === '1' &&
+    (!DEMO_CLOCK_ENVIRONMENTS.includes(data.SENTRY_ENVIRONMENT) ||
+      new URL(data.WEB_ORIGIN).origin === PRODUCTION_WEB_ORIGIN)
+  ) {
+    wrong.push('ASSISTANT_SCRIPTED_MODEL');
+  }
+  // Task 11.12: the project and the credentials of the assistant's model, both or none.
+  if (
+    (data.ASSISTANT_VERTEX_PROJECT === undefined) !==
+    (data.ASSISTANT_VERTEX_CREDENTIALS === undefined)
+  ) {
+    wrong.push(
+      data.ASSISTANT_VERTEX_PROJECT === undefined
+        ? 'ASSISTANT_VERTEX_PROJECT'
+        : 'ASSISTANT_VERTEX_CREDENTIALS',
+    );
+  }
   if (wrong.length > 0) {
     const problems = wrong.map((name) => PROBLEM[name]);
     throw new ConfigError(`The configuration is not valid: ${problems.join('; ')}.`);
@@ -458,6 +567,21 @@ export function loadConfig(environment: Record<string, string | undefined>): App
             webhookSecret: data.TELEGRAM_WEBHOOK_SECRET,
             webOrigin: data.WEB_ORIGIN,
           },
+    assistant: {
+      vertex:
+        data.ASSISTANT_VERTEX_PROJECT !== undefined &&
+        data.ASSISTANT_VERTEX_CREDENTIALS !== undefined
+          ? {
+              project: data.ASSISTANT_VERTEX_PROJECT,
+              location: data.ASSISTANT_VERTEX_LOCATION,
+              credentials: data.ASSISTANT_VERTEX_CREDENTIALS,
+            }
+          : undefined,
+      model: data.ASSISTANT_MODEL,
+      scripted: data.ASSISTANT_SCRIPTED_MODEL === '1',
+      priceInMicros: data.ASSISTANT_PRICE_IN_MICROS,
+      priceOutMicros: data.ASSISTANT_PRICE_OUT_MICROS,
+    },
   };
 }
 

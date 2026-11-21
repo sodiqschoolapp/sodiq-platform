@@ -1,3 +1,4 @@
+import type { AssistantRole } from '@sodiq/shared';
 import { sql } from 'kysely';
 import type { Transaction } from '../../database/transactions.js';
 import type { Post, Posts } from './request-routing.js';
@@ -60,9 +61,25 @@ export function postsOf(
  */
 export function readerPostsOf(
   holders: readonly { accountId: string; post: Post }[],
-  reader: { readonly accountId: string; readonly integrationKeyId?: string | undefined },
+  reader: {
+    readonly accountId: string;
+    readonly integrationKeyId?: string | undefined;
+    readonly assistantRole?: AssistantRole | undefined;
+  },
 ): Posts {
   const posts = postsOf(holders, reader.accountId);
+  if (reader.assistantRole !== undefined) {
+    // Task 11.12 (plan review, must fix 2): through the assistant only the post of the chosen
+    // role counts (`02`, Assistant: "with the person's session and chosen role"); the narrowing
+    // can only remove posts. None of the three roles is a Head Teacher or Senior Head Teacher.
+    return {
+      superAdmin: posts.superAdmin && reader.assistantRole === 'super_admin',
+      academicVicePrincipal:
+        posts.academicVicePrincipal && reader.assistantRole === 'academic_vice_principal',
+      seniorHeadTeacher: false,
+      headTeacher: false,
+    };
+  }
   return reader.integrationKeyId === undefined
     ? posts
     : { ...posts, superAdmin: false, academicVicePrincipal: false };

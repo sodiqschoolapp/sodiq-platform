@@ -99,7 +99,9 @@ describe('the settings page', () => {
       calls.some(
         (call) =>
           call.route.startsWith('GET /api/setup/school-settings') &&
-          !call.route.endsWith('/digest'),
+          !call.route.endsWith('/digest') &&
+          // Task 11.12: the assistant's switches and limits are a section of this page.
+          !call.route.endsWith('/assistant'),
       ),
     ).toBe(false);
   });

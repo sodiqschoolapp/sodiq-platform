@@ -1026,6 +1026,20 @@ export const en = {
     return_outside_year:
       'The date is not in the academic year of this class. A return or a restore is dated today or earlier, on a day of the class’s year: choose a class of the current year.',
     group_transfer_subject: 'That group is of another subject. Choose a group of the same subject.',
+    assistant_off:
+      'The assistant is switched off for the school or for this role. The Super Admin switches it on in School setup, Settings.',
+    assistant_daily_limit:
+      'You have asked as many questions today as the daily limit allows. Ask again tomorrow; every page works as usual.',
+    assistant_cap_reached:
+      'The school’s monthly spending cap of the assistant is reached. Every page works as usual; the Super Admin can raise the cap.',
+    assistant_model_unavailable:
+      'The assistant cannot reach its language model now. Try again later; every page works as usual.',
+    assistant_role_not_held: 'The assistant is not open to this role in this branch.',
+    assistant_conversation_other_role:
+      'This conversation was started in another role. Start a new conversation.',
+    assistant_not_archived: 'This conversation is not archived, so there is nothing to restore.',
+    assistant_call_invalid: 'This request is not one the assistant made.',
+    assistant_route_closed: 'This page is not open to the assistant.',
     request_refused: 'The request was refused. Try again or ask an administrator.',
     already_exists: 'A record of this name already exists here. Choose another name.',
     staff_id_exhausted:
@@ -1247,6 +1261,74 @@ export const en = {
     sent: 'Thank you. Your report was sent.',
     tooMany_one: 'You have sent {{n}} report in the last 24 hours. Try again later.',
     tooMany_other: 'You have sent {{n}} reports in the last 24 hours. Try again later.',
+  },
+  assistant: {
+    refusals: {
+      assistant_off:
+        'The assistant is switched off for the school or for this role. The Super Admin switches it on in School setup, Settings.',
+      assistant_daily_limit:
+        'You have asked as many questions today as the daily limit allows. Ask again tomorrow; every page works as usual.',
+      assistant_cap_reached:
+        'The school’s monthly spending cap of the assistant is reached. Every page works as usual; the Super Admin can raise the cap.',
+      assistant_model_unavailable:
+        'The assistant cannot reach its language model now. Try again later; every page works as usual.',
+    },
+    open: 'Assistant',
+    title: 'Assistant',
+    newConversation: 'New conversation',
+    close: 'Close the assistant',
+    question: 'Your question',
+    placeholder: 'Ask in plain words…',
+    send: 'Send',
+    sending: 'Sending…',
+    empty: 'No conversations yet. Ask a question to start one.',
+    conversations: 'Conversations',
+    readOnly:
+      'This conversation is of another branch or role: it is read only here. Start a new conversation to ask.',
+    read: 'Read: {{what}}',
+    readFailed: '{{what}}: not open to you, or not found',
+    readRefused: 'A read the assistant may not make was not made.',
+    groups: {
+      setup: 'School setup',
+      calendar: 'Calendar and periods',
+      staff: 'Staff',
+      students: 'Students',
+      classes: 'Classes and groups',
+      timetable: 'Timetable',
+      journal: 'Journals',
+      plans: 'Lesson plans',
+      results: 'Results and reports',
+      announcements: 'Announcements',
+      search: 'Search',
+    },
+    settings: {
+      title: 'Assistant',
+      schoolOn: 'Assistant on for the school',
+      roleOn: 'On for the role {{role}}',
+      roles: 'Roles switched on',
+      dailyLimit: 'Questions per person per day',
+      monthlyCap: 'Monthly spending cap, US dollars',
+      spent: 'Spent this month: {{amount}} (model {{model}}).',
+      noModel:
+        'No language model is set up on the server: the assistant says so, and every page works as usual.',
+    },
+    conversationsPage: {
+      title: 'Assistant conversations',
+      titleColumn: 'Conversation',
+      person: 'Person',
+      role: 'Role',
+      branch: 'Branch',
+      lastActivity: 'Last activity',
+      state: 'State',
+      state_active: 'Active',
+      state_archived: 'Archived',
+      emptyTitle: 'No conversations yet',
+      empty: 'The conversations of every person with the assistant appear here.',
+      restore: 'Restore',
+      restoreTitle: 'Restore the conversation?',
+      restoreText: '“{{title}}” comes back to its person’s list for 90 days.',
+      restoredAt: 'Restored at',
+    },
   },
   integrationKeys: {
     title: 'Integration keys',
@@ -1543,6 +1625,7 @@ export const en = {
     forcedDeletesLink: 'Deleted for good',
     feedbackReportsLink: 'Feedback reports',
     integrationKeysLink: 'Integration keys',
+    assistantConversationsLink: 'Assistant conversations',
     systemStatusLink: 'System status',
     branches: {
       title: 'Branches',
@@ -4044,6 +4127,7 @@ export const en = {
       announcements: 'Announcements',
       feedback: 'Feedback',
       integration_keys: 'Integration keys',
+      assistant: 'Assistant',
     },
     scopes: {
       branch: 'This branch',
@@ -4086,6 +4170,7 @@ export const en = {
       journal: 'Journal',
       feedback_report: 'Feedback report',
       integration_key: 'Integration key',
+      assistant_conversation: 'Assistant conversation',
     },
     actions: {
       auth: {
@@ -4132,6 +4217,12 @@ export const en = {
       feedback: {
         handled: 'Feedback marked handled',
         reopened: 'Feedback marked new again',
+      },
+      assistant_settings: {
+        change: 'Assistant settings changed',
+      },
+      assistant_conversation: {
+        restore: 'Assistant conversation restored',
       },
       integration_key: {
         create: 'Integration key created',

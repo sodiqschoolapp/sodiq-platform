@@ -6,6 +6,7 @@ import { HealthController } from './health/health.controller.js';
 import { JobsModule } from './jobs/jobs.module.js';
 import { MailModule } from './mail/mail.module.js';
 import { AccessModule } from './modules/access/access.module.js';
+import { AssistantModule } from './modules/assistant/assistant.module.js';
 import { AuditLogModule } from './modules/audit/audit-log.module.js';
 import { AuditModule } from './modules/audit/audit.module.js';
 import { AuthModule } from './modules/auth/auth.module.js';
@@ -49,6 +50,8 @@ export const SHARED_MODULES = [
   FeedbackModule,
   PortalModule,
   AnnouncementsModule,
+  // Task 11.12: the assistant.
+  AssistantModule,
   // Last: its shutdown hook runs after the others at the same distance, so the
   // reports of a stop leave after the connections closed.
   ReportingModule,

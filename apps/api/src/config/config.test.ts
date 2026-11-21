@@ -47,6 +47,13 @@ describe('loadConfig', () => {
       demoClock: false,
       parentBotUsername: null,
       telegram: undefined,
+      assistant: {
+        vertex: undefined,
+        model: 'gemini-2.5-flash',
+        scripted: false,
+        priceInMicros: 2_000_000,
+        priceOutMicros: 12_000_000,
+      },
     });
   });
 
@@ -102,6 +109,63 @@ describe('loadConfig', () => {
       ['STATUS_UPTIMEROBOT_KEY', 'a key with spaces'],
     ])('refuses %s = %s', (name, value) => {
       expect(problemOf({ ...VALID, [name]: value })).toContain(`${name} must`);
+    });
+  });
+
+  // Task 11.12: the assistant's model (plan decision 5: Vertex AI, the Frankfurt region).
+  describe('the model of the assistant', () => {
+    it('has no model by default, in europe-west3, with the prices of 13 (Running cost)', () => {
+      expect(loadConfig(VALID).assistant).toEqual({
+        vertex: undefined,
+        model: 'gemini-2.5-flash',
+        scripted: false,
+        priceInMicros: 2_000_000,
+        priceOutMicros: 12_000_000,
+      });
+    });
+
+    it('takes the project and the credentials together, never one alone', () => {
+      const both = loadConfig({
+        ...VALID,
+        ASSISTANT_VERTEX_PROJECT: 'sodiq-assistant',
+        ASSISTANT_VERTEX_CREDENTIALS: '{"type":"service_account"}',
+      }).assistant.vertex;
+      expect(both).toEqual({
+        project: 'sodiq-assistant',
+        location: 'europe-west3',
+        credentials: '{"type":"service_account"}',
+      });
+      expect(problemOf({ ...VALID, ASSISTANT_VERTEX_PROJECT: 'sodiq-assistant' })).toContain(
+        'ASSISTANT_VERTEX_CREDENTIALS must',
+      );
+      expect(problemOf({ ...VALID, ASSISTANT_VERTEX_CREDENTIALS: '{}' })).toContain(
+        'ASSISTANT_VERTEX_PROJECT must',
+      );
+    });
+
+    it('refuses credentials that are not a JSON key at the start, with its message', () => {
+      expect(
+        problemOf({
+          ...VALID,
+          ASSISTANT_VERTEX_PROJECT: 'sodiq-assistant',
+          ASSISTANT_VERTEX_CREDENTIALS: 'not json',
+        }),
+      ).toContain('ASSISTANT_VERTEX_CREDENTIALS must');
+    });
+
+    it('refuses the scripted model of the browser tests outside the test and development environments and on the production address', () => {
+      expect(loadConfig({ ...VALID, ASSISTANT_SCRIPTED_MODEL: '1' }).assistant.scripted).toBe(true);
+      expect(
+        problemOf({ ...VALID, ASSISTANT_SCRIPTED_MODEL: '1', SENTRY_ENVIRONMENT: 'production' }),
+      ).toContain('ASSISTANT_SCRIPTED_MODEL must');
+      expect(
+        problemOf({
+          ...VALID,
+          ASSISTANT_SCRIPTED_MODEL: '1',
+          SENTRY_ENVIRONMENT: 'test',
+          WEB_ORIGIN: 'https://app.sodiqschool.uz',
+        }),
+      ).toContain('ASSISTANT_SCRIPTED_MODEL must');
     });
   });
 

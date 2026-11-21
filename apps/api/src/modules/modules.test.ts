@@ -9,6 +9,8 @@ import { createTestApp } from '../testing/create-test-app.js';
 const MODULE_NAMES = [
   'access',
   'announcements',
+  // Task 11.12: the module `assistant` that build plan 11.12 names (plan decision 22).
+  'assistant',
   'audit',
   'auth',
   'classes',

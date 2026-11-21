@@ -714,6 +714,15 @@ const MESSAGE: Record<ErrorCode, string> = {
   integration_key_required: 'This route answers only a request made with an integration key.',
   integration_key_https_required: 'An integration key is sent only over HTTPS.',
   integration_key_tutor_lesson: 'Tutor lessons are not open to integration keys.',
+  assistant_off: 'The assistant is switched off for the school or for this role.',
+  assistant_daily_limit: 'The daily limit of questions to the assistant is reached.',
+  assistant_cap_reached: "The school's monthly spending cap of the assistant is reached.",
+  assistant_model_unavailable: 'The language model of the assistant cannot be reached.',
+  assistant_role_not_held: 'The role is not held now in this branch, or has no assistant.',
+  assistant_conversation_other_role: 'The conversation was started in another role.',
+  assistant_not_archived: 'The conversation is not archived.',
+  assistant_call_invalid: 'The request is not a read of the assistant.',
+  assistant_route_closed: 'This route is not open to the assistant for this role.',
 };
 
 function codeOfStatus(status: number): ErrorCode {

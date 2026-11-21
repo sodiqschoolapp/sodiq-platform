@@ -21,6 +21,7 @@
     "db:codegen": "pnpm --filter @sodiq/api db:codegen",
     "auth:first-account": "turbo run build --filter=@sodiq/api && pnpm --filter @sodiq/api first-account",
     "api:client": "turbo run build --filter=@sodiq/api && pnpm --filter @sodiq/api openapi && pnpm --filter @sodiq/web api:types",
+    "assistant:eval": "pnpm --filter @sodiq/api assistant:eval",
     "security:checklist": "turbo run build --filter=\"./packages/*\" && pnpm --filter @sodiq/api security:checklist",
     "demo:seed": "turbo run build --filter=@sodiq/api && pnpm --filter @sodiq/api demo:build && pnpm --filter @sodiq/api demo:seed"
   },

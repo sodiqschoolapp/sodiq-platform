@@ -481,6 +481,9 @@ export const AUDIT_ACTION_GROUPS = {
     'integration_key.end_date_changed',
     'integration_key.revoke',
   ],
+  // Task 11.12: the assistant's settings (`02`, Limits: "both audited as settings", build plan)
+  // and the restore of an archived conversation by the Super Admin (`02`, Audit).
+  assistant: ['assistant_settings.change', 'assistant_conversation.restore'],
   shows: [
     // Task 8.9: the support view of a student, journal and date (decision 14).
     'journal.support_view',

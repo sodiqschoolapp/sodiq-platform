@@ -2681,3 +2681,4 @@ export {
   type IntegrationKeyRecord,
   type IntegrationKeyState,
 } from './integration-keys.js';
+export * from './assistant.js';

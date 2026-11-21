@@ -148,6 +148,13 @@ export function SetupPage() {
       area: 'integration_keys',
     },
     {
+      // Task 11.12: every conversation of the assistant, archived ones too.
+      key: 'assistantConversations',
+      to: '/assistant-conversations',
+      title: t('setup.assistantConversationsLink'),
+      area: 'monitoring',
+    },
+    {
       key: 'systemStatus',
       to: '/system-status',
       title: t('setup.systemStatusLink'),

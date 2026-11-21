@@ -8765,6 +8765,68 @@ try {
     password: announcementsParent.firstPassword,
   };
 
+  // Task 11.12: a branch of its own with two classes and no Tutor, so the scripted model's list
+  // holds exactly them, for a step of the setup Super Admin's test (the seed holds no fourth Super
+  // Admin, correction 1 of #87), and a Teacher of the branch for assistant.spec.ts. The step switches
+  // the assistant on in the Settings page (it is off until switched on).
+  {
+    const assistantBranch = await insertBranch(migrator, 'Assistant browser test branch');
+    const year = await migrator.transaction().execute(async (transaction) => {
+      const created = await transaction
+        .insertInto('academic_years')
+        .values({
+          branch_id: assistantBranch,
+          start_date: startDate,
+          end_date: isoDate(new Date(yearStart.getTime() + 364 * dayMs)),
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      await transaction
+        .insertInto('quarters')
+        .values(
+          [1, 2, 3, 4].map((number) => ({
+            branch_id: assistantBranch,
+            academic_year_id: created.id,
+            number,
+          })),
+        )
+        .execute();
+      return created;
+    });
+    await migrator
+      .updateTable('academic_years')
+      .set({ status: 'current' })
+      .where('id', '=', year.id)
+      .execute();
+    for (const name of ['Assistant A', 'Assistant B']) {
+      await migrator
+        .insertInto('classes')
+        .values({
+          branch_id: assistantBranch,
+          academic_year_id: year.id,
+          grade: 6,
+          name,
+          language: 'uz',
+          max_size: 24,
+        })
+        .execute();
+    }
+    // A Teacher of the same branch, who sees no assistant (11.14 gives the Teacher one).
+    const assistantTeacher = await create('Bobur', 'Aliyev');
+    await transactions.run([assistantBranch], (transaction) =>
+      assignments.give(transaction, {
+        accountId: assistantTeacher.id,
+        role: 'teacher',
+        branchId: assistantBranch,
+        givenBy: null,
+      }),
+    );
+    seeded.assistantTeacher = {
+      login: assistantTeacher.login,
+      password: assistantTeacher.firstPassword,
+    };
+  }
+
   // Task 11.2: Biology for "7 Seeded" of the portal branch every day from a week ago to a week
   // ahead, at 08:00, and a homework given by hand with a title at the lesson two days ago,
   // checked at yesterday's: the portal shows the week and the homework of Kamron.

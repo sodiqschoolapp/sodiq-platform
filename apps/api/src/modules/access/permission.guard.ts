@@ -13,6 +13,7 @@ import {
   type PermissionTable,
   type Role,
   OWN_CLASS_ROLES,
+  type AssistantRole,
 } from '@sodiq/shared';
 import type { Request } from 'express';
 import { Transactions } from '../../database/transactions.js';
@@ -20,6 +21,8 @@ import { ApiException } from '../../http/api-exception.js';
 import { HeaderPipe } from '../../http/validation.js';
 import { keyActorOf, owedStepsAllowedOn, sessionOf } from '../auth/session.guard.js';
 import { keyRouteOf } from './key-routes.js';
+import { AssistantCalls } from './assistant-calls.js';
+import { AssistantRoutes } from './assistant-routes.check.js';
 import { declarationsOf, type RouteAccess } from './access.decorators.js';
 import { CLASS_SCOPED_AREAS, tutorClassesAt } from './class-scope.js';
 import type { CurrentAssignment } from './current-assignments.js';
@@ -58,6 +61,13 @@ export interface Access {
    * request (decision 6 of pull request #369).
    */
   integrationKeyId?: string;
+  /**
+   * Task 11.12: the chosen role of a read the assistant made as the person; left out otherwise.
+   * The assignments are only those of that role, and a decision a route reads from the
+   * database for the reader keeps to its post (`readerPostsOf`). 11.13 marks the audit
+   * entries of its changes "via assistant" from it.
+   */
+  assistantRole?: AssistantRole;
 }
 
 /** Not on the request object: nothing else can set it. */
@@ -101,6 +111,8 @@ export class PermissionGuard implements CanActivate {
   constructor(
     @Inject(PERMISSION_TABLE) table: PermissionTable,
     private readonly transactions: Transactions,
+    private readonly assistantCalls: AssistantCalls,
+    private readonly assistantRoutes: AssistantRoutes,
   ) {
     // Whatever table was provided: nothing can widen it while the server runs.
     this.table = freezeTable(table);
@@ -116,10 +128,20 @@ export class PermissionGuard implements CanActivate {
         `The route ${context.getClass().name}.${handler.name} has ${String(declarations.length)} access declarations; it needs exactly one.`,
       );
     }
+    const request = context.switchToHttp().getRequest<Request>();
+    // Task 11.12 (plan review, must fix 1): a read the assistant makes as the person is decided
+    // before every kind of declaration, the public routes and the key requests included. It
+    // reaches only a route on the list of its chosen role, with only that role's assignments:
+    // the mark can only narrow what the session may do (build plan 11.12, approved by the owner:
+    // "through the assistant a person does only what their chosen role already allows, on the
+    // actions of the list").
+    const assistantRole = this.assistantCalls.roleOf(request.headers);
+    if (assistantRole !== undefined) {
+      return this.assistantRead(context, access, request, assistantRole);
+    }
     if (access.kind === 'public') {
       return true;
     }
-    const request = context.switchToHttp().getRequest<Request>();
     // Task 10.10 (decision 3 of pull request #369, Look first): a request made through a key
     // acts for its person with only their Teacher, Head Teacher and Senior Head Teacher
     // assignments, read by `SessionGuard` for this request; the route of the key itself
@@ -187,6 +209,33 @@ export class PermissionGuard implements CanActivate {
   }
 
   /**
+   * A read the assistant makes as the person, for the chosen role (task 11.12): the route on
+   * that role's list, a staff session, and the assignments of that role only.
+   */
+  private async assistantRead(
+    context: ExecutionContext,
+    access: RouteAccess,
+    request: Request,
+    role: AssistantRole,
+  ): Promise<boolean> {
+    if (access.kind !== 'requires' || !this.assistantRoutes.opens(context.getHandler(), role)) {
+      throw new ApiException('assistant_route_closed', 403);
+    }
+    const session = sessionOf(request);
+    if (session === undefined) {
+      throw new Error('The permission guard ran before the session guard.');
+    }
+    if (session.kind === 'parent') {
+      throw new ApiException('permission_denied', 403);
+    }
+    return this.decide(context, access, request, {
+      accountId: session.accountId,
+      assignments: session.assignments.filter((assignment) => assignment.role === role),
+      assistantRole: role,
+    });
+  }
+
+  /**
    * The role and the branch of a `Requires` route, for the account and the assignments of a
    * session or of the person of a key request, alike (task 10.10).
    */
@@ -198,6 +247,7 @@ export class PermissionGuard implements CanActivate {
       accountId: string;
       assignments: readonly CurrentAssignment[];
       integrationKeyId?: string;
+      assistantRole?: AssistantRole;
     },
   ): Promise<boolean> {
     const handler = context.getHandler();
@@ -252,6 +302,7 @@ export class PermissionGuard implements CanActivate {
       assignments,
       permitting: allowing,
       ...(actor.integrationKeyId === undefined ? {} : { integrationKeyId: actor.integrationKeyId }),
+      ...(actor.assistantRole === undefined ? {} : { assistantRole: actor.assistantRole }),
     });
     return true;
   }

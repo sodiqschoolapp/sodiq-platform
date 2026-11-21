@@ -35,5 +35,8 @@ process.env.DEMO_CLOCK = '1';
 process.env.SENTRY_ENVIRONMENT = 'test';
 // Task 11.4: an invented bot token, so that portal.spec.ts can sign launch data as Telegram does.
 process.env.TELEGRAM_BOT_TOKEN = E2E_TELEGRAM_BOT_TOKEN;
+// Task 11.12: the scripted model of the assistant, which never leaves the server (the browser
+// tests have no Google key, and no session sees one).
+process.env.ASSISTANT_SCRIPTED_MODEL = '1';
 await import('../../main.js');
 await import('../../worker.js');

@@ -50,6 +50,12 @@ export const SETUP_PAGES: readonly (IndexedPage & { area?: string; action?: Acti
   // Pull request #361: the Super Admin's feedback reports and system status.
   { titleKey: 'feedbackReports.title', to: '/feedback-reports', area: 'monitoring' },
   { titleKey: 'integrationKeys.title', to: '/integration-keys', area: 'integration_keys' },
+  // Task 11.12: every conversation of the assistant.
+  {
+    titleKey: 'assistant.conversationsPage.title',
+    to: '/assistant-conversations',
+    area: 'monitoring',
+  },
   { titleKey: 'systemStatus.title', to: '/system-status', area: 'monitoring' },
 ];
 

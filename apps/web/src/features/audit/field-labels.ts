@@ -210,6 +210,17 @@ const LABELS: Record<string, Record<string, ParseKeys>> = {
     endsOn: 'integrationKeys.endsOn',
     revokedAt: 'integrationKeys.state_revoked',
   },
+  // Task 11.12: the assistant's settings (an entry with no record, named by its action) and a
+  // conversation's restore.
+  assistant_settings: {
+    schoolOn: 'assistant.settings.schoolOn',
+    rolesOn: 'assistant.settings.roles',
+    dailyLimit: 'assistant.settings.dailyLimit',
+    monthlyCapDollars: 'assistant.settings.monthlyCap',
+  },
+  assistant_conversation: {
+    restoredAt: 'assistant.conversationsPage.restoredAt',
+  },
 };
 
 /**

@@ -147,6 +147,53 @@ export interface AssignmentSubjects {
   valid_until: Timestamp | null;
 }
 
+export interface AssistantConversationRestores {
+  branch_id: string;
+  conversation_id: string;
+  id: Generated<string>;
+  restored_at: Timestamp;
+  restored_by: string;
+}
+
+export interface AssistantConversations {
+  account_id: string;
+  branch_id: string;
+  created_at: Timestamp;
+  id: Generated<string>;
+  role: string;
+  title: string;
+}
+
+export interface AssistantMessages {
+  account_id: string;
+  branch_id: string;
+  content: Json;
+  conversation_id: string;
+  created_at: Timestamp;
+  id: Generated<string>;
+  kind: string;
+  seq: number;
+}
+
+export interface AssistantModelCalls {
+  branch_id: string;
+  cost_micros: Int8;
+  created_at: Timestamp;
+  id: Generated<string>;
+  message_id: string;
+  model: string;
+  tokens_in: number;
+  tokens_out: number;
+}
+
+export interface AssistantSettings {
+  daily_limit: Generated<number>;
+  id: Generated<boolean>;
+  monthly_cap_dollars: Generated<number>;
+  roles_on: Generated<string[]>;
+  school_on: Generated<boolean>;
+}
+
 export interface AuditLog {
   action: string;
   actor_id: string | null;
@@ -2429,6 +2476,11 @@ export interface DB {
   announcements: Announcements;
   assignment_subjects: AssignmentSubjects;
   assignments: Assignments;
+  assistant_conversation_restores: AssistantConversationRestores;
+  assistant_conversations: AssistantConversations;
+  assistant_messages: AssistantMessages;
+  assistant_model_calls: AssistantModelCalls;
+  assistant_settings: AssistantSettings;
   audit_log: AuditLog;
   audit_log_school: AuditLogSchool;
   branch_edit_days: BranchEditDays;

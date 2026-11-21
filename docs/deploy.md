@@ -279,3 +279,15 @@ The owner's steps (stop-list item 1): no session sees the token or the secret. D
 - Grafana Cloud, UptimeRobot, the alerts, request logging, the web app's source maps in Sentry and the daily export to R2: built in 10.2a, set up by the owner with `docs/monitoring.md`; restoring and the monthly drill: `docs/restore.md`. Alerts to Telegram and the sign-in-and-save check: 10.2b. The API's stack traces name TypeScript lines (`--enable-source-maps`; the `.map` files stay on the server); the web app's maps go to Sentry and are never served.
 - The mail service and `RESEND_API_KEY`: 2.3. The R2 token: the first task that stores a file.
 - The solver service on Render: 5.x.
+
+## The assistant's model (task 11.12)
+
+The assistant calls Google Gemini on Vertex AI, in the Frankfurt region (`docs/spec/13-technology.md`, Running cost). The Google Cloud project, its billing and its key are the owner's (stop-list item 1): no session ever sees them. Until they are set, the assistant says that its model cannot be reached and every page works as before.
+
+1. **The Google Cloud project.** Create a project with billing for Vertex AI (a paid plan, so the requests do not train Google's models). Check that the chosen model is offered in `europe-west3`.
+2. **A service account.** Create one with the role "Vertex AI User" and a JSON key. Keep the key like a password.
+3. **The values on Render**, on `sodiq-test-api` first (the worker does not need them): `ASSISTANT_VERTEX_PROJECT` (the project id) and `ASSISTANT_VERTEX_CREDENTIALS` (the whole JSON key, pasted as one value). Optional: `ASSISTANT_VERTEX_LOCATION` (default `europe-west3`), `ASSISTANT_MODEL` (default `gemini-2.5-flash`), `ASSISTANT_PRICE_IN_MICROS` and `ASSISTANT_PRICE_OUT_MICROS` (the model's price per million tokens in micro-dollars; default 2000000 and 12000000). The two required ones go together: one without the other stops the API at start.
+4. **Switch it on.** School setup → Settings → Assistant: the school, the Super Admin role, the daily limit and the cap ($300 at the start).
+5. **The test set.** On your own computer, with the same two values in your `.env`: `pnpm assistant:eval`. It builds the demo school in a test database, asks the 80 instructions of the test set, and prints how many did what was expected, per kind and per language, and the cost per request. Its result chooses the model.
+
+`ASSISTANT_SCRIPTED_MODEL=1` is for the browser tests only; the API refuses it on production and outside the test and development environments.

@@ -50,6 +50,8 @@ const RECORD_TYPES = [
   'feedback_report',
   // Task 10.9: an integration key.
   'integration_key',
+  // Task 11.12: a conversation of the assistant (its restore).
+  'assistant_conversation',
 ] as const;
 
 /** The name of a kind of record; a kind the list does not hold shows as stored. */

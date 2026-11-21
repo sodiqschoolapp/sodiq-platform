@@ -312,7 +312,13 @@ describe('the staff page', () => {
     const dialog = await screen.findByRole('alertdialog');
     expect(within(dialog).getByText(en.people.staff.statusConfirmLeft)).toBeDefined();
     expect(within(dialog).getByText('Akmal Karimov')).toBeDefined();
-    expect(calls.some((call) => call.route.endsWith('/status'))).toBe(false);
+    expect(
+      calls.some(
+        (call) =>
+          call.route.startsWith('/api/people/staff/', call.route.indexOf(' ') + 1) &&
+          call.route.endsWith('/status'),
+      ),
+    ).toBe(false);
     fireEvent.click(
       within(dialog).getByRole('button', { name: en.people.staff.statusConfirmAction }),
     );
@@ -322,7 +328,13 @@ describe('the staff page', () => {
         true,
       );
     });
-    expect(calls.find((call) => call.route.endsWith('/status'))?.body).toEqual({
+    expect(
+      calls.find(
+        (call) =>
+          call.route.startsWith('/api/people/staff/', call.route.indexOf(' ') + 1) &&
+          call.route.endsWith('/status'),
+      )?.body,
+    ).toEqual({
       status: 'left',
       from: '2026-10-30',
     });
@@ -1160,7 +1172,13 @@ describe('the actions of the staff panel', () => {
     expect(within(form).getByLabelText<HTMLSelectElement>(en.people.staff.newStatus).value).toBe(
       'inactive',
     );
-    expect(calls.some((call) => call.route.endsWith('/status'))).toBe(false);
+    expect(
+      calls.some(
+        (call) =>
+          call.route.startsWith('/api/people/staff/', call.route.indexOf(' ') + 1) &&
+          call.route.endsWith('/status'),
+      ),
+    ).toBe(false);
   });
 });
 

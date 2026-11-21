@@ -1006,6 +1006,18 @@ export const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
   'PUT /api/integration-keys/:id/people': { branch: 'none', roles: ['super_admin'] },
   'PUT /api/integration-keys/:id/end-date': { branch: 'none', roles: ['super_admin'] },
   'POST /api/integration-keys/:id/revoke': { branch: 'none', roles: ['super_admin'] },
+  // Task 11.12 (pull request #374; the owner on 21 November 2026): the assistant's panel, the
+  // Super Admin's alone (assistant view); every conversation and its restore (monitoring) and
+  // the switches and limits (school_settings), school-wide (plan decision 3).
+  'GET /api/assistant/status': { branch: 'request', roles: ['super_admin'] },
+  'GET /api/assistant/conversations': { branch: 'request', roles: ['super_admin'] },
+  'GET /api/assistant/conversations/:id': { branch: 'request', roles: ['super_admin'] },
+  'POST /api/assistant/questions': { branch: 'request', roles: ['super_admin'] },
+  'GET /api/assistant/all-conversations': { branch: 'none', roles: ['super_admin'] },
+  'GET /api/assistant/all-conversations/:id': { branch: 'none', roles: ['super_admin'] },
+  'POST /api/assistant/all-conversations/:id/restore': { branch: 'none', roles: ['super_admin'] },
+  'GET /api/setup/school-settings/assistant': { branch: 'none', roles: ['super_admin'] },
+  'PUT /api/setup/school-settings/assistant': { branch: 'none', roles: ['super_admin'] },
   // Task 5.8c: the forced delete of a building, floor or room (forced_deletes).
   'POST /api/setup/buildings/:id/forced-delete': { branch: 'request', roles: ['super_admin'] },
   'POST /api/setup/floors/:id/forced-delete': { branch: 'request', roles: ['super_admin'] },
