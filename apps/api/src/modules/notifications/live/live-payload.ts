@@ -26,6 +26,8 @@ export const livePayloadSchema = z.discriminatedUnion('kind', [
     readAt: z.iso.datetime(),
   }),
   z.object({ kind: z.literal('read_all'), accountId: z.uuid(), readAt: z.iso.datetime() }),
+  // Task 10.11: the tabs of the account read their state again (after a key marked some read).
+  z.object({ kind: z.literal('state'), accountId: z.uuid() }),
 ]);
 
 export type LivePayload = z.infer<typeof livePayloadSchema>;

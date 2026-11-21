@@ -87,3 +87,32 @@ export function firstTier<Holder extends { readonly accountId: string; readonly 
   }
   return [];
 }
+
+/**
+ * The first tier with a holder, as `firstTier`, with the posts by which each account is in it
+ * (task 10.11: a notice names the post by which the sender chose the person). An account that
+ * holds two posts of the tier is told once, for both.
+ */
+export function firstTierHolders<
+  Holder extends { readonly accountId: string; readonly post: Post },
+>(
+  requester: { readonly accountId: string | null; readonly posts: Posts },
+  holders: readonly Holder[],
+  on: RequestOn = {},
+): { accountId: string; for: Post[] }[] {
+  for (const tier of tiersFor(requester.posts, on)) {
+    const found = holders.filter(
+      (holder) => tier.includes(holder.post) && holder.accountId !== requester.accountId,
+    );
+    if (found.length > 0) {
+      const posts = new Map<string, Set<Post>>();
+      for (const holder of found) {
+        posts.set(holder.accountId, (posts.get(holder.accountId) ?? new Set()).add(holder.post));
+      }
+      return [...posts.keys()]
+        .sort()
+        .map((accountId) => ({ accountId, for: [...(posts.get(accountId) ?? [])].sort() }));
+    }
+  }
+  return [];
+}

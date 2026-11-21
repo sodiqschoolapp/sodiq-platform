@@ -153,7 +153,7 @@ function idsOf(sources: ChecklistSources): string[] {
 function keyRoutesOf(sources: ChecklistSources): string[] {
   const lines = ['## Routes open to integration keys', ''];
   lines.push(
-    'A request made with an integration key acts for the person it names, with only their Teacher, Head Teacher and Senior Head Teacher assignments, on these routes only (`02`, Integration keys; task 10.10). Every other route answers a key 403 `integration_key_route_closed` (`KEY_ROUTES`, `apps/api/src/testing/key-route-list.ts`; held exact by `key-routes.test.ts`, which also calls every other route with a key). `GET /api/integration/people` answers a key only, never a session (`@KeyOnly`).',
+    'A request made with an integration key acts for the person it names, with only their Teacher, Head Teacher and Senior Head Teacher assignments, on these routes only (`02`, Integration keys; task 10.10). The person’s notifications (task 10.11) answer a key only the notices sent for those three roles. Every other route answers a key 403 `integration_key_route_closed` (`KEY_ROUTES`, `apps/api/src/testing/key-route-list.ts`; held exact by `key-routes.test.ts`, which also calls every other route with a key). `GET /api/integration/people` answers a key only, never a session (`@KeyOnly`).',
     '',
     '| Route | Part of the list |',
     '| --- | --- |',
@@ -173,7 +173,7 @@ function countsOf(sources: ChecklistSources): string[] {
     '',
     `- Routes of the application: ${String(routes.length)}, each called by the role harness as the 15 roles, an account without a role, a Parent account (task 11.1) and nobody, in the own and in another branch.`,
     `- Without sign-in: ${String(Object.keys(sources.publicRoutes).length)}. For the own account: ${String(routes.filter((listed) => listed === 'any_signed_in' || listed === 'any_signed_in_parent').length)}. The parent portal: ${String(routes.filter((listed) => listed === 'portal').length)}. With a permission of the table: ${String(withRole)}.`,
-    `- Open to integration keys: ${String(Object.keys(sources.keyRoutes).length)} (task 10.10).`,
+    `- Open to integration keys: ${String(Object.keys(sources.keyRoutes).length)} (tasks 10.10 and 10.11).`,
     `- Routes with a limit inside the route: ${String(Object.keys(sources.scopes).length)}.`,
     `- Routes that take an id: ${String(Object.keys(sources.ids).length)}, with ${String(idCount(sources.ids))} ids (${(['branch', 'school', 'own', 'none'] as const).map((kind) => `${kind} ${String(idCount(sources.ids, kind))}`).join(', ')}).`,
     `- Areas of the permission table: ${String(Object.keys(sources.table).length)}.`,

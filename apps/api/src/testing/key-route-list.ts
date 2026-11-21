@@ -14,6 +14,8 @@ const RATING = 'rating';
 const EARLY_WARNING = 'the early-warning list';
 const REPORTS = 'the reports these roles view';
 const KEY_ONLY = 'the key’s own people (KeyOnly), never a session';
+const NOTICES =
+  'the person’s notifications (task 10.11), only those sent for the Teacher, Head Teacher or Senior Head Teacher role';
 
 /** Every route open to keys, with why. */
 export const KEY_ROUTES: Readonly<Record<string, string>> = {
@@ -32,6 +34,7 @@ export const KEY_ROUTES: Readonly<Record<string, string>> = {
   'GET /api/journal/lessons/:lessonId/students/:studentId/history': JOURNAL,
   'GET /api/journal/reminders': JOURNAL,
   'GET /api/journal/unlocks': UNLOCKS,
+  'GET /api/notifications': NOTICES,
   'GET /api/plans': PLANS,
   'GET /api/plans/files/:fileId': PLANS,
   'GET /api/plans/journals/:journalId': PLANS,
@@ -83,6 +86,8 @@ export const KEY_ROUTES: Readonly<Record<string, string>> = {
   'POST /api/plans/journals/:journalId/not-covered/:itemId/drop': PLAN_REQUESTS,
   'POST /api/plans/journals/:journalId/not-covered/:itemId/merge': PLANS,
   'POST /api/plans/journals/:journalId/requests': PLAN_REQUESTS,
+  'POST /api/notifications/:id/read': NOTICES,
+  'POST /api/notifications/read-all': NOTICES,
   'POST /api/plans/journals/:journalId/requests/prepared': PLAN_REQUESTS,
   'POST /api/plans/journals/:journalId/requests/prepared/decide': PLAN_REQUESTS,
   'POST /api/plans/journals/:journalId/separate': PLANS,

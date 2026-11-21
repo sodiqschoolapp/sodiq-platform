@@ -139,6 +139,31 @@ export const CurrentSession = createParamDecorator(
 );
 
 /**
+ * Who reads on an own-account route that is open to keys (task 10.11, the person's
+ * notifications): the account of the session, or the person a key request acts for, with
+ * `throughKey` set. The route decides what a key may read from it.
+ *
+ *     list(@CurrentReader() reader: { accountId: string; throughKey: boolean })
+ */
+export const CurrentReader = createParamDecorator(
+  (_data: unknown, context: ExecutionContext): { accountId: string; throughKey: boolean } => {
+    const request = context.switchToHttp().getRequest<Request>();
+    const actor = KEY_ACTORS.get(request);
+    if (actor !== undefined) {
+      if (actor.person === null) {
+        throw new Error('CurrentReader was used on a key request that names no person.');
+      }
+      return { accountId: actor.person.accountId, throughKey: true };
+    }
+    const session = SESSIONS.get(request);
+    if (session === undefined) {
+      throw new Error('CurrentReader was used on a route that is public.');
+    }
+    return { accountId: session.accountId, throughKey: false };
+  },
+);
+
+/**
  * On every route of the application: no session, no answer, unless the handler
  * is declared `@Public()`. The session and the account are read from the
  * database on every request, so a session that was ended elsewhere stops at

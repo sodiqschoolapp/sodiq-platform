@@ -1,6 +1,8 @@
 import { Inject, Injectable } from '@nestjs/common';
 import {
+  INTEGRATION_KEY_ROLES,
   NOTIFICATION_KINDS,
+  type NoticeRole,
   NOTIFICATION_LIST_LIMIT,
   type Clock,
   type Notification,
@@ -15,7 +17,37 @@ import type { Json } from '../../database/types.generated.js';
 import { ApiException } from '../../http/api-exception.js';
 import { Jobs } from '../../jobs/jobs.service.js';
 import { deliverNotificationsJob } from './deliver.job.js';
-import { notifyLive } from './live/live-payload.js';
+import { chunks, notifyLive } from './live/live-payload.js';
+
+/**
+ * One person a notice goes to, and the role or roles by which the sender chose them (task
+ * 10.11): the post that made them a recipient (the teacher of the lesson, the class Tutor, the
+ * Head Teacher of the subject …). At least one; the database refuses a notice without
+ * (`notifications_for_roles_check`, `notifications_for_roles_required`, 0177).
+ */
+export interface NotificationRecipient {
+  accountId: string;
+  for: readonly NoticeRole[];
+}
+
+/** Each account told for the same role. */
+export function toEach(accountIds: readonly string[], role: NoticeRole): NotificationRecipient[] {
+  return accountIds.map((accountId) => ({ accountId, for: [role] }));
+}
+
+/**
+ * Who reads the notices: the account, and whether through an integration key. Through a key
+ * only the notices sent for a Teacher, Head Teacher or Senior Head Teacher role are read
+ * (`02`, Integration keys: "Their other roles do not count through a key"; task 10.11); a
+ * notice stored before 10.11 names no role and is never read through a key.
+ */
+export interface NoticeReader {
+  accountId: string;
+  throughKey: boolean;
+}
+
+/** The roles whose notices a key reads. */
+const KEY_NOTICE_ROLES: readonly string[] = INTEGRATION_KEY_ROLES;
 
 /** What a later task gives the helper: the event, its data and the people. */
 export interface NewNotification<Kind extends NotificationKind> {
@@ -24,8 +56,11 @@ export interface NewNotification<Kind extends NotificationKind> {
   data: NotificationData<Kind>;
   /** The branch of the event; `null` for an event of the whole school. */
   branchId: string | null;
-  /** The people, by account. Each gets one notification, whatever the order or repeats. */
-  accountIds: readonly string[];
+  /**
+   * The people, by account, each with the roles they were chosen for. Each gets one
+   * notification, whatever the order or repeats; a repeated account's roles are joined.
+   */
+  to: readonly NotificationRecipient[];
 }
 
 /** A row of `notifications` with the name of its branch, as the queries read it. */
@@ -136,7 +171,14 @@ export class Notifications {
       // The values are not repeated: they may hold names.
       throw new Error(`The data of a "${notification.kind}" notification does not fit its kind.`);
     }
-    const accountIds = [...new Set(notification.accountIds.map((id) => id.toLowerCase()))];
+    const rolesOf = new Map<string, Set<NoticeRole>>();
+    for (const recipient of notification.to) {
+      const accountId = recipient.accountId.toLowerCase();
+      const roles = rolesOf.get(accountId) ?? new Set<NoticeRole>();
+      for (const role of recipient.for) roles.add(role);
+      rolesOf.set(accountId, roles);
+    }
+    const accountIds = [...rolesOf.keys()];
     if (accountIds.length === 0) {
       throw new Error('A notification needs at least one account to go to.');
     }
@@ -163,6 +205,8 @@ export class Notifications {
           branch_id: notification.branchId,
           kind: notification.kind,
           data,
+          // An empty list is refused by the database (0177), never stored as "none".
+          for_roles: [...(rolesOf.get(accountId) ?? [])].sort(),
           created_at: now,
         })),
       )
@@ -180,12 +224,15 @@ export class Notifications {
     return ids;
   }
 
-  /** The latest notifications of the account, newest first, and how many are unread. */
-  async list(accountId: string): Promise<NotificationList> {
-    return this.transactions.run([], (transaction) => this.listIn(transaction, accountId));
+  /**
+   * The latest notifications of the reader, newest first, and how many are unread. Through a
+   * key only the notices sent for its roles, in the list and in the count alike.
+   */
+  async list(reader: NoticeReader): Promise<NotificationList> {
+    return this.transactions.run([], (transaction) => this.listIn(transaction, reader));
   }
 
-  async listIn(transaction: Transaction, accountId: string): Promise<NotificationList> {
+  async listIn(transaction: Transaction, reader: NoticeReader): Promise<NotificationList> {
     const rows = await transaction
       .selectFrom('notifications')
       .leftJoin('branches', 'branches.id', 'notifications.branch_id')
@@ -198,7 +245,8 @@ export class Notifications {
         'notifications.created_at',
         'notifications.read_at',
       ])
-      .where('notifications.account_id', '=', accountId)
+      .where('notifications.account_id', '=', reader.accountId)
+      .$if(reader.throughKey, (query) => query.where(keyReadable('notifications.for_roles')))
       .orderBy('notifications.created_at', 'desc')
       .orderBy('notifications.id', 'desc')
       .limit(NOTIFICATION_LIST_LIMIT)
@@ -206,19 +254,22 @@ export class Notifications {
     const unread = await transaction
       .selectFrom('notifications')
       .select((builder) => builder.fn.countAll<string>().as('n'))
-      .where('account_id', '=', accountId)
+      .where('account_id', '=', reader.accountId)
       .where('read_at', 'is', null)
+      .$if(reader.throughKey, (query) => query.where(keyReadable('for_roles')))
       .executeTakeFirstOrThrow();
     return { unreadCount: Number(unread.n), items: rows.map(toItem) };
   }
 
   /**
-   * Marks one notification of the account read. One that is read already
-   * changes nothing; one of another account, or none, is answered as not
-   * found. The other tabs of the person are told in the same transaction.
+   * Marks one notification of the reader read. One that is read already
+   * changes nothing; one of another account, one a key may not read, or none,
+   * is answered as not found and left as it is. The other tabs of the person
+   * are told in the same transaction.
    */
-  async markRead(accountId: string, id: string): Promise<void> {
+  async markRead(reader: NoticeReader, id: string): Promise<void> {
     const now = this.clock.now();
+    const { accountId } = reader;
     await this.transactions.run([], async (transaction) => {
       const marked = await transaction
         .updateTable('notifications')
@@ -226,6 +277,7 @@ export class Notifications {
         .where('id', '=', id)
         .where('account_id', '=', accountId)
         .where('read_at', 'is', null)
+        .$if(reader.throughKey, (query) => query.where(keyReadable('for_roles')))
         .returning('id')
         .executeTakeFirst();
       if (marked !== undefined) {
@@ -242,6 +294,7 @@ export class Notifications {
         .select('id')
         .where('id', '=', id)
         .where('account_id', '=', accountId)
+        .$if(reader.throughKey, (query) => query.where(keyReadable('for_roles')))
         .executeTakeFirst();
       if (own === undefined) {
         throw new ApiException('not_found', 404);
@@ -249,20 +302,41 @@ export class Notifications {
     });
   }
 
-  /** Marks every unread notification of the account read, and tells the other tabs once. */
-  async markAllRead(accountId: string): Promise<void> {
+  /**
+   * Marks every unread notification of the reader read, and tells the other tabs. In a
+   * session: every notice, told once with `read_all`. Through a key: only the notices it
+   * reads, told by their ids (at most `LIVE_CHUNK` a payload, within the size NOTIFY takes)
+   * and then with a fresh state, so a session tab neither marks the others read nor keeps a
+   * count that is too high (task 10.11, decision 8 of pull request #371).
+   */
+  async markAllRead(reader: NoticeReader): Promise<void> {
     const now = this.clock.now();
+    const { accountId } = reader;
     await this.transactions.run([], async (transaction) => {
       const marked = await transaction
         .updateTable('notifications')
         .set({ read_at: now })
         .where('account_id', '=', accountId)
         .where('read_at', 'is', null)
+        .$if(reader.throughKey, (query) => query.where(keyReadable('for_roles')))
         .returning('id')
         .execute();
-      if (marked.length > 0) {
-        await notifyLive(transaction, { kind: 'read_all', accountId, readAt: now.toISOString() });
+      if (marked.length === 0) {
+        return;
       }
+      if (!reader.throughKey) {
+        await notifyLive(transaction, { kind: 'read_all', accountId, readAt: now.toISOString() });
+        return;
+      }
+      for (const ids of chunks(marked.map((row) => row.id))) {
+        await notifyLive(transaction, { kind: 'read', accountId, ids, readAt: now.toISOString() });
+      }
+      await notifyLive(transaction, { kind: 'state', accountId });
     });
   }
+}
+
+/** A notice a key reads: sent for one of its roles. A stored null (before 10.11) never is. */
+function keyReadable(column: 'for_roles' | 'notifications.for_roles') {
+  return sql<boolean>`coalesce(${sql.ref(column)} && ${sql.val([...KEY_NOTICE_ROLES])}::text[], false)`;
 }

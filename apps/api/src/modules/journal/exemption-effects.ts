@@ -5,7 +5,15 @@ import { transactionMoment, type Transaction } from '../../database/transactions
 import { ApiException } from '../../http/api-exception.js';
 import { notFound } from '../setup/setup-refusals.js';
 import { accountOfStaff } from '../access/request-posts.js';
-import type { Notifications } from '../notifications/notifications.service.js';
+import {
+  lessonUnits,
+  teachingRolesOf,
+  teachingRolesTogether,
+} from '../notifications/notice-roles.js';
+import type {
+  NotificationRecipient,
+  Notifications,
+} from '../notifications/notifications.service.js';
 
 /**
  * What a change of exemptions does to the journal (task 8.5, pull request
@@ -621,15 +629,17 @@ export async function toldOf(
     /** What the exemption covers (before and after a change): only lessons it meets are told. */
     readonly scopes: readonly ExemptionScope[];
   },
-): Promise<string[]> {
+): Promise<NotificationRecipient[]> {
   const scopes = input.scopes.map((scope) => ({
     all: scope.allSubjects,
     subjects: [...scope.subjectIds],
     start: scope.startTime ?? '00:00',
     end: scope.endTime ?? '24:00',
   }));
-  const tutors = await sql<{ account_id: string }>`
-    select distinct a.account_id
+  // The class Tutors with their stored post (`tutor` or `class_teacher`); the teachers of the
+  // lessons met as the Teacher or the Tutor of each lesson (task 10.11, review finding 1).
+  const tutors = await sql<{ account_id: string; role: 'tutor' | 'class_teacher' }>`
+    select distinct a.account_id, a.role
     from class_memberships m
     join class_tutors t on t.class_id = m.class_id
     join assignments a on a.id = t.assignment_id
@@ -640,8 +650,8 @@ export async function toldOf(
       and t.valid_from < ((${input.until}::date + 1)::timestamp at time zone b.time_zone)
       and (t.valid_until is null or t.valid_until > (${input.from}::date::timestamp at time zone b.time_zone))
   `.execute(transaction);
-  const teachers = await sql<{ teacher_id: string }>`
-    select distinct l.teacher_id
+  const teachers = await sql<{ teacher_id: string; subject_id: string; class_id: string | null }>`
+    select distinct l.teacher_id, l.subject_id, l.class_id
     from lessons l
     where l.branch_id = ${input.branchId}::uuid
       and l.lesson_date between ${input.from}::date and ${input.until}::date
@@ -668,13 +678,25 @@ export async function toldOf(
         )
       )
   `.execute(transaction);
-  const accounts = new Set(tutors.rows.map((row) => row.account_id));
-  for (const row of teachers.rows) {
+  const to: NotificationRecipient[] = tutors.rows.map((row) => ({
+    accountId: row.account_id,
+    for: [row.role],
+  }));
+  const roles = await teachingRolesOf(
+    transaction,
+    teachers.rows.map((row) => ({
+      subjectId: row.subject_id,
+      classId: row.class_id,
+      holderStaffId: row.teacher_id,
+    })),
+  );
+  for (const [index, row] of teachers.rows.entries()) {
     const account = await accountOfStaff(transaction, row.teacher_id);
-    if (account !== null) accounts.add(account);
+    if (account !== null) to.push({ accountId: account, for: [roles[index] ?? 'teacher'] });
   }
-  accounts.delete(input.actorId);
-  return [...accounts].sort();
+  return to
+    .filter((one) => one.accountId !== input.actorId)
+    .sort((one, other) => one.accountId.localeCompare(other.accountId));
 }
 
 /** The "reopened after exemption" notices: one per teacher and change (`edge/journal`, Locks). */
@@ -689,9 +711,15 @@ export async function noticeReopened(
   },
 ): Promise<void> {
   const byTeacher = new Map<string, Map<string, Set<string>>>();
+  const units = await lessonUnits(
+    transaction,
+    input.reopened.map((one) => one.lessonId),
+  );
+  const staffOf = new Map<string, string | null>();
   for (const one of input.reopened) {
     const account = await accountOfStaff(transaction, one.teacherId);
     if (account === null || account === input.actorId) continue;
+    staffOf.set(account, one.teacherId);
     const students = byTeacher.get(account) ?? new Map<string, Set<string>>();
     const lessons = students.get(one.studentId) ?? new Set<string>();
     lessons.add(one.lessonId);
@@ -710,7 +738,21 @@ export async function noticeReopened(
     await notifications.send(transaction, {
       kind: 'journal.exemption_reopened',
       branchId: input.branchId,
-      accountIds: [account],
+      // The roles by which the teacher holds the lessons reopened (task 10.11).
+      to: [
+        {
+          accountId: account,
+          for: await teachingRolesTogether(
+            transaction,
+            [...lessons].flatMap((id) => {
+              const unit = units.get(id);
+              return unit === undefined
+                ? []
+                : [{ ...unit, holderStaffId: staffOf.get(account) ?? null }];
+            }),
+          ),
+        },
+      ],
       data: { students: named.join(', '), lessons: lessons.size },
     });
   }

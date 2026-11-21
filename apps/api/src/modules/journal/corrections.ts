@@ -1,7 +1,11 @@
 import { sql } from 'kysely';
 import type { Transaction } from '../../database/transactions.js';
 import { accountOfStaff } from '../access/request-posts.js';
-import type { Notifications } from '../notifications/notifications.service.js';
+import { teachingRoleOf, type TaughtUnit } from '../notifications/notice-roles.js';
+import type {
+  NotificationRecipient,
+  Notifications,
+} from '../notifications/notifications.service.js';
 import { journalOwnerOn } from '../timetable/journal-owners.js';
 import { journalRows } from './journal-grid.query.js';
 
@@ -38,7 +42,10 @@ async function studentNames(
   return new Map(rows.map((row) => [row.id, `${row.last_name} ${row.first_name}`.trim()]));
 }
 
-/** The accounts told: the teachers of the lesson or of the journal on the date, never the corrector. */
+/**
+ * The accounts told: the teachers of the lesson or of the journal on the date, never the
+ * corrector, each as the Teacher or the Tutor of the lesson's or journal's unit (task 10.11).
+ */
 async function teachersTold(
   transaction: Transaction,
   input: {
@@ -47,8 +54,10 @@ async function teachersTold(
     readonly date: string;
     readonly lessonTeacherId: string | null;
     readonly correctorId: string;
+    /** The unit of the lesson; read from the journal when not given. */
+    readonly unit?: TaughtUnit;
   },
-): Promise<string[]> {
+): Promise<NotificationRecipient[]> {
   const owner =
     input.journalId === null
       ? null
@@ -57,12 +66,37 @@ async function teachersTold(
     input.lessonTeacherId,
     owner !== null && owner.kind !== 'none' ? owner.staffId : null,
   ];
-  const accounts = new Set<string>();
+  const accounts = new Map<string, string>();
   for (const one of staff) {
+    if (one === null) continue;
     const account = await accountOfStaff(transaction, one);
-    if (account !== null && account !== input.correctorId) accounts.add(account);
+    if (account !== null && account !== input.correctorId && !accounts.has(account)) {
+      accounts.set(account, one);
+    }
   }
-  return [...accounts].sort();
+  if (accounts.size === 0) return [];
+  const unit =
+    input.unit ??
+    (input.journalId === null
+      ? undefined
+      : await transaction
+          .selectFrom('journals')
+          .select(['subject_id as subjectId', 'class_id as classId'])
+          .where('id', '=', input.journalId)
+          .executeTakeFirst());
+  const told: NotificationRecipient[] = [];
+  for (const [accountId, staffId] of [...accounts].sort(([a], [b]) => a.localeCompare(b))) {
+    // The lesson's substitute holds it as a Teacher; its own holder by their post (task 10.11).
+    told.push({
+      accountId,
+      for: [
+        unit === undefined
+          ? 'teacher'
+          : await teachingRoleOf(transaction, { ...unit, holderStaffId: staffId }),
+      ],
+    });
+  }
+  return told;
 }
 
 async function send(
@@ -73,7 +107,7 @@ async function send(
     readonly unit: string;
     readonly date: string;
     readonly reason: string;
-    readonly accounts: readonly string[];
+    readonly accounts: readonly NotificationRecipient[];
     readonly values: readonly CorrectedValue[];
   },
 ): Promise<number> {
@@ -87,7 +121,7 @@ async function send(
     await notifications.send(transaction, {
       kind: 'journal.correction',
       branchId: input.branchId,
-      accountIds: [...input.accounts],
+      to: input.accounts,
       data: {
         unit: input.unit,
         date: input.date,
@@ -156,6 +190,7 @@ export async function noticeCellCorrections(
     date: lesson.date,
     lessonTeacherId: lesson.teacher_id,
     correctorId: input.correctorId,
+    unit: { subjectId: lesson.subject_id, classId: lesson.class_id },
   });
   return send(transaction, notifications, {
     branchId: input.branchId,
@@ -251,6 +286,7 @@ export async function noticeLessonCorrection(
     date: lesson.date,
     lessonTeacherId: lesson.teacher_id,
     correctorId: input.correctorId,
+    unit: { subjectId: lesson.subject_id, classId: lesson.class_id },
   });
   if (accounts.length === 0) return;
   const unit = row?.unitName || '—';
@@ -259,7 +295,7 @@ export async function noticeLessonCorrection(
     await notifications.send(transaction, {
       kind: 'journal.correction_total',
       branchId: input.branchId,
-      accountIds: accounts,
+      to: accounts,
       data: {
         unit,
         date: lesson.date,
@@ -273,7 +309,7 @@ export async function noticeLessonCorrection(
   await notifications.send(transaction, {
     kind: 'journal.correction_lesson',
     branchId: input.branchId,
-    accountIds: accounts,
+    to: accounts,
     data: { unit, date: lesson.date, reason: input.reason },
   });
 }

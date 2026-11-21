@@ -24,7 +24,7 @@ import { ApiException } from '../../http/api-exception.js';
 import type { Access } from '../access/permission.guard.js';
 import { Audit } from '../audit/audit.service.js';
 import { branchOf } from '../classes/classes.service.js';
-import { Notifications } from '../notifications/notifications.service.js';
+import { Notifications, toEach } from '../notifications/notifications.service.js';
 import { loadCalendarSettings } from '../setup/calendar-state.js';
 import { notFound } from '../setup/setup-refusals.js';
 import { absenceSpans } from './absences-read.js';
@@ -1194,14 +1194,14 @@ export class TimetableAbsences {
         kind,
         data: { name: person, startsOn: row.starts_on, endsOn: row.ends_on ?? row.starts_on },
         branchId,
-        accountIds,
+        to: toEach(accountIds, 'academic_vice_principal'),
       });
     } else {
       await this.notifications.send(transaction, {
         kind,
         data: { name: person, startsOn: row.starts_on },
         branchId,
-        accountIds,
+        to: toEach(accountIds, 'academic_vice_principal'),
       });
     }
     return accountIds.length;

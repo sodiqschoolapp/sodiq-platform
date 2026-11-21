@@ -1,3 +1,4 @@
+import { NOTICE_ROLES } from '@sodiq/shared';
 import { sql } from 'kysely';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { Transactions } from '../../database/transactions.js';
@@ -34,6 +35,8 @@ describe('notifications in the database', () => {
     account?: string;
     branch?: string | null;
     readAt?: Date | null;
+    /** Task 10.11: the roles the notice was sent for; `null` leaves the column out. */
+    roles?: string[] | null;
   }): Promise<{ id: string }> {
     return transactions.run([], (transaction) =>
       transaction
@@ -45,6 +48,7 @@ describe('notifications in the database', () => {
           data: sql`'{"text": "A message."}'::jsonb`,
           created_at: MOMENT,
           read_at: fields.readAt ?? null,
+          ...(fields.roles === null ? {} : { for_roles: fields.roles ?? ['teacher'] }),
         })
         .returning('id')
         .executeTakeFirstOrThrow(),
@@ -120,6 +124,76 @@ describe('notifications in the database', () => {
     });
     await expect(insert({ branch: NOBODY })).rejects.toMatchObject({
       code: FOREIGN_KEY_VIOLATION,
+    });
+  });
+
+  // Task 10.11 (0177): every new notice names the roles it was sent for; a notice stored before
+  // names none and keeps its read mark.
+  describe('name the roles they were sent for', () => {
+    it('one or several staff roles', async () => {
+      await expect(insert({ roles: ['teacher'] })).resolves.toHaveProperty('id');
+      await expect(insert({ roles: ['head_teacher', 'tutor'] })).resolves.toHaveProperty('id');
+    });
+
+    it('and refuse a new notice without roles, with none, or with a role that is not of staff', async () => {
+      await expect(insert({ roles: null })).rejects.toMatchObject({ code: CHECK_VIOLATION });
+      for (const roles of [[], ['parent'], ['student'], ['x'], ['teacher', 'Teacher']]) {
+        await expect(insert({ roles }), roles.join(',')).rejects.toMatchObject({
+          code: CHECK_VIOLATION,
+        });
+      }
+    });
+
+    it('with the staff roles of the code', async () => {
+      const found = await sql<{ definition: string }>`
+        select pg_get_constraintdef(oid) as definition from pg_constraint
+        where conrelid = 'public.notifications'::regclass
+          and conname = 'notifications_for_roles_check'
+      `.execute(database.migrator);
+      const names = [...(found.rows[0]?.definition ?? '').matchAll(/'([a-z_]+)'/g)].map(
+        (match) => match[1],
+      );
+      expect(names.sort()).toEqual([...NOTICE_ROLES].sort());
+    });
+
+    it('while a notice stored before them, with none, can still be marked read', async () => {
+      // A row as 0013 left it: written by the owner with the insert trigger off, inside a
+      // transaction of its own that keeps the row.
+      const id = await database.migrator.transaction().execute(async (owner) => {
+        await sql`alter table notifications disable trigger notifications_for_roles_required`.execute(
+          owner,
+        );
+        const row = await owner
+          .insertInto('notifications')
+          .values({
+            account_id: accountId,
+            branch_id: null,
+            kind: 'sample.message',
+            data: sql`'{"text": "Before."}'::jsonb`,
+            created_at: MOMENT,
+          })
+          .returning('id')
+          .executeTakeFirstOrThrow();
+        await sql`alter table notifications enable trigger notifications_for_roles_required`.execute(
+          owner,
+        );
+        return row.id;
+      });
+      await expect(
+        asApp(`update notifications set read_at = '${LATER.toISOString()}' where id = '${id}'`),
+      ).resolves.toBeDefined();
+      const stored = await database.migrator
+        .selectFrom('notifications')
+        .select(['for_roles', 'read_at'])
+        .where('id', '=', id)
+        .executeTakeFirstOrThrow();
+      expect(stored).toEqual({ for_roles: null, read_at: LATER });
+    });
+
+    it('and refuse the application user to change them', async () => {
+      await expect(
+        asApp(`update notifications set for_roles = array['teacher']`),
+      ).rejects.toMatchObject({ code: INSUFFICIENT_PRIVILEGE });
     });
   });
 

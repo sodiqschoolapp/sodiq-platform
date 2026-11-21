@@ -1514,6 +1514,7 @@ export interface Notifications {
   branch_id: string | null;
   created_at: Timestamp;
   data: Json;
+  for_roles: string[] | null;
   id: Generated<string>;
   kind: string;
   read_at: Timestamp | null;

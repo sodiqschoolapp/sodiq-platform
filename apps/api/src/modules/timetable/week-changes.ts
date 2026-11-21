@@ -6,7 +6,9 @@ import {
 } from '@sodiq/shared';
 import { addDays, mondayOf } from '@sodiq/timetable-rules';
 import { transactionMoment, type Transaction } from '../../database/transactions.js';
-import type { Notifications } from '../notifications/notifications.service.js';
+import { teachingRolesTogether, type TaughtUnit } from '../notifications/notice-roles.js';
+import { toEach, type Notifications } from '../notifications/notifications.service.js';
+import type { NoticeRole } from '@sodiq/shared';
 import { storedLessonRows, type StoredLesson } from './stored-lessons.js';
 
 /**
@@ -418,14 +420,15 @@ export async function sendWeekChanges(
     event.kind === 'timetable.exam_changed'
       ? { laterWeeks: changes.laterWeeks }
       : {}),
-    send: (accountId, week) => {
+    send: (accountId, week, roles) => {
       sentTo.add(accountId);
+      const to = [{ accountId, for: roles }];
       switch (event.kind) {
         case 'timetable.exam_changed':
           return notifications.send(transaction, {
             kind: event.kind,
             branchId: snapshot.branchId,
-            accountIds: [accountId],
+            to,
             data: {
               action: event.action,
               title: event.title,
@@ -439,7 +442,8 @@ export async function sendWeekChanges(
             return notifications.send(transaction, {
               kind: 'timetable.substitutions_assigned',
               branchId: snapshot.branchId,
-              accountIds: [accountId],
+              // The substitute holds the lessons as a Teacher (task 10.11, decision 10).
+              to: toEach([accountId], 'teacher'),
               data: {
                 firstDate: event.substitutePeriod.firstDate,
                 lastDate: event.substitutePeriod.lastDate,
@@ -451,21 +455,21 @@ export async function sendWeekChanges(
             return notifications.send(transaction, {
               kind: 'timetable.substitution_assigned',
               branchId: snapshot.branchId,
-              accountIds: [accountId],
+              to: toEach([accountId], 'teacher'),
               data: { date: event.substitute.date, ...week },
             });
           }
           return notifications.send(transaction, {
             kind: event.kind,
             branchId: snapshot.branchId,
-            accountIds: [accountId],
+            to,
             data: week,
           });
         case 'timetable.calendar_changed':
           return notifications.send(transaction, {
             kind: event.kind,
             branchId: snapshot.branchId,
-            accountIds: [accountId],
+            to,
             data: {
               name: event.name,
               firstDate: event.firstDate,
@@ -478,14 +482,14 @@ export async function sendWeekChanges(
           return notifications.send(transaction, {
             kind: event.kind,
             branchId: snapshot.branchId,
-            accountIds: [accountId],
+            to,
             data: { from: event.from, ...week, ...examsOf(event.examsChanged, accountId) },
           });
         case 'timetable.quarters_changed':
           return notifications.send(transaction, {
             kind: event.kind,
             branchId: snapshot.branchId,
-            accountIds: [accountId],
+            to,
             data: { firstDate: event.firstDate, lastDate: event.lastDate, ...week },
           });
         default: {
@@ -493,7 +497,7 @@ export async function sendWeekChanges(
           return notifications.send(transaction, {
             kind: event.kind,
             branchId: snapshot.branchId,
-            accountIds: [accountId],
+            to,
             data: {
               number: String(event.number),
               ...week,
@@ -518,7 +522,8 @@ export async function sendWeekChanges(
       await notifications.send(transaction, {
         kind: event.kind,
         branchId: snapshot.branchId,
-        accountIds: [accountId],
+        // An invigilator told of exams alone, as a Teacher (task 10.11, decision 10).
+        to: toEach([accountId], 'teacher'),
         data: {
           number: String(event.number),
           examsCancelled: exams.map((one) => ({ ...one })),
@@ -543,7 +548,8 @@ export async function sendWeekChanges(
         ? notifications.send(transaction, {
             kind: event.kind,
             branchId: snapshot.branchId,
-            accountIds: [accountId],
+            // An invigilator told of exams alone, as a Teacher (task 10.11, decision 10).
+            to: toEach([accountId], 'teacher'),
             data: {
               name: event.name,
               firstDate: event.firstDate,
@@ -554,7 +560,8 @@ export async function sendWeekChanges(
         : notifications.send(transaction, {
             kind: event.kind,
             branchId: snapshot.branchId,
-            accountIds: [accountId],
+            // An invigilator told of exams alone, as a Teacher (task 10.11, decision 10).
+            to: toEach([accountId], 'teacher'),
             data: { from: event.from, exams: examsData },
           }));
       invigilated += 1;
@@ -571,7 +578,8 @@ export async function sendWeekChanges(
       await notifications.send(transaction, {
         kind: event.kind,
         branchId: snapshot.branchId,
-        accountIds: [accountId],
+        // An invigilator told of exams alone, as a Teacher (task 10.11, decision 10).
+        to: toEach([accountId], 'teacher'),
         data: { action: event.action, title: event.title, date: event.date, invigilation },
       });
       invigilators += 1;
@@ -670,7 +678,16 @@ export async function sendTeacherWeeks(
     readonly afterDiffers: ReadonlySet<string>;
     /** The teachers whose notice shows a second, later week, and its Monday. */
     readonly laterWeeks?: ReadonlyMap<string, string>;
-    readonly send: (accountId: string, week: TeacherWeek) => Promise<unknown>;
+    /**
+     * Sends one teacher's notice. `roles`: the roles by which the teacher holds the lessons
+     * changed in the notice (task 10.11): the Teacher, or the Tutor or Class teacher of a
+     * Tutor lesson, joined.
+     */
+    readonly send: (
+      accountId: string,
+      week: TeacherWeek,
+      roles: readonly NoticeRole[],
+    ) => Promise<unknown>;
   },
 ): Promise<number> {
   const teacherIds = [...input.teachers.keys()];
@@ -727,25 +744,51 @@ export async function sendTeacherWeeks(
       )
       .slice(0, WEEK_LESSONS_MAX);
   };
+  // A lesson's unit from the lesson as compared: a class lesson's one class is its unit.
+  const unitOf = (one: StoredLesson, holderStaffId: string): TaughtUnit => ({
+    holderStaffId,
+    subjectId: one.lesson.subjectId,
+    classId:
+      one.lesson.classIds.length === 1 && one.lesson.classIds[0] === one.lesson.unitId
+        ? one.lesson.unitId
+        : null,
+  });
+  const heldUnits = (teacherId: string): TaughtUnit[] => {
+    const held = (lessons: readonly StoredLesson[], differs: ReadonlySet<string>) =>
+      lessons.filter((one) => one.lesson.teacherIds.includes(teacherId) && differs.has(one.id));
+    const changed = [
+      ...held(input.before, input.beforeDiffers),
+      ...held(input.after, input.afterDiffers),
+    ];
+    const all = [...input.before, ...input.after].filter((one) =>
+      one.lesson.teacherIds.includes(teacherId),
+    );
+    return (changed.length > 0 ? changed : all).map((one) => unitOf(one, teacherId));
+  };
   let count = 0;
   for (const one of notified) {
     const monday = input.teachers.get(one.teacherId);
     if (monday === undefined) continue;
     const later = input.laterWeeks?.get(one.teacherId);
-    await input.send(one.accountId, {
-      weekStart: monday,
-      before: weekOf(input.before, input.beforeDiffers, one.teacherId, monday),
-      after: weekOf(input.after, input.afterDiffers, one.teacherId, monday),
-      ...(later === undefined
-        ? {}
-        : {
-            also: {
-              weekStart: later,
-              before: weekOf(input.before, input.beforeDiffers, one.teacherId, later),
-              after: weekOf(input.after, input.afterDiffers, one.teacherId, later),
-            },
-          }),
-    });
+    const roles = await teachingRolesTogether(transaction, heldUnits(one.teacherId));
+    await input.send(
+      one.accountId,
+      {
+        weekStart: monday,
+        before: weekOf(input.before, input.beforeDiffers, one.teacherId, monday),
+        after: weekOf(input.after, input.afterDiffers, one.teacherId, monday),
+        ...(later === undefined
+          ? {}
+          : {
+              also: {
+                weekStart: later,
+                before: weekOf(input.before, input.beforeDiffers, one.teacherId, later),
+                after: weekOf(input.after, input.afterDiffers, one.teacherId, later),
+              },
+            }),
+      },
+      roles,
+    );
     count += 1;
   }
   return count;

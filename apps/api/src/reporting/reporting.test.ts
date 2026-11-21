@@ -12,6 +12,7 @@ import { JobRunner } from '../jobs/job-runner.js';
 import { Jobs } from '../jobs/jobs.service.js';
 import { LiveListener } from '../modules/notifications/live/listener.js';
 import { LiveSockets } from '../modules/notifications/live/socket-server.js';
+import type { Notifications } from '../modules/notifications/notifications.service.js';
 import { insertBranch } from '../testing/branch-filter-sql.js';
 import { createTestApp } from '../testing/create-test-app.js';
 import { FixedClock } from '../testing/fixed-clock.js';
@@ -251,6 +252,7 @@ describe('the reports of the server', () => {
         { trustProxy: false } as never,
         transactions,
         {} as LiveSockets,
+        {} as Notifications,
       );
       // A port where nothing listens: refused at once.
       await listener.start('postgres://sodiq_app:x@127.0.0.1:1/nothing');

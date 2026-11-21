@@ -23792,7 +23792,8 @@
         },
         "tags": [
           "Notifications"
-        ]
+        ],
+        "x-open-to-integration-keys": true
       }
     },
     "/api/notifications/read-all": {
@@ -23816,7 +23817,8 @@
         },
         "tags": [
           "Notifications"
-        ]
+        ],
+        "x-open-to-integration-keys": true
       }
     },
     "/api/notifications/{id}/read": {
@@ -23851,7 +23853,8 @@
         },
         "tags": [
           "Notifications"
-        ]
+        ],
+        "x-open-to-integration-keys": true
       }
     },
     "/api/setup/branches": {

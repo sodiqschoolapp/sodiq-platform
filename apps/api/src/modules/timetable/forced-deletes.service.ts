@@ -23,7 +23,11 @@ import {
   type StoreRow,
 } from '../audit/forced-deletes.service.js';
 import { branchOf } from '../classes/classes.service.js';
-import { Notifications } from '../notifications/notifications.service.js';
+import { teachingRoleOf } from '../notifications/notice-roles.js';
+import {
+  Notifications,
+  type NotificationRecipient,
+} from '../notifications/notifications.service.js';
 import { lockOpenQuarter, lockOpenQuarters } from '../setup/closed-quarters.js';
 import { notFound } from '../setup/setup-refusals.js';
 import { refuseBlocked } from './day-changes.service.js';
@@ -593,6 +597,7 @@ export class LessonForcedDeletes implements OnModuleInit {
     branchId: string,
     lesson: {
       readonly teacher_id: string | null;
+      readonly subject_id: string;
       readonly class_id: string | null;
       readonly group_id: string | null;
       readonly lesson_date: string;
@@ -603,7 +608,7 @@ export class LessonForcedDeletes implements OnModuleInit {
     const moment = await transactionMoment(transaction);
     const leaders = await transaction
       .selectFrom('assignments')
-      .select('account_id')
+      .select(['account_id', 'role'])
       .where('role', 'in', ['academic_vice_principal', 'principal'])
       .where('branch_id', '=', branchId)
       .where('valid_from', '<=', moment)
@@ -617,16 +622,31 @@ export class LessonForcedDeletes implements OnModuleInit {
             .select(['kind', 'account_id'])
             .where('id', '=', lesson.teacher_id)
             .executeTakeFirst();
-    const accountIds = [
-      ...new Set([
-        ...leaders.map((one) => one.account_id),
-        ...(teacher === undefined || teacher.kind === 'vacancy' || teacher.account_id === null
-          ? []
-          : [teacher.account_id]),
-      ]),
-    ]
-      .filter((one) => one !== access.accountId)
-      .sort();
+    // Each told for the post that chose them: the branch's leaders by their role, the lesson's
+    // teacher as its Teacher or its Tutor (task 10.11).
+    const to: NotificationRecipient[] = [
+      ...leaders.map((one) => ({
+        accountId: one.account_id,
+        for: [
+          one.role === 'principal' ? ('principal' as const) : ('academic_vice_principal' as const),
+        ],
+      })),
+      ...(teacher === undefined || teacher.kind === 'vacancy' || teacher.account_id === null
+        ? []
+        : [
+            {
+              accountId: teacher.account_id,
+              for: [
+                await teachingRoleOf(transaction, {
+                  subjectId: lesson.subject_id,
+                  classId: lesson.class_id,
+                  holderStaffId: lesson.teacher_id,
+                }),
+              ],
+            },
+          ]),
+    ].filter((one) => one.accountId !== access.accountId);
+    const accountIds = [...new Set(to.map((one) => one.accountId))].sort();
     if (accountIds.length === 0) return 0;
     const unit =
       lesson.class_id !== null
@@ -657,7 +677,7 @@ export class LessonForcedDeletes implements OnModuleInit {
       kind,
       data: { unit, date: lesson.lesson_date, start },
       branchId,
-      accountIds,
+      to,
     });
     return accountIds.length;
   }

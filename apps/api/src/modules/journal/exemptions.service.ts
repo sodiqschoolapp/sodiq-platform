@@ -834,14 +834,14 @@ export class Exemptions {
       await this.notifications.send(transaction, {
         kind: 'journal.exemption_granted',
         branchId,
-        accountIds: accounts,
+        to: accounts,
         data: base,
       });
     } else {
       await this.notifications.send(transaction, {
         kind: 'journal.exemption_changed',
         branchId,
-        accountIds: accounts,
+        to: accounts,
         data: { ...base, change },
       });
     }

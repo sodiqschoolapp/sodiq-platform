@@ -19,6 +19,7 @@ import { Transactions } from '../../database/transactions.js';
 import { ApiException } from '../../http/api-exception.js';
 import { HeaderPipe } from '../../http/validation.js';
 import { keyActorOf, owedStepsAllowedOn, sessionOf } from '../auth/session.guard.js';
+import { keyRouteOf } from './key-routes.js';
 import { declarationsOf, type RouteAccess } from './access.decorators.js';
 import { CLASS_SCOPED_AREAS, tutorClassesAt } from './class-scope.js';
 import type { CurrentAssignment } from './current-assignments.js';
@@ -126,6 +127,17 @@ export class PermissionGuard implements CanActivate {
     const keyActor = keyActorOf(request);
     if (keyActor !== undefined) {
       if (access.kind === 'integration_key') {
+        return true;
+      }
+      if (
+        access.kind === 'any_signed_in' &&
+        !access.parent &&
+        keyActor.person !== null &&
+        keyRouteOf(handler) === 'person'
+      ) {
+        // Task 10.11: the person's notifications. `KeyRoutesCheck` keeps every other own-account
+        // route unmarked (`KEY_OWN_NOTICE_ROUTES`); the route reads only the notices of the
+        // person's Teacher, Head Teacher and Senior Head Teacher roles.
         return true;
       }
       if (access.kind !== 'requires' || keyActor.person === null) {

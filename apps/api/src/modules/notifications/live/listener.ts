@@ -6,7 +6,7 @@ import { CONFIG } from '../../../config/config.module.js';
 import type { AppConfig } from '../../../config/config.js';
 import { Transactions } from '../../../database/transactions.js';
 import { reportFault } from '../../../reporting/reporting.js';
-import { readItems, type OwnedItem } from '../notifications.service.js';
+import { Notifications, readItems, type OwnedItem } from '../notifications.service.js';
 import { LIVE_CHANNEL, livePayloadSchema } from './live-payload.js';
 import { LiveSockets, nameOf } from './socket-server.js';
 
@@ -32,6 +32,7 @@ export class LiveListener implements BeforeApplicationShutdown {
     @Inject(CONFIG) private readonly config: AppConfig,
     private readonly transactions: Transactions,
     private readonly sockets: LiveSockets,
+    private readonly notifications: Notifications,
   ) {}
 
   /** Connects and listens. The address of the database of the application unless the tests give theirs. */
@@ -111,6 +112,17 @@ export class LiveListener implements BeforeApplicationShutdown {
             readAt: heard.readAt,
           });
           break;
+        case 'state': {
+          // The tabs are sessions: they read every notice of the account.
+          const state = await this.transactions.run([], (transaction) =>
+            this.notifications.listIn(transaction, {
+              accountId: heard.accountId,
+              throughKey: false,
+            }),
+          );
+          await this.sockets.tell(heard.accountId, NOTIFICATION_MESSAGES.state, state);
+          break;
+        }
       }
     } catch (error) {
       this.logger.error(`A live payload (${heard.kind}) could not be pushed: ${nameOf(error)}`);

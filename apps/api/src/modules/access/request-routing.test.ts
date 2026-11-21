@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { decisionReach, firstTier, type Post, type Posts } from './request-routing.js';
+import {
+  decisionReach,
+  firstTier,
+  firstTierHolders,
+  type Post,
+  type Posts,
+} from './request-routing.js';
 
 /**
  * Task 7.2: who decides a plan request (`02`, "Who approves", "Own
@@ -116,5 +122,29 @@ describe("the routing of an unlock request on a Tutor's lesson (task 8.4, decisi
     const vice = { accountId: 'vice', posts: with_('academic_vice_principal') };
     expect(decisionReach(reader('academic_vice_principal'), vice, tutorLesson)).toBe('none');
     expect(decisionReach(reader('super_admin'), vice, tutorLesson)).toBe('decide');
+  });
+});
+
+// Task 10.11: the deciders told of a request, each with the posts by which they are told.
+describe('the first tier with its posts', () => {
+  it('names each holder once with the posts of the tier, never the requester', () => {
+    const holders = [
+      { accountId: 'b', post: 'senior_head_teacher' as const },
+      { accountId: 'b', post: 'academic_vice_principal' as const },
+      { accountId: 'a', post: 'academic_vice_principal' as const },
+      { accountId: 'c', post: 'super_admin' as const },
+      { accountId: 'teacher', post: 'senior_head_teacher' as const },
+    ];
+    expect(firstTierHolders(teacher, holders)).toEqual([
+      { accountId: 'a', for: ['academic_vice_principal'] },
+      { accountId: 'b', for: ['academic_vice_principal', 'senior_head_teacher'] },
+    ]);
+    expect(firstTierHolders(teacher, holders).map((one) => one.accountId)).toEqual(
+      firstTier(teacher, holders),
+    );
+    expect(
+      firstTierHolders(teacher, [...holders, { accountId: 'h', post: 'head_teacher' as const }]),
+    ).toEqual([{ accountId: 'h', for: ['head_teacher'] }]);
+    expect(firstTierHolders(teacher, [])).toEqual([]);
   });
 });

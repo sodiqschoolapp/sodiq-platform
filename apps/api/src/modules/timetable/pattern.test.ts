@@ -2905,7 +2905,7 @@ describe('the grid of a draft', () => {
     const noticesOf = (accountId: string, branch: string) =>
       t.database.migrator
         .selectFrom('notifications')
-        .select(['kind', 'data', 'branch_id'])
+        .select(['kind', 'data', 'branch_id', 'for_roles'])
         .where('account_id', '=', accountId)
         .where('branch_id', '=', branch)
         .where('kind', '=', 'timetable.draft_taken_over')
@@ -2996,6 +2996,8 @@ describe('the grid of a draft', () => {
             kind: 'timetable.draft_taken_over',
             data: { number: '1', name: adminName },
             branch_id: s.branch,
+            // Task 10.11: told for the post by which they edited the draft.
+            for_roles: ['academic_vice_principal'],
           },
         ]);
         // The earlier holder's next write is refused; what they saved stays.
@@ -3006,6 +3008,27 @@ describe('the grid of a draft', () => {
         );
         expect(gridOf(await grid(s.branch, s.version)).blocks).toEqual([
           expect.objectContaining({ id: a.id, weekday: 2, slotPosition: 1 }),
+        ]);
+      });
+
+      // Task 10.11 (review finding 6 of the plan of #371): the post the holder edited by, at the
+      // lock's stored moment, though they hold it no more.
+      it('tells a holder who has since lost the post for the post held at their last edit, and the take-over passes', async () => {
+        const s = await scene();
+        const assignment = await viceIn(s.branch);
+        const a = await placed(s.branch, s.version, s.rowA, 1, 1);
+        await load.freeEditLock(s.version);
+        gridOf(await move(s.branch, s.version, a.id, 2, 1, t.vicePrincipal));
+        await seenAgo(s.version, 10 * MINUTE);
+        await t.database.migrator
+          .updateTable('assignments')
+          .set({ valid_until: new Date(t.clock.now().getTime() - MINUTE) })
+          .where('id', '=', assignment)
+          .execute();
+        const taken = await takeLock(s.branch, s.version);
+        expect(taken.status, JSON.stringify(taken.body)).toBe(200);
+        expect((await noticesOf(vice, s.branch)).map((one) => one.for_roles)).toEqual([
+          ['academic_vice_principal'],
         ]);
       });
 

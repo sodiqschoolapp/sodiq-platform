@@ -62,6 +62,19 @@ describe('the routes open to integration keys', () => {
     // The person on the key is also the branch's Academic Vice Principal (permission review
     // must-fix 2): through the key that role must not count.
     await kit.giveRole(made.accountId, { role: 'academic_vice_principal', branchId: branch });
+    // Task 10.11 (review finding 12 of the plan of #371): a notice sent for that role, which the
+    // walk shows if it counted on the person's notifications through the key.
+    await database.migrator
+      .insertInto('notifications')
+      .values({
+        account_id: made.accountId,
+        branch_id: branch,
+        kind: 'sample.message',
+        data: sql<string>`'{"text": "For the vice principal."}'::jsonb`,
+        for_roles: ['academic_vice_principal'],
+        created_at: new Date(NOW),
+      })
+      .execute();
     south = await insertBranch(database.migrator, 'South');
     const plain = await kit.completeSession('Zarina', 'Tursunova');
     await kit.giveRole(plain.account.id, { role: 'teacher', branchId: branch });
@@ -115,6 +128,7 @@ describe('the routes open to integration keys', () => {
     for (const route of routes) {
       expect(
         keyRouteFault({
+          name: route.handlerName,
           mark: route.openToKeys,
           declarations: route.access,
           owedSteps: route.allowedBefore,
@@ -130,9 +144,10 @@ describe('the routes open to integration keys', () => {
   it('refuses to open an export, a student’s record, a group transfer, the own account, a public, a portal or a sign-in step route', () => {
     const requires = (area: string, action: string) => [{ kind: 'requires', area, action }];
     const fault = (
-      declarations: { kind: string; area?: string; action?: string }[],
+      declarations: { kind: string; area?: string; action?: string; parent?: boolean }[],
       owedSteps: string[] = [],
-    ) => keyRouteFault({ mark: 'person', declarations, owedSteps });
+      name = 'SomeController.handler',
+    ) => keyRouteFault({ name, mark: 'person', declarations, owedSteps });
     expect(fault(requires('journal', 'export'))).toMatch(/export/);
     for (const area of [
       'students',
@@ -148,11 +163,31 @@ describe('the routes open to integration keys', () => {
     }
     expect(fault([{ kind: 'public' }])).toMatch(/only a route with a permission/);
     expect(fault([{ kind: 'portal' }])).toMatch(/only a route with a permission/);
-    expect(fault([{ kind: 'any_signed_in' }])).toMatch(/only a route with a permission/);
+    // Task 10.11: of the own-account routes, only the person's notifications, by name.
+    expect(fault([{ kind: 'any_signed_in', parent: false }])).toMatch(/own-account route/);
+    expect(
+      fault([{ kind: 'any_signed_in', parent: false }], [], 'AccountController.changePassword'),
+    ).toMatch(/own-account route/);
+    for (const name of [
+      'NotificationsController.list',
+      'NotificationsController.read',
+      'NotificationsController.readAll',
+    ]) {
+      expect(fault([{ kind: 'any_signed_in', parent: false }], [], name), name).toBeUndefined();
+      expect(fault([{ kind: 'any_signed_in', parent: true }], [], name), name).toMatch(/parent/);
+      expect(fault([{ kind: 'any_signed_in', parent: false }], ['second_step'], name)).toMatch(
+        /owes a step/,
+      );
+    }
     expect(fault(requires('journal', 'view'), ['second_step'])).toMatch(/owes a step/);
     expect(fault(requires('journal', 'view'))).toBeUndefined();
     expect(
-      keyRouteFault({ mark: 'key_only', declarations: requires('journal', 'view'), owedSteps: [] }),
+      keyRouteFault({
+        name: 'SomeController.handler',
+        mark: 'key_only',
+        declarations: requires('journal', 'view'),
+        owedSteps: [],
+      }),
     ).toMatch(/KeyOnly/);
   });
 
@@ -217,6 +252,8 @@ describe('the routes open to integration keys', () => {
       if (outcome(byKey) !== outcome(bySession)) {
         differences.push(`${route.name}: key ${outcome(byKey)}, Teacher ${outcome(bySession)}`);
       }
+      // The person's notifications read no branch (task 10.11): another branch changes nothing.
+      if (route.access[0]?.kind === 'any_signed_in') continue;
       const other: Response = await keyed(route.method, path).set(BRANCH_HEADER, south).send({});
       if (other.status !== 403 || errorCode(other) !== 'permission_denied') {
         elsewhere.push(`${route.name}: ${outcome(other)}`);

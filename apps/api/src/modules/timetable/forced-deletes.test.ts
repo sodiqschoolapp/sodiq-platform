@@ -151,7 +151,7 @@ describe('the forced delete of a dated lesson and its restore', () => {
   ) =>
     t.database.migrator
       .selectFrom('notifications')
-      .select(['data', 'branch_id'])
+      .select(['data', 'branch_id', 'for_roles'])
       .where('account_id', '=', accountId)
       .where('kind', '=', kind)
       .execute();
@@ -412,9 +412,22 @@ describe('the forced delete of a dated lesson and its restore', () => {
         {
           branch_id: s.branch,
           data: expect.objectContaining({ date: NEXT_MONDAY, start: '08:00' }) as unknown,
+          // Task 10.11: the teacher of the lesson, as its Teacher.
+          for_roles: ['teacher'],
         },
       ]);
-      expect(await noticesOf(await accountOfAssignment(t.viceAssignment))).toHaveLength(1);
+      expect(
+        (await noticesOf(await accountOfAssignment(t.viceAssignment))).map((one) => one.for_roles),
+      ).toEqual([['academic_vice_principal']]);
+      const principal = await t.database.migrator
+        .selectFrom('assignments')
+        .select('account_id')
+        .where('role', '=', 'principal')
+        .where('branch_id', '=', s.branch)
+        .executeTakeFirstOrThrow();
+      expect((await noticesOf(principal.account_id)).map((one) => one.for_roles)).toEqual([
+        ['principal'],
+      ]);
       expect(await noticesOf(s.otherTeacher.accountId)).toHaveLength(0);
       // The other class's lesson at the same time stays.
       expect(await rowOf((await lessonOf(s, NEXT_MONDAY, s.otherClass)).id)).toBeDefined();

@@ -2,6 +2,19 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 21 November 2026: task 10.11, a person's notifications through an integration key
+
+- Every notice names the roles it was sent for (`notifications.for_roles`, migration `0177`; a check holds the staff roles, an insert trigger refuses a new notice without; old rows stay `null`). `Notifications.send` takes `to: [{ accountId, for }]` at all 52 calls; `notice-roles.test.ts` walks them and holds the list.
+- Lessons, journals and plans tell their holder as `teacher`, or by the class's Tutor post (`tutor`, `class_teacher`) for a subject of a Tutors department (`teachingRolesOf`, `notice-roles.ts`); a substitute as `teacher`; deciders by their tier post (`firstTierHolders`); leaders by their role.
+- `GET /api/notifications`, `POST /api/notifications/read-all` and `/:id/read` are open to keys (`KEY_OWN_NOTICE_ROUTES`, `@CurrentReader()`): only notices sent for Teacher, Head Teacher or Senior Head Teacher; any other is not listed or counted, 404 to mark, left unread. "Mark all" through a key tells the tabs by ids and a `state`.
+
+Left out: the live connection stays closed to keys; there is no notification settings route yet (the own-account refusal is tested on sessions and language).
+
+The next sessions must know:
+
+- A new call of `notifications.send` names the post that chose each person and is added to `SITES` of `notice-roles.test.ts`.
+- A notice about a lesson passes `holderStaffId` to `teachingRolesOf` when the person may be a substitute.
+
 ## 21 November 2026: the integration guide, complete and kept up to date (owner, in chat; not a task of the build plan)
 
 - `docs/integration-guide.md` is now the one file for the developers of a department platform: the address (`https://app.sodiqschool.uz`), the rules of a key, how the journal grid is laid out, the attendance marks, every refusal, seven worked examples, and every operation open to keys with its parameters, request body and answer.

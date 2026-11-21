@@ -1,5 +1,7 @@
 import type { Transaction } from '../../database/transactions.js';
-import { journalRows } from '../journal/journal-grid.query.js';
+import { journalRows, type JournalRow } from '../journal/journal-grid.query.js';
+import { teachingRolesTogether } from '../notifications/notice-roles.js';
+import type { NotificationRecipient } from '../notifications/notifications.service.js';
 import { ownerFactsOf, ownerOn } from '../timetable/journal-owners.js';
 import type { QuarterRef } from './grade-changes.js';
 
@@ -14,7 +16,8 @@ const addDays = (date: string, days: number): string =>
  * the owners of the subject's journals of the year on the days of the quarter
  * up to today, or on its first day when it has not started (`ownerOn`, the one
  * reader of who owns a journal on a day: the acting teacher of a vacancy
- * included, a journal with "no teacher" telling nobody), each account once.
+ * included, a journal with "no teacher" telling nobody), each account once, with the roles
+ * by which it holds those journals (task 10.11).
  */
 export async function weightsNoticeAccounts(
   transaction: Transaction,
@@ -24,7 +27,7 @@ export async function weightsNoticeAccounts(
     readonly quarter: QuarterRef;
     readonly today: string;
   },
-): Promise<string[]> {
+): Promise<NotificationRecipient[]> {
   const { quarter } = input;
   const journals = (
     await journalRows(transaction, input.branchId, { yearId: quarter.academicYearId })
@@ -47,7 +50,7 @@ export async function weightsNoticeAccounts(
       : input.today < quarter.endDate
         ? input.today
         : quarter.endDate;
-  const staffIds = new Set<string>();
+  const staffIds = new Map<string, JournalRow[]>();
   for (const journal of journals) {
     for (let day = quarter.startDate; day <= last; day = addDays(day, 1)) {
       const owner = ownerOn(
@@ -56,15 +59,28 @@ export async function weightsNoticeAccounts(
         facts.out,
         day,
       );
-      if (owner !== null && owner.kind !== 'none') staffIds.add(owner.staffId);
+      if (owner !== null && owner.kind !== 'none') {
+        const held = staffIds.get(owner.staffId) ?? [];
+        if (!held.includes(journal)) held.push(journal);
+        staffIds.set(owner.staffId, held);
+      }
     }
   }
   if (staffIds.size === 0) return [];
   const rows = await transaction
     .selectFrom('staff')
-    .select('account_id')
-    .where('id', 'in', [...staffIds])
+    .select(['id', 'account_id'])
+    .where('id', 'in', [...staffIds.keys()])
     .where('account_id', 'is not', null)
+    .orderBy('id')
     .execute();
-  return [...new Set(rows.flatMap((row) => (row.account_id === null ? [] : [row.account_id])))];
+  const to: NotificationRecipient[] = [];
+  for (const row of rows) {
+    if (row.account_id === null) continue;
+    to.push({
+      accountId: row.account_id,
+      for: await teachingRolesTogether(transaction, staffIds.get(row.id) ?? []),
+    });
+  }
+  return to;
 }

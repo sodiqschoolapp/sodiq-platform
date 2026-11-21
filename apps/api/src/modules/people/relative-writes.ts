@@ -16,7 +16,7 @@ import { ApiException } from '../../http/api-exception.js';
 import { decide } from '../access/permission-check.js';
 import type { Access } from '../access/permission.guard.js';
 import { Audit } from '../audit/audit.service.js';
-import { Notifications } from '../notifications/notifications.service.js';
+import { Notifications, toEach } from '../notifications/notifications.service.js';
 import { notFound } from '../setup/setup-refusals.js';
 import {
   changesBetween,
@@ -202,7 +202,8 @@ export class RelativeWrites {
       kind,
       data,
       branchId: branchOf(access),
-      accountIds: others,
+      // The Academic Vice Principals of the other branches of the relative (task 10.11).
+      to: toEach(others, 'academic_vice_principal'),
     });
   }
 

@@ -219,6 +219,12 @@ export const KEY_OPERATION_TEXTS: Readonly<Record<string, string>> = {
     'The results table of one class in a quarter (Head Teacher, Senior Head Teacher: their subjects).',
   ResultsReportsController_mastery:
     'Subject mastery for a subject in a quarter (Head Teacher, Senior Head Teacher).',
+  NotificationsController_list:
+    'The person’s latest notifications, newest first, and how many are unread: only those sent to them as a Teacher, Head Teacher or Senior Head Teacher. The notices of every branch.',
+  NotificationsController_read:
+    'Mark one notification read. A notification the list does not show through the key answers 404 and stays unread.',
+  NotificationsController_readAll:
+    'Mark read every notification the list shows through the key; the others stay unread.',
 };
 
 /** The sections of the operations, in the order of the guide; each path goes to the first that takes it. */
@@ -265,6 +271,7 @@ const GROUPS: readonly (readonly [string, (path: string) => boolean])[] = [
   ],
   ['Lesson plans: reports', (p) => p.startsWith('/api/plans/reports')],
   ['Results: rating, early warning and reports', (p) => p.startsWith('/api/results')],
+  ['Notifications', (p) => p.startsWith('/api/notifications')],
 ];
 
 const METHODS = ['get', 'put', 'post', 'delete', 'patch'] as const;

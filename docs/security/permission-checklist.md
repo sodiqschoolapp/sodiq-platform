@@ -136,7 +136,7 @@ Neither was done by hand (owner, 29 October 2026, issue #42). In their place: th
 
 - Routes of the application: 545, each called by the role harness as the 15 roles, an account without a role, a Parent account (task 11.1) and nobody, in the own and in another branch.
 - Without sign-in: 5. For the own account: 24. The parent portal: 8. With a permission of the table: 507.
-- Open to integration keys: 95 (task 10.10).
+- Open to integration keys: 98 (tasks 10.10 and 10.11).
 - Routes with a limit inside the route: 158.
 - Routes that take an id: 423, with 870 ids (branch 760, school 79, own 12, none 19).
 - Areas of the permission table: 65.
@@ -209,7 +209,7 @@ Reachable while a step of sign-in is still owed (`STEP_ROUTES`; held exact by `r
 
 ## Routes open to integration keys
 
-A request made with an integration key acts for the person it names, with only their Teacher, Head Teacher and Senior Head Teacher assignments, on these routes only (`02`, Integration keys; task 10.10). Every other route answers a key 403 `integration_key_route_closed` (`KEY_ROUTES`, `apps/api/src/testing/key-route-list.ts`; held exact by `key-routes.test.ts`, which also calls every other route with a key). `GET /api/integration/people` answers a key only, never a session (`@KeyOnly`).
+A request made with an integration key acts for the person it names, with only their Teacher, Head Teacher and Senior Head Teacher assignments, on these routes only (`02`, Integration keys; task 10.10). The person’s notifications (task 10.11) answer a key only the notices sent for those three roles. Every other route answers a key 403 `integration_key_route_closed` (`KEY_ROUTES`, `apps/api/src/testing/key-route-list.ts`; held exact by `key-routes.test.ts`, which also calls every other route with a key). `GET /api/integration/people` answers a key only, never a session (`@KeyOnly`).
 
 | Route | Part of the list |
 | --- | --- |
@@ -228,6 +228,7 @@ A request made with an integration key acts for the person it names, with only t
 | `GET /api/journal/lessons/:lessonId/students/:studentId/history` | the journal: attendance, works and their totals, numbers, topics, comments |
 | `GET /api/journal/reminders` | the journal: attendance, works and their totals, numbers, topics, comments |
 | `GET /api/journal/unlocks` | unlock requests, sent by the Teacher and decided by the Head Teacher |
+| `GET /api/notifications` | the person’s notifications (task 10.11), only those sent for the Teacher, Head Teacher or Senior Head Teacher role |
 | `GET /api/plans` | lesson plans |
 | `GET /api/plans/files/:fileId` | lesson plans |
 | `GET /api/plans/journals/:journalId` | lesson plans |
@@ -269,6 +270,8 @@ A request made with an integration key acts for the person it names, with only t
 | `POST /api/journal/lessons/:lessonId/works/carry` | the journal: attendance, works and their totals, numbers, topics, comments |
 | `POST /api/journal/unlocks/:unlockId/decide` | unlock requests, sent by the Teacher and decided by the Head Teacher |
 | `POST /api/journal/unlocks/:unlockId/withdraw` | unlock requests, sent by the Teacher and decided by the Head Teacher |
+| `POST /api/notifications/:id/read` | the person’s notifications (task 10.11), only those sent for the Teacher, Head Teacher or Senior Head Teacher role |
+| `POST /api/notifications/read-all` | the person’s notifications (task 10.11), only those sent for the Teacher, Head Teacher or Senior Head Teacher role |
 | `POST /api/plans/items/:itemId/clear` | lesson plans |
 | `POST /api/plans/journals/:journalId/carried/:itemId/place` | lesson plans |
 | `POST /api/plans/journals/:journalId/copy` | lesson plans |

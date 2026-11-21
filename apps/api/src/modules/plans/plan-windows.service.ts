@@ -14,6 +14,7 @@ import type { Access } from '../access/permission.guard.js';
 import { Audit } from '../audit/audit.service.js';
 import { branchOf } from '../classes/classes.service.js';
 import { journalRows, staffNames, type JournalRow } from '../journal/journal-grid.query.js';
+import { teachingRolesTogether, type TeachingRole } from '../notifications/notice-roles.js';
 import { Notifications } from '../notifications/notifications.service.js';
 import { lockOpenQuarter } from '../setup/closed-quarters.js';
 import { notFound } from '../setup/setup-refusals.js';
@@ -402,18 +403,26 @@ export class PlanWindowsService {
           ...(requestId === undefined ? {} : { requestId }),
         });
         // `09`: "Teachers are reminded when the window opens" (review decision 20).
-        const accounts = new Set<string>();
+        // Each owner is told for the roles by which they hold their plans' journals (task 10.11).
+        const accounts = new Map<string, Set<TeachingRole>>();
         for (const staffId of new Set(
           owners.flatMap((one) => (one.ownerId === null ? [] : [one.ownerId])),
         )) {
           const account = await accountOfStaff(transaction, staffId);
-          if (account !== null) accounts.add(account);
+          if (account === null) continue;
+          const roles = await teachingRolesTogether(
+            transaction,
+            owners.filter((one) => one.ownerId === staffId).map((one) => one.journal),
+          );
+          const held = accounts.get(account) ?? new Set<TeachingRole>();
+          for (const role of roles) held.add(role);
+          accounts.set(account, held);
         }
-        for (const accountId of [...accounts].sort()) {
+        for (const accountId of [...accounts.keys()].sort()) {
           await this.notifications.send(transaction, {
             kind: existing === undefined ? 'plans.window_opened' : 'plans.window_changed',
             branchId,
-            accountIds: [accountId],
+            to: [{ accountId, for: [...(accounts.get(accountId) ?? [])].sort() }],
             data: { quarter: quarter.number, startDate: input.startDate, endDate: input.endDate },
           });
         }
@@ -546,7 +555,15 @@ export class PlanWindowsService {
           await this.notifications.send(transaction, {
             kind: 'plans.window_extended',
             branchId,
-            accountIds: [account],
+            to: [
+              {
+                accountId: account,
+                for: await teachingRolesTogether(
+                  transaction,
+                  owned.map((one) => one.journal),
+                ),
+              },
+            ],
             data: { quarter: quarter.number, endDate: input.endDate },
           });
         }

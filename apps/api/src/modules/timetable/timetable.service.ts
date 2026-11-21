@@ -2398,6 +2398,32 @@ export class Timetable {
       requestId,
     });
     if (holder !== null) {
+      // Task 10.11 (decision 12 of pull request #371): the holder is told for the posts that
+      // edit the timetable which they held at their last stored edit (`edit_seen_at`), not
+      // what they hold now; the lock stores no post. Editing needs one of them, so the list is
+      // not empty; should it be all the same, the branch's post is named rather than refuse.
+      const seen = version.edit_seen_at ?? moment;
+      const posts = await transaction
+        .selectFrom('assignments')
+        .select('role')
+        .distinct()
+        .where('account_id', '=', holder)
+        .where((eb) =>
+          eb.or([
+            eb.and([eb('role', '=', 'super_admin'), eb('branch_id', 'is', null)]),
+            eb.and([
+              eb('role', '=', 'academic_vice_principal'),
+              eb('branch_id', '=', version.branch_id),
+            ]),
+          ]),
+        )
+        .where('valid_from', '<=', seen)
+        .where((eb) => eb.or([eb('valid_until', 'is', null), eb('valid_until', '>', seen)]))
+        .orderBy('role')
+        .execute();
+      const held = posts.flatMap((one): ('super_admin' | 'academic_vice_principal')[] =>
+        one.role === 'super_admin' || one.role === 'academic_vice_principal' ? [one.role] : [],
+      );
       await this.notifications.send(transaction, {
         kind: 'timetable.draft_taken_over',
         data: {
@@ -2405,7 +2431,7 @@ export class Timetable {
           name: (await accountNames(transaction, [me])).get(me) ?? '',
         },
         branchId: version.branch_id,
-        accountIds: [holder],
+        to: [{ accountId: holder, for: held.length > 0 ? held : ['academic_vice_principal'] }],
       });
     }
     return { ...version, edit_holder_id: me, edit_seen_at: moment };

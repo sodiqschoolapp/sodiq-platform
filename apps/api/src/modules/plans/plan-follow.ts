@@ -12,7 +12,8 @@ import type { JsonValue } from '../../database/types.generated.js';
 import type { Access } from '../access/permission.guard.js';
 import { Audit } from '../audit/audit.service.js';
 import { journalRows, type JournalRow } from '../journal/journal-grid.query.js';
-import { Notifications } from '../notifications/notifications.service.js';
+import { teachingRoleOf, type TeachingRole } from '../notifications/notice-roles.js';
+import { Notifications, toEach } from '../notifications/notifications.service.js';
 import { ownerFactsOf, ownerOn, type OwnerFacts } from '../timetable/journal-owners.js';
 import { lockJournals, movePlaces, planRows, planDateOf, type PlanQuarter } from './plan-read.js';
 import { planWindowsOn, storedWindowOf } from './plan-gate.js';
@@ -823,7 +824,10 @@ export class PlanFollow implements OnModuleInit {
     const now = await transactionMoment(transaction);
     const actor = await this.actorOf(transaction, branchId);
     // Decision 8 as changed on #213: a plan whose items moved, or that got a request.
-    const told = new Map<string, { requested: Set<string>; moved: Set<string> }>();
+    const told = new Map<
+      string,
+      { requested: Set<string>; moved: Set<string>; roles: Set<TeachingRole> }
+    >();
     const counts = new Map<string, { plans: number; requests: number }>();
     for (const one of followed) {
       const { plan, result } = one;
@@ -941,8 +945,11 @@ export class PlanFollow implements OnModuleInit {
         const entry = told.get(person) ?? {
           requested: new Set<string>(),
           moved: new Set<string>(),
+          roles: new Set<TeachingRole>(),
         };
         (requested ? entry.requested : entry.moved).add(plan.journal.unitName);
+        // The plan's owner holds it as its Teacher or its Tutor (task 10.11).
+        entry.roles.add(await teachingRoleOf(transaction, plan.journal));
         told.set(person, entry);
       }
       const key = plan.journal.subjectId;
@@ -1171,7 +1178,10 @@ export class PlanFollow implements OnModuleInit {
   private async tell(
     transaction: Transaction,
     branchId: string,
-    told: ReadonlyMap<string, { requested: Set<string>; moved: Set<string> }>,
+    told: ReadonlyMap<
+      string,
+      { requested: Set<string>; moved: Set<string>; roles: Set<TeachingRole> }
+    >,
     counts: ReadonlyMap<string, { plans: number; requests: number }>,
     now: Date,
   ): Promise<void> {
@@ -1189,7 +1199,7 @@ export class PlanFollow implements OnModuleInit {
         await this.notifications.send(transaction, {
           kind: 'plans.followed',
           branchId,
-          accountIds: [staff.account_id],
+          to: [{ accountId: staff.account_id, for: [...entry.roles].sort() }],
           // Review correction 2: each plan marked "request prepared" or "moved only".
           data: { requested: unitList(entry.requested), moved: unitList(entry.moved) },
         });
@@ -1234,7 +1244,7 @@ export class PlanFollow implements OnModuleInit {
       await this.notifications.send(transaction, {
         kind: 'plans.followed_counts',
         branchId,
-        accountIds: [accountId],
+        to: toEach([accountId], 'head_teacher'),
         data: sum,
       });
     }

@@ -53,6 +53,11 @@ import { journalRows, staffNames } from '../journal/journal-grid.query.js';
 import { subjectOf, unitOf } from '../journal/journal-grid.service.js';
 import { lessonsCounted } from '../journal/lesson-counted.js';
 import { countsOfFacts, lessonStatusFacts } from '../journal/lesson-status.query.js';
+import {
+  answeredUnit,
+  teachingRolesTogether,
+  type TaughtUnit,
+} from '../notifications/notice-roles.js';
 import { Notifications } from '../notifications/notifications.service.js';
 import { carryClosedFrom, carryUnresolved, journalsRunningOn } from '../plans/plan-outcomes.js';
 import { clockOf } from '../plans/plan-read.js';
@@ -590,7 +595,18 @@ export class ClosingService {
             await this.notifications.send(transaction, {
               kind: 'results.closing_reminder',
               branchId,
-              accountIds: [row.account_id],
+              // The roles by which the teacher holds the journals listed (task 10.11).
+              to: [
+                {
+                  accountId: row.account_id,
+                  for: await teachingRolesTogether(
+                    transaction,
+                    own.flatMap((item) =>
+                      item.journal === null ? [] : [answeredUnit(item.journal)],
+                    ),
+                  ),
+                },
+              ],
               data: {
                 quarter: scene.quarter.number,
                 items: own.slice(0, 200).map((item) => ({
@@ -1169,23 +1185,37 @@ export class ClosingService {
     quarterNumber: number,
     lockedNow: readonly ClosingItem[],
   ): Promise<void> {
-    const told = [
-      ...new Set(lockedNow.flatMap((item) => (item.teacher === null ? [] : [item.teacher.id]))),
-    ].sort();
+    // Each teacher with the roles by which they hold the journals locked now (task 10.11).
+    const units = new Map<string, TaughtUnit[]>();
+    for (const item of lockedNow) {
+      if (item.teacher === null) continue;
+      units.set(item.teacher.id, [
+        ...(units.get(item.teacher.id) ?? []),
+        ...(item.journal === null ? [] : [answeredUnit(item.journal)]),
+      ]);
+    }
+    const told = [...units.keys()].sort();
     if (told.length === 0) return;
     const accounts = await transaction
       .selectFrom('staff')
-      .select('account_id')
+      .select(['id', 'account_id'])
       .where('id', 'in', told)
       .where('account_id', 'is not', null)
       .orderBy('id')
       .execute();
-    const accountIds = accounts.flatMap((row) => (row.account_id === null ? [] : [row.account_id]));
-    if (accountIds.length === 0) return;
+    const to = [];
+    for (const row of accounts) {
+      if (row.account_id === null) continue;
+      to.push({
+        accountId: row.account_id,
+        for: await teachingRolesTogether(transaction, units.get(row.id) ?? []),
+      });
+    }
+    if (to.length === 0) return;
     await this.notifications.send(transaction, {
       kind: 'results.quarter_locked_now',
       branchId,
-      accountIds,
+      to,
       data: { quarter: quarterNumber },
     });
   }
@@ -1346,27 +1376,34 @@ export class ClosingService {
             requestId,
           });
           // "The teachers concerned are told": the owner of each journal on the last day.
-          const teachers = await this.ownersOf(transaction, scene, [
+          const owned = await this.ownersOf(transaction, scene, [
             ...new Set(records.map((one) => one.journalId)),
           ]);
+          const teachers = [...owned.keys()].sort();
           const accounts =
             teachers.length === 0
               ? []
               : await transaction
                   .selectFrom('staff')
-                  .select('account_id')
+                  .select(['id', 'account_id'])
                   .where('id', 'in', teachers)
                   .where('account_id', 'is not', null)
                   .orderBy('id')
                   .execute();
-          const accountIds = accounts.flatMap((row) =>
-            row.account_id === null ? [] : [row.account_id],
-          );
-          if (accountIds.length > 0) {
+          // Each owner with the roles by which they hold the journals recalculated (task 10.11).
+          const to = [];
+          for (const row of accounts) {
+            if (row.account_id === null) continue;
+            to.push({
+              accountId: row.account_id,
+              for: await teachingRolesTogether(transaction, owned.get(row.id) ?? []),
+            });
+          }
+          if (to.length > 0) {
             await this.notifications.send(transaction, {
               kind: 'results.recalculated',
               branchId,
-              accountIds,
+              to,
               data: { quarter: scene.quarter.number, version: closing.version },
             });
           }
@@ -1430,8 +1467,8 @@ export class ClosingService {
     transaction: Transaction,
     scene: Scene,
     journalIds: readonly string[],
-  ): Promise<string[]> {
-    if (journalIds.length === 0) return [];
+  ): Promise<Map<string, TaughtUnit[]>> {
+    if (journalIds.length === 0) return new Map();
     const journals = await journalRows(transaction, scene.branchId, { journalIds });
     const facts = await ownerFactsOf(
       transaction,
@@ -1444,7 +1481,7 @@ export class ClosingService {
         subject_id: journal.subjectId,
       })),
     );
-    const owners = new Set<string>();
+    const owners = new Map<string, TaughtUnit[]>();
     for (const journal of journals) {
       const owner = ownerOn(
         facts.runs.get(journal.id) ?? [],
@@ -1452,9 +1489,11 @@ export class ClosingService {
         facts.out,
         scene.quarter.endDate,
       );
-      if (owner !== null && owner.kind !== 'none') owners.add(owner.staffId);
+      if (owner !== null && owner.kind !== 'none') {
+        owners.set(owner.staffId, [...(owners.get(owner.staffId) ?? []), journal]);
+      }
     }
-    return [...owners].sort();
+    return owners;
   }
 
   /** The reopenings of a quarter as the checklist shows them (task 9.2c). */
