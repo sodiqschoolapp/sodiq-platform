@@ -715,7 +715,7 @@ export async function noticeReopened(
     transaction,
     input.reopened.map((one) => one.lessonId),
   );
-  const staffOf = new Map<string, string>();
+  const staffOf = new Map<string, string | null>();
   for (const one of input.reopened) {
     const account = await accountOfStaff(transaction, one.teacherId);
     if (account === null || account === input.actorId) continue;
