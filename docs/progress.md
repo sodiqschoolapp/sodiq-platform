@@ -9,7 +9,7 @@ Newest entry first. Each finished task adds an entry: what was built, what was l
 
 Left out:
 
-- The Teacher (11.14). The test set's change intents still score a page link (11.14 extends the set). Not built here (report of #376): the browser test of a proposal with the scripted model, an API test of the power cut's "keep as held" data choice and of an exam whose check gains a warning before Confirm; the lesson of a group with no class is shown without its name.
+- The Teacher (11.14). The test set's change intents still score a page link (11.14 extends the set). Not built here (report of #376): the browser test of a proposal with the scripted model, an API test of an exam whose check gains a warning before Confirm; the lesson of a group with no class is shown without its name.
 
 The next sessions must know:
 
