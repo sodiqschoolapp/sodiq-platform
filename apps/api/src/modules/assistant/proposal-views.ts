@@ -1,8 +1,4 @@
-import type {
-  AssistantProposal,
-  AssistantProposalState,
-  AssistantStepState,
-} from '@sodiq/shared';
+import type { AssistantProposal, AssistantProposalState, AssistantStepState } from '@sodiq/shared';
 import type { Transaction } from '../../database/transactions.js';
 import type { StoredStep } from './proposals.js';
 
@@ -98,4 +94,3 @@ export function proposalState(
   if (later) return 'superseded';
   return expiresAt.getTime() <= now.getTime() ? 'expired' : 'waiting';
 }
-

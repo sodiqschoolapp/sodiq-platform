@@ -290,7 +290,8 @@ export async function draftStep(
       line.basis.pick === undefined ? undefined : valueOf(line.basis.pick.value, pathArgs, body);
     const pickKey = line.basis.pick?.key ?? 'id';
     if (line.basis.pick !== undefined) {
-      picked = pickValue === undefined ? undefined : findRecord(bodyOf(outcome), pickKey, pickValue);
+      picked =
+        pickValue === undefined ? undefined : findRecord(bodyOf(outcome), pickKey, pickValue);
       if (picked === undefined) {
         return { given: { status: 404, error: 'not_found' } };
       }
@@ -413,7 +414,9 @@ export function basisStill(
 ): boolean {
   if (refusalOf(outcome) !== undefined) return false;
   const record =
-    basis.pick === null ? bodyOf(outcome) : findRecord(bodyOf(outcome), basis.pick.key, basis.pick.value);
+    basis.pick === null
+      ? bodyOf(outcome)
+      : findRecord(bodyOf(outcome), basis.pick.key, basis.pick.value);
   return record !== undefined && fingerprintOf(record, basis.clockKeys) === basis.fingerprint;
 }
 

@@ -1011,12 +1011,30 @@ export const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
   // the switches and limits (school_settings), school-wide (plan decision 3).
   // Task 11.13 (pull request #376): the Academic Vice Principal gains the panel (assistant
   // view, approved by the owner, stop-list item 5), and Confirm and Decline of a proposal.
-  'GET /api/assistant/status': { branch: 'request', roles: ['super_admin', 'academic_vice_principal'] },
-  'GET /api/assistant/conversations': { branch: 'request', roles: ['super_admin', 'academic_vice_principal'] },
-  'GET /api/assistant/conversations/:id': { branch: 'request', roles: ['super_admin', 'academic_vice_principal'] },
-  'POST /api/assistant/questions': { branch: 'request', roles: ['super_admin', 'academic_vice_principal'] },
-  'POST /api/assistant/proposals/:id/confirm': { branch: 'request', roles: ['super_admin', 'academic_vice_principal'] },
-  'POST /api/assistant/proposals/:id/decline': { branch: 'request', roles: ['super_admin', 'academic_vice_principal'] },
+  'GET /api/assistant/status': {
+    branch: 'request',
+    roles: ['super_admin', 'academic_vice_principal'],
+  },
+  'GET /api/assistant/conversations': {
+    branch: 'request',
+    roles: ['super_admin', 'academic_vice_principal'],
+  },
+  'GET /api/assistant/conversations/:id': {
+    branch: 'request',
+    roles: ['super_admin', 'academic_vice_principal'],
+  },
+  'POST /api/assistant/questions': {
+    branch: 'request',
+    roles: ['super_admin', 'academic_vice_principal'],
+  },
+  'POST /api/assistant/proposals/:id/confirm': {
+    branch: 'request',
+    roles: ['super_admin', 'academic_vice_principal'],
+  },
+  'POST /api/assistant/proposals/:id/decline': {
+    branch: 'request',
+    roles: ['super_admin', 'academic_vice_principal'],
+  },
   'GET /api/assistant/all-conversations': { branch: 'none', roles: ['super_admin'] },
   'GET /api/assistant/all-conversations/:id': { branch: 'none', roles: ['super_admin'] },
   'POST /api/assistant/all-conversations/:id/restore': { branch: 'none', roles: ['super_admin'] },

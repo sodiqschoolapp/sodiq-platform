@@ -66,7 +66,7 @@ export class AssistantRoutes implements OnApplicationBootstrap {
   /** The written list of a role, or the list a derived role is narrowed from. */
   private listOf(role: AssistantRole): Readonly<Record<string, AssistantRouteLine>> {
     const source = DERIVED_ASSISTANT_LISTS[role];
-    return (this.lists[role] ?? (source === undefined ? undefined : this.lists[source])) ?? {};
+    return this.lists[role] ?? (source === undefined ? undefined : this.lists[source]) ?? {};
   }
 
   onApplicationBootstrap(): void {

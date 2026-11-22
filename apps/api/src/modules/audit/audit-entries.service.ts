@@ -198,7 +198,13 @@ export class AuditEntries {
       if (row === undefined) {
         throw notFound();
       }
-      const [hiddenView] = await entryAnswers(transaction, branchIds, [row], true, readerOf(access));
+      const [hiddenView] = await entryAnswers(
+        transaction,
+        branchIds,
+        [row],
+        true,
+        readerOf(access),
+      );
       const [entry] = await entryAnswers(transaction, branchIds, [row], false, readerOf(access));
       if (entry === undefined || hiddenView === undefined) {
         throw notFound();

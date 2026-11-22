@@ -53,7 +53,9 @@ function isNever(route: Route): boolean {
 describe('the actions open to the assistant', () => {
   let app: NestExpressApplication;
   let routes: Route[];
-  let linesOf: (role: (typeof ASSISTANT_ROLES)[number]) => Readonly<Record<string, AssistantRouteLine>>;
+  let linesOf: (
+    role: (typeof ASSISTANT_ROLES)[number],
+  ) => Readonly<Record<string, AssistantRouteLine>>;
 
   beforeAll(async () => {
     app = await createTestApp();
@@ -122,9 +124,10 @@ describe('the actions open to the assistant', () => {
     // Build plan 11.14, Done when, kept from here: no journal entry route is on any list.
     for (const name of listed) {
       if (!name.startsWith('GET ')) {
-        expect(name.startsWith('POST /api/journal') || name.startsWith('PUT /api/journal'), name).toBe(
-          false,
-        );
+        expect(
+          name.startsWith('POST /api/journal') || name.startsWith('PUT /api/journal'),
+          name,
+        ).toBe(false);
       }
     }
   });
@@ -153,7 +156,12 @@ describe('the actions open to the assistant', () => {
   it('lists no route that adds a lesson', () => {
     for (const role of ASSISTANT_ROLES) {
       for (const name of Object.keys(linesOf(role))) {
-        expect(/^POST \/api\/timetable\/lessons$|^POST \/api\/timetable\/versions\/:id\/(pattern|lessons)$/.test(name), name).toBe(false);
+        expect(
+          /^POST \/api\/timetable\/lessons$|^POST \/api\/timetable\/versions\/:id\/(pattern|lessons)$/.test(
+            name,
+          ),
+          name,
+        ).toBe(false);
       }
     }
   });
@@ -163,7 +171,11 @@ describe('the actions open to the assistant', () => {
   it('gives the model no field that never goes to it and no warning flag it was not shown', () => {
     const walk = (schema: unknown, where: string, found: string[]): void => {
       if (schema === null || typeof schema !== 'object') return;
-      const record = schema as { properties?: Record<string, unknown>; items?: unknown; anyOf?: unknown[] };
+      const record = schema as {
+        properties?: Record<string, unknown>;
+        items?: unknown;
+        anyOf?: unknown[];
+      };
       for (const [key, value] of Object.entries(record.properties ?? {})) {
         if (isRemovedKey(key)) found.push(`${where}.${key}`);
         walk(value, `${where}.${key}`, found);
@@ -189,7 +201,9 @@ describe('the actions open to the assistant', () => {
         const kept = flags.length === 0 || tool.name.includes('ExamsController');
         expect(kept, `${tool.name}: ${flags.join(', ')}`).toBe(true);
       }
-      const relative = tools.find((one) => one.name.startsWith('propose_') && one.name.includes('Relatives'));
+      const relative = tools.find(
+        (one) => one.name.startsWith('propose_') && one.name.includes('Relatives'),
+      );
       if (role === 'super_admin' || role === 'academic_vice_principal') {
         expect(Object.keys(relative?.parameters.properties.body?.properties ?? {}), role).toEqual([
           'portalAccess',

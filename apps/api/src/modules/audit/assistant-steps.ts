@@ -38,7 +38,11 @@ export async function assistantStepsOf(
   return new Map(
     rows.rows.map((row) => [
       row.step_id,
-      { accountId: row.account_id, conversationId: row.conversation_id, question: row.question ?? '' },
+      {
+        accountId: row.account_id,
+        conversationId: row.conversation_id,
+        question: row.question ?? '',
+      },
     ]),
   );
 }

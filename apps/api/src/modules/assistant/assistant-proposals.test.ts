@@ -144,7 +144,12 @@ describe('the assistant: proposals and Confirm', () => {
     const before = await auditCount();
     const conversation = await proposed([roomEdit(target, 'Hall of maps')]);
     const [proposal] = conversation.proposals;
-    expect(proposal?.state, JSON.stringify(lastResults(scene.model.requests.at(-1) ?? { system: '', turns: [], tools: [] }))).toBe('waiting');
+    expect(
+      proposal?.state,
+      JSON.stringify(
+        lastResults(scene.model.requests.at(-1) ?? { system: '', turns: [], tools: [] }),
+      ),
+    ).toBe('waiting');
     expect(proposal?.steps.map((step) => [step.state, step.recordName])).toEqual([
       ['waiting', target.name],
     ]);
@@ -391,9 +396,9 @@ describe('the assistant: proposals and Confirm', () => {
       await scene.database.migrator
         .updateTable('assignments')
         .set({
-        valid_from: new Date('2026-11-20T08:00:00+05:00'),
-        valid_until: new Date('2026-11-20T09:00:00+05:00'),
-      })
+          valid_from: new Date('2026-11-20T08:00:00+05:00'),
+          valid_until: new Date('2026-11-20T09:00:00+05:00'),
+        })
         .where('account_id', '=', vice.accountId)
         .where('role', '=', 'super_admin')
         .execute();
@@ -642,7 +647,9 @@ describe('the assistant: proposals and Confirm', () => {
     );
     expect(confirmed.status, JSON.stringify(confirmed.body).slice(0, 300)).toBe(200);
     expect(
-      assistantConversationSchema.parse(confirmed.body).proposals[0]?.steps.map((step) => step.state),
+      assistantConversationSchema
+        .parse(confirmed.body)
+        .proposals[0]?.steps.map((step) => step.state),
     ).toEqual(['done']);
     const principal = await scene.kit.completeSession('Jasur', 'Toshev');
     await scene.kit.giveRole(principal.account.id, { role: 'principal', branchId: scene.north });

@@ -64,7 +64,12 @@ const UUID = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 function asSchema(value: unknown): ParameterSchema {
-  return value !== null && typeof value === 'object' ? value : {};
+  if (value === null || typeof value !== 'object') {
+    return {};
+  }
+  // A body of several shapes (`oneOf` of a discriminated union, task 11.13) is read as `anyOf`.
+  const { oneOf, ...rest } = value as ParameterSchema & { oneOf?: unknown };
+  return oneOf === undefined || 'anyOf' in rest ? rest : { ...rest, anyOf: oneOf };
 }
 
 /** The schema the model reads: the type, enum and format; the long patterns are left to the check. */
@@ -179,7 +184,11 @@ function stripSchema(value: unknown, keep: (key: string) => boolean, top: boolea
   if (schema.type === 'array') {
     return { ...schema, items: stripSchema(schema.items, keep, false) };
   }
-  if (schema.type !== 'object' || schema.properties === null || typeof schema.properties !== 'object') {
+  if (
+    schema.type !== 'object' ||
+    schema.properties === null ||
+    typeof schema.properties !== 'object'
+  ) {
     return schema;
   }
   const properties: Record<string, unknown> = {};
@@ -213,7 +222,11 @@ export function requiredFieldsWithheld(route: string): string[] {
       walk(schema.items, `${where}[]`);
       return;
     }
-    if (schema.type !== 'object' || schema.properties === null || typeof schema.properties !== 'object') {
+    if (
+      schema.type !== 'object' ||
+      schema.properties === null ||
+      typeof schema.properties !== 'object'
+    ) {
       return;
     }
     const required = Array.isArray(schema.required) ? schema.required : [];
@@ -235,10 +248,6 @@ export function requiredFieldsWithheld(route: string): string[] {
 export function toolsOf(lines: RoleLines, pages: readonly string[]): ModelTool[] {
   const tools: ModelTool[] = [];
   for (const [route, line] of Object.entries(lines)) {
-    if (line.kind === 'preview') {
-      // A preview is run by the engine with a proposed change, never asked for by the model.
-      continue;
-    }
     const generated = generatedOf(route);
     const parameters: ToolArgumentsSchema = { type: 'object', properties: {}, required: [] };
     for (const parameter of generated.parameters) {
@@ -249,6 +258,23 @@ export function toolsOf(lines: RoleLines, pages: readonly string[]): ModelTool[]
       if (parameter.required) {
         parameters.required.push(parameter.name);
       }
+    }
+    if (line.kind === 'preview') {
+      // A preview or check writes nothing (task 11.13): the model may ask it before proposing,
+      // with the fields that never go to it removed as from a change.
+      if (generated.body !== undefined) {
+        parameters.properties[BODY_ARGUMENT] = modelSchemaOf(
+          stripSchema(generated.body, (key) => !WARNING_FLAGS.includes(key), true),
+          `${route} body`,
+        );
+        parameters.required.push(BODY_ARGUMENT);
+      }
+      tools.push({
+        name: generated.name,
+        description: `Writes nothing: ${line.description}`,
+        parameters,
+      });
+      continue;
     }
     if (line.kind === 'change') {
       const body = changeBodySchemaOf(route, line);
@@ -295,9 +321,6 @@ export function routeOfTool(
   toolName: string,
 ): { route: string; tool: GeneratedTool; line: AssistantRouteLine } | undefined {
   for (const [route, line] of Object.entries(lines)) {
-    if (line.kind === 'preview') {
-      continue;
-    }
     const generated = GENERATED_TOOLS[route];
     if (generated !== undefined && toolNameOf(route, line) === toolName) {
       return { route, tool: generated, line };

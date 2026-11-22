@@ -40,7 +40,14 @@ import {
 } from './model.js';
 import { proposalsOf } from './proposal-views.js';
 import { draftStep, type StoredStep } from './proposals.js';
-import { routeOfTool, SUGGEST_PAGE, toolsOf, urlOf, type RoleLines } from './tools.js';
+import {
+  BODY_ARGUMENT,
+  routeOfTool,
+  SUGGEST_PAGE,
+  toolsOf,
+  urlOf,
+  type RoleLines,
+} from './tools.js';
 
 /** At most this many reads per question; then the model answers without tools (decision 15). */
 export const MAX_READS = 6;
@@ -245,7 +252,13 @@ export class AssistantEngine {
           }
           await this.store(
             start,
-            readContent(call, found.route, lines, drafted.step === undefined ? 0 : 200, drafted.given),
+            readContent(
+              call,
+              found.route,
+              lines,
+              drafted.step === undefined ? 0 : 200,
+              drafted.given,
+            ),
           );
           results.parts.push({ kind: 'result', name: call.name, result: drafted.given });
           continue;
@@ -473,18 +486,21 @@ export class AssistantEngine {
       stored = readContent(call, tool.method + ' ' + tool.path, lines, 0, given, 'too_many_reads');
     } else {
       const route = `${tool.method} ${tool.path}`;
-      const url = urlOf(tool, call.args);
+      const isPreview = found?.line.kind === 'preview';
+      const { [BODY_ARGUMENT]: previewBody, ...pathArgs } = call.args;
+      const url = urlOf(tool, isPreview ? pathArgs : call.args);
       if ('fault' in url) {
         given = { error: 'invalid_arguments', detail: url.fault };
         stored = readContent(call, route, lines, 0, given, url.fault);
       } else {
-        const outcome = await this.dispatcher.read(url.url, {
-          pass: asker.pass,
-          branchId: start.conversation.branchId,
-          role,
-        });
+        const as = { pass: asker.pass, branchId: start.conversation.branchId, role };
+        // Task 11.13: a preview or check writes nothing; it is sent with its body.
+        const outcome = isPreview
+          ? await this.dispatcher.send('POST', url.url, previewBody ?? {}, as)
+          : await this.dispatcher.read(url.url, as);
         const line = lines[route];
-        const withheld = line?.kind === undefined || line.kind === 'read' ? line?.withheld : undefined;
+        const withheld =
+          line?.kind === undefined || line.kind === 'read' ? line?.withheld : undefined;
         given = givenOf(withheld === undefined ? outcome : withholding(outcome, withheld));
         stored = readContent(call, route, lines, outcome.status, given);
       }
