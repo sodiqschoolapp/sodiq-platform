@@ -1326,6 +1326,7 @@ export const en = {
       moreLessons_one: 'and {{count}} more lesson',
       moreLessons_other: 'and {{count}} more lessons',
       choice_keep: '→ kept as held',
+      choice_held: '→ held for the other classes',
       choice_cancel: '→ cancelled',
       hasData: 'has attendance or marks',
       issue_warning: 'Warning: {{text}}',

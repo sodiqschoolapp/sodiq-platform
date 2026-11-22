@@ -1332,6 +1332,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       moreLessons_many: 'и ещё {{count}} уроков',
       moreLessons_other: 'и ещё {{count}} урока',
       choice_keep: '→ остаётся проведённым',
+      choice_held: '→ проводится для других классов',
       choice_cancel: '→ отменяется',
       hasData: 'есть посещаемость или оценки',
       issue_warning: 'Предупреждение: {{text}}',

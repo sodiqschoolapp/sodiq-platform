@@ -256,14 +256,25 @@ export function lessonsOfPreview(value: unknown): AssistantPreviewLesson[] {
     }
   };
   collect(value, false);
-  const walk = (item: unknown, list: string, blockId: string | null = null): void => {
+  const walk = (
+    item: unknown,
+    list: string,
+    blockId: string | null = null,
+    chosenOnly: ReadonlySet<string> = new Set(),
+    top = true,
+  ): void => {
     if (Array.isArray(item)) {
-      for (const each of item) walk(each, list, blockId);
+      for (const each of item) walk(each, list, blockId, chosenOnly, top);
       return;
     }
     if (item === null || typeof item !== 'object') return;
     const record = item as Record<string, unknown>;
     const inBlock = typeof record.blockId === 'string' ? record.blockId : blockId;
+    // A shared block's lessons fed by the chosen classes alone (`chosenOnly`): a "keep" of the
+    // block still cancels them (`bulkCancelSharedSchema`; review of the code, round 2).
+    const only = Array.isArray(record.chosenOnly)
+      ? new Set(record.chosenOnly.filter((one): one is string => typeof one === 'string'))
+      : chosenOnly;
     const unit = record.unit as { name?: unknown } | undefined;
     if (
       typeof record.date === 'string' &&
@@ -292,11 +303,14 @@ export function lessonsOfPreview(value: unknown): AssistantPreviewLesson[] {
         choice: null,
         ...(typeof record.id === 'string' ? { lessonId: record.id } : {}),
         ...(inBlock === null ? {} : { blockId: inBlock }),
+        ...(typeof record.id === 'string' && only.has(record.id) ? { chosenOnly: true } : {}),
       });
       return;
     }
+    // A lesson is named by the preview's own list it is in (`cancel`, `shared`, `held` …), the
+    // key at the top of the preview, never a list inside it (a shared block's `lessons`).
     for (const [key, each] of Object.entries(record)) {
-      walk(each, Array.isArray(each) ? key : list, inBlock);
+      walk(each, top && Array.isArray(each) ? key : list, inBlock, only, false);
     }
   };
   walk(value, 'preview');
@@ -304,7 +318,12 @@ export function lessonsOfPreview(value: unknown): AssistantPreviewLesson[] {
 }
 
 /** A lesson of a preview with the ids its choice is matched by. */
-type InternalLesson = AssistantPreviewLesson & { lessonId?: string; blockId?: string };
+type InternalLesson = AssistantPreviewLesson & {
+  lessonId?: string;
+  blockId?: string;
+  /** Fed by the chosen classes alone: cancelled whatever the block's choice. */
+  chosenOnly?: boolean;
+};
 
 /**
  * The choice the step's body sends for each lesson (review of the code, finding 1): a bulk
@@ -334,10 +353,16 @@ function withChoices(
   read(body.dataChoices, 'lessonId', byLesson);
   read(body.blocks, 'blockId', byBlock);
   return lessons.map((lesson) => {
-    const choice =
-      (lesson.lessonId === undefined ? undefined : byLesson.get(lesson.lessonId)) ??
-      (lesson.blockId === undefined ? undefined : byBlock.get(lesson.blockId)) ??
-      null;
+    // The lesson's own data choice first; then what its shared block's choice does to it.
+    const own = lesson.lessonId === undefined ? undefined : byLesson.get(lesson.lessonId);
+    const block = lesson.blockId === undefined ? undefined : byBlock.get(lesson.blockId);
+    const choice: AssistantPreviewLesson['choice'] =
+      own ??
+      (block === undefined
+        ? null
+        : block === 'cancel' || lesson.chosenOnly === true
+          ? 'cancel'
+          : 'held');
     return { ...lesson, choice };
   });
 }
@@ -534,6 +559,7 @@ export async function draftStep(
         const shown: InternalLesson = { ...lesson };
         delete shown.lessonId;
         delete shown.blockId;
+        delete shown.chosenOnly;
         return shown;
       }),
       previewMore: 0,

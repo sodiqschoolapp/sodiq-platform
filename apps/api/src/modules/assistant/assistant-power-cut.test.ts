@@ -53,6 +53,90 @@ describe('the assistant at a power cut: no day off today, a bulk cancel from the
   let branch: string;
   let oxford: string;
   let vice: { cookie: string };
+  let shared: { other: string; oxford7: string; START: string };
+
+  /** The branch of the shared-block test, set up while the admin's session of the kit is fresh. */
+  async function sharedScene() {
+    const other = await t.newBranch();
+    const year = await load.classes.year(other);
+    for (const [index, [start, end]] of QUARTERS.entries()) {
+      await t.database.migrator
+        .updateTable('quarters')
+        .set({ start_date: start, end_date: end })
+        .where('academic_year_id', '=', year)
+        .where('number', '=', index + 1)
+        .execute();
+    }
+    const lesson = await t.createSlotType(other, 'Lesson', 'lesson', 45);
+    const template = await t.createTemplate(other, 'Regular', [lesson]);
+    await t.assign(other, template);
+    const english = await load.classes.subject({ grades: [7], journalType: 'attendance_only' });
+    const oxford7 = await load.classes.schoolClass(other, year, { grade: 7, name: 'Oxford' });
+    const princeton7 = await load.classes.schoolClass(other, year, { grade: 7, name: 'Princeton' });
+    const START = '2026-10-19';
+    const created = await t.post('/api/timetable/versions', other, {
+      academicYearId: year,
+      startsOn: START,
+      copyFrom: null,
+    });
+    expect(created.status, JSON.stringify(created.body)).toBe(201);
+    const version = (created.body as { id: string }).id;
+    const rows: string[] = [];
+    for (const [index, classIds] of [[oxford7, princeton7], [princeton7], [oxford7]].entries()) {
+      const group = await load.classes.group(other, year, english, classIds, {
+        name: `7-E-${String(index + 1)}`,
+      });
+      const teacher = await load.teacher(other, { subjects: [{ subject: english, grades: [7] }] });
+      const entry = await t.database.migrator
+        .insertInto('staff_availability')
+        .values({ branch_id: other, staff_id: teacher.staffId, valid_from: '2026-09-01' })
+        .returning(['id', 'valid_until'])
+        .executeTakeFirstOrThrow();
+      await t.database.migrator
+        .insertInto('staff_availability_ranges')
+        .values({
+          entry_id: entry.id,
+          branch_id: other,
+          staff_id: teacher.staffId,
+          weekday: 1,
+          start_minutes: 0,
+          end_minutes: 1440,
+          valid_from: '2026-09-01',
+          valid_until: entry.valid_until,
+        })
+        .execute();
+      rows.push(
+        await load.row({
+          branch_id: other,
+          version_id: version,
+          group_id: group,
+          subject_id: english,
+          teacher_id: teacher.staffId,
+          lessons_per_week: 1,
+        }),
+      );
+    }
+    const placed = await t.post(`/api/timetable/versions/${version}/pattern`, other, {
+      loadRowId: rows[0],
+      weekday: 1,
+      slotPosition: 1,
+    });
+    expect(placed.status, JSON.stringify(placed.body)).toBe(201);
+    const confirmedTemplates = await t.post(
+      `/api/timetable/versions/${version}/templates/confirm`,
+      other,
+    );
+    expect(confirmedTemplates.status, JSON.stringify(confirmedTemplates.body)).toBe(200);
+    await load.freeEditLock(version);
+    const published = await request(t.kit.server)
+      .post(`/api/timetable/versions/${version}/publish`)
+      .set('Cookie', t.admin)
+      .set(BRANCH_HEADER, other)
+      .set(REQUEST_KEY_HEADER, randomUUID())
+      .send({ startsOn: START });
+    expect(published.status, JSON.stringify(published.body)).toBe(200);
+    return { other, oxford7, START };
+  }
 
   beforeAll(async () => {
     t = await dayTemplatesKit({ assistantModel: model, listen: true, jobs: true });
@@ -139,6 +223,7 @@ describe('the assistant at a power cut: no day off today, a bulk cancel from the
       .updateTable('assistant_settings')
       .set({ school_on: true, roles_on: ['super_admin', 'academic_vice_principal'] })
       .execute();
+    shared = await sharedScene();
     // Monday 09:00: lesson 2 (08:55) is in progress, lesson 3 (09:50) has not begun.
     t.clock.set(at('09:00'));
     const browser = await t.kit.completeSession('Gulnora', 'Askarova');
@@ -478,5 +563,75 @@ describe('the assistant at a power cut: no day off today, a bulk cancel from the
         ?.steps.map((one) => one.state),
     ).toEqual(['done']);
     expect(await cancelledOn()).toEqual([false, true, false]);
+  });
+
+  // Review of the code, round 2: a lesson of a shared block is named with what Confirm does to
+  // it. English in one block of three parallel groups: 7-E-1 of both classes, 7-E-2 of Princeton
+  // alone, 7-E-3 of Oxford alone. A bulk cancel for Oxford: "keep" still cancels 7-E-3 (fed by
+  // Oxford alone, `chosenOnly`) and holds the rest for Princeton; "cancel" cancels the block.
+  it('names what a shared block’s keep or cancel does to each of its lessons', async () => {
+    const { other, oxford7, START } = shared;
+    const browser = await t.kit.completeSession('Sevara', 'Olimova');
+    await t.kit.giveRole(browser.account.id, { role: 'academic_vice_principal', branchId: other });
+
+    const propose = async (choice: 'keep' | 'cancel') => {
+      model.script(
+        calls({
+          name: BULK_CHECK,
+          args: { body: { date: START, classIds: [oxford7], lessonNumbers: [1] } },
+        }),
+        (request) => {
+          const check = lastResults(request).at(-1)?.result as {
+            data?: {
+              cancel?: { lesson: { id: string } }[];
+              shared?: { blockId: string; chosenOnly: string[]; lessons: { id: string }[] }[];
+            };
+          };
+          const shared = check.data?.shared ?? [];
+          return calls({
+            name: BULK,
+            args: {
+              body: {
+                date: START,
+                classIds: [oxford7],
+                lessonNumbers: [1],
+                reason: 'Excursion',
+                blocks: shared.map((one) => ({ blockId: one.blockId, choice })),
+                lessonIds: [
+                  ...(check.data?.cancel ?? []).map((one) => one.lesson.id),
+                  ...shared.flatMap((one) =>
+                    choice === 'cancel' ? one.lessons.map((each) => each.id) : one.chosenOnly,
+                  ),
+                ],
+                dataChoices: [],
+              },
+              summary: 'Cancel English of 7 Oxford.',
+            },
+          })(request);
+        },
+        answer('Proposed.'),
+      );
+      const response = await request(t.kit.server)
+        .post('/api/assistant/questions')
+        .set('Cookie', browser.cookie)
+        .set(BRANCH_HEADER, other)
+        .send({ role: 'academic_vice_principal', text: 'Cancel English of 7 Oxford next Monday.' });
+      expect(response.status, JSON.stringify(response.body).slice(0, 400)).toBe(200);
+      const step = assistantConversationSchema.parse(
+        (response.body as { conversation: unknown }).conversation,
+      ).proposals[0]?.steps[0];
+      return Object.fromEntries(
+        (step?.previewLessons ?? [])
+          .filter((one) => one.list === 'shared')
+          .map((one) => [one.unitName, one.choice]),
+      );
+    };
+    // The groups' names are the units of their lessons.
+    expect(await propose('keep')).toEqual({ '7-E-1': 'held', '7-E-2': 'held', '7-E-3': 'cancel' });
+    expect(await propose('cancel')).toEqual({
+      '7-E-1': 'cancel',
+      '7-E-2': 'cancel',
+      '7-E-3': 'cancel',
+    });
   });
 });

@@ -209222,7 +209222,7 @@ export interface operations {
                                     roomName: string | null;
                                     hasData: boolean;
                                     /** @enum {string|null} */
-                                    choice: "keep" | "cancel" | null;
+                                    choice: "keep" | "cancel" | "held" | null;
                                 }[];
                                 previewMore: number;
                                 /** @enum {string} */
@@ -209652,7 +209652,7 @@ export interface operations {
                                         roomName: string | null;
                                         hasData: boolean;
                                         /** @enum {string|null} */
-                                        choice: "keep" | "cancel" | null;
+                                        choice: "keep" | "cancel" | "held" | null;
                                     }[];
                                     previewMore: number;
                                     /** @enum {string} */
@@ -210081,7 +210081,7 @@ export interface operations {
                                     roomName: string | null;
                                     hasData: boolean;
                                     /** @enum {string|null} */
-                                    choice: "keep" | "cancel" | null;
+                                    choice: "keep" | "cancel" | "held" | null;
                                 }[];
                                 previewMore: number;
                                 /** @enum {string} */
@@ -210509,7 +210509,7 @@ export interface operations {
                                     roomName: string | null;
                                     hasData: boolean;
                                     /** @enum {string|null} */
-                                    choice: "keep" | "cancel" | null;
+                                    choice: "keep" | "cancel" | "held" | null;
                                 }[];
                                 previewMore: number;
                                 /** @enum {string} */
@@ -211244,7 +211244,7 @@ export interface operations {
                                     roomName: string | null;
                                     hasData: boolean;
                                     /** @enum {string|null} */
-                                    choice: "keep" | "cancel" | null;
+                                    choice: "keep" | "cancel" | "held" | null;
                                 }[];
                                 previewMore: number;
                                 /** @enum {string} */
@@ -211664,7 +211664,7 @@ export interface operations {
                                     roomName: string | null;
                                     hasData: boolean;
                                     /** @enum {string|null} */
-                                    choice: "keep" | "cancel" | null;
+                                    choice: "keep" | "cancel" | "held" | null;
                                 }[];
                                 previewMore: number;
                                 /** @enum {string} */

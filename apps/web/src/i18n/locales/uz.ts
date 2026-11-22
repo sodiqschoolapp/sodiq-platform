@@ -1348,6 +1348,7 @@ export const uz: Texts<'one' | 'other'> = {
       moreLessons_one: 'va yana {{count}} ta dars',
       moreLessons_other: 'va yana {{count}} ta dars',
       choice_keep: '→ oʻtkazilgan holda qoladi',
+      choice_held: '→ boshqa sinflar uchun oʻtkaziladi',
       choice_cancel: '→ bekor qilinadi',
       hasData: 'davomat yoki baholar bor',
       issue_warning: 'Ogohlantirish: {{text}}',

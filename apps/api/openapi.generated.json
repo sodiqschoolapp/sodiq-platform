@@ -1174213,7 +1174213,8 @@
                                         "type": "string",
                                         "enum": [
                                           "keep",
-                                          "cancel"
+                                          "cancel",
+                                          "held"
                                         ]
                                       }
                                     },
@@ -1176676,7 +1176677,8 @@
                                             "type": "string",
                                             "enum": [
                                               "keep",
-                                              "cancel"
+                                              "cancel",
+                                              "held"
                                             ]
                                           }
                                         },
@@ -1179141,7 +1179143,8 @@
                                         "type": "string",
                                         "enum": [
                                           "keep",
-                                          "cancel"
+                                          "cancel",
+                                          "held"
                                         ]
                                       }
                                     },
@@ -1181600,7 +1181603,8 @@
                                         "type": "string",
                                         "enum": [
                                           "keep",
-                                          "cancel"
+                                          "cancel",
+                                          "held"
                                         ]
                                       }
                                     },
@@ -1185956,7 +1185960,8 @@
                                         "type": "string",
                                         "enum": [
                                           "keep",
-                                          "cancel"
+                                          "cancel",
+                                          "held"
                                         ]
                                       }
                                     },
@@ -1188385,7 +1188390,8 @@
                                         "type": "string",
                                         "enum": [
                                           "keep",
-                                          "cancel"
+                                          "cancel",
+                                          "held"
                                         ]
                                       }
                                     },
