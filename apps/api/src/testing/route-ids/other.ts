@@ -59,6 +59,12 @@ const CONVERSATION_RULE =
 const ALL_CONVERSATIONS_RULE =
   '02, Assistant, Audit: the Super Admin sees all of them, of every branch, by design, and can restore one; an unknown id is 404 (assistant-conversations.test.ts: "answers 404 for an unknown conversation on the Super Admin’s read", "refuses a restore of a conversation that is not archived (409) and of an unknown one (404)")';
 
+// Task 11.13: Confirm and Decline of the person's own proposal, in the branch of the request.
+const PROPOSAL_404 =
+  'src/modules/assistant/assistant-confirm-refusals.test.ts > answers 404 for an unknown proposal, another person’s and the own one in another branch, to Confirm and Decline alike, with every row unchanged';
+const PROPOSAL_RULE =
+  '02, Assistant, Reading and proposing: nothing changes until the person presses Confirm; the proposal is the person’s own, of the branch of the request (plan of pull request #376)';
+
 const OWN_RULE = '.claude/rules/api.md, @AnySignedIn: never on one named in the request';
 
 const line = (
@@ -183,6 +189,12 @@ export const OTHER_IDS: RouteIds = {
   ],
   'POST /api/assistant/all-conversations/:id/restore': [
     line('path:id', 'assistant conversation', 'none', ALL_CONVERSATIONS_RULE, []),
+  ],
+  'POST /api/assistant/proposals/:id/confirm': [
+    line('path:id', 'assistant proposal', 'own', PROPOSAL_RULE, [PROPOSAL_404]),
+  ],
+  'POST /api/assistant/proposals/:id/decline': [
+    line('path:id', 'assistant proposal', 'own', PROPOSAL_RULE, [PROPOSAL_404]),
   ],
   'POST /api/notifications/:id/read': [
     line('path:id', 'notification', 'own', OWN_RULE, [NOTIFICATION]),

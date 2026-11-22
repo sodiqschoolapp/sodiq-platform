@@ -1040,11 +1040,15 @@ export const en = {
     assistant_not_archived: 'This conversation is not archived, so there is nothing to restore.',
     assistant_call_invalid: 'This request is not one the assistant made.',
     assistant_route_closed: 'This page is not open to the assistant.',
-    assistant_proposal_expired: 'The proposal was not confirmed within 15 minutes. Ask the assistant again for a new one.',
+    assistant_proposal_expired:
+      'The proposal was not confirmed within 15 minutes. Ask the assistant again for a new one.',
     assistant_proposal_decided: 'This proposal was already confirmed or declined.',
-    assistant_proposal_superseded: 'A newer proposal of this conversation took the place of this one. Confirm the newer one.',
-    assistant_step_outdated: 'The data this change was proposed on has changed since. Ask the assistant again: it reads the data anew.',
-    assistant_step_same_record: 'A proposal holds one change per record. Ask for the second change after the first is confirmed.',
+    assistant_proposal_superseded:
+      'A newer proposal of this conversation took the place of this one. Confirm the newer one.',
+    assistant_step_outdated:
+      'The data this change was proposed on has changed since. Ask the assistant again: it reads the data anew.',
+    assistant_step_same_record:
+      'A proposal holds one change per record. Ask for the second change after the first is confirmed.',
     assistant_step_invalid: 'This change was not sent by a confirmed proposal and was not made.',
     request_refused: 'The request was refused. Try again or ask an administrator.',
     already_exists: 'A record of this name already exists here. Choose another name.',

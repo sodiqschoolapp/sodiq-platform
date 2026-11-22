@@ -1057,12 +1057,17 @@ export const uz: Texts<'one' | 'other'> = {
     assistant_not_archived: 'Bu suhbat arxivlanmagan, tiklash uchun hech narsa yoʻq.',
     assistant_call_invalid: 'Bu soʻrov yordamchi tomonidan yuborilmagan.',
     assistant_route_closed: 'Bu sahifa yordamchi uchun ochiq emas.',
-    assistant_proposal_expired: 'Taklif 15 daqiqa ichida tasdiqlanmadi. Yordamchidan yangisini soʻrang.',
+    assistant_proposal_expired:
+      'Taklif 15 daqiqa ichida tasdiqlanmadi. Yordamchidan yangisini soʻrang.',
     assistant_proposal_decided: 'Bu taklif allaqachon tasdiqlangan yoki rad etilgan.',
-    assistant_proposal_superseded: 'Bu suhbatdagi yangi taklif uning oʻrnini egalladi. Yangisini tasdiqlang.',
-    assistant_step_outdated: 'Oʻzgarish taklif qilingan maʼlumot oʻshandan beri oʻzgardi. Yordamchidan qayta soʻrang: u maʼlumotni yangidan oʻqiydi.',
-    assistant_step_same_record: 'Taklifda har bir yozuv uchun bitta oʻzgarish boʻladi. Ikkinchisini birinchisi tasdiqlangandan keyin soʻrang.',
-    assistant_step_invalid: 'Bu oʻzgarish tasdiqlangan taklif tomonidan yuborilmagan va bajarilmadi.',
+    assistant_proposal_superseded:
+      'Bu suhbatdagi yangi taklif uning oʻrnini egalladi. Yangisini tasdiqlang.',
+    assistant_step_outdated:
+      'Oʻzgarish taklif qilingan maʼlumot oʻshandan beri oʻzgardi. Yordamchidan qayta soʻrang: u maʼlumotni yangidan oʻqiydi.',
+    assistant_step_same_record:
+      'Taklifda har bir yozuv uchun bitta oʻzgarish boʻladi. Ikkinchisini birinchisi tasdiqlangandan keyin soʻrang.',
+    assistant_step_invalid:
+      'Bu oʻzgarish tasdiqlangan taklif tomonidan yuborilmagan va bajarilmadi.',
     request_refused:
       'Soʻrov rad etildi. Qayta urinib koʻring yoki administratorga murojaat qiling.',
     already_exists: 'Bu nomdagi yozuv bu yerda allaqachon bor. Boshqa nom tanlang.',
