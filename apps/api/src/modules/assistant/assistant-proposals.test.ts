@@ -345,7 +345,6 @@ describe('the assistant: proposals and Confirm', () => {
   });
 
   it('runs Confirm with the rights in force: an ended role, a switch turned off, the chosen role and not the account', async () => {
-    const target = await room();
     // The Vice Principal proposes a class archive in the own branch.
     const klass = await scene.people.schoolClass(scene.north, scene.northYear);
     const archive = { name: CLASS_ARCHIVE, args: { id: klass, summary: 'Archive the class.' } };
@@ -433,7 +432,6 @@ describe('the assistant: proposals and Confirm', () => {
   });
 
   it('keeps the Vice Principal in the own branch: another branch’s proposal is 404, another branch’s record adds no step', async () => {
-    const southRoom = await room(scene.south);
     const conversation = await proposed(
       [
         {
