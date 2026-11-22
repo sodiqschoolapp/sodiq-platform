@@ -223,6 +223,30 @@ function countsOfPreview(value: unknown): { list: string; count: number }[] {
 }
 
 /** The fields of a body as text, for the panel (the platform's own words, decision 5). */
+/**
+ * The body as the panel shows it (task 11.14): without the field the server read (the base of a
+ * plan save, the stored values), and with the values of a plan item (the new topic, works) named
+ * one by one, so the person reads the change in plain words.
+ */
+function shownBodyOf(
+  body: Readonly<Record<string, unknown>>,
+  line: AssistantChangeLine,
+): Record<string, unknown> {
+  const server = line.serverBase;
+  const spread = server?.against ?? (line.group === 'plans' ? 'values' : undefined);
+  if (spread === undefined) return { ...body };
+  const shown: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(body)) {
+    if (key === server?.field) continue;
+    if (key === spread && value !== null && typeof value === 'object' && !Array.isArray(value)) {
+      Object.assign(shown, value);
+      continue;
+    }
+    shown[key] = value;
+  }
+  return shown;
+}
+
 function fieldsOf(body: unknown): { name: string; value: string }[] {
   if (body === null || typeof body !== 'object' || Array.isArray(body)) return [];
   // Ids are not shown: the record, the lessons and the preview name what they stand for.
@@ -420,6 +444,43 @@ export async function draftStep(
   const body: Record<string, unknown> =
     given !== null && typeof given === 'object' ? { ...(given as Record<string, unknown>) } : {};
 
+  // Task 11.14 (plan decision 9): a field read by the server from the person's own read, never
+  // the model's (the base of a plan item save). The tool's own fields find the record and are
+  // removed; values equal to the stored record save nothing and add no step.
+  if (line.serverBase !== undefined) {
+    const server = line.serverBase;
+    const readUrl = urlFor(server.route, server.args, pathArgs, body);
+    for (const name of Object.keys(server.toolFields)) {
+      delete body[name];
+    }
+    if ('fault' in readUrl) {
+      return { given: { error: 'invalid_arguments', detail: readUrl.fault } };
+    }
+    const outcome = await dispatcher.read(readUrl.url, as);
+    const refused = refusalOf(outcome);
+    if (refused !== undefined) {
+      return { given: refused };
+    }
+    const wanted = valueOf(server.pick, pathArgs, body);
+    const record = wanted === undefined ? undefined : findRecord(bodyOf(outcome), 'id', wanted);
+    if (record === undefined) {
+      return { given: { status: 404, error: 'not_found' } };
+    }
+    const stored = Object.fromEntries(server.keys.map((key) => [key, record[key]]));
+    const against = body[server.against];
+    if (
+      against !== null &&
+      typeof against === 'object' &&
+      server.keys.every(
+        (key) =>
+          fingerprintOf((against as Record<string, unknown>)[key]) === fingerprintOf(stored[key]),
+      )
+    ) {
+      return { given: { error: 'assistant_nothing_to_change' } };
+    }
+    body[server.field] = stored;
+  }
+
   const records = (line.records ?? ['path:id'])
     .map((value) => valueOf(value, pathArgs, body)?.toLowerCase())
     .filter((value): value is string => value !== undefined);
@@ -553,7 +614,7 @@ export async function draftStep(
     shown: {
       recordName: nameOfRecord(picked),
       recordNames: namesOfRecord(picked),
-      fields: fieldsOf(tool.body === undefined ? null : body),
+      fields: fieldsOf(tool.body === undefined ? null : shownBodyOf(body, line)),
       // Only the panel's fields: the ids that matched a choice are not kept.
       previewLessons: previewLessons.map((lesson: InternalLesson) => {
         const shown: InternalLesson = { ...lesson };

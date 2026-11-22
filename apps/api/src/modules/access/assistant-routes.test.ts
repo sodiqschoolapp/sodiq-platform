@@ -100,7 +100,6 @@ describe('the actions open to the assistant', () => {
       expect(linesOf('academic_vice_principal')[name], name).toBeUndefined();
       expect(linesOf('super_admin')[name]?.kind, name).toBe('change');
     }
-    expect(Object.keys(linesOf('teacher'))).toEqual([]);
   });
 
   it('puts no route of "Never through the assistant" on any list, walking every route of the application', () => {
@@ -121,14 +120,86 @@ describe('the actions open to the assistant', () => {
         ).toBeUndefined();
       }
     }
-    // Build plan 11.14, Done when, kept from here: no journal entry route is on any list.
-    for (const name of listed) {
-      if (!name.startsWith('GET ')) {
-        expect(
-          name.startsWith('POST /api/journal') || name.startsWith('PUT /api/journal'),
-          name,
-        ).toBe(false);
+  });
+
+  // Build plan 11.14, Done when: "a test that no journal entry route is on any list". `02`,
+  // Never through the assistant: "Entering or changing journal data (attendance, numbers, totals,
+  // comments, \"not held\"), journal corrections, exemptions". Every route of the application
+  // that changes journal data (the areas of the journal's entry, the lesson card's topic and works
+  // included) is walked, and none is on a list, written or derived.
+  it('puts no journal entry route on any role’s list (build plan 11.14)', () => {
+    const entryAreas = ['journal', 'journal_support', 'exemptions', 'absence_reasons'];
+    const entry = routes.filter((route) => {
+      const [access] = route.access;
+      return (
+        route.method !== 'GET' &&
+        access?.kind === 'requires' &&
+        entryAreas.includes(access.area) &&
+        access.action !== 'export'
+      );
+    });
+    // The attendance, the scores, the works and their totals, "not held", comments, the rating
+    // exam's entries, the card's topic and delivery, corrections, exemptions, absence reasons.
+    expect(entry.length).toBeGreaterThan(20);
+    for (const name of [
+      'POST /api/journal/lessons/:lessonId/all-present',
+      'POST /api/journal/lessons/:lessonId/attendance',
+      'POST /api/journal/lessons/:lessonId/scores',
+      'PUT /api/journal/comments',
+      'PUT /api/journal/lessons/:lessonId/topic',
+      'PUT /api/journal/lessons/:lessonId/works/not-held',
+    ]) {
+      expect(
+        entry.some((route) => route.name === name),
+        name,
+      ).toBe(true);
+    }
+    for (const role of ASSISTANT_ROLES) {
+      const lines = linesOf(role);
+      expect(
+        entry.filter((route) => Object.hasOwn(lines, route.name)).map((route) => route.name),
+        role,
+      ).toEqual([]);
+    }
+  });
+
+  // Task 11.14, plan decisions 2 to 7: the Teacher's list is written, reads of a `view` the
+  // table gives the Teacher and the drafting of plan items, unlocks and plan requests.
+  it('gives the Teacher reads of own work and the six proposals of build plan 11.14, each permitted by the table', () => {
+    const byName = new Map(routes.map((route) => [route.name, route]));
+    const lines = linesOf('teacher');
+    for (const name of Object.keys(lines)) {
+      const [access] = byName.get(name)?.access ?? [];
+      expect(access?.kind, name).toBe('requires');
+      if (access?.kind === 'requires') {
+        expect(permits(PERMISSIONS, 'teacher', access.area, access.action), name).toBe(true);
       }
+    }
+    expect(
+      Object.entries(lines)
+        .filter(([, line]) => line.kind === 'change')
+        .map(([name]) => name)
+        .sort(),
+    ).toEqual(
+      [
+        'POST /api/plans/journals/:journalId/items',
+        'PUT /api/plans/items/:itemId',
+        'POST /api/journal/lessons/:lessonId/unlocks',
+        'POST /api/journal/journals/:journalId/rating/:quarterId/unlocks',
+        'POST /api/plans/journals/:journalId/requests',
+        'POST /api/plans/requests/:requestId/send',
+      ].sort(),
+    );
+    // Reading only own work: nothing of the setup, the staff, classes and groups or other branches.
+    for (const name of [
+      'GET /api/timetable/views/branch',
+      'GET /api/classes',
+      'GET /api/people/staff',
+      'GET /api/people/students/:id',
+      'GET /api/exemptions',
+      'GET /api/plans/masters',
+    ]) {
+      expect(lines[name], name).toBeUndefined();
     }
   });
 

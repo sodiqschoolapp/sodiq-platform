@@ -214,11 +214,48 @@ const ACADEMIC_VICE_PRINCIPAL: Readonly<Record<string, string>> = Object.fromEnt
   Object.entries(SUPER_ADMIN).filter(([name]) => !SUPER_ADMIN_ONLY.includes(name)),
 );
 
-/** Every list, by role: the Teacher comes with 11.14. */
+/** `02`, "What a Teacher can do through it": "Read their own timetable, …" (task 11.14). */
+const TEACHER_READS = 'the Teacher reads it about own lessons (build plan 11.14)';
+
+/** `02`: "Draft lesson plan items … and send unlock and plan edit requests, each as a proposal". */
+const TEACHER_CHANGE = 'the Teacher proposes it, run only at Confirm (build plan 11.14)';
+
+/** The Teacher's list (task 11.14, plan decisions 2 to 7). */
+const TEACHER: Readonly<Record<string, string>> = {
+  'GET /api/setup/current-period': TEACHER_READS,
+  'GET /api/timetable/views/choices': TEACHER_READS,
+  'GET /api/timetable/views/teacher': TEACHER_READS,
+  'GET /api/people/students': TEACHER_READS,
+  'GET /api/journal/journals': TEACHER_READS,
+  'GET /api/journal/journals/:journalId': TEACHER_READS,
+  'GET /api/journal/lessons/:lessonId/card': TEACHER_READS,
+  'GET /api/journal/reminders': TEACHER_READS,
+  'GET /api/journal/unlocks': TEACHER_READS,
+  'GET /api/results/rating/choices': TEACHER_READS,
+  'GET /api/results/rating/classes': TEACHER_READS,
+  'GET /api/results/rating/class': TEACHER_READS,
+  'GET /api/results/rating/subject': TEACHER_READS,
+  'GET /api/results/early-warning': TEACHER_READS,
+  'GET /api/plans': TEACHER_READS,
+  'GET /api/plans/journals/:journalId': TEACHER_READS,
+  'GET /api/plans/lessons/:lessonId': TEACHER_READS,
+  'GET /api/plans/windows': TEACHER_READS,
+  'GET /api/plans/requests': TEACHER_READS,
+  'GET /api/plans/journals/:journalId/master-compare': TEACHER_READS,
+  'POST /api/plans/journals/:journalId/items': TEACHER_CHANGE,
+  'PUT /api/plans/items/:itemId': TEACHER_CHANGE,
+  'POST /api/journal/lessons/:lessonId/unlocks': TEACHER_CHANGE,
+  'POST /api/journal/journals/:journalId/rating/:quarterId/unlocks': TEACHER_CHANGE,
+  'POST /api/plans/journals/:journalId/requests': TEACHER_CHANGE,
+  'POST /api/plans/requests/:requestId/send': TEACHER_CHANGE,
+};
+
+/** Every list, by role. */
 export const ASSISTANT_ROUTE_COPY: Readonly<Record<string, Readonly<Record<string, string>>>> = {
   super_admin: SUPER_ADMIN,
   academic_vice_principal: ACADEMIC_VICE_PRINCIPAL,
+  teacher: TEACHER,
 };
 
 /** The roles whose list is written in code (the others are derived by the table). */
-export const WRITTEN_ASSISTANT_LISTS: readonly string[] = ['super_admin'];
+export const WRITTEN_ASSISTANT_LISTS: readonly string[] = ['super_admin', 'teacher'];

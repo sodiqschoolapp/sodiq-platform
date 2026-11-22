@@ -1302,6 +1302,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
     read: 'Прочитано: {{what}}',
     readFailed: '{{what}}: недоступно вам или не найдено',
     readRefused: 'Чтение, запрещённое помощнику, не выполнено.',
+    openLessonJournal: 'Открыть столбец журнала за {{date}}',
     groups: {
       setup: 'Настройка школы',
       calendar: 'Календарь и периоды',
@@ -1514,6 +1515,12 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       VacanciesController_reopen: 'Открыть вакансию снова',
       PlanWindowsController_save: 'Открыть или изменить окно планов',
       PlanWindowsController_extend: 'Продлить окно планов для учителя',
+      PlansController_createItem: 'Написать пункт плана урока',
+      PlansController_saveItem: 'Изменить пункт плана урока',
+      UnlocksController_requestLesson: 'Запросить открытие урока в журнале',
+      UnlocksController_requestRating: 'Запросить открытие столбца рейтингового экзамена',
+      PlanRequestsController_create: 'Отправить запрос на изменение плана',
+      PlanRequestsController_send: 'Отправить подготовленный запрос на изменение плана',
     },
     settings: {
       title: 'Помощник',

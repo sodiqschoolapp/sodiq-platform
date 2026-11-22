@@ -12,7 +12,7 @@ import { fakeApi, json, NORTH, refusal, renderApp, sessionOf } from '@/testing/r
 
 const uid = (n: number): string => `0199a000-0000-7000-8000-${String(n).padStart(12, '0')}`;
 
-const admin = (extra: { role: 'teacher'; branchId: string }[] = []) =>
+const admin = (extra: { role: 'teacher' | 'principal'; branchId: string }[] = []) =>
   sessionOf({
     assignments: [{ role: 'super_admin', branchId: null }, ...extra],
     branches: [NORTH],
@@ -71,19 +71,22 @@ describe('the assistant in the top bar', () => {
     expect(button()).toBeNull();
   });
 
-  it('shows no button and asks nothing for a role the table does not give the panel (a Teacher)', async () => {
-    const calls = fakeApi({ 'GET /api/auth/session': () => json(sessionOf()) });
+  it('shows no button and asks nothing for a role the table does not give the panel (a Principal)', async () => {
+    const calls = fakeApi({
+      'GET /api/auth/session': () =>
+        json(sessionOf({ assignments: [{ role: 'principal', branchId: NORTH.id }] })),
+    });
     renderApp('/', 'en');
     await screen.findByRole('heading', { level: 1 });
     expect(button()).toBeNull();
     expect(calls.some((call) => call.route.startsWith('GET /api/assistant'))).toBe(false);
   });
 
-  it('shows no button and asks nothing while a Super Admin who is also a Teacher has the Teacher role chosen', async () => {
-    window.sessionStorage.setItem(ROLE_STORAGE_KEY, 'teacher');
+  it('shows no button and asks nothing while a Super Admin who is also a Principal has the Principal role chosen', async () => {
+    window.sessionStorage.setItem(ROLE_STORAGE_KEY, 'principal');
     try {
       const calls = fakeApi({
-        'GET /api/auth/session': () => json(admin([{ role: 'teacher', branchId: NORTH.id }])),
+        'GET /api/auth/session': () => json(admin([{ role: 'principal', branchId: NORTH.id }])),
         'GET /api/assistant/status': () => json(ON),
       });
       renderApp('/', 'en');
@@ -93,6 +96,51 @@ describe('the assistant in the top bar', () => {
     } finally {
       window.sessionStorage.removeItem(ROLE_STORAGE_KEY);
     }
+  });
+
+  // Task 11.14 (pull request #377): the Teacher has the panel; "mark everyone present" is refused
+  // and the answer opens the lesson's journal column (`edge/people-roles-accounts`, The assistant).
+  it('gives the Teacher the panel, asks in the Teacher role, and opens the lesson’s journal column from the answer', async () => {
+    const journalId = uid(700);
+    const quarterId = uid(701);
+    const answered = conversation(
+      [
+        message(1, { kind: 'question', text: 'Mark everyone present.' }),
+        message(2, {
+          kind: 'answer',
+          text: 'Attendance is marked in the journal.',
+          pages: [],
+          lessons: [{ journalId, quarterId, date: '2026-11-16' }],
+        }),
+      ],
+      { role: 'teacher' },
+    );
+    const calls = fakeApi({
+      'GET /api/auth/session': () => json(sessionOf()),
+      'GET /api/assistant/status': () => json(ON),
+      'GET /api/assistant/conversations': () => json({ conversations: [] }),
+      'POST /api/assistant/questions': () => json({ conversation: answered }),
+      [`GET /api/assistant/conversations/${uid(1)}`]: () => json(answered),
+    });
+    renderApp('/', 'en');
+    const panel = await openPanel();
+    expect(calls.find((call) => call.route === 'GET /api/assistant/status')?.query).toContain(
+      'role=teacher',
+    );
+    fireEvent.change(panel.getByLabelText(en.assistant.question), {
+      target: { value: 'Mark everyone present.' },
+    });
+    fireEvent.click(panel.getByRole('button', { name: en.assistant.send }));
+    const link = await panel.findByRole('link', {
+      name: en.assistant.openLessonJournal.replace('{{date}}', '16 November 2026'),
+    });
+    expect(link.getAttribute('href')).toBe(
+      `/journal/${journalId}?quarter=${quarterId}&date=2026-11-16`,
+    );
+    expect(calls.find((call) => call.route === 'POST /api/assistant/questions')?.body).toEqual({
+      role: 'teacher',
+      text: 'Mark everyone present.',
+    });
   });
 
   it('keeps a question typed and not sent while the panel is closed and opened again (`12`, No lost work)', async () => {
@@ -120,7 +168,12 @@ describe('the assistant in the top bar', () => {
     const answered = conversation([
       message(1, { kind: 'question', text: 'Which classes have no Tutor?' }),
       message(2, { kind: 'read', group: 'classes', status: 200 }),
-      message(3, { kind: 'answer', text: '<b>Oxford B</b>, Oxford C', pages: ['setup'] }),
+      message(3, {
+        kind: 'answer',
+        text: '<b>Oxford B</b>, Oxford C',
+        pages: ['setup'],
+        lessons: [],
+      }),
     ]);
     const calls = fakeApi({
       'GET /api/auth/session': () => json(admin()),
@@ -367,7 +420,12 @@ describe('a proposal of the assistant', () => {
     conversation(
       [
         message(1, { kind: 'question', text: 'Cancel the rest of today.' }),
-        message(2, { kind: 'answer', text: 'I propose a bulk cancel from lesson 3.', pages: [] }),
+        message(2, {
+          kind: 'answer',
+          text: 'I propose a bulk cancel from lesson 3.',
+          pages: [],
+          lessons: [],
+        }),
       ],
       {
         proposals: [

@@ -1638,6 +1638,7 @@ Every area of `PERMISSIONS` (`packages/shared/src/permissions.ts`), the table th
 | --- | :-: | :-: | :-: | :-: | :-: |
 | super_admin | yes |  |  |  |  |
 | academic_vice_principal | yes |  |  |  |  |
+| teacher | yes |  |  |  |  |
 
 ### `attendance_report`
 

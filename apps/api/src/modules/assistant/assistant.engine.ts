@@ -1,9 +1,11 @@
 import { Inject, Injectable } from '@nestjs/common';
 import {
+  lessonCardSchema,
   MENU_ITEMS,
   permits,
   visibleMenu,
   type AssistantAnswer,
+  type AssistantLessonLink,
   type AssistantQuestion,
   type AssistantRole,
   type Language,
@@ -42,6 +44,8 @@ import { proposalsOf } from './proposal-views.js';
 import { draftStep, type StoredStep } from './proposals.js';
 import {
   BODY_ARGUMENT,
+  LESSON_CARD_ROUTE,
+  OPEN_LESSON_JOURNAL,
   routeOfTool,
   SUGGEST_PAGE,
   toolsOf,
@@ -202,6 +206,7 @@ export class AssistantEngine {
       language: LANGUAGE_NAMES[asker.language],
     });
     const linked: MenuItem[] = [];
+    const lessonLinks: AssistantLessonLink[] = [];
     let reads = 0;
     let modelCalls = 0;
     let text = '';
@@ -239,6 +244,26 @@ export class AssistantEngine {
         }
         // A proposal reads (its basis, its preview) and counts as a read (review should fix 10).
         reads += 1;
+        // Task 11.14 (plan decision 1): the lesson's journal column, only for a lesson whose card
+        // the person's own read answers; a refusal links nothing.
+        if (call.name === OPEN_LESSON_JOURNAL && Object.hasOwn(lines, LESSON_CARD_ROUTE)) {
+          const link =
+            reads > MAX_READS
+              ? undefined
+              : await this.lessonLink(asker, start.conversation.branchId, role, call.args);
+          if (
+            link !== undefined &&
+            !lessonLinks.some((one) => one.journalId === link.journalId && one.date === link.date)
+          ) {
+            lessonLinks.push(link);
+          }
+          results.parts.push({
+            kind: 'result',
+            name: call.name,
+            result: link === undefined ? { error: 'not_open' } : { linked: 'lesson_journal' },
+          });
+          continue;
+        }
         const found = routeOfTool(lines, call.name);
         if (found?.line.kind === 'change' && reads <= MAX_READS) {
           const drafted = await draftStep(
@@ -280,7 +305,7 @@ export class AssistantEngine {
       await appendMessage(
         transaction,
         start.conversation,
-        { kind: 'answer', text, pages: linked },
+        { kind: 'answer', text, pages: linked, lessons: lessonLinks },
         now,
       );
       if (steps.length > 0) {
@@ -454,6 +479,53 @@ export class AssistantEngine {
         created_at: now,
       })
       .execute();
+  }
+
+  /**
+   * The journal, quarter and date of one lesson (task 11.14), when the person's own reads of its
+   * card and of its journal answer them; the card's journal and date, the quarter of the date.
+   */
+  private async lessonLink(
+    asker: Asker,
+    branchId: string,
+    role: AssistantRole,
+    args: Readonly<Record<string, unknown>>,
+  ): Promise<AssistantLessonLink | undefined> {
+    const lessonId = args.lessonId;
+    if (typeof lessonId !== 'string' || !/^[0-9a-f-]{36}$/i.test(lessonId)) return undefined;
+    const outcome = await this.dispatcher.read(`/api/journal/lessons/${lessonId}/card`, {
+      pass: asker.pass,
+      branchId,
+      role,
+    });
+    if (outcome.failure !== undefined || outcome.status !== 200) return undefined;
+    const card = lessonCardSchema.safeParse(outcome.body);
+    if (!card.success) return undefined;
+    const quarterId = await this.transactions.run(asker.access.branchIds, async (transaction) => {
+      // The quarter of a lesson is the quarter that contains its date (`00-definitions`).
+      const row = await transaction
+        .selectFrom('lessons')
+        .innerJoin('quarters', (join) =>
+          join
+            .onRef('quarters.branch_id', '=', 'lessons.branch_id')
+            .onRef('quarters.start_date', '<=', 'lessons.lesson_date')
+            .onRef('quarters.end_date', '>=', 'lessons.lesson_date'),
+        )
+        .select('quarters.id as quarterId')
+        .where('lessons.id', '=', lessonId)
+        .executeTakeFirst();
+      return row?.quarterId;
+    });
+    if (quarterId === undefined) return undefined;
+    // A colleague of the same subject and grade reads the plan's card (`edge/lesson-plans`, "Who
+    // may read a plan?"), not the journal: the link is given only when the person's own read of
+    // the journal answers too.
+    const journal = await this.dispatcher.read(
+      `/api/journal/journals/${card.data.journalId}?quarterId=${quarterId}`,
+      { pass: asker.pass, branchId, role },
+    );
+    if (journal.failure !== undefined || journal.status !== 200) return undefined;
+    return { journalId: card.data.journalId, quarterId, date: card.data.date };
   }
 
   /** One read the model asked for, stored, and what the model is given back. */

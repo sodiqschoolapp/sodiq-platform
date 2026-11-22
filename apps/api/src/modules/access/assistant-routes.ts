@@ -7,6 +7,7 @@ import {
 } from '@sodiq/shared';
 import {
   SUPER_ADMIN_CHANGES,
+  TEACHER_CHANGES,
   type AssistantChangeLine,
   type AssistantPreviewLine,
 } from './assistant-change-routes.js';
@@ -356,9 +357,109 @@ export type AssistantRouteLists = Readonly<
   Partial<Record<AssistantRole, Readonly<Record<string, AssistantRouteLine>>>>
 >;
 
-/** The list of each role written here; a role not named has none (the Teacher in 11.14). */
+/**
+ * The Teacher's reads (task 11.14; `02`, "What a Teacher can do through it": "Read their own
+ * timetable, their classes and groups, their journals and the results calculated by the
+ * platform, their lesson plans and requests"). Each route scopes the Teacher to own lessons and
+ * the students they teach, as on the screen, and the guard narrows to the Teacher role chosen.
+ * Their classes and groups are those of their journals (plan decision 3); left out: a student's
+ * record and results pages, exemptions, the histories and the master plans (decision 2).
+ */
+const TEACHER_READS: Readonly<Record<string, AssistantReadLine>> = {
+  'GET /api/setup/current-period': {
+    group: 'calendar',
+    description: 'The current academic year and quarter of the branch.',
+  },
+  'GET /api/timetable/views/choices': {
+    group: 'timetable',
+    description: 'The weeks and the own teacher entry the timetable views offer.',
+  },
+  'GET /api/timetable/views/teacher': {
+    group: 'timetable',
+    description: 'The own timetable for a day or a week (only the own staff record is open).',
+  },
+  'GET /api/people/students': {
+    group: 'students',
+    description: 'The students the teacher teaches, with name, UID, class and groups.',
+  },
+  'GET /api/journal/journals': {
+    group: 'journal',
+    description: 'The own journals: each class or group and subject the teacher keeps.',
+  },
+  'GET /api/journal/journals/:journalId': {
+    group: 'journal',
+    description:
+      'One own journal for a quarter: lessons, attendance, works, numbers and the results the platform calculated.',
+  },
+  'GET /api/journal/lessons/:lessonId/card': {
+    group: 'journal',
+    description: 'The card of one own lesson: number, date, slot, topic, classworks, homeworks.',
+  },
+  'GET /api/journal/reminders': {
+    group: 'journal',
+    description: 'The own lessons whose journal is not filled yet.',
+  },
+  'GET /api/journal/unlocks': {
+    group: 'journal',
+    description: 'The own unlock requests and their state.',
+  },
+  'GET /api/results/rating/choices': {
+    group: 'results',
+    description: 'The quarters, classes and subjects the rating can be read for.',
+  },
+  'GET /api/results/rating/classes': {
+    group: 'results',
+    description: 'The rating of the own classes, as the platform calculated it.',
+  },
+  'GET /api/results/rating/class': {
+    group: 'results',
+    description: 'The rating of one class, as the platform calculated it.',
+  },
+  'GET /api/results/rating/subject': {
+    group: 'results',
+    description: 'The rating of one subject in a class, as the platform calculated it.',
+  },
+  'GET /api/results/early-warning': {
+    group: 'results',
+    description: 'The early-warning list of the own journals, as the platform calculated it.',
+  },
+  'GET /api/plans': {
+    group: 'plans',
+    description: 'The own lesson plans and the state of each quarter (complete, missing topics).',
+  },
+  'GET /api/plans/journals/:journalId': {
+    group: 'plans',
+    description:
+      'The own lesson plan of one journal for a quarter: the rows with dates, items, ids and the window state.',
+  },
+  'GET /api/plans/lessons/:lessonId': {
+    group: 'plans',
+    description: 'The plan item of one own lesson.',
+  },
+  'GET /api/plans/windows': {
+    group: 'plans',
+    description: 'The plan windows of the year and their dates.',
+  },
+  'GET /api/plans/requests': {
+    group: 'plans',
+    description: 'The own plan edit requests, prepared, sent and decided.',
+  },
+  'GET /api/plans/journals/:journalId/master-compare': {
+    group: 'plans',
+    description: 'The own plan beside the master plan it was copied from.',
+  },
+};
+
+/** The Teacher's list: the reads and the proposals (task 11.14). */
+const TEACHER: Readonly<Record<string, AssistantRouteLine>> = {
+  ...TEACHER_READS,
+  ...TEACHER_CHANGES,
+};
+
+/** The list of each role written here; the Academic Vice Principal's is derived (11.13). */
 export const ASSISTANT_ROUTES: AssistantRouteLists = {
   super_admin: SUPER_ADMIN,
+  teacher: TEACHER,
 };
 
 /**
