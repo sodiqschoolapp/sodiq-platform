@@ -331,7 +331,7 @@ describe('the assistant for teachers (task 11.14)', () => {
   });
 
   it('reads the Teacher’s own journal, plan and timetable, and refuses another teacher’s journal and timetable, also for a Teacher who is the subject’s Head Teacher and a Tutor of that class', async () => {
-    let conversation = await asked([
+    const conversation = await asked([
       { name: JOURNAL_READ, args: { journalId: journal, quarterId: q1 } },
       { name: PLAN_READ, args: { journalId: journal, quarterId: q1 } },
       { name: JOURNAL_READ, args: { journalId: otherJournal, quarterId: q1 } },
@@ -352,7 +352,7 @@ describe('the assistant for teachers (task 11.14)', () => {
     // The same person also holds the Head Teacher of the subject and the Tutor of the other
     // class (given at the start): with the Teacher role chosen, neither counts (`02`: "in the
     // role chosen"), here and in every test of this file.
-    conversation = await asked([
+    await asked([
       { name: JOURNAL_READ, args: { journalId: otherJournal, quarterId: q1 } },
       {
         name: TEACHER_VIEW,
