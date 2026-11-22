@@ -277,6 +277,14 @@ describe('the actions open to the assistant', () => {
     ).toMatch(/GET/);
     expect(
       assistantRouteFault({
+        name: 'POST /api/setup/rooms',
+        method: 'POST',
+        declarations: requires('rooms', 'edit'),
+        line: { kind: 'preview', group: 'setup', description: '' },
+      }),
+    ).toMatch(/preview/);
+    expect(
+      assistantRouteFault({
         name: 'GET /api/auth/sessions',
         method: 'GET',
         declarations: [{ kind: 'any_signed_in' }],

@@ -603,7 +603,7 @@ describe('the assistant: proposals and Confirm', () => {
     expect(row.archived_at).toBeNull();
   });
 
-  it('refuses a change marked with the secret but no running step, and ignores a step header without the secret', async () => {
+  it('refuses a change marked with a wrong secret, and ignores a step header without the secret', async () => {
     const target = await room();
     const marked = await request(server())
       .put(`/api/setup/rooms/${target.id}`)

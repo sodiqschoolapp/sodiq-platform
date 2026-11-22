@@ -506,6 +506,11 @@ export function assistantRouteFault(facts: AssistantRouteFacts): string | undefi
   if (facts.method === 'GET') {
     return `is listed as a ${kind} and is a GET`;
   }
+  // A preview runs at the question, before any Confirm: only a route that is a preview or a
+  // check by its name may be one (permission review of the code, should fix 7).
+  if (kind === 'preview' && !/\/(preview|check)$/.test(facts.name)) {
+    return 'is listed as a preview and is not a preview or check route';
+  }
   return undefined;
 }
 
