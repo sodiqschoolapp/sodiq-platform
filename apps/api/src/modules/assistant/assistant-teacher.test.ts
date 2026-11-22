@@ -49,6 +49,7 @@ const PREPARED_SEND = propose('POST /api/plans/requests/:requestId/send');
 const JOURNAL_READ = tool('GET /api/journal/journals/:journalId');
 const PLAN_READ = tool('GET /api/plans/journals/:journalId');
 const PLAN_LESSON_READ = tool('GET /api/plans/lessons/:lessonId');
+const PLAN_LIST = tool('GET /api/plans');
 const CARD_READ = tool('GET /api/journal/lessons/:lessonId/card');
 const TEACHER_VIEW = tool('GET /api/timetable/views/teacher');
 const STUDENTS_READ = tool('GET /api/people/students');
@@ -381,6 +382,27 @@ describe('the assistant for teachers (task 11.14)', () => {
       .set('Cookie', owner.cookie)
       .set(BRANCH_HEADER, scene.branch);
     expect(asHeadTeacher.status).toBe(200);
+  });
+
+  it('lists only the Teacher’s own plans through the assistant, while the plan page also lists a colleague’s of the same subject and grade (review round 2)', async () => {
+    await asked([{ name: PLAN_LIST }]);
+    const [read] = results();
+    const plans = ((read as { data?: { plans?: { journalId: string }[] } }).data?.plans ?? []).map(
+      (one) => one.journalId,
+    );
+    expect(plans).toEqual([journal]);
+    // In the person's own session every role counts (a teacher of the same subject and grade,
+    // `edge/lesson-plans`, and here the subject's Head Teacher too): both are listed.
+    const onScreen = await request(server())
+      .get('/api/plans')
+      .set('Cookie', owner.cookie)
+      .set(BRANCH_HEADER, scene.branch);
+    expect(onScreen.status).toBe(200);
+    const listed = (onScreen.body as { plans: { journalId: string }[] }).plans.map(
+      (one) => one.journalId,
+    );
+    expect(listed).toContain(otherJournal);
+    expect(listed).toContain(journal);
   });
 
   it('lists only the students the Teacher teaches, also for a Teacher who is the Tutor of another class (`02`, Teacher)', async () => {

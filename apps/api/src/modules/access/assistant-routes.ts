@@ -36,6 +36,8 @@ export interface AssistantReadLine {
    * person's own journal, found at this path value or answer field (`assistant/own-journal.ts`).
    */
   ownJournal?: { path: string } | { answer: string };
+  /** Task 11.14 (review round 2): a list read keeps only the records of the person's own journals. */
+  ownJournalList?: { array: string; key: string };
 }
 
 /**
@@ -428,6 +430,9 @@ const TEACHER_READS: Readonly<Record<string, AssistantReadLine>> = {
   'GET /api/plans': {
     group: 'plans',
     description: 'The own lesson plans and the state of each quarter (complete, missing topics).',
+    // The plan list of the screen also holds the plans of a colleague of the same subject and
+    // grade, without an owner: only those of the Teacher's own journals are given (review round 2).
+    ownJournalList: { array: 'plans', key: 'journalId' },
   },
   'GET /api/plans/journals/:journalId': {
     group: 'plans',

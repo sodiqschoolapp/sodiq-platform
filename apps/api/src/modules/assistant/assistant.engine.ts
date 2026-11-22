@@ -40,7 +40,7 @@ import {
   type ModelReply,
   type ModelTurn,
 } from './model.js';
-import { journalOf, refusedUnlessOwnJournal } from './own-journal.js';
+import { journalOf, ownRecordsOnly, refusedUnlessOwnJournal } from './own-journal.js';
 import { proposalsOf } from './proposal-views.js';
 import { draftStep, type StoredStep } from './proposals.js';
 import {
@@ -616,6 +616,11 @@ export class AssistantEngine {
               as,
               journalOf(own, call.args, outcome),
             )) ?? outcome;
+        }
+        const ownList =
+          line?.kind === undefined || line.kind === 'read' ? line?.ownJournalList : undefined;
+        if (ownList !== undefined) {
+          outcome = await ownRecordsOnly(this.dispatcher, as, ownList, outcome);
         }
         const withheld =
           line?.kind === undefined || line.kind === 'read' ? line?.withheld : undefined;
