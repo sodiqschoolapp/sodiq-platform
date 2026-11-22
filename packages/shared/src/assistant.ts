@@ -200,6 +200,8 @@ export const assistantPreviewLessonSchema = z.object({
   subjectNames: z.object({ uz: z.string(), ru: z.string(), en: z.string() }).nullable(),
   teacherName: z.string().nullable(),
   roomName: z.string().nullable(),
+  /** The lesson already holds attendance or marks (the bulk cancel's `withData`). */
+  hasData: z.boolean(),
 });
 
 export type AssistantPreviewLesson = z.infer<typeof assistantPreviewLessonSchema>;
@@ -214,6 +216,12 @@ export const assistantStepSchema = z.object({
   summary: z.string(),
   /** The record the step changes, by the name its basis read gives, or `null`. */
   recordName: z.string().nullable(),
+  /** The same in the three languages when the record is named so (a subject). */
+  recordNames: z.object({ uz: z.string(), ru: z.string(), en: z.string() }).nullable(),
+  /** The warnings and blocks of the step's check or preview, by code (plan decision 6). */
+  previewIssues: z.array(z.object({ kind: z.enum(['warning', 'blocked']), code: z.string() })),
+  /** How many entries each list of the preview holds (its impact beyond lessons). */
+  previewCounts: z.array(z.object({ list: z.string(), count: z.int().nonnegative() })),
   fields: z.array(assistantStepFieldSchema),
   /** The lessons of the step's preview, and how many more it names. */
   previewLessons: z.array(assistantPreviewLessonSchema),

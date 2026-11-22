@@ -243,7 +243,13 @@ export class AssistantEngine {
         if (found?.line.kind === 'change' && reads <= MAX_READS) {
           const drafted = await draftStep(
             this.dispatcher,
-            { pass: asker.pass, branchId: start.conversation.branchId, role, lines },
+            {
+              pass: asker.pass,
+              branchId: start.conversation.branchId,
+              role,
+              lines,
+              lessonDateOf: (lessonId) => this.lessonDate(asker.access, lessonId),
+            },
             { route: found.route, tool: found.tool, line: found.line, args: call.args },
             steps,
           );
@@ -451,6 +457,19 @@ export class AssistantEngine {
   }
 
   /** One read the model asked for, stored, and what the model is given back. */
+  /** The date of a dated lesson of the branch of the request (the row filter), for its name. */
+  private async lessonDate(access: Access, lessonId: string): Promise<string | undefined> {
+    if (!/^[0-9a-f-]{36}$/i.test(lessonId)) return undefined;
+    return this.transactions.run(access.branchIds, async (transaction) => {
+      const row = await transaction
+        .selectFrom('lessons')
+        .select('lesson_date')
+        .where('id', '=', lessonId)
+        .executeTakeFirst();
+      return row?.lesson_date;
+    });
+  }
+
   /** A message of the conversation in a transaction of its own. */
   private async store(
     start: { conversation: { id: string; branchId: string; accountId: string } },

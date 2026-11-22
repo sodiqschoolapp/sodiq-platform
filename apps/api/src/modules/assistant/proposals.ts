@@ -66,9 +66,12 @@ export interface StoredStep {
   preview: { url: string; body: unknown; fingerprint: string } | null;
   shown: {
     recordName: string | null;
+    recordNames: { uz: string; ru: string; en: string } | null;
     fields: { name: string; value: string }[];
     previewLessons: AssistantPreviewLesson[];
     previewMore: number;
+    previewIssues: { kind: 'warning' | 'blocked'; code: string }[];
+    previewCounts: { list: string; count: number }[];
   };
 }
 
@@ -77,6 +80,8 @@ export interface ProposingAs {
   branchId: string;
   role: AssistantRole;
   lines: RoleLines;
+  /** The date of a dated lesson of the branch, to name it in the panel (a one-day change). */
+  lessonDateOf?: (lessonId: string) => Promise<string | undefined>;
 }
 
 /** What a proposed call gives back: the step, and what the model is told. */
@@ -149,21 +154,83 @@ function nameOfRecord(record: Record<string, unknown> | undefined): string | nul
     const value = record[key];
     if (typeof value === 'string' && value !== '') return value;
   }
-  const names = record.names;
-  if (names !== null && typeof names === 'object') {
-    const en = (names as Record<string, unknown>).en;
-    if (typeof en === 'string') return en;
-  }
-  return null;
+  return namesOfRecord(record)?.en ?? null;
+}
+
+/** A record's names in the three languages (a subject), or `null`. */
+function namesOfRecord(
+  record: Record<string, unknown> | undefined,
+): { uz: string; ru: string; en: string } | null {
+  const names = record?.names as Record<string, unknown> | undefined;
+  return names !== undefined &&
+    names !== null &&
+    typeof names.uz === 'string' &&
+    typeof names.ru === 'string' &&
+    typeof names.en === 'string'
+    ? { uz: names.uz, ru: names.ru, en: names.en }
+    : null;
+}
+
+const UUID_TEXT = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Whether a value is an id or a list of ids only: the panel names records otherwise. */
+function idsOnly(value: unknown): boolean {
+  if (typeof value === 'string') return UUID_TEXT.test(value);
+  return Array.isArray(value) && value.length > 0 && value.every(idsOnly);
+}
+
+/**
+ * The warnings and blocks a check or preview names (`warnings`, `blocked`, `problems` …), by
+ * code, so that a step that accepts them shows them (plan decision 6, review correction 2).
+ */
+export function issuesOfPreview(value: unknown): { kind: 'warning' | 'blocked'; code: string }[] {
+  const found = new Map<string, { kind: 'warning' | 'blocked'; code: string }>();
+  const walk = (item: unknown, kind: 'warning' | 'blocked' | null): void => {
+    if (typeof item === 'string' && kind !== null && /^[a-z_]+$/.test(item)) {
+      found.set(`${kind}:${item}`, { kind, code: item });
+      return;
+    }
+    if (Array.isArray(item)) {
+      for (const each of item) walk(each, kind);
+      return;
+    }
+    if (item === null || typeof item !== 'object') return;
+    const record = item as Record<string, unknown>;
+    if (kind !== null && typeof record.code === 'string') {
+      found.set(`${kind}:${record.code}`, { kind, code: record.code });
+    }
+    for (const [key, each] of Object.entries(record)) {
+      const next = /warning/i.test(key)
+        ? 'warning'
+        : /block|conflict|problem|refus/i.test(key)
+          ? 'blocked'
+          : kind;
+      walk(each, next);
+    }
+  };
+  walk(value, null);
+  return [...found.values()];
+}
+
+/** How many entries each list at the top of a preview holds. */
+function countsOfPreview(value: unknown): { list: string; count: number }[] {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) return [];
+  return Object.entries(value as Record<string, unknown>).flatMap(([list, each]) =>
+    Array.isArray(each) ? [{ list, count: each.length }] : [],
+  );
 }
 
 /** The fields of a body as text, for the panel (the platform's own words, decision 5). */
 function fieldsOf(body: unknown): { name: string; value: string }[] {
   if (body === null || typeof body !== 'object' || Array.isArray(body)) return [];
-  return Object.entries(body as Record<string, unknown>).map(([name, value]) => ({
-    name,
-    value: (typeof value === 'string' ? value : JSON.stringify(value)).slice(0, 400),
-  }));
+  // Ids are not shown: the record, the lessons and the preview name what they stand for.
+  return Object.entries(body as Record<string, unknown>)
+    .filter(([, value]) => value !== null && value !== undefined && !idsOnly(value))
+    .filter(([, value]) => !Array.isArray(value) || value.length > 0)
+    .map(([name, value]) => ({
+      name,
+      value: (typeof value === 'string' ? value : JSON.stringify(value)).slice(0, 400),
+    }));
 }
 
 /**
@@ -173,6 +240,20 @@ function fieldsOf(body: unknown): { name: string; value: string }[] {
  */
 export function lessonsOfPreview(value: unknown): AssistantPreviewLesson[] {
   const found: AssistantPreviewLesson[] = [];
+  // The lessons that hold data, named by id in a list of their own (`withData`).
+  const withData = new Set<string>();
+  const collect = (item: unknown, inData: boolean): void => {
+    if (Array.isArray(item)) {
+      for (const each of item) collect(each, inData);
+      return;
+    }
+    if (item === null || typeof item !== 'object') return;
+    for (const [key, each] of Object.entries(item as Record<string, unknown>)) {
+      if (inData && key === 'lessonId' && typeof each === 'string') withData.add(each);
+      collect(each, inData || key === 'withData');
+    }
+  };
+  collect(value, false);
   const walk = (item: unknown, list: string): void => {
     if (Array.isArray(item)) {
       for (const each of item) walk(each, list);
@@ -204,6 +285,7 @@ export function lessonsOfPreview(value: unknown): AssistantPreviewLesson[] {
             : null,
         teacherName: typeof teacher?.name === 'string' ? teacher.name : null,
         roomName: typeof room?.name === 'string' ? room.name : null,
+        hasData: typeof record.id === 'string' && withData.has(record.id),
       });
       return;
     }
@@ -333,6 +415,8 @@ export async function draftStep(
   // The preview, with the same body (a calendar or template change, a bulk cancel, an exam).
   let preview: StoredStep['preview'] = null;
   let previewLessons: AssistantPreviewLesson[] = [];
+  let previewIssues: { kind: 'warning' | 'blocked'; code: string }[] = [];
+  let previewCounts: { list: string; count: number }[] = [];
   let previewGiven: unknown;
   if (line.preview !== undefined) {
     const previewUrl = urlFor(line.preview.route, line.preview.args, pathArgs, body);
@@ -356,7 +440,27 @@ export async function draftStep(
     };
     const filtered = filterRead(bodyOf(outcome));
     previewLessons = lessonsOfPreview(filtered);
+    previewIssues = issuesOfPreview(filtered);
+    previewCounts = countsOfPreview(filtered);
     previewGiven = cut(filtered);
+  }
+
+  // A one-day change of one lesson: the lesson as the day's timetable names it (class, date,
+  // slot, subject), read through the person's own route, for the panel only.
+  if (
+    previewLessons.length === 0 &&
+    tool.path.startsWith('/api/timetable/lessons/:id') &&
+    typeof pathArgs.id === 'string' &&
+    as.lessonDateOf !== undefined
+  ) {
+    const date = await as.lessonDateOf(pathArgs.id);
+    if (date !== undefined) {
+      const day = await dispatcher.read(`/api/timetable/day?date=${date}`, as);
+      const lesson = findRecord(bodyOf(day), 'id', pathArgs.id);
+      previewLessons = lessonsOfPreview(lesson === undefined ? [] : [filterRead(lesson)]).map(
+        (one) => ({ ...one, list: 'lesson' }),
+      );
+    }
   }
 
   const step: StoredStep = {
@@ -375,9 +479,12 @@ export async function draftStep(
     preview,
     shown: {
       recordName: nameOfRecord(picked),
+      recordNames: namesOfRecord(picked),
       fields: fieldsOf(tool.body === undefined ? null : body),
       previewLessons: previewLessons.slice(0, PREVIEW_LESSONS_SHOWN),
       previewMore: Math.max(0, previewLessons.length - PREVIEW_LESSONS_SHOWN),
+      previewIssues,
+      previewCounts,
     },
   };
   return {

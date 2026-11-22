@@ -36,6 +36,7 @@ export function ProposalCard({
 }) {
   const { t, i18n } = useTranslation();
   const waiting = proposal.state === 'waiting';
+  const language = (['uz', 'ru', 'en'] as const).find((one) => one === i18n.language) ?? 'en';
   return (
     <section
       aria-label={t('assistant.proposal.title')}
@@ -62,31 +63,70 @@ export function ProposalCard({
               {t(`assistant.actions.${step.action}`, { defaultValue: step.action })}
             </p>
             {step.recordName !== null && (
-              <p className="text-sm">{t('assistant.proposal.record', { name: step.recordName })}</p>
+              <p className="text-sm">
+                {t('assistant.proposal.record', {
+                  name: step.recordNames === null ? step.recordName : step.recordNames[language],
+                })}
+              </p>
             )}
-            {step.previewLessons.length > 0 && (
-              <div className="grid gap-1">
-                <p className="text-sm font-semibold">{t('assistant.proposal.lessons')}</p>
+            {[...new Set(step.previewLessons.map((lesson) => lesson.list))].map((list) => (
+              <div key={list} className="grid gap-1">
+                <p className="text-sm font-semibold">
+                  {t(`assistant.proposal.lists.${list}`, {
+                    defaultValue: t('assistant.proposal.lists.other'),
+                  })}
+                </p>
                 <ul className="grid gap-0.5 text-sm">
-                  {step.previewLessons.map((lesson, index) => (
-                    <li key={`${lesson.date}-${String(lesson.start)}-${String(index)}`}>
-                      {t('assistant.proposal.lessonLine', {
-                        date: schoolDateText(lesson.date, i18n.language),
-                        time: clock(lesson.start),
-                        unit: lesson.unitName,
-                        subject:
-                          lesson.subjectNames === null
-                            ? ''
-                            : (lesson.subjectNames[i18n.language as 'uz' | 'ru' | 'en'] ??
-                              lesson.subjectNames.en),
-                      })}
-                    </li>
-                  ))}
-                  {step.previewMore > 0 && (
-                    <li>{t('assistant.proposal.moreLessons', { count: step.previewMore })}</li>
-                  )}
+                  {step.previewLessons
+                    .filter((lesson) => lesson.list === list)
+                    .map((lesson, index) => (
+                      <li key={`${lesson.date}-${String(lesson.start)}-${String(index)}`}>
+                        {t('assistant.proposal.lessonLine', {
+                          date: schoolDateText(lesson.date, i18n.language),
+                          time: clock(lesson.start),
+                          unit: lesson.unitName,
+                          subject:
+                            lesson.subjectNames === null ? '' : lesson.subjectNames[language],
+                        })}
+                        {lesson.hasData && (
+                          <span className="ml-2 font-semibold">
+                            {t('assistant.proposal.hasData')}
+                          </span>
+                        )}
+                      </li>
+                    ))}
                 </ul>
               </div>
+            ))}
+            {step.previewMore > 0 && (
+              <p className="text-sm">
+                {t('assistant.proposal.moreLessons', { count: step.previewMore })}
+              </p>
+            )}
+            {step.previewIssues.length > 0 && (
+              <ul className="grid gap-0.5 text-sm">
+                {step.previewIssues.map((issue) => (
+                  <li key={`${issue.kind}:${issue.code}`} className="font-semibold">
+                    {t(`assistant.proposal.issue_${issue.kind}`, {
+                      text: t(`errors.${issue.code}`, { defaultValue: issue.code }),
+                    })}
+                  </li>
+                ))}
+              </ul>
+            )}
+            {step.previewCounts.length > 0 && (
+              <p className="text-sm text-muted-foreground">
+                {step.previewCounts
+                  .map((one) =>
+                    t('assistant.proposal.count', {
+                      list: t(`assistant.proposal.lists.${one.list}`, {
+                        defaultValue: t('assistant.proposal.lists.other'),
+                      }),
+                      number: one.count,
+                    }),
+                  )
+                  .join('; ')}
+              </p>
             )}
             {step.fields.length > 0 && (
               <details className="text-sm">
@@ -94,7 +134,11 @@ export function ProposalCard({
                 <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 break-words">
                   {step.fields.map((field) => (
                     <div key={field.name} className="contents">
-                      <dt className="text-muted-foreground">{field.name}</dt>
+                      <dt className="text-muted-foreground">
+                        {t(`assistant.fields.${field.name}`, {
+                          defaultValue: t('assistant.fields.other'),
+                        })}
+                      </dt>
                       <dd className="min-w-0">{field.value}</dd>
                     </div>
                   ))}

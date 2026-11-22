@@ -341,7 +341,10 @@ describe('a proposal of the assistant', () => {
     group: 'timetable' as const,
     summary: 'Cancel lesson 3 of 7 Oxford today.',
     recordName: null,
+    recordNames: null,
     fields: [{ name: 'reason', value: 'No electricity' }],
+    previewIssues: [{ kind: 'warning' as const, code: 'lesson_started' }],
+    previewCounts: [{ list: 'cancel', count: 1 }],
     previewLessons: [
       {
         list: 'cancel',
@@ -351,6 +354,7 @@ describe('a proposal of the assistant', () => {
         subjectNames: { uz: 'Matematika', ru: 'Математика', en: 'Mathematics' },
         teacherName: 'Karimov Aziz',
         roomName: '204',
+        hasData: true,
       },
     ],
     previewMore: 0,
@@ -397,6 +401,11 @@ describe('a proposal of the assistant', () => {
     expect(card.getByText(`1. ${en.assistant.actions.BulkCancelsController_save}`)).toBeTruthy();
     expect(card.getByText(/7 Oxford, Mathematics/)).toBeTruthy();
     expect(card.getByText(/09:50/)).toBeTruthy();
+    // Grouped under its list, with its data marked, the warning shown and the field named.
+    expect(card.getByText(en.assistant.proposal.lists.cancel)).toBeTruthy();
+    expect(card.getByText(en.assistant.proposal.hasData)).toBeTruthy();
+    expect(card.getByText(/^Warning: /)).toBeTruthy();
+    expect(card.getByText(en.assistant.fields.reason)).toBeTruthy();
     expect(card.getByText(en.assistant.proposal.states.waiting, { exact: false })).toBeTruthy();
     fireEvent.click(card.getByRole('button', { name: en.assistant.proposal.confirm }));
     await waitFor(() => {
@@ -438,5 +447,53 @@ describe('a proposal of the assistant', () => {
     expect(card.getByText(en.assistant.proposal.stepStates.not_run)).toBeTruthy();
     expect(card.queryByRole('button', { name: en.assistant.proposal.confirm })).toBeNull();
     cleanup();
+  });
+
+  it('declines in the chosen role, and shows an expired proposal without Confirm', async () => {
+    const waiting = withProposal('waiting', [step('waiting')]);
+    const declined = {
+      ...waiting,
+      proposals: waiting.proposals.map((one) => ({ ...one, state: 'declined' as const })),
+    };
+    const calls = fakeApi({
+      'GET /api/auth/session': () => json(admin()),
+      'GET /api/assistant/status': () => json(ON),
+      'GET /api/assistant/conversations': () =>
+        json({ conversations: [{ ...waiting, messages: undefined, proposals: undefined }] }),
+      [`GET /api/assistant/conversations/${uid(1)}`]: () => json(waiting),
+      [`POST /api/assistant/proposals/${uid(800)}/decline`]: () => json(declined),
+    });
+    renderApp('/', 'en');
+    const panel = await openPanel();
+    fireEvent.click(await panel.findByRole('button', { name: /Which classes have no Tutor/ }));
+    const card = within(await panel.findByRole('region', { name: en.assistant.proposal.title }));
+    fireEvent.click(card.getByRole('button', { name: en.assistant.proposal.decline }));
+    await waitFor(() => {
+      expect(
+        calls.find((call) => call.route === `POST /api/assistant/proposals/${uid(800)}/decline`)
+          ?.body,
+      ).toEqual({ role: 'super_admin' });
+    });
+    expect(await panel.findByText(en.assistant.proposal.states.declined)).toBeTruthy();
+    cleanup();
+
+    const expired = {
+      ...waiting,
+      proposals: waiting.proposals.map((one) => ({ ...one, state: 'expired' as const })),
+    };
+    fakeApi({
+      'GET /api/auth/session': () => json(admin()),
+      'GET /api/assistant/status': () => json(ON),
+      'GET /api/assistant/conversations': () =>
+        json({ conversations: [{ ...expired, messages: undefined, proposals: undefined }] }),
+      [`GET /api/assistant/conversations/${uid(1)}`]: () => json(expired),
+    });
+    renderApp('/', 'en');
+    const again = await openPanel();
+    fireEvent.click(await again.findByRole('button', { name: /Which classes have no Tutor/ }));
+    const old = within(await again.findByRole('region', { name: en.assistant.proposal.title }));
+    expect(old.getByText(en.assistant.proposal.states.expired)).toBeTruthy();
+    expect(old.queryByRole('button', { name: en.assistant.proposal.confirm })).toBeNull();
+    expect(old.queryByRole('button', { name: en.assistant.proposal.decline })).toBeNull();
   });
 });

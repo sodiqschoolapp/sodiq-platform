@@ -306,3 +306,25 @@ describe('the values of an entry', () => {
     ]);
   });
 });
+
+// Task 11.13 (pull request #376): `02`, Audit: "Every change made through the assistant is
+// recorded as the person's change, marked 'via assistant', and the audit log shows the request
+// it came from."
+describe('a change made through the assistant on the audit log page', () => {
+  it('names the person "via assistant" in the list', async () => {
+    const viaAssistant: AuditEntryAnswer = {
+      ...OLDER,
+      id: uid(9),
+      action: 'class.archive',
+      viaAssistant: { question: 'Archive 7 Oxford.', conversationId: null },
+    };
+    fakeApi({
+      'GET /api/auth/session': () => json(sessionAs('principal')),
+      'GET /api/audit/entries': () => json(page([viaAssistant])),
+    });
+    renderApp(PATH);
+    await waitFor(() => {
+      expect(rowsDrawn().some((row) => row.includes('Karimova Aziza via assistant'))).toBe(true);
+    });
+  });
+});
