@@ -762,11 +762,14 @@ describe('a frozen permission table', () => {
     }
   });
 
-  it('gives the Super Admin alone the assistant panel, view only (task 11.12, the owner on 21 November 2026)', () => {
-    // Build plan 11.12, approved by the owner: "a new area `assistant` (view: opening the chat
-    // panel) for the Super Admin; no role gains any other right".
+  it('gives the Super Admin and the Academic Vice Principal the assistant panel, view only (tasks 11.12 and 11.13, the owner on 21 November 2026)', () => {
+    // Build plans 11.12 and 11.13, approved by the owner: "a new area `assistant` (view: opening
+    // the chat panel) for the Super Admin" and "for the Academic Vice Principal; no role gains
+    // any other right". The requirement changed with 11.13: the second role is added.
     for (const role of ROLES) {
-      expect(PERMISSIONS.assistant[role], role).toEqual(role === 'super_admin' ? ['view'] : []);
+      expect(PERMISSIONS.assistant[role], role).toEqual(
+        role === 'super_admin' || role === 'academic_vice_principal' ? ['view'] : [],
+      );
     }
   });
 

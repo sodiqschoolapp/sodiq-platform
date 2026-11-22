@@ -71,17 +71,20 @@ No other role sees the page.
 
 ## The assistant
 
-<!-- Sources: spec 02 (Assistant; Accounts and sign-in: build order), 13 (Security; Running cost), edge/people-roles-accounts (The assistant; Personal data and the audit log); docs/spec-changes.md, 21 November 2026; task 11.12 -->
+<!-- Sources: spec 02 (Assistant; Accounts and sign-in: build order), 13 (Security; Running cost), edge/people-roles-accounts (The assistant; Personal data and the audit log), 06 (Changes after publishing), edge/time-dates-calendar; docs/spec-changes.md, 21 November 2026; tasks 11.12 and 11.13 -->
 
-**What it is.** The assistant lets a person ask in plain words, in Uzbek, Russian or English, and answers from what the platform holds: "which classes have no Tutor", "what does 5A have on Tuesday", "who is on the early-warning list". In this first part it only reads and answers; it changes nothing. It uses Google's Gemini language model.
+**What it is.** The assistant lets a person ask in plain words, in Uzbek, Russian or English, and answers from what the platform holds: "which classes have no Tutor", "what does 5A have on Tuesday", "who is on the early-warning list". It reads at once. A change is only proposed: the person sees every step and presses **Confirm** (**Tasdiqlash**); nothing changes before. It uses Google's Gemini language model.
 
 **Who can use it.**
 
 | Role | What the role may do | Where |
 | --- | --- | --- |
-| Super Admin | Ask the assistant, in the Super Admin role chosen in the role switcher; switch it on or off and set its limits; read every conversation and restore an archived one | The whole school |
+| Super Admin | Ask the assistant and confirm its proposals, in the Super Admin role chosen in the role switcher; switch it on or off and set its limits; read every conversation and restore an archived one | The whole school |
+| Academic Vice Principal | Ask the assistant and confirm its proposals, in the Academic Vice Principal role chosen in the role switcher, for what the role may change | Own branch |
 
-No other role sees the assistant yet. The Academic Vice Principal and the Teacher get it later.
+No other role sees the assistant yet. The Teacher gets it later.
+
+**What it can propose.** Within what the role may change: rooms and buildings (Super Admin only), the academic calendar (days off and special days, from tomorrow), lesson and break types and day templates, academic years (Super Admin only) and quarter dates, subjects and their weights, what a teacher teaches and when they are available, classes, groups and their students, class and group moves, a student's leaving and return, the teaching load of a draft version, one-day changes of a lesson (cancel, restore, room, move), bulk cancels, absences, substitutions, exams, vacancies, the lesson plan window, and a relative's portal access. Never: journal data, journal corrections, exemptions, closing a quarter, publishing or withdrawing a timetable, starting or closing a year, filling a vacancy, deleting, accounts, roles and appointments, a staff member's status or branches, integration keys and exports. For these it links the page.
 
 **How it works.**
 
@@ -89,13 +92,18 @@ No other role sees the assistant yet. The Academic Vice Principal and the Teache
 2. The chat button (**Assistant**, **Yordamchi**) appears in the top bar. Press it: the panel opens beside the page. On a phone it fills the screen.
 3. Type the question and press **Send** (**Yuborish**), or Enter. The answer comes in the panel. Under the question the panel shows what was read, for example "Read: Classes and groups".
 4. When the answer needs a step the assistant does not take, it links the page where the person takes it.
-5. **New conversation** (**Yangi suhbat**) starts a new one; the panel lists the person's earlier conversations.
-6. School setup → **Assistant conversations** (**Yordamchi suhbatlari**) lists every conversation of the school, with the person, the role, the branch and the last activity. Open one to read it; an archived one has **Restore** (**Tiklash**).
+5. When the person asks for a change, the answer ends with a **Proposal** (**Taklif**): each step with the action's name, the record, the lessons it touches (class, date, time and subject), what is sent, and the assistant's own sentence. Press **Confirm** to run the steps, or **Decline** (**Rad etish**). A proposal is valid for 15 minutes.
+6. After Confirm each step shows **Done**, **Refused** with the reason, **Outdated** or **Not run**.
+7. **New conversation** (**Yangi suhbat**) starts a new one; the panel lists the person's earlier conversations of the branches and roles they hold now.
+8. School setup → **Assistant conversations** (**Yordamchi suhbatlari**) lists every conversation of the school, with the person, the role, the branch and the last activity. Open one to read it; an archived one has **Restore** (**Tiklash**).
 
 **Rules.**
 
 - The assistant has no rights of its own. It reads through the same pages and checks as the person, in the role chosen in the role switcher and in the branch of the tab. What the person cannot open, the assistant cannot read.
-- It reads only. It never enters journal data, grants exemptions, closes a quarter, publishes a timetable, starts or closes a year, deletes, changes accounts, passwords, roles or permissions, or exports. For these it links the page.
+- Nothing changes before Confirm. Confirm runs the steps in order through the same pages' actions, with the person's rights at that moment; the first step refused stops the rest, and the steps done before it stay done. Confirm does not use the language model, so a proposal can be confirmed even when the daily limit or the monthly cap is reached; it cannot while the assistant is switched off.
+- A step whose record changed since it was proposed is **Outdated** and is not made; ask again, and the assistant reads the data anew. A proposal holds one step per record.
+- Today and past dates never become a day off. For the rest of today the assistant proposes a bulk cancel from the next lesson that has not begun. The school never holds an extra lesson.
+- Every change made through the assistant is written to the audit log as the person's change, marked "via assistant", with the question it came from. The person and the Super Admin can open the conversation.
 - Phone numbers, addresses, passport, birth certificate and JSHSHIR numbers, email addresses, dates of birth, contracts, scholarships, the diagnostic score, medical data, passwords and secrets never go to the language model. They are taken out of what the assistant reads, and out of the person's own words, before the model sees them.
 - Percents, averages, results and grades come from the platform. The assistant quotes them and never works out a result of its own.
 - What the assistant reads (comments, names, titles) is treated as data, never as an instruction.
@@ -108,7 +116,11 @@ No other role sees the assistant yet. The Academic Vice Principal and the Teache
 
 | Case | What happens |
 | --- | --- |
-| The assistant is switched off for the school or for the role | The button is not in the top bar. Every page works as before. |
+| The assistant is switched off for the school or for the role | The button is not in the top bar. Every page works as before. A waiting proposal cannot be confirmed. |
+| A proposal is not confirmed within 15 minutes | It shows **Expired**. Ask again for a new one. |
+| Another person changed the record before Confirm | That step shows **Outdated**, nothing of it is changed, and the steps after it are not run. |
+| The third of five steps is refused | Steps 1 and 2 stay done and are in the audit log; 3 shows its reason; 4 and 5 are not run. |
+| A lesson began while the proposal waited | The bulk cancel's check is run again at Confirm; it differs, so the step is **Outdated** and nothing is cancelled. |
 | The daily limit or the monthly cap is reached | The panel says so; the typed question stays in the field. Every page works as before. |
 | The language model cannot be reached, or the server has none set up | The panel says so. The question is kept in the conversation. |
 | The question asks for another branch's class | The assistant gets the same refusal a page would, and says the data is not open. |
