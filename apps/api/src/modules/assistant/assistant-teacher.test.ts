@@ -494,6 +494,67 @@ describe('the assistant for teachers (task 11.14)', () => {
     ]);
   });
 
+  it('refuses the Teacher another person’s conversation and proposal (404), and lists only the Teacher’s own', async () => {
+    // The Super Admin's conversation with a waiting proposal (a room to add).
+    model.script(
+      calls({
+        name: propose('POST /api/setup/rooms'),
+        args: {
+          body: {
+            name: 'Room 9',
+            floorId: randomUUID(),
+            type: 'classroom',
+            capacity: 20,
+            status: 'in_use',
+            shared: false,
+            maxSimultaneousLessons: null,
+          },
+          summary: 'Add a room.',
+        },
+      }),
+      answer('Here is the proposal.'),
+    );
+    const theirs = await request(server())
+      .post('/api/assistant/questions')
+      .set('Cookie', t.admin)
+      .set(BRANCH_HEADER, scene.branch)
+      .send({ role: 'super_admin', text: 'Add a room.' });
+    expect(theirs.status, JSON.stringify(theirs.body).slice(0, 400)).toBe(200);
+    const conversation = assistantConversationSchema.parse(
+      (theirs.body as { conversation: unknown }).conversation,
+    );
+    const proposalId = conversation.proposals[0]?.id ?? '';
+    expect(proposalId).not.toBe('');
+    const codeOf = (response: request.Response) =>
+      [response.status, (response.body as { error?: { code?: string } }).error?.code] as const;
+    const read = await request(server())
+      .get(`/api/assistant/conversations/${conversation.id}`)
+      .set('Cookie', owner.cookie)
+      .set(BRANCH_HEADER, scene.branch);
+    expect(codeOf(read)).toEqual([404, 'not_found']);
+    for (const which of ['confirm', 'decline'] as const) {
+      const decided = await request(server())
+        .post(`/api/assistant/proposals/${proposalId}/${which}`)
+        .set('Cookie', owner.cookie)
+        .set(BRANCH_HEADER, scene.branch)
+        .send({ role: 'teacher' });
+      expect(codeOf(decided), which).toEqual([404, 'not_found']);
+    }
+    const list = await request(server())
+      .get('/api/assistant/conversations')
+      .set('Cookie', owner.cookie)
+      .set(BRANCH_HEADER, scene.branch);
+    expect(list.status).toBe(200);
+    expect(JSON.stringify(list.body)).not.toContain(conversation.id);
+    // The proposal still waits for its own person.
+    const still = await t.database.migrator
+      .selectFrom('assistant_proposal_decisions')
+      .selectAll()
+      .where('proposal_id', '=', proposalId)
+      .execute();
+    expect(still).toEqual([]);
+  });
+
   it('saves a drafted plan item only at Confirm, through the plan’s route, marked "via assistant"', async () => {
     const before = await everyRow();
     const conversation = await asked([

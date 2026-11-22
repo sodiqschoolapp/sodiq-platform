@@ -22,6 +22,27 @@ const VIEWS = 'src/modules/timetable/views.test.ts';
 const VIEWS_EXPORT = 'src/modules/timetable/views-export.test.ts';
 const HOME = 'src/modules/timetable/teaching-home.test.ts';
 const TIMETABLE_OWN = 'src/modules/timetable/scope-refusals.test.ts';
+const ASSISTANT_TEACHER = 'src/modules/assistant/assistant-teacher.test.ts';
+
+/**
+ * Task 11.14: the assistant's panel in the Teacher role. What it reads and proposes passes each
+ * route's own limits (the Teacher's list, `assistant-routes.ts`); the person's conversations and
+ * proposals are their own.
+ */
+const ASSISTANT_PANEL: ScopeLine = {
+  roles: ['teacher'],
+  scope: 'branch',
+  rule: '02, Assistant: "with the person\'s session and chosen role: the same branch, subjects, own classes and own lessons … as the screens" (each read and step meets its own route\'s limit)',
+  refusedIn: [],
+};
+const ASSISTANT_OWN: ScopeLine = {
+  roles: ['teacher'],
+  scope: 'own_record',
+  rule: '02, Assistant: "The person sees their own conversations; the Super Admin sees all of them"',
+  refusedIn: [
+    `${ASSISTANT_TEACHER} > refuses the Teacher another person’s conversation and proposal (404), and lists only the Teacher’s own`,
+  ],
+};
 
 /** `02`, Tutor: "Views the full student list of the branch (view only)". */
 const TUTOR_STUDENT_LIST: ScopeLine = {
@@ -194,6 +215,14 @@ const reportLines = (tests: { tutor: string; heads: string }): ScopeLine[] => [
 ];
 
 export const OTHER_SCOPES: RouteScopes = {
+  // --- The assistant (task 11.14) -----------------------------------------------------------
+  'GET /api/assistant/status': [ASSISTANT_PANEL],
+  'POST /api/assistant/questions': [ASSISTANT_PANEL],
+  'GET /api/assistant/conversations': [ASSISTANT_OWN],
+  'GET /api/assistant/conversations/:id': [ASSISTANT_OWN],
+  'POST /api/assistant/proposals/:id/confirm': [ASSISTANT_OWN],
+  'POST /api/assistant/proposals/:id/decline': [ASSISTANT_OWN],
+
   'GET /api/setup/current-period': [
     {
       roles: ['tutor', 'class_teacher', 'senior_head_teacher', 'head_teacher', 'teacher'],
