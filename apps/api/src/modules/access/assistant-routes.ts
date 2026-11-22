@@ -31,6 +31,11 @@ export interface AssistantReadLine {
    * filter (task 11.13): a relative's name is of the student's Contact group (11.12 decision 2).
    */
   withheld?: readonly string[];
+  /**
+   * Task 11.14 (review of the code, finding 1): the read is given only for a plan of the
+   * person's own journal, found at this path value or answer field (`assistant/own-journal.ts`).
+   */
+  ownJournal?: { path: string } | { answer: string };
 }
 
 /**
@@ -394,6 +399,9 @@ const TEACHER_READS: Readonly<Record<string, AssistantReadLine>> = {
   'GET /api/journal/lessons/:lessonId/card': {
     group: 'journal',
     description: 'The card of one own lesson: number, date, slot, topic, classworks, homeworks.',
+    // A colleague of the same subject and grade reads it on the screen; the Teacher's assistant
+    // reads only the own (`02`: "their lesson plans").
+    ownJournal: { answer: 'journalId' },
   },
   'GET /api/journal/reminders': {
     group: 'journal',
@@ -425,10 +433,16 @@ const TEACHER_READS: Readonly<Record<string, AssistantReadLine>> = {
     group: 'plans',
     description:
       'The own lesson plan of one journal for a quarter: the rows with dates, items, ids and the window state.',
+    // A colleague of the same subject and grade reads it on the screen; the Teacher's assistant
+    // reads only the own (`02`: "their lesson plans").
+    ownJournal: { path: 'journalId' },
   },
   'GET /api/plans/lessons/:lessonId': {
     group: 'plans',
     description: 'The plan item of one own lesson.',
+    // A colleague of the same subject and grade reads it on the screen; the Teacher's assistant
+    // reads only the own (`02`: "their lesson plans").
+    ownJournal: { answer: 'journalId' },
   },
   'GET /api/plans/windows': {
     group: 'plans',
@@ -441,6 +455,9 @@ const TEACHER_READS: Readonly<Record<string, AssistantReadLine>> = {
   'GET /api/plans/journals/:journalId/master-compare': {
     group: 'plans',
     description: 'The own plan beside the master plan it was copied from.',
+    // A colleague of the same subject and grade reads it on the screen; the Teacher's assistant
+    // reads only the own (`02`: "their lesson plans").
+    ownJournal: { path: 'journalId' },
   },
 };
 

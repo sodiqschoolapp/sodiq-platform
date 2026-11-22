@@ -15,6 +15,7 @@ import type { SessionPass } from '../../http/session-cookie.js';
 import { fingerprintOf, findRecord, idsIn } from './canonical.js';
 import type { AssistantDispatcher, ReadOutcome } from './dispatcher.js';
 import { filterRead, filterWords } from './field-filter.js';
+import { journalOf, refusedUnlessOwnJournal } from './own-journal.js';
 import {
   BODY_ARGUMENT,
   changeBodySchemaOf,
@@ -118,6 +119,17 @@ function urlFor(
     }
   }
   return urlOf(tool, given);
+}
+
+/** The values of a read's parameters, from the step (the journal of a base read). */
+function readArgsOf(
+  args: Readonly<Record<string, StepValue>>,
+  pathArgs: Readonly<Record<string, unknown>>,
+  body: Readonly<Record<string, unknown>>,
+): Record<string, unknown> {
+  return Object.fromEntries(
+    Object.entries(args).map(([name, value]) => [name, valueOf(value, pathArgs, body)]),
+  );
 }
 
 function withStepId(value: unknown, id: string | undefined): unknown {
@@ -450,13 +462,30 @@ export async function draftStep(
   if (line.serverBase !== undefined) {
     const server = line.serverBase;
     const readUrl = urlFor(server.route, server.args, pathArgs, body);
+    const readArgs = readArgsOf(server.args, pathArgs, body);
     for (const name of Object.keys(server.toolFields)) {
       delete body[name];
     }
     if ('fault' in readUrl) {
       return { given: { error: 'invalid_arguments', detail: readUrl.fault } };
     }
-    const outcome = await dispatcher.read(readUrl.url, as);
+    let outcome = await dispatcher.read(readUrl.url, as);
+    // Task 11.14 (review of the code, finding 1): the base read is narrowed as the plan read is,
+    // so a colleague's item is refused here and never stored or given to the model.
+    const own = as.lines[server.route];
+    if (
+      own !== undefined &&
+      (own.kind === undefined || own.kind === 'read') &&
+      own.ownJournal !== undefined &&
+      refusalOf(outcome) === undefined
+    ) {
+      outcome =
+        (await refusedUnlessOwnJournal(
+          dispatcher,
+          as,
+          journalOf(own.ownJournal, readArgs, outcome),
+        )) ?? outcome;
+    }
     const refused = refusalOf(outcome);
     if (refused !== undefined) {
       return { given: refused };

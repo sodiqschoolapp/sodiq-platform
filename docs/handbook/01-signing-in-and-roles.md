@@ -132,7 +132,7 @@ No other role sees the assistant. A Head Teacher, a Senior Head Teacher, a Tutor
 | A Teacher asks to mark everyone present, or to give a mark | Refused: journal data is entered only in the journal. The answer links the lesson's journal column. |
 | A Teacher's change of a plan item waits while someone saves another field of it | At Confirm the other field stays as saved and the Teacher's field is saved, as on the plan page. If the same field was changed, the step is **Outdated**. |
 | The plan window ends while a Teacher's proposal waits | The step is refused at Confirm. The Teacher sends an edit request (also through the assistant); once it is approved, the change can be confirmed. |
-| A Teacher asks about another teacher's journal or timetable | Refused, as on the page. A colleague's plan of the same subject and grade can be read, as on the plan page, but not changed. |
+| A Teacher asks about another teacher's journal, plan or timetable | Refused. The plan page shows a colleague's plan of the same subject and grade, but the assistant reads only the Teacher's own plans. |
 | A person who is also a Head Teacher or a Tutor chooses the Teacher role | The assistant reads and proposes with the Teacher's rights only. |
 
 **What the person sees.**

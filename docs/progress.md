@@ -15,7 +15,7 @@ Left out:
 The next sessions must know:
 
 - A line whose body field must come from the server, not the model, uses `serverBase` (the tool takes its `toolFields` instead, removed before the step is stored).
-- A colleague of the same subject and grade reads a Teacher's plan and lesson card (`edge/lesson-plans`), so a link or a basis that must prove more than the plan's reading reads the journal too.
+- A colleague of the same subject and grade reads a Teacher's plan and lesson card on the screen (`edge/lesson-plans`); the Teacher's assistant reads only the own: a read line with `ownJournal` is given only when the person's own read of the journal answers (`assistant/own-journal.ts`).
 
 ## 22 November 2026: task 11.13, the assistant: proposals and Confirm, and the Academic Vice Principal
 

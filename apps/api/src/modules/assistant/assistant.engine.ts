@@ -40,6 +40,7 @@ import {
   type ModelReply,
   type ModelTurn,
 } from './model.js';
+import { journalOf, refusedUnlessOwnJournal } from './own-journal.js';
 import { proposalsOf } from './proposal-views.js';
 import { draftStep, type StoredStep } from './proposals.js';
 import {
@@ -602,10 +603,20 @@ export class AssistantEngine {
       } else {
         const as = { pass: asker.pass, branchId: start.conversation.branchId, role };
         // Task 11.13: a preview or check writes nothing; it is sent with its body.
-        const outcome = isPreview
+        const line = lines[route];
+        let outcome = isPreview
           ? await this.dispatcher.send('POST', url.url, previewBody ?? {}, as)
           : await this.dispatcher.read(url.url, as);
-        const line = lines[route];
+        // Task 11.14: a plan read of the person's own journal only (`own-journal.ts`).
+        const own = line?.kind === undefined || line.kind === 'read' ? line?.ownJournal : undefined;
+        if (own !== undefined && outcome.failure === undefined && outcome.status === 200) {
+          outcome =
+            (await refusedUnlessOwnJournal(
+              this.dispatcher,
+              as,
+              journalOf(own, call.args, outcome),
+            )) ?? outcome;
+        }
         const withheld =
           line?.kind === undefined || line.kind === 'read' ? line?.withheld : undefined;
         given = givenOf(withheld === undefined ? outcome : withholding(outcome, withheld));

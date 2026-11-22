@@ -48,6 +48,8 @@ const PLAN_REQUEST = propose('POST /api/plans/journals/:journalId/requests');
 const PREPARED_SEND = propose('POST /api/plans/requests/:requestId/send');
 const JOURNAL_READ = tool('GET /api/journal/journals/:journalId');
 const PLAN_READ = tool('GET /api/plans/journals/:journalId');
+const PLAN_LESSON_READ = tool('GET /api/plans/lessons/:lessonId');
+const CARD_READ = tool('GET /api/journal/lessons/:lessonId/card');
 const TEACHER_VIEW = tool('GET /api/timetable/views/teacher');
 const STUDENTS_READ = tool('GET /api/people/students');
 
@@ -330,7 +332,7 @@ describe('the assistant for teachers (task 11.14)', () => {
     expect(offered.some((name) => /attendance|allPresent|score|comment/i.test(name))).toBe(false);
   });
 
-  it('reads the Teacher’s own journal, plan and timetable, and refuses another teacher’s journal and timetable, also for a Teacher who is the subject’s Head Teacher and a Tutor of that class', async () => {
+  it('reads the Teacher’s own journal, plan and timetable, and refuses another teacher’s journal, plan, lesson card and timetable, also for a Teacher who is the subject’s Head Teacher and a Tutor of that class', async () => {
     const conversation = await asked([
       { name: JOURNAL_READ, args: { journalId: journal, quarterId: q1 } },
       { name: PLAN_READ, args: { journalId: journal, quarterId: q1 } },
@@ -341,14 +343,24 @@ describe('the assistant for teachers (task 11.14)', () => {
         args: { staffId: scene.otherTeacher.staffId, date: '2026-10-26', span: 'day' },
       },
     ]);
-    const [ownJournal, ownPlan, , theirPlan] = readStatuses(conversation);
+    const [ownJournal, ownPlan] = readStatuses(conversation);
     expect([ownJournal, ownPlan]).toEqual([200, 200]);
-    const [, , theirJournal, , theirTimetable] = results();
+    const [, , theirJournal, theirPlan, theirTimetable] = results();
     expect(theirJournal).toEqual({ status: 403, error: 'journal_scope' });
     expect(theirTimetable).toEqual({ status: 403, error: 'timetable_view_scope' });
-    // `edge/lesson-plans`, "Who may read a plan?": "teachers with the same subject and grade in
-    // their profile" read it, as on the screen; the assistant reads no more and no less.
-    expect(theirPlan).toBe(200);
+    // `edge/lesson-plans`, "Who may read a plan?", lets a teacher of the same subject and grade
+    // read it on the plan page; the Teacher's assistant reads only the own (`02`: "Read … their
+    // lesson plans"; review of the code, finding 1).
+    expect(theirPlan).toEqual({ status: 403, error: 'plan_scope' });
+    await asked([
+      { name: CARD_READ, args: { lessonId: otherLessons[0] } },
+      { name: PLAN_LESSON_READ, args: { lessonId: otherLessons[0] } },
+      { name: CARD_READ, args: { lessonId: lessons[0] } },
+    ]);
+    const [theirCard, theirItem, ownCard] = results();
+    expect(theirCard).toEqual({ status: 403, error: 'plan_scope' });
+    expect(theirItem).toEqual({ status: 403, error: 'plan_scope' });
+    expect((ownCard as { status?: number }).status).toBe(200);
     // The same person also holds the Head Teacher of the subject and the Tutor of the other
     // class (given at the start): with the Teacher role chosen, neither counts (`02`: "in the
     // role chosen"), here and in every test of this file.
@@ -678,7 +690,7 @@ describe('the assistant for teachers (task 11.14)', () => {
     expect(results[0]?.result).toEqual({ error: 'assistant_nothing_to_change' });
   });
 
-  it('refuses a save and a new item of another teacher’s plan at Confirm, by the plan’s own route; nothing saved', async () => {
+  it('refuses a save of another teacher’s plan item at the proposal and a new item at Confirm; nothing saved, nothing of it given to the model', async () => {
     // An item of the other class's plan, written by its own teacher on the screen.
     // A session of a new account moved to the colleague's own account (the staff record's
     // account link is fixed once set).
@@ -717,10 +729,12 @@ describe('the assistant for teachers (task 11.14)', () => {
         },
       },
     ]);
-    // A colleague of the same subject and grade reads the plan (`edge/lesson-plans`, "Who may
-    // read a plan?"), so the base is read and the step stored; the plan's route refuses the save
-    // at Confirm, as it refuses the screen.
-    expect(await stepsAfter(proposalOf(conversation).id)).toEqual([['refused', 'plan_scope']]);
+    // The base read is narrowed as the plan read is (review of the code, finding 1): the save of
+    // a colleague's item is refused at the proposal, no step is stored, and nothing of the item
+    // reaches the model.
+    expect(results()).toEqual([{ status: 403, error: 'plan_scope' }]);
+    expect(conversation.proposals.filter((one) => one.state === 'waiting')).toEqual([]);
+    expect(JSON.stringify(model.requests.at(-1))).not.toContain('Theirs');
     conversation = await asked([
       {
         name: ITEM_CREATE,
