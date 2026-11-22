@@ -139,7 +139,7 @@ function refusalOf(outcome: ReadOutcome): { status: number; error: string } | un
 
 /** The body of an answer, `null` when nothing came back. */
 function bodyOf(outcome: ReadOutcome): unknown {
-  return 'body' in outcome ? bodyOf(outcome) : null;
+  return 'body' in outcome ? outcome.body : null;
 }
 
 /** A record's name as its read gives it, for the panel. */
