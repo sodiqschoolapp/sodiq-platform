@@ -1,6 +1,8 @@
+import { randomUUID } from 'node:crypto';
 import {
   assistantConversationSchema,
   BRANCH_HEADER,
+  REQUEST_KEY_HEADER,
   planItemSchema,
   type AssistantConversation,
   type AssistantMessage,
@@ -13,6 +15,7 @@ import { answer, calls, FakeModel, lastResults } from '../../testing/assistant-m
 import { setEditDays } from '../../testing/branch-filter-sql.js';
 import { dayTemplatesKit, START, type DayTemplatesKit } from '../../testing/day-templates-kit.js';
 import { LoadKit } from '../../testing/load-kit.js';
+import { MembersKit } from '../../testing/members-kit.js';
 import { openPlanWindows } from '../../testing/plan-windows-kit.js';
 import { publishedScene, type PublishedScene } from '../../testing/published-scene.js';
 import { OPEN_LESSON_JOURNAL } from './tools.js';
@@ -46,6 +49,7 @@ const PREPARED_SEND = propose('POST /api/plans/requests/:requestId/send');
 const JOURNAL_READ = tool('GET /api/journal/journals/:journalId');
 const PLAN_READ = tool('GET /api/plans/journals/:journalId');
 const TEACHER_VIEW = tool('GET /api/timetable/views/teacher');
+const STUDENTS_READ = tool('GET /api/people/students');
 
 const values = (change: Record<string, unknown> = {}) => ({
   topic: 'Fractions',
@@ -68,6 +72,11 @@ describe('the assistant for teachers (task 11.14)', () => {
   /** The class's lessons of the first quarter (the Mondays 12, 19, 26 October), and the other class's. */
   let lessons: string[];
   let otherLessons: string[];
+  let q2: string;
+  /** The class's lessons of the second quarter (the eight Mondays of 9 November to 28 December). */
+  let q2Lessons: string[];
+  /** Another branch's journal, quarter and lesson. */
+  let away: { branch: string; journal: string; quarter: string; lesson: string };
 
   const server = () => t.kit.server;
 
@@ -141,6 +150,12 @@ describe('the assistant for teachers (task 11.14)', () => {
     expect(response.status, JSON.stringify(response.body).slice(0, 600)).toBe(200);
     return proposalOf(assistantConversationSchema.parse(response.body)).steps;
   };
+
+  /** What the model was given back for each call of the last question. */
+  const results = (): unknown[] =>
+    lastResults(model.requests.at(-1) ?? { system: '', turns: [], tools: [] }).map(
+      (one) => one.result,
+    );
 
   /** The reads of the conversation's last question, by status. */
   const readStatuses = (conversation: AssistantConversation): number[] =>
@@ -232,6 +247,54 @@ describe('the assistant for teachers (task 11.14)', () => {
       .updateTable('assistant_settings')
       .set({ school_on: true, roles_on: ['super_admin', 'academic_vice_principal', 'teacher'] })
       .execute();
+    q2 = (
+      await t.database.migrator
+        .selectFrom('quarters')
+        .select('id')
+        .where('academic_year_id', '=', scene.year)
+        .where('number', '=', 2)
+        .executeTakeFirstOrThrow()
+    ).id;
+    q2Lessons = (
+      await t.database.migrator
+        .selectFrom('lessons')
+        .select('id')
+        .where('class_id', '=', scene.classId)
+        .where('subject_id', '=', scene.subject)
+        .where('lesson_date', '>=', '2026-11-09')
+        .where('lesson_date', '<=', '2026-12-28')
+        .orderBy('starts_at')
+        .execute()
+    ).map((row) => row.id);
+    expect(q2Lessons.length).toBe(8);
+    await t.kit.giveRole(owner.account.id, {
+      role: 'head_teacher',
+      branchId: scene.branch,
+      subjectIds: [scene.subject],
+      validFrom: new Date('2026-09-01T00:00:00+05:00'),
+    });
+    await load.tutorOf(scene.branch, scene.otherClass, owner.account.id);
+    // Another branch with a published timetable of its own: its journal, quarter and a lesson.
+    const awayScene = await publishedScene(t, load, { branch: await t.newBranch(), graded: true });
+    const awayLesson = await t.database.migrator
+      .selectFrom('lessons')
+      .select('id')
+      .where('class_id', '=', awayScene.classId)
+      .orderBy('starts_at')
+      .executeTakeFirstOrThrow();
+    away = {
+      branch: awayScene.branch,
+      journal: await journalOf(awayScene.classId),
+      lesson: awayLesson.id,
+      quarter: (
+        await t.database.migrator
+          .selectFrom('quarters')
+          .select('id')
+          .where('academic_year_id', '=', awayScene.year)
+          .where('number', '=', 1)
+          .executeTakeFirstOrThrow()
+      ).id,
+    };
     await at(MOMENT);
   });
 
@@ -278,23 +341,17 @@ describe('the assistant for teachers (task 11.14)', () => {
         args: { staffId: scene.otherTeacher.staffId, date: '2026-10-26', span: 'day' },
       },
     ]);
-    const [ownJournal, ownPlan, theirJournal, theirPlan, theirTimetable] =
-      readStatuses(conversation);
+    const [ownJournal, ownPlan, , theirPlan] = readStatuses(conversation);
     expect([ownJournal, ownPlan]).toEqual([200, 200]);
-    expect([403, 404]).toContain(theirJournal);
-    expect([403, 404]).toContain(theirTimetable);
+    const [, , theirJournal, , theirTimetable] = results();
+    expect(theirJournal).toEqual({ status: 403, error: 'journal_scope' });
+    expect(theirTimetable).toEqual({ status: 403, error: 'timetable_view_scope' });
     // `edge/lesson-plans`, "Who may read a plan?": "teachers with the same subject and grade in
     // their profile" read it, as on the screen; the assistant reads no more and no less.
     expect(theirPlan).toBe(200);
     // The same person also holds the Head Teacher of the subject and the Tutor of the other
-    // class: with the Teacher role chosen, neither counts (`02`: "in the role chosen").
-    await t.kit.giveRole(owner.account.id, {
-      role: 'head_teacher',
-      branchId: scene.branch,
-      subjectIds: [scene.subject],
-      validFrom: new Date('2026-09-01T00:00:00+05:00'),
-    });
-    await load.tutorOf(scene.branch, scene.otherClass, owner.account.id);
+    // class (given at the start): with the Teacher role chosen, neither counts (`02`: "in the
+    // role chosen"), here and in every test of this file.
     conversation = await asked([
       { name: JOURNAL_READ, args: { journalId: otherJournal, quarterId: q1 } },
       {
@@ -302,13 +359,139 @@ describe('the assistant for teachers (task 11.14)', () => {
         args: { staffId: scene.otherTeacher.staffId, date: '2026-10-26', span: 'day' },
       },
     ]);
-    for (const status of readStatuses(conversation).slice(-2)) expect([403, 404]).toContain(status);
+    expect(results()).toEqual([
+      { status: 403, error: 'journal_scope' },
+      { status: 403, error: 'timetable_view_scope' },
+    ]);
     // The same reads in the person's own session, where every role counts, are answered.
     const asHeadTeacher = await request(server())
       .get(`/api/journal/journals/${otherJournal}?quarterId=${q1}`)
       .set('Cookie', owner.cookie)
       .set(BRANCH_HEADER, scene.branch);
     expect(asHeadTeacher.status).toBe(200);
+  });
+
+  it('lists only the students the Teacher teaches, also for a Teacher who is the Tutor of another class (`02`, Teacher)', async () => {
+    const members = new MembersKit(t.database.migrator, await load.classes.account());
+    const taught = await members.student(scene.branch);
+    await members.member({
+      branch: scene.branch,
+      classId: scene.classId,
+      studentId: taught,
+      from: '2026-09-01',
+    });
+    const notTaught = await members.student(scene.branch);
+    await members.member({
+      branch: scene.branch,
+      classId: scene.otherClass,
+      studentId: notTaught,
+      from: '2026-09-01',
+    });
+    await asked([{ name: STUDENTS_READ }]);
+    const [read] = results();
+    const text = JSON.stringify(read);
+    expect((read as { status?: number }).status).toBe(200);
+    expect(text).toContain(taught);
+    // The Tutor of the other class reads its students on the screen, never through the Teacher's role.
+    expect(text).not.toContain(notTaught);
+    const onScreen = await request(server())
+      .get('/api/people/students')
+      .set('Cookie', owner.cookie)
+      .set(BRANCH_HEADER, scene.branch);
+    expect(JSON.stringify(onScreen.body)).toContain(notTaught);
+  });
+
+  it('refuses another branch: a question in a branch where the person is no Teacher, and a link, a read or a change with another branch’s ids; nothing changes', async () => {
+    const refused = await request(server())
+      .post('/api/assistant/questions')
+      .set('Cookie', owner.cookie)
+      .set(BRANCH_HEADER, away.branch)
+      .send({ role: 'teacher', text: 'Please.' });
+    expect([refused.status, (refused.body as { error?: { code?: string } }).error?.code]).toEqual([
+      403,
+      'permission_denied',
+    ]);
+    const before = await everyRow();
+    let conversation = await asked([
+      { name: OPEN_LESSON_JOURNAL, args: { lessonId: away.lesson } },
+      { name: JOURNAL_READ, args: { journalId: away.journal } },
+      {
+        name: ITEM_SAVE,
+        args: {
+          itemId: away.lesson,
+          body: { journalId: away.journal, quarterId: away.quarter, values: values() },
+          summary: 'Change it.',
+        },
+      },
+    ]);
+    expect(results()).toEqual([
+      { error: 'not_open' },
+      { status: 404, error: 'not_found' },
+      { status: 404, error: 'not_found' },
+    ]);
+    const last = conversation.messages.at(-1);
+    expect(last?.kind === 'answer' ? last.lessons : null).toEqual([]);
+    conversation = await asked([
+      {
+        name: ITEM_CREATE,
+        args: {
+          journalId: away.journal,
+          body: { quarterId: away.quarter, position: 1, lessonId: away.lesson, values: values() },
+          summary: 'Write it.',
+        },
+      },
+    ]);
+    expect(await stepsAfter(proposalOf(conversation).id)).toEqual([['refused', 'not_found']]);
+    expect(await everyRow()).toEqual(before);
+  });
+
+  it('finds a new item outdated when its row was taken, when another lesson stands there after a cancel, and when the row is gone', async () => {
+    const draft = (position: number, lessonId: string | undefined) => ({
+      name: ITEM_CREATE,
+      args: {
+        journalId: journal,
+        body: {
+          quarterId: q2,
+          position,
+          lessonId,
+          values: values({ topic: `Row ${String(position)}` }),
+        },
+        summary: `Write row ${String(position)}.`,
+      },
+    });
+    const cancel = async (lessonId: string | undefined) => {
+      const response = await request(server())
+        .post(`/api/timetable/lessons/${lessonId ?? ''}/cancel`)
+        .set('Cookie', t.admin)
+        .set(BRANCH_HEADER, scene.branch)
+        .set(REQUEST_KEY_HEADER, randomUUID())
+        .send({ reason: 'School event' });
+      expect(response.status, JSON.stringify(response.body)).toBe(200);
+    };
+    // Taken: the row is written on the screen meanwhile.
+    let conversation = await asked([draft(1, q2Lessons[0])]);
+    const taken = await request(server())
+      .post(`/api/plans/journals/${journal}/items`)
+      .set('Cookie', owner.cookie)
+      .set(BRANCH_HEADER, scene.branch)
+      .send({
+        quarterId: q2,
+        position: 1,
+        lessonId: q2Lessons[0],
+        values: values({ topic: 'Screen' }),
+      });
+    expect(taken.status, JSON.stringify(taken.body)).toBe(201);
+    expect(await stepsAfter(proposalOf(conversation).id)).toEqual([['outdated', 'plan_row_taken']]);
+    // Moved: the first lesson is cancelled, so the second row now holds the third lesson.
+    conversation = await asked([draft(2, q2Lessons[1])]);
+    await cancel(q2Lessons[0]);
+    expect(await stepsAfter(proposalOf(conversation).id)).toEqual([['outdated', 'plan_row_moved']]);
+    // Gone: the last row (the eighth lesson, now at row 7) disappears with another cancel.
+    conversation = await asked([draft(7, q2Lessons[7])]);
+    await cancel(q2Lessons[1]);
+    expect(await stepsAfter(proposalOf(conversation).id)).toEqual([
+      ['outdated', 'plan_row_unknown'],
+    ]);
   });
 
   it('saves a drafted plan item only at Confirm, through the plan’s route, marked "via assistant"', async () => {
@@ -529,6 +712,24 @@ describe('the assistant for teachers (task 11.14)', () => {
       .select(['lesson_id', 'requested_by'])
       .execute();
     expect(unlocks).toEqual([{ lesson_id: lessons[0], requested_by: owner.account.id }]);
+    // Audited as the person's change, marked by its step ("via assistant").
+    const entries = await t.database.migrator
+      .selectFrom('audit_log')
+      .select(['action', 'assistant_step_id'])
+      .where('actor_id', '=', owner.account.id)
+      .where('action', 'like', 'journal.unlock%')
+      .execute();
+    expect(entries).toHaveLength(1);
+    expect(entries[0]?.assistant_step_id).not.toBeNull();
+    // The route's own routing: the person is the subject's Head Teacher here, so their own request
+    // goes past them (`02`, "Nobody approves their own") to the deciders above; none to them.
+    const notices = await t.database.migrator
+      .selectFrom('notifications')
+      .select('account_id')
+      .where('kind', '=', 'journal.unlock_requested')
+      .execute();
+    expect(notices.length).toBeGreaterThan(0);
+    expect(notices.map((one) => one.account_id)).not.toContain(owner.account.id);
   });
 
   it('keeps the plan window’s rules: a save after the window ended is refused at Confirm; a Text request confirmed and approved opens it', async () => {
@@ -642,5 +843,57 @@ describe('the assistant for teachers (task 11.14)', () => {
       .where('id', '=', prepared.id)
       .execute();
     expect(await stepsAfter(proposal.id)).toEqual([['outdated', 'plan_request_decided']]);
+
+    // A prepared request still waiting is sent at Confirm, as the person's own send.
+    await t.database.migrator
+      .updateTable('lesson_plan_requests')
+      .set({ status: 'refused', decided_by: owner.account.id, decided_at: new Date(MOMENT) })
+      .where('id', '=', prepared.id)
+      .execute();
+    const waiting = await t.database.migrator
+      .insertInto('lesson_plan_requests')
+      .values({
+        branch_id: scene.branch,
+        journal_id: journal,
+        quarter_id: q1,
+        plan_id: plan.plan_id,
+        kind: 'replan',
+        from_date: '2026-10-26',
+        status: 'prepared',
+        prepared_at: new Date(MOMENT),
+        updated_at: new Date(MOMENT),
+      })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    await t.database.migrator
+      .insertInto('lesson_plan_request_lessons')
+      .values({
+        branch_id: scene.branch,
+        request_id: waiting.id,
+        lesson_id: lessons[2] ?? '',
+        lesson_date: '2026-10-26',
+      })
+      .execute();
+    const sending = await asked([
+      {
+        name: PREPARED_SEND,
+        args: { requestId: waiting.id, body: {}, summary: 'Send the prepared request.' },
+      },
+    ]);
+    expect(await stepsAfter(proposalOf(sending).id)).toEqual([['done', null]]);
+    const sent = await t.database.migrator
+      .selectFrom('lesson_plan_requests')
+      .select(['status', 'requested_by'])
+      .where('id', '=', waiting.id)
+      .executeTakeFirstOrThrow();
+    expect(sent).toEqual({ status: 'sent', requested_by: owner.account.id });
+    const entry = await t.database.migrator
+      .selectFrom('audit_log')
+      .select(['action', 'assistant_step_id'])
+      .where('actor_id', '=', owner.account.id)
+      .where('assistant_step_id', 'is not', null)
+      .orderBy('id', 'desc')
+      .executeTakeFirst();
+    expect(entry?.action.startsWith('plan.'), entry?.action).toBe(true);
   });
 });

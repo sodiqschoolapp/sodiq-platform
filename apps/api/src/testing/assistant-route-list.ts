@@ -232,8 +232,6 @@ const TEACHER: Readonly<Record<string, string>> = {
   'GET /api/journal/reminders': TEACHER_READS,
   'GET /api/journal/unlocks': TEACHER_READS,
   'GET /api/results/rating/choices': TEACHER_READS,
-  'GET /api/results/rating/classes': TEACHER_READS,
-  'GET /api/results/rating/class': TEACHER_READS,
   'GET /api/results/rating/subject': TEACHER_READS,
   'GET /api/results/early-warning': TEACHER_READS,
   'GET /api/plans': TEACHER_READS,

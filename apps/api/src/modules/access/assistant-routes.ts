@@ -407,14 +407,8 @@ const TEACHER_READS: Readonly<Record<string, AssistantReadLine>> = {
     group: 'results',
     description: 'The quarters, classes and subjects the rating can be read for.',
   },
-  'GET /api/results/rating/classes': {
-    group: 'results',
-    description: 'The rating of the own classes, as the platform calculated it.',
-  },
-  'GET /api/results/rating/class': {
-    group: 'results',
-    description: 'The rating of one class, as the platform calculated it.',
-  },
+  // The rating by class (`rating/classes`, `rating/class`) is for management and Tutors
+  // (`rating.service.ts`): it refuses the Teacher, so it is not offered (code review).
   'GET /api/results/rating/subject': {
     group: 'results',
     description: 'The rating of one subject in a class, as the platform calculated it.',

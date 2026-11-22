@@ -493,6 +493,8 @@ export class AssistantEngine {
   ): Promise<AssistantLessonLink | undefined> {
     const lessonId = args.lessonId;
     if (typeof lessonId !== 'string' || !/^[0-9a-f-]{36}$/i.test(lessonId)) return undefined;
+    // These two reads prove the link only: they are not given to the model and not stored as
+    // reads of the conversation; the answer's stored link names what they found (code review).
     const outcome = await this.dispatcher.read(`/api/journal/lessons/${lessonId}/card`, {
       pass: asker.pass,
       branchId,
@@ -501,7 +503,7 @@ export class AssistantEngine {
     if (outcome.failure !== undefined || outcome.status !== 200) return undefined;
     const card = lessonCardSchema.safeParse(outcome.body);
     if (!card.success) return undefined;
-    const quarterId = await this.transactions.run(asker.access.branchIds, async (transaction) => {
+    const quarterId = await this.transactions.run([branchId], async (transaction) => {
       // The quarter of a lesson is the quarter that contains its date (`00-definitions`).
       const row = await transaction
         .selectFrom('lessons')

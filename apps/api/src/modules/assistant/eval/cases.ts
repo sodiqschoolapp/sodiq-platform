@@ -334,6 +334,18 @@ export const TEACHER_INTENTS: readonly EvalIntent[] = [
     },
   },
   {
+    id: 'teacher-early-warning',
+    role: 'teacher',
+    kind: 'read',
+    reads: ['EarlyWarningController_list'],
+    texts: {
+      uz: 'Qaysi oʻquvchilarim natijasi pasayib ketgan?',
+      'uz-Cyrl': 'Қайси ўқувчиларим натижаси пасайиб кетган?',
+      ru: 'У каких моих учеников упали результаты?',
+      en: 'Which of my students’ results have dropped?',
+    },
+  },
+  {
     id: 'teacher-fix-plan',
     role: 'teacher',
     kind: 'vague',
@@ -411,6 +423,19 @@ export const TEACHER_INTENTS: readonly EvalIntent[] = [
       'uz-Cyrl': 'Биринчи дарсимни очишни сўра: баҳоларни кеч киритдим.',
       ru: 'Запроси открытие моего первого урока: оценки внесены поздно.',
       en: 'Ask to unlock my first lesson: the marks came late.',
+    },
+  },
+  {
+    id: 'teacher-send-prepared',
+    role: 'teacher',
+    kind: 'change',
+    reads: [],
+    proposes: 'POST /api/plans/requests/:requestId/send',
+    texts: {
+      uz: 'Tizim tayyorlagan soʻrovni yubor.',
+      'uz-Cyrl': 'Тизим тайёрлаган сўровни юбор.',
+      ru: 'Отправь запрос, который подготовила система.',
+      en: 'Send the request the system prepared.',
     },
   },
   {

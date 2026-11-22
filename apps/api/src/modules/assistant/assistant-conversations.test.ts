@@ -323,6 +323,17 @@ describe('the assistant: conversations, archive and restore', () => {
       role: 'teacher',
     });
     expect([response.status, errorCode(response)]).toEqual([409, 'assistant_off']);
+    // The status says so, for the panel (code review should fix 6).
+    const status = await read(
+      scene,
+      scene.admin,
+      '/api/assistant/status?role=teacher',
+      scene.north,
+    );
+    expect([status.status, (status.body as { refusal?: string }).refusal]).toEqual([
+      200,
+      'assistant_off',
+    ]);
     response = await ask(scene, teacher, scene.north, { text: 'Me too.', role: 'teacher' });
     expect([response.status, errorCode(response)]).toEqual([409, 'assistant_off']);
   });

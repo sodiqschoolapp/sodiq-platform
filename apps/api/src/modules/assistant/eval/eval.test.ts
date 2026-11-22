@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { assistantAnswerSchema, BRANCH_HEADER } from '@sodiq/shared';
 import request from 'supertest';
@@ -119,6 +120,11 @@ describe(
           summary,
         };
       }
+      if (route === 'POST /api/plans/requests/:requestId/send') {
+        // The demo has no prepared request before the year: a step on its id is stored, never
+        // run (the real model reads the requests first).
+        return { requestId: randomUUID(), body: {}, summary };
+      }
       if (route === 'POST /api/journal/lessons/:lessonId/unlocks') {
         return { lessonId: lesson.id, body: { reason: 'The marks came late.' }, summary };
       }
@@ -228,9 +234,9 @@ describe(
       await database.destroy();
     });
 
-    it('has 128 cases: 20 intents of the Super Admin and 12 of the Teacher (11.14), each in Uzbek Latin, Uzbek Cyrillic, Russian and English', () => {
-      expect(EVAL_CASES).toHaveLength(128);
-      expect(EVAL_CASES.filter((one) => one.intent.role === 'teacher')).toHaveLength(48);
+    it('has 136 cases: 20 intents of the Super Admin and 14 of the Teacher (11.14), each in Uzbek Latin, Uzbek Cyrillic, Russian and English', () => {
+      expect(EVAL_CASES).toHaveLength(136);
+      expect(EVAL_CASES.filter((one) => one.intent.role === 'teacher')).toHaveLength(56);
       const names = new Set(Object.values(GENERATED_TOOLS).map((tool) => tool.name));
       for (const one of EVAL_CASES) {
         for (const read of one.intent.reads) {
