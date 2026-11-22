@@ -65,6 +65,22 @@ The owner's answers to the decided-ahead questions for Phase 10, given in chat o
 19. Production deploys only after 18:00 or at the weekend, Tashkent time.
 20. The test environment stays after go-live; every change is tried there first.
 
+## 22 November 2026: the assistant for teachers (task 11.14)
+
+Plan approved on pull request #377 with corrections 1 (the base of an item save is per field, as the route decides; a save of another field meanwhile is merged) and 2 (a refusal test for a create and a save on another teacher's plan). Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first.** A new engine tool `open_lesson_journal` beside `suggest_page`, linking one lesson's journal column, given only when the person's own reads of the lesson card and of its journal answer | `edge/people-roles-accounts`: "It opens the lesson's journal column"; a menu link opens only the journal page (decision 1) |
+| The Teacher's list leaves out a student's record and results pages, exemptions, the cell and comment histories and the master plans | `02` names timetable, classes and groups, journals, results, plans and requests (decision 2) |
+| Classes and groups are read through the journals and the students list; the Teacher has no `classes` row | No role gains a right (decision 3) |
+| Drafting is the create and the save of an item only; unlocks and plan requests are the creates and the send of a prepared request, no withdraw | `02`: "Draft lesson plan items … send unlock and plan edit requests" (decisions 4, 5) |
+| The early-warning list is a read of the Teacher's | Calculated by `packages/calc` from the Teacher's journals (decision 6) |
+| The lesson card's topic and works routes stay closed (area `journal`); the Teacher's list is written, not derived | The plan item routes do the drafting under the window's rules (decision 7) |
+| The Super Admin's change intents of the test set still score a page link | 11.14 extends the set with teachers' instructions only (decision 8) |
+| The base of an item save is the item as stored at the proposal, read by the server through the person's own plan read; the tool's `journalId` and `quarterId` are removed before the step is stored; equal values add no step | A model's base could save nothing and report done (decision 9, review correction 1) |
+| A colleague of the same subject and grade reads the Teacher's plan and its card through the assistant, as on the screen, and is refused a change at Confirm by the plan's route (`plan_scope`) | `edge/lesson-plans`, "Who may read a plan?" (found while building) |
+
 ## 22 November 2026: the assistant, proposals and Confirm, and the Academic Vice Principal (task 11.13)
 
 Plan approved on pull request #376 with corrections 1 (the staff import's confirm is never through the assistant) and 2 (every warning-acceptance flag, not only `confirm`). Flagged on issue #42.
