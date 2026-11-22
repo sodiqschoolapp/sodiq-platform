@@ -404,7 +404,7 @@ export const PERMISSIONS = freezeTable({
    * `assistant` (task 11.12, pull request #374): opening the chat panel of the assistant (`02`,
    * Assistant). A new area for new routes, approved by the owner in chat on 21 November 2026
    * (stop-list item 5, build plan 11.12): `view` for the Super Admin; the Academic Vice
-   * Principal (11.13) and the Teacher (11.14) come with their tasks. No role gains any other
+   * Principal (11.13) and the Teacher (11.14) came with their tasks. No role gains any other
    * right: through the assistant a person does only what their chosen role already allows, on
    * the actions of the list fixed in code (`assistant-routes.ts`).
    */
@@ -412,6 +412,8 @@ export const PERMISSIONS = freezeTable({
     super_admin: ['view'],
     // Task 11.13: approved by the owner in chat on 21 November 2026 (stop-list item 5).
     academic_vice_principal: ['view'],
+    // Task 11.14: approved by the owner in chat on 21 November 2026 (stop-list item 5).
+    teacher: ['view'],
   }),
   subjects: rows({
     super_admin: ['view', 'create', 'edit', 'archive', 'export'],

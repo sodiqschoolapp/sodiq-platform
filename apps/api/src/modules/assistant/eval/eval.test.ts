@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { assistantAnswerSchema, BRANCH_HEADER } from '@sodiq/shared';
 import request from 'supertest';
@@ -74,10 +75,70 @@ describe(
       return args;
     }
 
-    function replayOf(one: EvalCase): FakeTurn[] {
+    /** The teacher who asks the Teacher's cases: the one `argsOf` names as `staffId`. */
+    function askingTeacher() {
+      const branch = school.branches[0];
+      return branch === undefined ? undefined : [...branch.teachers.values()][0];
+    }
+
+    /**
+     * Task 11.14: the body of a Teacher's proposal in the replay, from the teacher's first lesson
+     * of the first quarter (its journal and quarter); the real model finds them by reading.
+     */
+    async function proposalArgsOf(route: string): Promise<Record<string, unknown>> {
+      const teacher = askingTeacher();
+      const lesson = await database.migrator
+        .selectFrom('lessons')
+        .select(['id', 'class_id', 'group_id', 'subject_id'])
+        .where('teacher_id', '=', teacher?.staffId ?? '')
+        .where('cancel_cause', 'is', null)
+        .orderBy('starts_at')
+        .orderBy('id')
+        .executeTakeFirstOrThrow();
+      let journals = database.migrator
+        .selectFrom('journals')
+        .select('id')
+        .where('subject_id', '=', lesson.subject_id);
+      journals =
+        lesson.class_id === null
+          ? journals.where('group_id', '=', lesson.group_id)
+          : journals.where('class_id', '=', lesson.class_id);
+      const journal = (await journals.executeTakeFirstOrThrow()).id;
+      const quarterId = school.branches[0]?.quarterIds[0];
+      const summary = 'For my first lesson.';
+      if (route === 'POST /api/plans/journals/:journalId/items') {
+        const values = {
+          topic: 'Fractions',
+          objectives: '',
+          links: [],
+          classworks: [],
+          homeworks: [],
+        };
+        return {
+          journalId: journal,
+          body: { quarterId, position: 1, lessonId: lesson.id, values },
+          summary,
+        };
+      }
+      if (route === 'POST /api/plans/requests/:requestId/send') {
+        // The demo has no prepared request before the year: a step on its id is stored, never
+        // run (the real model reads the requests first).
+        return { requestId: randomUUID(), body: {}, summary };
+      }
+      if (route === 'POST /api/journal/lessons/:lessonId/unlocks') {
+        return { lessonId: lesson.id, body: { reason: 'The marks came late.' }, summary };
+      }
+      return {
+        journalId: journal,
+        body: { kind: 'text', quarterId, lessonIds: [lesson.id], reason: 'A clearer topic.' },
+        summary,
+      };
+    }
+
+    async function replayOf(one: EvalCase): Promise<FakeTurn[]> {
       const intent = one.intent;
       const toolRoute = (name: string) =>
-        Object.keys(assistantRoutesOf('super_admin')).find(
+        Object.keys(assistantRoutesOf(intent.role ?? 'super_admin')).find(
           (route) => GENERATED_TOOLS[route]?.name === name,
         ) ?? '';
       switch (intent.kind) {
@@ -97,6 +158,13 @@ describe(
             answer('This is done on its page.'),
           ];
         case 'change':
+          if (intent.proposes !== undefined) {
+            const name = `propose_${GENERATED_TOOLS[intent.proposes]?.name ?? ''}`.slice(0, 64);
+            return [
+              calls({ name, args: await proposalArgsOf(intent.proposes) }),
+              answer('Here is the proposal; nothing changes until you confirm.'),
+            ];
+          }
           return [
             calls({ name: 'suggest_page', args: { page: intent.page } }),
             answer('Changes are made on their page.'),
@@ -136,7 +204,7 @@ describe(
       });
       await database.migrator
         .updateTable('assistant_settings')
-        .set({ school_on: true, roles_on: ['super_admin'], daily_limit: 500 })
+        .set({ school_on: true, roles_on: ['super_admin', 'teacher'], daily_limit: 500 })
         .execute();
     }, 1_200_000);
 
@@ -166,8 +234,9 @@ describe(
       await database.destroy();
     });
 
-    it('has about 80 cases: 20 intents in Uzbek Latin, Uzbek Cyrillic, Russian and English', () => {
-      expect(EVAL_CASES).toHaveLength(80);
+    it('has 136 cases: 20 intents of the Super Admin and 14 of the Teacher (11.14), each in Uzbek Latin, Uzbek Cyrillic, Russian and English', () => {
+      expect(EVAL_CASES).toHaveLength(136);
+      expect(EVAL_CASES.filter((one) => one.intent.role === 'teacher')).toHaveLength(56);
       const names = new Set(Object.values(GENERATED_TOOLS).map((tool) => tool.name));
       for (const one of EVAL_CASES) {
         for (const read of one.intent.reads) {
@@ -185,7 +254,7 @@ describe(
       it(`case ${one.id}`, { timeout: 120_000 }, async () => {
         if (!REAL) {
           fake.requests.length = 0;
-          fake.script(...replayOf(one));
+          fake.script(...(await replayOf(one)));
         }
         const before = (
           await database.migrator
@@ -195,9 +264,14 @@ describe(
         ).length;
         const response = await request(app.getHttpServer() as Parameters<typeof request>[0])
           .post('/api/assistant/questions')
-          .set('Cookie', school.superAdmin.caller.cookies)
+          .set(
+            'Cookie',
+            one.intent.role === 'teacher'
+              ? (askingTeacher()?.account.caller.cookies ?? '')
+              : school.superAdmin.caller.cookies,
+          )
           .set(BRANCH_HEADER, school.branches[0]?.id ?? '')
-          .send({ role: 'super_admin', text: one.text });
+          .send({ role: one.intent.role ?? 'super_admin', text: one.text });
         expect(response.status, JSON.stringify(response.body).slice(0, 400)).toBe(200);
         const conversation = assistantAnswerSchema.parse(response.body).conversation;
         const reads = await database.migrator
@@ -234,6 +308,12 @@ describe(
         } else if (intent.kind === 'vague') {
           if (made.length > 0) why = 'read instead of asking';
           else if (!text.includes('?')) why = 'did not ask a question';
+        } else if (intent.proposes !== undefined) {
+          // Task 11.14: a Teacher's change is proposed, never made.
+          const action = GENERATED_TOOLS[intent.proposes]?.name;
+          const proposal = conversation.proposals.at(-1);
+          if (proposal?.steps.some((step) => step.action === action) !== true)
+            why = `did not propose ${intent.proposes}`;
         } else {
           if (made.some((read) => read.route !== null && read.status === 0))
             why = 'sent a read that was refused';

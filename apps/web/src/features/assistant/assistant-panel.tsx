@@ -20,6 +20,7 @@ import { ErrorState, LoadingOutline } from '@/components/states';
 import { Button } from '@/components/ui/button';
 import { FIELD, SECTION_TITLE } from '@/components/ui/control';
 import { BUILT_PAGES } from '@/features/access/menu-pages';
+import { schoolDateText } from '@/lib/dates';
 import { useMayView, useView } from '@/features/access/use-view';
 import { ProposalCard } from './proposal-card';
 import {
@@ -428,7 +429,7 @@ export function Messages({
 }
 
 function MessageView({ message }: { message: AssistantMessage }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   switch (message.kind) {
     case 'question':
       return (
@@ -452,6 +453,24 @@ function MessageView({ message }: { message: AssistantMessage }) {
                   </li>
                 );
               })}
+            </ul>
+          )}
+          {message.lessons.length > 0 && (
+            <ul className="flex flex-wrap gap-x-4 gap-y-1">
+              {message.lessons.map((lesson) => (
+                <li key={`${lesson.journalId}:${lesson.date}`}>
+                  <Link
+                    to="/journal/$journalId"
+                    params={{ journalId: lesson.journalId }}
+                    search={{ quarter: lesson.quarterId, date: lesson.date }}
+                    className="text-link font-semibold hover:underline"
+                  >
+                    {t('assistant.openLessonJournal', {
+                      date: schoolDateText(lesson.date, i18n.language),
+                    })}
+                  </Link>
+                </li>
+              ))}
             </ul>
           )}
         </div>

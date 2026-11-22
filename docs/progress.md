@@ -2,6 +2,21 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 22 November 2026: task 11.14, the assistant for teachers
+
+- **The Teacher's list** (`assistant-routes.ts` `TEACHER_READS`, `assistant-change-routes.ts` `TEACHER_CHANGES`, copy in `testing/assistant-route-list.ts`): 20 reads of own work (timetable, journals with the platform's results, students taught, rating, early warning, plans, windows, requests) and 6 proposals (a plan item created or saved, a lesson or rating-exam unlock, a plan edit request, the send of a prepared one). `assistant` view for the Teacher (owner's approval, stop-list item 5).
+- **The base of an item save** is read by the server at the proposal (`serverBase` of the line, through the person's own plan read), never the model's; the route merges per field at Confirm; values equal to the item add no step.
+- **`open_lesson_journal`**: the refusal of "mark everyone present" links the lesson's journal column (answer `lessons`), only when the person's own card and journal reads answer. The panel shows the link; texts in three languages. The test set: 12 Teacher intents (48 cases), the Teacher's changes scored by their proposal.
+
+Left out:
+
+- The browser test of a Teacher's proposal with the scripted model (as 11.13 left its own out). The Super Admin's change intents of the test set still score a page link (decision 8).
+
+The next sessions must know:
+
+- A line whose body field must come from the server, not the model, uses `serverBase` (the tool takes its `toolFields` instead, removed before the step is stored).
+- A colleague of the same subject and grade reads a Teacher's plan and lesson card on the screen (`edge/lesson-plans`); the Teacher's assistant reads only the own: a read line with `ownJournal` is given only when the person's own read of the journal answers (`assistant/own-journal.ts`).
+
 ## 22 November 2026: task 11.13, the assistant: proposals and Confirm, and the Academic Vice Principal
 
 - **Proposals**: the model's `propose_*` tools (the change lines of `access/assistant-change-routes.ts`) only draft steps (`assistant/proposals.ts`): the body checked against the route's schema with the never-fields and warning flags removed, the basis read (a fingerprint of a canonical form) or the route's own version, the preview or check run as the person, one record one step. Stored as one proposal per question (`0179`: `assistant_proposals`, `assistant_proposal_decisions`, `assistant_proposal_steps`), valid 15 minutes.

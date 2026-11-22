@@ -308,29 +308,34 @@ describe('the assistant: conversations, archive and restore', () => {
     }
   });
 
-  it('refuses a role the person does not hold now, and a role held without the panel (403 assistant_role_not_held)', async () => {
+  it('refuses a role the person does not hold now (403 assistant_role_not_held), and the Teacher while the Teacher’s switch is off (409 assistant_off)', async () => {
     let response = await ask(scene, scene.admin, scene.north, {
       text: 'As the Academic Vice Principal.',
       role: 'academic_vice_principal',
     });
     expect([response.status, errorCode(response)]).toEqual([403, 'assistant_role_not_held']);
-    // A Super Admin who is also a Teacher, asking as the Teacher: the table gives the Teacher no panel.
+    // Task 11.14: the table gives the Teacher the panel; the switch of the Teacher's role is off
+    // in this scene (`02`: "The Super Admin can switch it off … for one of the three roles").
+    // A Super Admin who is also a Teacher, asking as the Teacher, and a Teacher alone.
     await scene.kit.giveRole(scene.adminAccount, { role: 'teacher', branchId: scene.north });
     response = await ask(scene, scene.admin, scene.north, {
       text: 'As the Teacher.',
       role: 'teacher',
     });
-    expect([response.status, errorCode(response)]).toEqual([403, 'assistant_role_not_held']);
+    expect([response.status, errorCode(response)]).toEqual([409, 'assistant_off']);
+    // The status says so, for the panel (code review should fix 6).
     const status = await read(
       scene,
       scene.admin,
       '/api/assistant/status?role=teacher',
       scene.north,
     );
-    expect([status.status, errorCode(status)]).toEqual([403, 'assistant_role_not_held']);
-    // A Teacher alone is refused the panel by the guard.
+    expect([status.status, (status.body as { refusal?: string }).refusal]).toEqual([
+      200,
+      'assistant_off',
+    ]);
     response = await ask(scene, teacher, scene.north, { text: 'Me too.', role: 'teacher' });
-    expect([response.status, errorCode(response)]).toEqual([403, 'permission_denied']);
+    expect([response.status, errorCode(response)]).toEqual([409, 'assistant_off']);
   });
 
   it('refuses a question in a conversation started in another role (409)', async () => {

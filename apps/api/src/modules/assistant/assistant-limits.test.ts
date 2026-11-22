@@ -105,8 +105,9 @@ describe('the assistant: the switch, the daily limit and the monthly cap', () =>
       expect.objectContaining({
         dailyLimit: 12,
         monthlyCapDollars: 250,
-        // Task 11.13: the table gives the Academic Vice Principal the panel too.
-        roles: ['super_admin', 'academic_vice_principal'],
+        // Tasks 11.13 and 11.14: the table gives the Academic Vice Principal and the Teacher the
+        // panel too.
+        roles: ['super_admin', 'academic_vice_principal', 'teacher'],
         modelConfigured: true,
       }),
     );

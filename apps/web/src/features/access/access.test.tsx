@@ -231,6 +231,9 @@ describe('the role switcher', () => {
       'GET /api/timetable/home',
       'GET /api/journal/reminders',
       'GET /api/journal/exemptions-today',
+      // Task 11.14: the Teacher role has the assistant's button, which asks its status for the
+      // role chosen (the requirement changed: `02`, Assistant, "the Teacher").
+      'GET /api/assistant/status?role=teacher',
     ]);
     expect(
       calls

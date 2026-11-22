@@ -1298,6 +1298,7 @@ export const en = {
     read: 'Read: {{what}}',
     readFailed: '{{what}}: not open to you, or not found',
     readRefused: 'A read the assistant may not make was not made.',
+    openLessonJournal: 'Open the journal column of {{date}}',
     groups: {
       setup: 'School setup',
       calendar: 'Calendar and periods',
@@ -1508,6 +1509,12 @@ export const en = {
       VacanciesController_reopen: 'Reopen a vacancy',
       PlanWindowsController_save: 'Open or change the plan window',
       PlanWindowsController_extend: 'Extend the plan window for a teacher',
+      PlansController_createItem: 'Write a lesson plan item',
+      PlansController_saveItem: 'Change a lesson plan item',
+      UnlocksController_requestLesson: 'Ask to unlock a lesson of the journal',
+      UnlocksController_requestRating: 'Ask to unlock the rating exam column',
+      PlanRequestsController_create: 'Send a plan edit request',
+      PlanRequestsController_send: 'Send the prepared plan edit request',
     },
     settings: {
       title: 'Assistant',

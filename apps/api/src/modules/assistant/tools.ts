@@ -39,6 +39,16 @@ export const SUMMARY_ARGUMENT = 'summary';
 /** The virtual tool that names a page of the menu (plan decision 16). */
 export const SUGGEST_PAGE = 'suggest_page';
 
+/**
+ * Task 11.14 (plan decision 1): the link to one lesson's journal column, for a step the
+ * assistant never takes there ("mark everyone present"). Offered to a role whose list reads the
+ * lesson card; the engine links only a lesson whose card the person's own read answers.
+ */
+export const OPEN_LESSON_JOURNAL = 'open_lesson_journal';
+
+/** The read that proves the person may open the lesson's journal. */
+export const LESSON_CARD_ROUTE = 'GET /api/journal/lessons/:lessonId/card';
+
 interface ParameterSchema {
   type?: unknown;
   properties?: unknown;
@@ -172,8 +182,23 @@ export function changeBodySchemaOf(route: string, line: AssistantChangeLine): un
   const top = (key: string): boolean =>
     (line.only === undefined || line.only.includes(key)) &&
     !(line.fromBasis ?? []).includes(key) &&
+    key !== line.serverBase?.field &&
     (!WARNING_FLAGS.includes(key) || kept.has(key));
-  return stripSchema(body, top, true);
+  const stripped = stripSchema(body, top, true);
+  const base = line.serverBase;
+  if (base === undefined) {
+    return stripped;
+  }
+  // Task 11.14 (plan decision 9): the field the server reads is never the model's; the tool
+  // takes the fields that find the record instead.
+  const schema = asSchema(stripped);
+  const properties = { ...(schema.properties as Record<string, unknown>) };
+  const required = Array.isArray(schema.required) ? [...(schema.required as string[])] : [];
+  for (const [name, field] of Object.entries(base.toolFields)) {
+    properties[name] = { type: 'string', format: 'uuid', description: field.description };
+    if (field.required) required.push(name);
+  }
+  return { ...schema, properties, required };
 }
 
 function stripSchema(value: unknown, keep: (key: string) => boolean, top: boolean): unknown {
@@ -296,6 +321,18 @@ export function toolsOf(lines: RoleLines, pages: readonly string[]): ModelTool[]
       continue;
     }
     tools.push({ name: generated.name, description: line.description, parameters });
+  }
+  if (Object.hasOwn(lines, LESSON_CARD_ROUTE)) {
+    tools.push({
+      name: OPEN_LESSON_JOURNAL,
+      description:
+        'Opens the journal column of one own lesson for the person, for a journal entry the assistant never makes (attendance, numbers, comments, not held).',
+      parameters: {
+        type: 'object',
+        properties: { lessonId: { type: 'string', description: 'The id of the lesson.' } },
+        required: ['lessonId'],
+      },
+    });
   }
   tools.push({
     name: SUGGEST_PAGE,

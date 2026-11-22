@@ -3,6 +3,7 @@ import {
   assistantMessageSchema,
   type AssistantConversation,
   type AssistantConversationSummary,
+  type AssistantLessonLink,
   type AssistantMessage,
   type AssistantReadGroup,
   type AssistantRole,
@@ -19,7 +20,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 /** The content of each kind of message as stored in `assistant_messages.content` (0178). */
 export type StoredContent =
   | { kind: 'question'; text: string }
-  | { kind: 'answer'; text: string; pages: MenuItem[] }
+  | { kind: 'answer'; text: string; pages: MenuItem[]; lessons?: AssistantLessonLink[] }
   | {
       kind: 'read';
       tool: string;
@@ -127,7 +128,13 @@ export function messageOf(row: MessageRow): AssistantMessage {
     case 'question':
       return { ...base, kind: 'question', text: content.text };
     case 'answer':
-      return { ...base, kind: 'answer', text: content.text, pages: content.pages };
+      return {
+        ...base,
+        kind: 'answer',
+        text: content.text,
+        pages: content.pages,
+        lessons: content.lessons ?? [],
+      };
     case 'read':
       return assistantMessageSchema.parse({
         ...base,

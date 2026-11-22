@@ -228,6 +228,29 @@ export const GENERATED_TOOLS: Readonly<Record<string, GeneratedTool>> = {
     "path": "/api/journal/lessons-today",
     "parameters": []
   },
+  "GET /api/journal/lessons/:lessonId/card": {
+    "name": "LessonCardController_card",
+    "method": "GET",
+    "path": "/api/journal/lessons/:lessonId/card",
+    "parameters": [
+      {
+        "name": "lessonId",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+        }
+      }
+    ]
+  },
+  "GET /api/journal/reminders": {
+    "name": "LessonStatusController_reminders",
+    "method": "GET",
+    "path": "/api/journal/reminders",
+    "parameters": []
+  },
   "GET /api/journal/unlocks": {
     "name": "UnlocksController_list",
     "method": "GET",
@@ -378,6 +401,77 @@ export const GENERATED_TOOLS: Readonly<Record<string, GeneratedTool>> = {
         "name": "yearId",
         "in": "query",
         "required": false,
+        "schema": {
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+        }
+      }
+    ]
+  },
+  "GET /api/plans/journals/:journalId": {
+    "name": "PlansController_plan",
+    "method": "GET",
+    "path": "/api/plans/journals/:journalId",
+    "parameters": [
+      {
+        "name": "quarterId",
+        "in": "query",
+        "required": false,
+        "schema": {
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+        }
+      },
+      {
+        "name": "journalId",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+        }
+      }
+    ]
+  },
+  "GET /api/plans/journals/:journalId/master-compare": {
+    "name": "PlanMastersController_compare",
+    "method": "GET",
+    "path": "/api/plans/journals/:journalId/master-compare",
+    "parameters": [
+      {
+        "name": "quarterId",
+        "in": "query",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+        }
+      },
+      {
+        "name": "journalId",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+        }
+      }
+    ]
+  },
+  "GET /api/plans/lessons/:lessonId": {
+    "name": "PlansController_lessonItem",
+    "method": "GET",
+    "path": "/api/plans/lessons/:lessonId",
+    "parameters": [
+      {
+        "name": "lessonId",
+        "in": "path",
+        "required": true,
         "schema": {
           "type": "string",
           "format": "uuid",
@@ -2756,6 +2850,78 @@ export const GENERATED_TOOLS: Readonly<Record<string, GeneratedTool>> = {
       "additionalProperties": false
     }
   },
+  "POST /api/journal/journals/:journalId/rating/:quarterId/unlocks": {
+    "name": "UnlocksController_requestRating",
+    "method": "POST",
+    "path": "/api/journal/journals/:journalId/rating/:quarterId/unlocks",
+    "parameters": [
+      {
+        "name": "journalId",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+        }
+      },
+      {
+        "name": "quarterId",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+        }
+      }
+    ],
+    "body": {
+      "type": "object",
+      "properties": {
+        "reason": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        }
+      },
+      "required": [
+        "reason"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "POST /api/journal/lessons/:lessonId/unlocks": {
+    "name": "UnlocksController_requestLesson",
+    "method": "POST",
+    "path": "/api/journal/lessons/:lessonId/unlocks",
+    "parameters": [
+      {
+        "name": "lessonId",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+        }
+      }
+    ],
+    "body": {
+      "type": "object",
+      "properties": {
+        "reason": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        }
+      },
+      "required": [
+        "reason"
+      ],
+      "additionalProperties": false
+    }
+  },
   "POST /api/people/students/:id/leaving": {
     "name": "StudentStatusesController_leave",
     "method": "POST",
@@ -3099,6 +3265,241 @@ export const GENERATED_TOOLS: Readonly<Record<string, GeneratedTool>> = {
         }
       }
     ]
+  },
+  "POST /api/plans/journals/:journalId/items": {
+    "name": "PlansController_createItem",
+    "method": "POST",
+    "path": "/api/plans/journals/:journalId/items",
+    "parameters": [
+      {
+        "name": "journalId",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+        }
+      }
+    ],
+    "body": {
+      "type": "object",
+      "properties": {
+        "quarterId": {
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+        },
+        "position": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "lessonId": {
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+        },
+        "values": {
+          "type": "object",
+          "properties": {
+            "topic": {
+              "type": "string",
+              "maxLength": 300
+            },
+            "objectives": {
+              "type": "string",
+              "maxLength": 2000
+            },
+            "links": {
+              "maxItems": 10,
+              "type": "array",
+              "items": {
+                "type": "string",
+                "maxLength": 500,
+                "pattern": "^https?:\\/\\/[^\\s]+$"
+              }
+            },
+            "classworks": {
+              "maxItems": 10,
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "title": {
+                    "type": "string",
+                    "maxLength": 60
+                  },
+                  "description": {
+                    "type": "string",
+                    "maxLength": 1000
+                  }
+                },
+                "required": [
+                  "title",
+                  "description"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "homeworks": {
+              "maxItems": 10,
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "title": {
+                    "type": "string",
+                    "maxLength": 60
+                  },
+                  "description": {
+                    "type": "string",
+                    "maxLength": 1000
+                  }
+                },
+                "required": [
+                  "title",
+                  "description"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "topic",
+            "objectives",
+            "links",
+            "classworks",
+            "homeworks"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "quarterId",
+        "position",
+        "lessonId",
+        "values"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "POST /api/plans/journals/:journalId/requests": {
+    "name": "PlanRequestsController_create",
+    "method": "POST",
+    "path": "/api/plans/journals/:journalId/requests",
+    "parameters": [
+      {
+        "name": "journalId",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+        }
+      }
+    ],
+    "body": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "text"
+              ]
+            },
+            "quarterId": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "lessonIds": {
+              "minItems": 1,
+              "maxItems": 200,
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              }
+            },
+            "reason": {
+              "type": "string",
+              "maxLength": 1000
+            }
+          },
+          "required": [
+            "kind",
+            "quarterId",
+            "lessonIds",
+            "reason"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "replan"
+              ]
+            },
+            "quarterId": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "fromLessonId": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "reason": {
+              "type": "string",
+              "maxLength": 1000
+            }
+          },
+          "required": [
+            "kind",
+            "quarterId",
+            "fromLessonId",
+            "reason"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    }
+  },
+  "POST /api/plans/requests/:requestId/send": {
+    "name": "PlanRequestsController_send",
+    "method": "POST",
+    "path": "/api/plans/requests/:requestId/send",
+    "parameters": [
+      {
+        "name": "requestId",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+        }
+      }
+    ],
+    "body": {
+      "type": "object",
+      "properties": {
+        "reason": {
+          "type": "string",
+          "maxLength": 1000
+        }
+      },
+      "additionalProperties": false
+    }
   },
   "POST /api/plans/windows/:quarterId/extensions": {
     "name": "PlanWindowsController_extend",
@@ -8212,6 +8613,192 @@ export const GENERATED_TOOLS: Readonly<Record<string, GeneratedTool>> = {
         "weeklyLessons",
         "dailyLessons"
       ]
+    }
+  },
+  "PUT /api/plans/items/:itemId": {
+    "name": "PlansController_saveItem",
+    "method": "PUT",
+    "path": "/api/plans/items/:itemId",
+    "parameters": [
+      {
+        "name": "itemId",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+        }
+      }
+    ],
+    "body": {
+      "type": "object",
+      "properties": {
+        "base": {
+          "type": "object",
+          "properties": {
+            "topic": {
+              "type": "string"
+            },
+            "objectives": {
+              "type": "string"
+            },
+            "links": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "classworks": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "title": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "id",
+                  "title",
+                  "description"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "homeworks": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "title": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "id",
+                  "title",
+                  "description"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "topic",
+            "objectives",
+            "links",
+            "classworks",
+            "homeworks"
+          ],
+          "additionalProperties": false
+        },
+        "values": {
+          "type": "object",
+          "properties": {
+            "topic": {
+              "type": "string",
+              "maxLength": 300
+            },
+            "objectives": {
+              "type": "string",
+              "maxLength": 2000
+            },
+            "links": {
+              "maxItems": 10,
+              "type": "array",
+              "items": {
+                "type": "string",
+                "maxLength": 500,
+                "pattern": "^https?:\\/\\/[^\\s]+$"
+              }
+            },
+            "classworks": {
+              "maxItems": 10,
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "title": {
+                    "type": "string",
+                    "maxLength": 60
+                  },
+                  "description": {
+                    "type": "string",
+                    "maxLength": 1000
+                  }
+                },
+                "required": [
+                  "title",
+                  "description"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "homeworks": {
+              "maxItems": 10,
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "title": {
+                    "type": "string",
+                    "maxLength": 60
+                  },
+                  "description": {
+                    "type": "string",
+                    "maxLength": 1000
+                  }
+                },
+                "required": [
+                  "title",
+                  "description"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "topic",
+            "objectives",
+            "links",
+            "classworks",
+            "homeworks"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "base",
+        "values"
+      ],
+      "additionalProperties": false
     }
   },
   "PUT /api/plans/windows/:quarterId": {

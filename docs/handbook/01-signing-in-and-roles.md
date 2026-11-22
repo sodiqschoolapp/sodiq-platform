@@ -71,7 +71,7 @@ No other role sees the page.
 
 ## The assistant
 
-<!-- Sources: spec 02 (Assistant; Accounts and sign-in: build order), 13 (Security; Running cost), edge/people-roles-accounts (The assistant; Personal data and the audit log), 06 (Changes after publishing), edge/time-dates-calendar; docs/spec-changes.md, 21 November 2026; tasks 11.12 and 11.13 -->
+<!-- Sources: spec 02 (Assistant; Accounts and sign-in: build order), 13 (Security; Running cost), edge/people-roles-accounts (The assistant; Personal data and the audit log), 06 (Changes after publishing), edge/time-dates-calendar, 09, edge/lesson-plans; docs/spec-changes.md, 21 November 2026; tasks 11.12, 11.13 and 11.14 -->
 
 **What it is.** The assistant lets a person ask in plain words, in Uzbek, Russian or English, and answers from what the platform holds: "which classes have no Tutor", "what does 5A have on Tuesday", "who is on the early-warning list". It reads at once. A change is only proposed: the person sees every step and presses **Confirm** (**Tasdiqlash**); nothing changes before. It uses Google's Gemini language model.
 
@@ -81,10 +81,13 @@ No other role sees the page.
 | --- | --- | --- |
 | Super Admin | Ask the assistant and confirm its proposals, in the Super Admin role chosen in the role switcher; switch it on or off and set its limits; read every conversation and restore an archived one | The whole school |
 | Academic Vice Principal | Ask the assistant and confirm its proposals, in the Academic Vice Principal role chosen in the role switcher, for what the role may change | Own branch |
+| Teacher | Ask the assistant about own lessons, journals, results, plans and requests, and confirm its proposals of plan items and requests, in the Teacher role chosen in the role switcher | Own lessons and the students they teach |
 
-No other role sees the assistant yet. The Teacher gets it later.
+No other role sees the assistant. A Head Teacher, a Senior Head Teacher, a Tutor or a Class teacher who also teaches uses it in the Teacher role, with a Teacher's rights only.
 
 **What it can propose.** Within what the role may change: rooms and buildings (Super Admin only), the academic calendar (days off and special days, from tomorrow), lesson and break types and day templates, academic years (Super Admin only) and quarter dates, subjects and their weights, what a teacher teaches and when they are available, classes, groups and their students, class and group moves, a student's leaving and return, the teaching load of a draft version, one-day changes of a lesson (cancel, restore, room, move), bulk cancels, absences, substitutions, exams, vacancies, the lesson plan window, and a relative's portal access. Never: journal data, journal corrections, exemptions, closing a quarter, publishing or withdrawing a timetable, starting or closing a year, filling a vacancy, deleting, accounts, roles and appointments, a staff member's status or branches, integration keys and exports. For these it links the page.
+
+**What a Teacher can do through it.** Read the own timetable, the own journals (classes and groups, lessons, marks and the results the platform calculated), the students they teach, the rating and the early-warning list of the own journals, the own lesson plans, the plan windows, and the own unlock and plan edit requests. Propose: a new plan item at an empty row or a change of an item (topic, objectives, links, classworks and homeworks), a request to unlock a locked lesson or the rating exam column, a plan edit request (Text or Re-plan), and the send of a prepared request. The plan window's rules stay: outside the window, an item is changed only during an approved request. Never: attendance, marks, totals, comments, "not held", the lesson card's topic, exports. When asked to mark everyone present, the assistant says it does not enter journal data and gives a link that opens the lesson's column in the journal.
 
 **How it works.**
 
@@ -126,7 +129,11 @@ No other role sees the assistant yet. The Teacher gets it later.
 | The question asks for another branch's class | The assistant gets the same refusal a page would, and says the data is not open. |
 | A question is unclear, such as "cancel Friday" | The assistant asks which classes or slots are meant. |
 | A conversation was started in another branch or role | It opens read only; a new question starts a new conversation in this branch and role. |
-| A person who also teaches chooses the Teacher role | The assistant is not there: the Teacher gets it in a later part. |
+| A Teacher asks to mark everyone present, or to give a mark | Refused: journal data is entered only in the journal. The answer links the lesson's journal column. |
+| A Teacher's change of a plan item waits while someone saves another field of it | At Confirm the other field stays as saved and the Teacher's field is saved, as on the plan page. If the same field was changed, the step is **Outdated**. |
+| The plan window ends while a Teacher's proposal waits | The step is refused at Confirm. The Teacher sends an edit request (also through the assistant); once it is approved, the change can be confirmed. |
+| A Teacher asks about another teacher's journal, plan or timetable | Refused. The plan page shows a colleague's plan of the same subject and grade, but the assistant reads only the Teacher's own plans. |
+| A person who is also a Head Teacher or a Tutor chooses the Teacher role | The assistant reads and proposes with the Teacher's rights only. |
 
 **What the person sees.**
 

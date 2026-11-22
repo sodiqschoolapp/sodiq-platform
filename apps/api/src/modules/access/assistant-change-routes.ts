@@ -62,6 +62,33 @@ export interface AssistantChangeLine {
   fromBasis?: readonly string[];
   /** Warning-acceptance flags kept in the tool: only where `preview` shows the warnings again. */
   keepsFlags?: readonly string[];
+  /**
+   * Task 11.14 (plan decision 9): a body field the server fills at the proposal from a read of
+   * the person's own, never the model: the item's `base` of a plan save. The route compares it
+   * field by field with the item at Confirm: a field changed since is `plan_item_stale`, and a
+   * save of another field meanwhile is merged, as on the screen (plan review correction 1). The
+   * tool takes the `toolFields` instead, which find the record and are removed before the step
+   * is stored.
+   */
+  serverBase?: ServerBase;
+}
+
+/** A body field read by the server at the proposal (task 11.14). */
+export interface ServerBase {
+  /** The body field it fills; the model is never given it. */
+  field: string;
+  /** A GET of the same role's list. */
+  route: string;
+  /** Its path and query parameters, from the step. */
+  args: Readonly<Record<string, StepValue>>;
+  /** The record inside the answer: the object whose `id` is this value. */
+  pick: StepValue;
+  /** The record's keys copied into the field. */
+  keys: readonly string[];
+  /** The body field compared with it: equal on every key means nothing to save, no step. */
+  against: string;
+  /** Fields only the tool takes, to find the record; removed before the step is stored. */
+  toolFields: Readonly<Record<string, { required: boolean; description: string }>>;
 }
 
 export interface AssistantPreviewLine {
@@ -165,6 +192,85 @@ function templatePreview(
 }
 
 const EXAM_CHECK = 'POST /api/timetable/exams/check';
+
+/**
+ * The Teacher's changes (task 11.14; `02`, "What a Teacher can do through it": "Draft lesson
+ * plan items (topic, works, homework) and send unlock and plan edit requests, each as a
+ * proposal to confirm"). The plan window's rules, the locks and the routing of a request stay
+ * the routes' own: a save outside the window and without an approved period is refused at
+ * Confirm (`plan_window_closed`), as on the screen.
+ */
+export const TEACHER_CHANGES: Readonly<Record<string, AssistantChangeLine>> = {
+  // A new item at an empty row; the body names the row's lesson as read (`plan_row_moved` when
+  // another lesson stands there now, `plan_row_taken` when an item was written meanwhile,
+  // `plan_row_unknown` when the row is gone after a cancellation: plan review finding 3).
+  'POST /api/plans/journals/:journalId/items': {
+    kind: 'change',
+    group: 'plans',
+    description:
+      'Writes a new item of the own lesson plan at an empty row: the topic, objectives, links, classworks and homeworks. Give the quarterId, the position and the lessonId of the row as the plan read answered them.',
+    basis: { kind: 'own' },
+    outdatedCodes: ['plan_row_moved', 'plan_row_taken', 'plan_row_unknown'],
+    records: ['body:lessonId'],
+  },
+  // A save of an item: its base is the item as stored at the proposal (plan decision 9).
+  'PUT /api/plans/items/:itemId': {
+    kind: 'change',
+    group: 'plans',
+    description:
+      'Changes an item of the own lesson plan: give the full new values (topic, objectives, links, classworks and homeworks, with the ids of the works kept), and the journalId and quarterId of the plan read.',
+    basis: { kind: 'own' },
+    outdatedCodes: ['plan_item_stale'],
+    records: ['path:itemId'],
+    serverBase: {
+      field: 'base',
+      route: 'GET /api/plans/journals/:journalId',
+      args: { journalId: 'body:journalId', quarterId: 'body:quarterId' },
+      pick: 'path:itemId',
+      keys: ['topic', 'objectives', 'links', 'classworks', 'homeworks'],
+      against: 'values',
+      toolFields: {
+        journalId: { required: true, description: 'The journal of the plan the item belongs to.' },
+        quarterId: { required: true, description: 'The quarter of the plan the item belongs to.' },
+      },
+    },
+  },
+  'POST /api/journal/lessons/:lessonId/unlocks': {
+    kind: 'change',
+    group: 'journal',
+    description:
+      'Sends a request to unlock one locked lesson of the own journal, with the reason; the Head Teacher of the subject decides it.',
+    basis: { kind: 'create' },
+    records: ['path:lessonId'],
+  },
+  'POST /api/journal/journals/:journalId/rating/:quarterId/unlocks': {
+    kind: 'change',
+    group: 'journal',
+    description:
+      'Sends a request to unlock the locked rating exam column of the own journal in a quarter, with the reason.',
+    basis: { kind: 'create' },
+    records: ['path:journalId', 'path:quarterId'],
+  },
+  'POST /api/plans/journals/:journalId/requests': {
+    kind: 'change',
+    group: 'plans',
+    description:
+      'Sends an edit request for the own lesson plan after the window: kind text (the listed lessons, wording only) or replan (from one lesson not yet held to the end of the quarter), with the reason.',
+    basis: { kind: 'create' },
+    records: ['path:journalId'],
+  },
+  // `09`: "the system prepares the edit request for the teacher … The teacher only sends it";
+  // a request sent or decided since the proposal is `plan_request_decided` (review finding 2).
+  'POST /api/plans/requests/:requestId/send': {
+    kind: 'change',
+    group: 'plans',
+    description:
+      'Sends a request the system prepared for the own plan, as it is, with an optional note.',
+    basis: { kind: 'own' },
+    outdatedCodes: ['plan_request_decided'],
+    records: ['path:requestId'],
+  },
+};
 
 /** The Super Admin's changes; the Academic Vice Principal's are those the table gives the role. */
 export const SUPER_ADMIN_CHANGES: Readonly<

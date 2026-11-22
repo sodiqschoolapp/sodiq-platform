@@ -137,7 +137,7 @@ Neither was done by hand (owner, 29 October 2026, issue #42). In their place: th
 - Routes of the application: 556, each called by the role harness as the 15 roles, an account without a role, a Parent account (task 11.1) and nobody, in the own and in another branch.
 - Without sign-in: 5. For the own account: 24. The parent portal: 8. With a permission of the table: 518.
 - Open to integration keys: 98 (tasks 10.10 and 10.11).
-- Routes with a limit inside the route: 158.
+- Routes with a limit inside the route: 164.
 - Routes that take an id: 429, with 876 ids (branch 760, school 79, own 16, none 21).
 - Areas of the permission table: 66.
 
@@ -328,6 +328,9 @@ For every route that lets in a role for less than its whole branch, the limit of
 | `GET /api/access/head-teachers` | senior_head_teacher | subjects | 02, Senior Head Teacher: "Sees the Head Teachers of those subjects" | `src/modules/people/head-teachers.test.ts > shows a Senior Head Teacher alone the holders of their subjects in a branch of no own role` |
 | `GET /api/announcements-feed` | tutor, class_teacher | class | Task 11.7, plan decision 4: the classes and grades of the own class, besides the school and the branch | `src/modules/announcements/announcements.test.ts > shows the Tutor the own class` |
 | `GET /api/announcements-feed` | teacher, head_teacher, senior_head_teacher | own_lessons | Task 11.7, plan decision 4: the classes and grades of the teaching load in force, besides the school and the branch | `src/modules/announcements/announcements.test.ts > shows a Teacher the classes of the load in force and their grades, not another class`<br>`src/modules/announcements/announcements.test.ts > shows a Head Teacher and a Senior Head Teacher without load of the class, and a Nurse, the school and branch items only` |
+| `GET /api/assistant/conversations` | teacher | own_record | 02, Assistant: "The person sees their own conversations; the Super Admin sees all of them" | `src/modules/assistant/assistant-teacher.test.ts > refuses the Teacher another person’s conversation and proposal (404), and lists only the Teacher’s own` |
+| `GET /api/assistant/conversations/:id` | teacher | own_record | 02, Assistant: "The person sees their own conversations; the Super Admin sees all of them" | `src/modules/assistant/assistant-teacher.test.ts > refuses the Teacher another person’s conversation and proposal (404), and lists only the Teacher’s own` |
+| `GET /api/assistant/status` | teacher | branch | 02, Assistant: "with the person's session and chosen role: the same branch, subjects, own classes and own lessons … as the screens" (each read and step meets its own route's limit) | — |
 | `GET /api/audit/entries` | principal, academic_vice_principal | narrower | edge/people, audit log: the Principal and the Academic VP read their branch; "sign-ins and school-wide settings are read by the Super Admin" | `src/modules/audit/audit-entries.test.ts > does not show %s to the branch, and shows it to the Super Admin` |
 | `GET /api/audit/entries` | principal | narrower | edge/people, Personal data: Identity hidden from the Principal, in the log too (task 2.6a, decision 6) | `src/modules/audit/audit-entries.test.ts > hides the address and the date of birth of a student entry from the Principal only` |
 | `GET /api/classes` | tutor, class_teacher | class | 02, Tutor: "Own class or classes" (task 3.1c, decisions 1 and 9) | `src/modules/classes/tutor-scope.test.ts > lists the own classes only and reads them with their members` |
@@ -533,6 +536,9 @@ For every route that lets in a role for less than its whole branch, the limit of
 | `GET /api/timetable/views/teacher` | head_tutor | narrower | 02, Head Tutor: "Sees the school timetable and the timetable of every class of the branch"; no other teacher (task 5.9a) | `src/modules/timetable/views.test.ts > gives the Head Tutor the school and every class, no teacher and no room` |
 | `PATCH /api/plans/masters/:masterId` | head_teacher | subjects | 09, Master plans: "A Head Teacher can keep a master plan for one of their subjects"; "A Senior Head Teacher can keep one master for all branches" | `src/modules/plans/plan-masters.test.ts > refuses the writes of a master to every role but its keepers, and changes nothing` |
 | `PATCH /api/plans/masters/:masterId` | senior_head_teacher | subjects | 09, Master plans: "A Head Teacher can keep a master plan for one of their subjects"; "A Senior Head Teacher can keep one master for all branches" | `src/modules/plans/plan-masters.test.ts > is kept by the Senior Head Teacher, read and copied in every branch, and refused to the others who keep branch masters` |
+| `POST /api/assistant/proposals/:id/confirm` | teacher | own_record | 02, Assistant: "The person sees their own conversations; the Super Admin sees all of them" | `src/modules/assistant/assistant-teacher.test.ts > refuses the Teacher another person’s conversation and proposal (404), and lists only the Teacher’s own` |
+| `POST /api/assistant/proposals/:id/decline` | teacher | own_record | 02, Assistant: "The person sees their own conversations; the Super Admin sees all of them" | `src/modules/assistant/assistant-teacher.test.ts > refuses the Teacher another person’s conversation and proposal (404), and lists only the Teacher’s own` |
+| `POST /api/assistant/questions` | teacher | branch | 02, Assistant: "with the person's session and chosen role: the same branch, subjects, own classes and own lessons … as the screens" (each read and step meets its own route's limit) | — |
 | `POST /api/audit/entries/:id/show` | principal | narrower | edge/people, audit log: sign-ins and entries of another branch are not the Principal’s | `src/modules/audit/audit-entries.test.ts > answers 404 to an entry the reader may not read, and logs nothing` |
 | `POST /api/groups/transfers` | head_teacher, senior_head_teacher | subjects | 02, Head Teacher: "Moves students between groups of those subjects" (task 3.3a, decision 2) | `src/modules/people/scope-refusals.test.ts > is refused to a Head Teacher and a Senior Head Teacher of another subject, writing nothing`<br>`src/modules/people/group-transfers.test.ts > refuses a Head Teacher another subject, and a date in the past`<br>`src/modules/people/group-transfers.test.ts > lets a Senior Head Teacher move own subjects in a second branch and refuses another subject` |
 | `POST /api/groups/transfers/:id/cancel` | head_teacher | subjects | 02, Head Teacher: "Moves students between groups of those subjects" (task 3.3a, decision 2) | `src/modules/people/group-transfers.test.ts > lets a Head Teacher change, cancel and undo moves of own subjects only, naming the assignment` |
@@ -1638,6 +1644,7 @@ Every area of `PERMISSIONS` (`packages/shared/src/permissions.ts`), the table th
 | --- | :-: | :-: | :-: | :-: | :-: |
 | super_admin | yes |  |  |  |  |
 | academic_vice_principal | yes |  |  |  |  |
+| teacher | yes |  |  |  |  |
 
 ### `attendance_report`
 

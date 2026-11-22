@@ -1320,6 +1320,7 @@ export const uz: Texts<'one' | 'other'> = {
     read: 'Oʻqildi: {{what}}',
     readFailed: '{{what}}: sizga ochiq emas yoki topilmadi',
     readRefused: 'Yordamchiga ruxsat etilmagan oʻqish bajarilmadi.',
+    openLessonJournal: '{{date}} jurnal ustunini ochish',
     groups: {
       setup: 'Maktab sozlamalari',
       calendar: 'Kalendar va davrlar',
@@ -1530,6 +1531,12 @@ export const uz: Texts<'one' | 'other'> = {
       VacanciesController_reopen: 'Vakansiyani qayta ochish',
       PlanWindowsController_save: 'Reja oynasini ochish yoki oʻzgartirish',
       PlanWindowsController_extend: 'Oʻqituvchi uchun reja oynasini uzaytirish',
+      PlansController_createItem: 'Dars rejasi bandini yozish',
+      PlansController_saveItem: 'Dars rejasi bandini oʻzgartirish',
+      UnlocksController_requestLesson: 'Jurnaldagi darsni ochishni soʻrash',
+      UnlocksController_requestRating: 'Reyting imtihoni ustunini ochishni soʻrash',
+      PlanRequestsController_create: 'Rejani tahrirlash soʻrovini yuborish',
+      PlanRequestsController_send: 'Tayyorlangan rejani tahrirlash soʻrovini yuborish',
     },
     settings: {
       title: 'Yordamchi',

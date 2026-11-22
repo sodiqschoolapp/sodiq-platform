@@ -209146,6 +209146,14 @@ export interface operations {
                             kind: "answer";
                             text: string;
                             pages: ("home" | "setup" | "people" | "classes" | "timetable" | "journal" | "results" | "plans" | "requests" | "audit_log")[];
+                            lessons: {
+                                /** Format: uuid */
+                                journalId: string;
+                                /** Format: uuid */
+                                quarterId: string;
+                                /** Format: date */
+                                date: string;
+                            }[];
                         } | {
                             /** Format: uuid */
                             id: string;
@@ -209576,6 +209584,14 @@ export interface operations {
                                 kind: "answer";
                                 text: string;
                                 pages: ("home" | "setup" | "people" | "classes" | "timetable" | "journal" | "results" | "plans" | "requests" | "audit_log")[];
+                                lessons: {
+                                    /** Format: uuid */
+                                    journalId: string;
+                                    /** Format: uuid */
+                                    quarterId: string;
+                                    /** Format: date */
+                                    date: string;
+                                }[];
                             } | {
                                 /** Format: uuid */
                                 id: string;
@@ -210005,6 +210021,14 @@ export interface operations {
                             kind: "answer";
                             text: string;
                             pages: ("home" | "setup" | "people" | "classes" | "timetable" | "journal" | "results" | "plans" | "requests" | "audit_log")[];
+                            lessons: {
+                                /** Format: uuid */
+                                journalId: string;
+                                /** Format: uuid */
+                                quarterId: string;
+                                /** Format: date */
+                                date: string;
+                            }[];
                         } | {
                             /** Format: uuid */
                             id: string;
@@ -210433,6 +210457,14 @@ export interface operations {
                             kind: "answer";
                             text: string;
                             pages: ("home" | "setup" | "people" | "classes" | "timetable" | "journal" | "results" | "plans" | "requests" | "audit_log")[];
+                            lessons: {
+                                /** Format: uuid */
+                                journalId: string;
+                                /** Format: uuid */
+                                quarterId: string;
+                                /** Format: date */
+                                date: string;
+                            }[];
                         } | {
                             /** Format: uuid */
                             id: string;
@@ -211168,6 +211200,14 @@ export interface operations {
                             kind: "answer";
                             text: string;
                             pages: ("home" | "setup" | "people" | "classes" | "timetable" | "journal" | "results" | "plans" | "requests" | "audit_log")[];
+                            lessons: {
+                                /** Format: uuid */
+                                journalId: string;
+                                /** Format: uuid */
+                                quarterId: string;
+                                /** Format: date */
+                                date: string;
+                            }[];
                         } | {
                             /** Format: uuid */
                             id: string;
@@ -211588,6 +211628,14 @@ export interface operations {
                             kind: "answer";
                             text: string;
                             pages: ("home" | "setup" | "people" | "classes" | "timetable" | "journal" | "results" | "plans" | "requests" | "audit_log")[];
+                            lessons: {
+                                /** Format: uuid */
+                                journalId: string;
+                                /** Format: uuid */
+                                quarterId: string;
+                                /** Format: date */
+                                date: string;
+                            }[];
                         } | {
                             /** Format: uuid */
                             id: string;

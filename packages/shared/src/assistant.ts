@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { schoolDateSchema } from './academic-year.js';
 import { MENU_ITEMS } from './menu.js';
 import type { Role } from './roles.js';
 
@@ -109,6 +110,20 @@ export type AssistantQuestion = z.infer<typeof assistantQuestionSchema>;
 
 const messageBase = { id: z.uuid(), seq: z.int().positive(), at: moment };
 
+/**
+ * Task 11.14 (plan decision 1, Look first): a link to the journal column of one lesson
+ * (`edge/people-roles-accounts`, The assistant: "A Teacher asks the assistant to mark everyone
+ * present. Refused: journal data is never entered through the assistant. It opens the lesson's
+ * journal column"). Given only for a lesson whose card the person's own read answered.
+ */
+export const assistantLessonLinkSchema = z.object({
+  journalId: z.uuid(),
+  quarterId: z.uuid(),
+  date: schoolDateSchema,
+});
+
+export type AssistantLessonLink = z.infer<typeof assistantLessonLinkSchema>;
+
 /** One message of a conversation, as the person and the Super Admin read it. */
 export const assistantMessageSchema = z.discriminatedUnion('kind', [
   z.object({ ...messageBase, kind: z.literal('question'), text: z.string() }),
@@ -118,6 +133,8 @@ export const assistantMessageSchema = z.discriminatedUnion('kind', [
     text: z.string(),
     /** Pages the answer links: menu items of the conversation's role. */
     pages: z.array(z.enum(MENU_ITEMS)),
+    /** Lessons whose journal column the answer opens (task 11.14); none before 11.14. */
+    lessons: z.array(assistantLessonLinkSchema),
   }),
   z.object({
     ...messageBase,
