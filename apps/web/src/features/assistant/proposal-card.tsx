@@ -1,6 +1,7 @@
 import type { AssistantProposal, AssistantStep } from '@sodiq/shared';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
+import { SECTION_TITLE } from '@/components/ui/control';
 import { formatMoment, schoolDateText } from '@/lib/dates';
 
 /** Clock minutes of a day as "09:50". */
@@ -41,7 +42,7 @@ export function ProposalCard({
       className="grid gap-3 rounded-lg border px-3 py-3"
     >
       <header className="grid gap-1">
-        <h3 className="font-semibold">{t('assistant.proposal.title')}</h3>
+        <h3 className={SECTION_TITLE}>{t('assistant.proposal.title')}</h3>
         <p role="status" className="text-sm text-muted-foreground">
           {t(`assistant.proposal.states.${proposal.state}`)}
           {waiting && (
