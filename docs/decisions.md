@@ -65,6 +65,21 @@ The owner's answers to the decided-ahead questions for Phase 10, given in chat o
 19. Production deploys only after 18:00 or at the weekend, Tashkent time.
 20. The test environment stays after go-live; every change is tried there first.
 
+## 22 November 2026: the assistant, proposals and Confirm, and the Academic Vice Principal (task 11.13)
+
+Plan approved on pull request #376 with corrections 1 (the staff import's confirm is never through the assistant) and 2 (every warning-acceptance flag, not only `confirm`). Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first.** A route without a version is checked for "outdated" by a SHA-256 of the canonical form of one record's read, taken at proposal and again just before the step; one record, one step | `02`: "a change proposed on data that has changed since is refused as outdated"; the routes stay as they are (decision 1) |
+| **Look first.** Never through the assistant, beside `02`'s list: filling a vacancy, the journal substitutes, a staff member's status and branches, the past-lesson correction, the deletes of a vacancy and a student, the staff import's confirm; room closures, the draft board and the plan-window setting are not on `02`'s list. Proposed `/spec-change` of `02`, Never: "filling a vacancy (it publishes a version); who keeps the journal of an absent teacher; a staff member's status and branches (they end roles); correcting a past lesson; an import that creates accounts" | Decision 2, review correction 1 |
+| **Look first.** The person's own list holds the branches and roles held now; the Super Admin reads every conversation | Narrows reading across branches (decision 3; 11.12 decision 9) |
+| **Look first.** The Academic Vice Principal's lists are the Super Admin's narrowed by the permission table, derived at start and held by a test against a copy | Approved by the owner, stop-list item 5 (decision 4) |
+| **Look first.** Confirm never calls the model: an outdated step is answered "outdated" with its code; the new proposal comes with the person's next message. Proposed `/spec-change` of `edge/people-roles-accounts`, The assistant, second row: "… is refused as outdated, as a screen save would be. The answer says so; at the person's next message the assistant reads again and makes a new proposal." | Decision 16, marked by the plan review |
+| **Look first.** The imports through their own preview are not on the list: no read names an uploaded import, and its preview and confirm stand on the page right after the upload | Found while building; `02`: "the imports through their own preview" |
+| **Look first.** The relatives read is open to the two roles with the relatives' names withheld from the model (`withheld` of the line), so that the portal switch can be proposed | 11.12 decision 2 counts a relative's name in the student's Contact group (decision 15, found while building) |
+| The plain words of a step are the platform's (action name, record, fields, the preview's lessons), the model's sentence beside them; warning flags only where a check is run again (exams); a refused preview adds no step; at most 10 steps, a newer proposal supersedes; the switch stops Confirm, the limit and the cap do not; the decision is committed first; the question shown in the audit entry, the conversation to its person and the Super Admin; own tables, no pinned list widened; previews are tools that write nothing | Decisions 5 to 14 and 17, 18 |
+
 ## 21 November 2026: the assistant, the engine, reading and the Super Admin (task 11.12)
 
 Plan approved on pull request #374 with correction 1 (the value shapes of the field filter apply to free texts only; dates, year names, rooms and UIDs stay). Flagged on issue #42.

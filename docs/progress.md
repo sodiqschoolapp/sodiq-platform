@@ -2,6 +2,20 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 22 November 2026: task 11.13, the assistant: proposals and Confirm, and the Academic Vice Principal
+
+- **Proposals**: the model's `propose_*` tools (the change lines of `access/assistant-change-routes.ts`) only draft steps (`assistant/proposals.ts`): the body checked against the route's schema with the never-fields and warning flags removed, the basis read (a fingerprint of a canonical form) or the route's own version, the preview or check run as the person, one record one step. Stored as one proposal per question (`0179`: `assistant_proposals`, `assistant_proposal_decisions`, `assistant_proposal_steps`), valid 15 minutes.
+- **Confirm and Decline** (`POST /api/assistant/proposals/:id/confirm|decline`, `AssistantProposals`): the one decision first, then each step through its route on the server's own address with the step registered in `AssistantCalls`; the basis read and the check run again first (outdated otherwise); the first refusal stops the rest. The guard lets a marked change through only for the running step; the same-site check lets the process's secret through; `audit_log.assistant_step_id` and "via assistant" with the question on the Audit log page. The Academic Vice Principal's list is the Super Admin's narrowed by the table at start. The person's list keeps the branches and roles held now. Previews are tools too (they write nothing).
+
+Left out:
+
+- The Teacher (11.14). The test set's change intents still score a page link (11.14 extends the set; see the report of #376). The browser test of a proposal (the scripted model) and the "keep as held" data choice of the power cut through the assistant: API and web tests only.
+
+The next sessions must know:
+
+- A change opened to the assistant is a line of `assistant-change-routes.ts` with its basis (`own` with `outdatedCodes`, `read` of one record, or `create`), its preview and its `records`, and goes into `testing/assistant-route-list.ts`; a role derived by the table needs no line of its own.
+- A route that requires a never-field cannot be listed (`requiredFieldsWithheld`); a warning flag stays out of a tool unless the line re-runs a check (`keepsFlags`).
+
 ## 21 November 2026: task 11.12, the assistant: the engine, reading, and the Super Admin
 
 - **The module `assistant`** (API and web feature). The Super Admin, in the Super Admin role chosen in the role switcher, opens the chat panel from the top bar (full screen on a phone) and asks in Uzbek, Russian or English. The engine (`assistant.engine.ts`) gives the model the tools of the chosen role and runs each call as a GET through the platform's own route on the server's own address (`dispatcher.ts`), with the person's cookie, the tab's branch and the process's mark (`X-Assistant-Call`, `X-Assistant-Role`). It changes nothing in the school's data.

@@ -134,8 +134,8 @@ Neither was done by hand (owner, 29 October 2026, issue #42). In their place: th
 
 ## The routes in numbers
 
-- Routes of the application: 554, each called by the role harness as the 15 roles, an account without a role, a Parent account (task 11.1) and nobody, in the own and in another branch.
-- Without sign-in: 5. For the own account: 24. The parent portal: 8. With a permission of the table: 516.
+- Routes of the application: 556, each called by the role harness as the 15 roles, an account without a role, a Parent account (task 11.1) and nobody, in the own and in another branch.
+- Without sign-in: 5. For the own account: 24. The parent portal: 8. With a permission of the table: 518.
 - Open to integration keys: 98 (tasks 10.10 and 10.11).
 - Routes with a limit inside the route: 158.
 - Routes that take an id: 427, with 874 ids (branch 760, school 79, own 14, none 21).
@@ -1635,6 +1635,7 @@ Every area of `PERMISSIONS` (`packages/shared/src/permissions.ts`), the table th
 | Role | view | create | edit | archive | export |
 | --- | :-: | :-: | :-: | :-: | :-: |
 | super_admin | yes |  |  |  |  |
+| academic_vice_principal | yes |  |  |  |  |
 
 ### `attendance_report`
 
