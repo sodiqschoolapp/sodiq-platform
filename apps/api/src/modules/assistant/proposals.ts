@@ -80,8 +80,8 @@ export interface ProposingAs {
   branchId: string;
   role: AssistantRole;
   lines: RoleLines;
-  /** The date of a dated lesson of the branch, to name it in the panel (a one-day change). */
-  lessonDateOf?: (lessonId: string) => Promise<string | undefined>;
+  /** The date and class of a dated lesson of the branch, to name it in the panel (a one-day change). */
+  lessonDateOf?: (lessonId: string) => Promise<{ date: string; classId: string } | undefined>;
 }
 
 /** What a proposed call gives back: the step, and what the model is told. */
@@ -453,9 +453,12 @@ export async function draftStep(
     typeof pathArgs.id === 'string' &&
     as.lessonDateOf !== undefined
   ) {
-    const date = await as.lessonDateOf(pathArgs.id);
-    if (date !== undefined) {
-      const day = await dispatcher.read(`/api/timetable/day?date=${date}`, as);
+    const at = await as.lessonDateOf(pathArgs.id);
+    if (at !== undefined) {
+      const day = await dispatcher.read(
+        `/api/timetable/day?date=${at.date}&classId=${at.classId}`,
+        as,
+      );
       const lesson = findRecord(bodyOf(day), 'id', pathArgs.id);
       previewLessons = lessonsOfPreview(lesson === undefined ? [] : [filterRead(lesson)]).map(
         (one) => ({ ...one, list: 'lesson' }),

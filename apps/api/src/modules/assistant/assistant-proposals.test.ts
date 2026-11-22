@@ -12,7 +12,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { answer, calls, lastResults } from '../../testing/assistant-model.js';
 import { ask, assistantScene, type AssistantScene } from '../../testing/assistant-kit.js';
 import { errorCode } from '../../testing/sign-in-kit.js';
-import { MAX_MODEL_CALLS } from './assistant.engine.js';
+import { MAX_MODEL_CALLS, MAX_READS } from './assistant.engine.js';
 import { fingerprintOf } from './canonical.js';
 import { GENERATED_TOOLS } from './tools.generated.js';
 
@@ -30,7 +30,6 @@ const propose = (route: string): string => {
 };
 
 const ROOM_EDIT = propose('PUT /api/setup/rooms/:id');
-const ROOM_CREATE = propose('POST /api/setup/rooms');
 const CLASS_EDIT = propose('PUT /api/classes/:id');
 const CLASS_ARCHIVE = propose('POST /api/classes/:id/archive');
 
@@ -129,6 +128,26 @@ describe('the assistant: proposals and Confirm', () => {
         .executeTakeFirstOrThrow()
     ).name;
 
+  /** Every row of the tables a room edit and an archive write, in both branches. */
+  const everyRow = async () => ({
+    rooms: await scene.database.migrator.selectFrom('rooms').selectAll().orderBy('id').execute(),
+    classes: await scene.database.migrator
+      .selectFrom('classes')
+      .selectAll()
+      .orderBy('id')
+      .execute(),
+    audit: await scene.database.migrator
+      .selectFrom('audit_log')
+      .selectAll()
+      .orderBy('id')
+      .execute(),
+    auditSchool: await scene.database.migrator
+      .selectFrom('audit_log_school')
+      .selectAll()
+      .orderBy('id')
+      .execute(),
+  });
+
   const auditCount = async () =>
     Number(
       (
@@ -142,7 +161,10 @@ describe('the assistant: proposals and Confirm', () => {
   it('changes nothing before Confirm, and runs the step through its route at Confirm, marked "via assistant"', async () => {
     const target = await room();
     const before = await auditCount();
+    const rowsBefore = await everyRow();
     const conversation = await proposed([roomEdit(target, 'Hall of maps')]);
+    // Every row of the tables the route writes, in both branches, is as it was.
+    expect(await everyRow()).toEqual(rowsBefore);
     const [proposal] = conversation.proposals;
     expect(
       proposal?.state,
@@ -408,7 +430,6 @@ describe('the assistant: proposals and Confirm', () => {
       });
       vice.assignmentId = again.id;
     }
-    void target;
   });
 
   it('keeps the Vice Principal in the own branch: another branch’s proposal is 404, another branch’s record adds no step', async () => {
@@ -430,7 +451,6 @@ describe('the assistant: proposals and Confirm', () => {
     // The rooms change is the Super Admin's alone: not a tool of the Vice Principal.
     const tools = scene.model.requests.at(-1)?.tools.map((tool) => tool.name) ?? [];
     expect(tools).not.toContain(ROOM_EDIT);
-    void southRoom;
     // A proposal of the north confirmed with the south's header: unknown.
     const klass = await scene.people.schoolClass(scene.north, scene.northYear);
     const north = await proposed(
@@ -512,11 +532,15 @@ describe('the assistant: proposals and Confirm', () => {
     const calledBefore = scene.model.requests.length;
     const response = await ask(scene, scene.admin, scene.north, { text: 'Rename every room.' });
     expect(response.status).toBe(200);
+    // Every proposal counts as a read: after MAX_READS of them the next call is asked for words
+    // without tools, and the loop ends there (review should fix 10 and 12).
+    expect(scene.model.requests.length - calledBefore).toBe(MAX_READS + 1);
     expect(scene.model.requests.length - calledBefore).toBeLessThanOrEqual(MAX_MODEL_CALLS);
+    expect(scene.model.requests.at(-1)?.tools).toEqual([]);
     const conversation = assistantConversationSchema.parse(
       (response.body as { conversation: unknown }).conversation,
     );
-    expect(conversation.proposals[0]?.steps.length ?? 0).toBeLessThanOrEqual(10);
+    expect(conversation.proposals[0]?.steps.length).toBe(MAX_READS);
   });
 
   it('keeps a proposal confirmable when the cap is reached: Confirm never calls the model', async () => {
@@ -627,7 +651,6 @@ describe('the assistant: proposals and Confirm', () => {
       .executeTakeFirstOrThrow();
     expect(entry.assistant_step_id).toBeNull();
     expect(await roomName(target.id)).toBe('Plain');
-    void ROOM_CREATE;
   });
 
   // Plan decision 11 and review should fix 12: the Audit log page shows "via assistant" and the

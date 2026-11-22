@@ -195,9 +195,27 @@ describe('the actions open to the assistant', () => {
         if (line.kind !== 'change') continue;
         expect(requiredFieldsWithheld(name), name).toEqual([]);
       }
+      // Every key at any depth of a body, so that a nested flag is found too (review should fix 13).
+      const keysOf = (schema: unknown): string[] => {
+        if (schema === null || typeof schema !== 'object') return [];
+        const record = schema as {
+          properties?: Record<string, unknown>;
+          items?: unknown;
+          anyOf?: unknown[];
+        };
+        return [
+          ...Object.entries(record.properties ?? {}).flatMap(([key, value]) => [
+            key,
+            ...keysOf(value),
+          ]),
+          ...keysOf(record.items),
+          ...(record.anyOf ?? []).flatMap(keysOf),
+        ];
+      };
       for (const tool of tools.filter((one) => one.name.startsWith('propose_'))) {
-        const body = tool.parameters.properties.body?.properties ?? {};
-        const flags = Object.keys(body).filter((key) => WARNING_FLAGS.includes(key));
+        const flags = keysOf(tool.parameters.properties.body).filter((key) =>
+          WARNING_FLAGS.includes(key),
+        );
         const kept = flags.length === 0 || tool.name.includes('ExamsController');
         expect(kept, `${tool.name}: ${flags.join(', ')}`).toBe(true);
       }

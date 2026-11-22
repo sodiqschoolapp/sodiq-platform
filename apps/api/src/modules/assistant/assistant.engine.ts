@@ -457,16 +457,30 @@ export class AssistantEngine {
   }
 
   /** One read the model asked for, stored, and what the model is given back. */
-  /** The date of a dated lesson of the branch of the request (the row filter), for its name. */
-  private async lessonDate(access: Access, lessonId: string): Promise<string | undefined> {
+  /**
+   * The date and class of a dated lesson of the branch of the request (the row filter), so the
+   * panel names it from the day of that class; a group's lesson is named by its first class.
+   */
+  private async lessonDate(
+    access: Access,
+    lessonId: string,
+  ): Promise<{ date: string; classId: string } | undefined> {
     if (!/^[0-9a-f-]{36}$/i.test(lessonId)) return undefined;
     return this.transactions.run(access.branchIds, async (transaction) => {
       const row = await transaction
         .selectFrom('lessons')
-        .select('lesson_date')
+        .select([
+          sql<string>`to_char(lesson_date, 'YYYY-MM-DD')`.as('date'),
+          sql<string | null>`coalesce(lessons.class_id, (
+            select gc.class_id from group_classes gc
+            where gc.group_id = lessons.group_id order by gc.class_id limit 1
+          ))`.as('class_id'),
+        ])
         .where('id', '=', lessonId)
         .executeTakeFirst();
-      return row?.lesson_date;
+      return row === undefined || row.class_id === null
+        ? undefined
+        : { date: row.date, classId: row.class_id };
     });
   }
 

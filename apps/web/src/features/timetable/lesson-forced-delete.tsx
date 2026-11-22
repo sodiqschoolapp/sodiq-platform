@@ -148,12 +148,16 @@ export function LessonHistoryDialog({
                   {t(`timetable.lessonHistory.kind_${line.kind}`)} ·{' '}
                   {t('timetable.lessonHistory.by', {
                     // An account with no staff record has no name: never a blank.
-                    name:
-                      line.who === null
-                        ? t('timetable.lessonHistory.system')
-                        : line.who.name === ''
-                          ? t('audit.unnamed')
-                          : line.who.name,
+                    name: (() => {
+                      const who =
+                        line.who === null
+                          ? t('timetable.lessonHistory.system')
+                          : line.who.name === ''
+                            ? t('audit.unnamed')
+                            : line.who.name;
+                      // Task 11.13: "<who> via assistant" for a change of a confirmed step.
+                      return line.viaAssistant ? t('audit.viaAssistant', { who }) : who;
+                    })(),
                     moment: moment(line.changedAt),
                   })}
                 </p>

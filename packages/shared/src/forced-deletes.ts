@@ -120,6 +120,8 @@ export const lessonHistoryLineSchema = z.object({
   changedAt: z.iso.datetime({ offset: true }),
   /** The actor of the audit entry of the change; `null` for the system (a job). */
   who: person.nullable(),
+  /** Task 11.13: the change was made through the assistant, by a confirmed step. */
+  viaAssistant: z.boolean(),
   teacher: side(person),
   room: side(z.object({ id: z.uuid(), name: z.string() })),
   date: side(schoolDateSchema),

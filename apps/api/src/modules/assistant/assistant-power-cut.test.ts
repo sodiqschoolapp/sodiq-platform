@@ -226,15 +226,61 @@ describe('the assistant at a power cut: no day off today, a bulk cancel from the
       .set(BRANCH_HEADER, branch)
       .send({ role: 'academic_vice_principal' });
 
+  // `edge/people-roles-accounts`, "Add an extra lesson": no listed route adds one, and the move
+  // that exists stays inside the quarter (`edge/time-dates-calendar`): the route refuses a move
+  // into another quarter at Confirm, and the lesson is as it was.
+  it('runs a proposed move into another quarter through its route, which refuses it', async () => {
+    const lesson3 = await t.database.migrator
+      .selectFrom('lessons')
+      .select(['id', 'lesson_date', 'starts_at', 'cancel_cause'])
+      .where('branch_id', '=', branch)
+      .where('lesson_date', '=', MONDAY)
+      .orderBy('starts_at', 'desc')
+      .executeTakeFirstOrThrow();
+    model.script(
+      calls({
+        name: `propose_${tool('POST /api/timetable/lessons/:id/move')}`.slice(0, 64),
+        args: {
+          id: lesson3.id,
+          body: { date: '2026-11-10', lessonNumber: 1, reason: 'Power cut' },
+          summary: 'Move lesson 3 to 10 November.',
+        },
+      }),
+      answer('I propose to move the lesson.'),
+    );
+    const asked = await request(t.kit.server)
+      .post('/api/assistant/questions')
+      .set('Cookie', vice.cookie)
+      .set(BRANCH_HEADER, branch)
+      .send({ role: 'academic_vice_principal', text: 'Hold lesson 3 another day instead.' });
+    expect(asked.status, JSON.stringify(asked.body).slice(0, 400)).toBe(200);
+    const proposal = assistantConversationSchema.parse(
+      (asked.body as { conversation: unknown }).conversation,
+    ).proposals[0];
+    // The lesson is named in the platform's words (class, date, slot), read from the day.
+    expect(proposal?.steps[0]?.previewLessons.map((one) => [one.unitName, one.date])).toEqual([
+      ['7 Oxford', MONDAY],
+    ]);
+    const confirmed = await confirm(proposal?.id ?? '');
+    expect(confirmed.status).toBe(200);
+    const state = assistantConversationSchema.parse(confirmed.body).proposals[0]?.steps[0];
+    expect(state?.state).toBe('refused');
+    expect(state?.code ?? '').toMatch(/^move_/);
+    const after = await t.database.migrator
+      .selectFrom('lessons')
+      .select(['id', 'lesson_date', 'starts_at', 'cancel_cause'])
+      .where('id', '=', lesson3.id)
+      .executeTakeFirstOrThrow();
+    expect(after).toEqual(lesson3);
+  });
+
   it('refuses a day off today at the proposal, proposes the bulk cancel from lesson 3 with its lessons, and cancels lesson 3 alone at Confirm', async () => {
     const conversation = await askPowerCut();
-    const results = lastResults(model.requests.at(-1) ?? { system: '', turns: [], tools: [] });
     // Turn by turn the model was given: the calendar's refusal, the check, the step.
     const given = model.requests.flatMap((one) => lastResults(one));
     expect(given.find((one) => one.name === CALENDAR_CREATE)?.result).toMatchObject({
       error: 'calendar_date_not_in_future',
     });
-    void results;
     const [proposal] = conversation.proposals;
     expect(proposal?.steps.length).toBe(1);
     expect(proposal?.steps[0]?.action).toBe(tool('POST /api/timetable/bulk-cancels'));
@@ -261,6 +307,22 @@ describe('the assistant at a power cut: no day off today, a bulk cancel from the
       .where('assistant_step_id', '=', proposal?.steps[0]?.id ?? '')
       .execute();
     expect(marked.length).toBeGreaterThan(0);
+    // The lesson's own history names the change "via assistant" (plan, Web; review must fix 4).
+    const cancelled = await t.database.migrator
+      .selectFrom('lessons')
+      .select('id')
+      .where('branch_id', '=', branch)
+      .where('lesson_date', '=', MONDAY)
+      .where('cancel_cause', 'is not', null)
+      .executeTakeFirstOrThrow();
+    const history = await request(t.kit.server)
+      .get(`/api/timetable/lessons/${cancelled.id}/history`)
+      .set('Cookie', vice.cookie)
+      .set(BRANCH_HEADER, branch);
+    expect(history.status, JSON.stringify(history.body)).toBe(200);
+    const lines = (history.body as { lines: { kind: string; viaAssistant: boolean }[] }).lines;
+    expect(lines.length).toBeGreaterThan(0);
+    expect(lines.every((line) => line.viaAssistant)).toBe(true);
   });
 
   it('finds the step outdated when lesson 3 began while the proposal waited, and cancels nothing', async () => {
