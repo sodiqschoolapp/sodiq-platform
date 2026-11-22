@@ -651,6 +651,14 @@ export const auditEntrySchema = z.object({
    * integration key the change was made through, shown "via <key name>"; `null` otherwise.
    */
   viaKey: z.object({ name: z.string() }).nullable(),
+  /**
+   * Task 11.13 (`02`, Audit: "marked 'via assistant', and the audit log shows the request it
+   * came from"): the person's question, as filtered for the model, and the conversation, given
+   * only to its person and to the Super Admin (plan decision 11); `null` otherwise.
+   */
+  viaAssistant: z
+    .object({ question: z.string(), conversationId: z.uuid().nullable() })
+    .nullable(),
   /** The assignment that allowed the action, with its role, when the reader may see it. */
   assignment: z.object({ id: z.uuid(), role: roleSchema }).nullable(),
   person: namedSchema.nullable(),

@@ -291,6 +291,8 @@ const COLUMNS = [
   'reason',
   // Task 10.10: the key a change was made through.
   'integration_key_id',
+  // Task 11.13: the step of the assistant a change was made by.
+  'assistant_step_id',
 ] as const;
 
 function sourceOf(transaction: Transaction, person: ReportPerson) {

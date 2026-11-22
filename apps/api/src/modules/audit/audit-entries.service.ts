@@ -24,6 +24,8 @@ import type { Access } from '../access/permission.guard.js';
 import { notFound } from '../setup/setup-refusals.js';
 import { readEntries, type EntriesSearch, type StoredEntry } from './audit-entries.query.js';
 import { Audit } from './audit.service.js';
+import { filterWords } from '../assistant/field-filter.js';
+import { assistantStepsOf, viaAssistantOf } from './assistant-steps.js';
 import { integrationKeyNames, viaKeyOf } from './integration-key-names.js';
 
 function branchOf(access: Access): string {
@@ -153,7 +155,13 @@ export class AuditEntries {
         limit: AUDIT_PAGE_SIZE + 1,
       });
       const page = rows.slice(0, AUDIT_PAGE_SIZE);
-      const entries = await entryAnswers(transaction, branchIds, page, !readsIdentity(access));
+      const entries = await entryAnswers(
+        transaction,
+        branchIds,
+        page,
+        !readsIdentity(access),
+        readerOf(access),
+      );
       const last = entries.at(-1);
       return {
         entries,
@@ -190,8 +198,8 @@ export class AuditEntries {
       if (row === undefined) {
         throw notFound();
       }
-      const [hiddenView] = await entryAnswers(transaction, branchIds, [row], true);
-      const [entry] = await entryAnswers(transaction, branchIds, [row], false);
+      const [hiddenView] = await entryAnswers(transaction, branchIds, [row], true, readerOf(access));
+      const [entry] = await entryAnswers(transaction, branchIds, [row], false, readerOf(access));
       if (entry === undefined || hiddenView === undefined) {
         throw notFound();
       }
@@ -226,10 +234,16 @@ export async function entryAnswers(
   branchIds: readonly string[],
   rows: readonly StoredEntry[],
   hide: boolean,
+  /** Who reads: the conversation of a change made through the assistant is linked for them. */
+  reader?: { accountId: string; readsConversations: boolean },
 ): Promise<AuditEntryAnswer[]> {
   if (rows.length === 0) {
     return [];
   }
+  const assistant = await assistantStepsOf(
+    transaction,
+    rows.map((row) => row.assistant_step_id),
+  );
   const nameIds = [
     ...new Set(
       rows.flatMap((row) => [
@@ -318,6 +332,7 @@ export async function entryAnswers(
       actor:
         row.actor_id === null ? null : { id: row.actor_id, name: names.get(row.actor_id) ?? null },
       viaKey: viaKeyOf(keyNames, row.integration_key_id),
+      viaAssistant: viaAssistantOf(assistant, row.assistant_step_id, reader, filterWords),
       assignment:
         row.assignment_id !== null && parsedRole?.success === true
           ? { id: row.assignment_id, role: parsedRole.data }
@@ -337,4 +352,16 @@ export async function entryAnswers(
       hidden: values.hidden,
     };
   });
+}
+
+/**
+ * The reader of an entry, for the link to a conversation (task 11.13, plan decision 11): its
+ * person, and the Super Admin, who reads every conversation (`02`, Audit), decided from every
+ * current assignment.
+ */
+function readerOf(access: Access): { accountId: string; readsConversations: boolean } {
+  return {
+    accountId: access.accountId,
+    readsConversations: access.assignments.some((assignment) => assignment.role === 'super_admin'),
+  };
 }

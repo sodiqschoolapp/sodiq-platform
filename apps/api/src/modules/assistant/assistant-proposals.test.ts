@@ -625,6 +625,54 @@ describe('the assistant: proposals and Confirm', () => {
     void ROOM_CREATE;
   });
 
+  // Plan decision 11 and review should fix 12: the Audit log page shows "via assistant" and the
+  // question; the conversation only to its person and the Super Admin.
+  it('shows the change on the Audit log page with the question, the conversation linked for its person and the Super Admin only', async () => {
+    const klass = await scene.people.schoolClass(scene.north, scene.northYear);
+    const conversation = await proposed(
+      [{ name: CLASS_ARCHIVE, args: { id: klass, summary: 'Archive the class.' } }],
+      { cookie: vice.cookie, role: 'academic_vice_principal' },
+    );
+    const confirmed = await decide(
+      'confirm',
+      conversation.proposals[0]?.id ?? '',
+      vice.cookie,
+      scene.north,
+      'academic_vice_principal',
+    );
+    expect(confirmed.status, JSON.stringify(confirmed.body).slice(0, 300)).toBe(200);
+    expect(
+      assistantConversationSchema.parse(confirmed.body).proposals[0]?.steps.map((step) => step.state),
+    ).toEqual(['done']);
+    const principal = await scene.kit.completeSession('Jasur', 'Toshev');
+    await scene.kit.giveRole(principal.account.id, { role: 'principal', branchId: scene.north });
+    const entryOf = async (cookie: string) => {
+      const page = await request(server())
+        .get('/api/audit/entries')
+        .query({ recordType: 'class', recordId: klass })
+        .set('Cookie', cookie)
+        .set(BRANCH_HEADER, scene.north);
+      expect(page.status, JSON.stringify(page.body).slice(0, 300)).toBe(200);
+      return (
+        page.body as {
+          entries: {
+            record: { id: string } | null;
+            viaAssistant: { question: string; conversationId: string | null } | null;
+          }[];
+        }
+      ).entries.find((entry) => entry.record?.id === klass);
+    };
+    expect((await entryOf(vice.cookie))?.viaAssistant).toEqual({
+      question: 'Please change these.',
+      conversationId: conversation.id,
+    });
+    expect((await entryOf(scene.admin))?.viaAssistant?.conversationId).toBe(conversation.id);
+    expect((await entryOf(principal.cookie))?.viaAssistant).toEqual({
+      question: 'Please change these.',
+      conversationId: null,
+    });
+  });
+
   // Decision 3 of the plan (Look first): the person's list holds the branches and roles held now.
   it('leaves a conversation of a branch the person no longer holds out of their list; the Super Admin reads it', async () => {
     const person = await scene.kit.completeSession('Malika', 'Rahimova');

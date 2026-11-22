@@ -21,6 +21,8 @@ export interface StoredEntry {
   reason: string | null;
   /** Task 10.10: the key the change was made through. */
   integration_key_id: string | null;
+  /** Task 11.13: the step of the assistant's proposal the change was made by. */
+  assistant_step_id: string | null;
 }
 
 /**
@@ -120,6 +122,7 @@ const COLUMNS = [
   'details',
   'reason',
   'integration_key_id',
+  'assistant_step_id',
 ] as const;
 
 /**
