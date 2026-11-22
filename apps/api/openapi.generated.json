@@ -440162,6 +440162,9 @@
                             ],
                             "additionalProperties": false
                           },
+                          "viaAssistant": {
+                            "type": "boolean"
+                          },
                           "teacher": {
                             "type": "object",
                             "properties": {
@@ -440382,6 +440385,7 @@
                           "kind",
                           "changedAt",
                           "who",
+                          "viaAssistant",
                           "teacher",
                           "room",
                           "date",
@@ -1174069,6 +1174073,71 @@
                                   "nullable": true,
                                   "type": "string"
                                 },
+                                "recordNames": {
+                                  "nullable": true,
+                                  "type": "object",
+                                  "properties": {
+                                    "uz": {
+                                      "type": "string"
+                                    },
+                                    "ru": {
+                                      "type": "string"
+                                    },
+                                    "en": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "uz",
+                                    "ru",
+                                    "en"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                "previewIssues": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "kind": {
+                                        "type": "string",
+                                        "enum": [
+                                          "warning",
+                                          "blocked"
+                                        ]
+                                      },
+                                      "code": {
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": [
+                                      "kind",
+                                      "code"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                },
+                                "previewCounts": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "list": {
+                                        "type": "string"
+                                      },
+                                      "count": {
+                                        "type": "integer",
+                                        "minimum": 0,
+                                        "maximum": 9007199254740991
+                                      }
+                                    },
+                                    "required": [
+                                      "list",
+                                      "count"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                },
                                 "fields": {
                                   "type": "array",
                                   "items": {
@@ -1174135,6 +1174204,9 @@
                                       "roomName": {
                                         "nullable": true,
                                         "type": "string"
+                                      },
+                                      "hasData": {
+                                        "type": "boolean"
                                       }
                                     },
                                     "required": [
@@ -1174144,7 +1174216,8 @@
                                       "unitName",
                                       "subjectNames",
                                       "teacherName",
-                                      "roomName"
+                                      "roomName",
+                                      "hasData"
                                     ],
                                     "additionalProperties": false
                                   }
@@ -1174182,6 +1174255,9 @@
                                 "group",
                                 "summary",
                                 "recordName",
+                                "recordNames",
+                                "previewIssues",
+                                "previewCounts",
                                 "fields",
                                 "previewLessons",
                                 "previewMore",
@@ -1176451,6 +1176527,71 @@
                                       "nullable": true,
                                       "type": "string"
                                     },
+                                    "recordNames": {
+                                      "nullable": true,
+                                      "type": "object",
+                                      "properties": {
+                                        "uz": {
+                                          "type": "string"
+                                        },
+                                        "ru": {
+                                          "type": "string"
+                                        },
+                                        "en": {
+                                          "type": "string"
+                                        }
+                                      },
+                                      "required": [
+                                        "uz",
+                                        "ru",
+                                        "en"
+                                      ],
+                                      "additionalProperties": false
+                                    },
+                                    "previewIssues": {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "object",
+                                        "properties": {
+                                          "kind": {
+                                            "type": "string",
+                                            "enum": [
+                                              "warning",
+                                              "blocked"
+                                            ]
+                                          },
+                                          "code": {
+                                            "type": "string"
+                                          }
+                                        },
+                                        "required": [
+                                          "kind",
+                                          "code"
+                                        ],
+                                        "additionalProperties": false
+                                      }
+                                    },
+                                    "previewCounts": {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "object",
+                                        "properties": {
+                                          "list": {
+                                            "type": "string"
+                                          },
+                                          "count": {
+                                            "type": "integer",
+                                            "minimum": 0,
+                                            "maximum": 9007199254740991
+                                          }
+                                        },
+                                        "required": [
+                                          "list",
+                                          "count"
+                                        ],
+                                        "additionalProperties": false
+                                      }
+                                    },
                                     "fields": {
                                       "type": "array",
                                       "items": {
@@ -1176517,6 +1176658,9 @@
                                           "roomName": {
                                             "nullable": true,
                                             "type": "string"
+                                          },
+                                          "hasData": {
+                                            "type": "boolean"
                                           }
                                         },
                                         "required": [
@@ -1176526,7 +1176670,8 @@
                                           "unitName",
                                           "subjectNames",
                                           "teacherName",
-                                          "roomName"
+                                          "roomName",
+                                          "hasData"
                                         ],
                                         "additionalProperties": false
                                       }
@@ -1176564,6 +1176709,9 @@
                                     "group",
                                     "summary",
                                     "recordName",
+                                    "recordNames",
+                                    "previewIssues",
+                                    "previewCounts",
                                     "fields",
                                     "previewLessons",
                                     "previewMore",
@@ -1178835,6 +1178983,71 @@
                                   "nullable": true,
                                   "type": "string"
                                 },
+                                "recordNames": {
+                                  "nullable": true,
+                                  "type": "object",
+                                  "properties": {
+                                    "uz": {
+                                      "type": "string"
+                                    },
+                                    "ru": {
+                                      "type": "string"
+                                    },
+                                    "en": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "uz",
+                                    "ru",
+                                    "en"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                "previewIssues": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "kind": {
+                                        "type": "string",
+                                        "enum": [
+                                          "warning",
+                                          "blocked"
+                                        ]
+                                      },
+                                      "code": {
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": [
+                                      "kind",
+                                      "code"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                },
+                                "previewCounts": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "list": {
+                                        "type": "string"
+                                      },
+                                      "count": {
+                                        "type": "integer",
+                                        "minimum": 0,
+                                        "maximum": 9007199254740991
+                                      }
+                                    },
+                                    "required": [
+                                      "list",
+                                      "count"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                },
                                 "fields": {
                                   "type": "array",
                                   "items": {
@@ -1178901,6 +1179114,9 @@
                                       "roomName": {
                                         "nullable": true,
                                         "type": "string"
+                                      },
+                                      "hasData": {
+                                        "type": "boolean"
                                       }
                                     },
                                     "required": [
@@ -1178910,7 +1179126,8 @@
                                       "unitName",
                                       "subjectNames",
                                       "teacherName",
-                                      "roomName"
+                                      "roomName",
+                                      "hasData"
                                     ],
                                     "additionalProperties": false
                                   }
@@ -1178948,6 +1179165,9 @@
                                 "group",
                                 "summary",
                                 "recordName",
+                                "recordNames",
+                                "previewIssues",
+                                "previewCounts",
                                 "fields",
                                 "previewLessons",
                                 "previewMore",
@@ -1181213,6 +1181433,71 @@
                                   "nullable": true,
                                   "type": "string"
                                 },
+                                "recordNames": {
+                                  "nullable": true,
+                                  "type": "object",
+                                  "properties": {
+                                    "uz": {
+                                      "type": "string"
+                                    },
+                                    "ru": {
+                                      "type": "string"
+                                    },
+                                    "en": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "uz",
+                                    "ru",
+                                    "en"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                "previewIssues": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "kind": {
+                                        "type": "string",
+                                        "enum": [
+                                          "warning",
+                                          "blocked"
+                                        ]
+                                      },
+                                      "code": {
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": [
+                                      "kind",
+                                      "code"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                },
+                                "previewCounts": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "list": {
+                                        "type": "string"
+                                      },
+                                      "count": {
+                                        "type": "integer",
+                                        "minimum": 0,
+                                        "maximum": 9007199254740991
+                                      }
+                                    },
+                                    "required": [
+                                      "list",
+                                      "count"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                },
                                 "fields": {
                                   "type": "array",
                                   "items": {
@@ -1181279,6 +1181564,9 @@
                                       "roomName": {
                                         "nullable": true,
                                         "type": "string"
+                                      },
+                                      "hasData": {
+                                        "type": "boolean"
                                       }
                                     },
                                     "required": [
@@ -1181288,7 +1181576,8 @@
                                       "unitName",
                                       "subjectNames",
                                       "teacherName",
-                                      "roomName"
+                                      "roomName",
+                                      "hasData"
                                     ],
                                     "additionalProperties": false
                                   }
@@ -1181326,6 +1181615,9 @@
                                 "group",
                                 "summary",
                                 "recordName",
+                                "recordNames",
+                                "previewIssues",
+                                "previewCounts",
                                 "fields",
                                 "previewLessons",
                                 "previewMore",
@@ -1185488,6 +1185780,71 @@
                                   "nullable": true,
                                   "type": "string"
                                 },
+                                "recordNames": {
+                                  "nullable": true,
+                                  "type": "object",
+                                  "properties": {
+                                    "uz": {
+                                      "type": "string"
+                                    },
+                                    "ru": {
+                                      "type": "string"
+                                    },
+                                    "en": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "uz",
+                                    "ru",
+                                    "en"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                "previewIssues": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "kind": {
+                                        "type": "string",
+                                        "enum": [
+                                          "warning",
+                                          "blocked"
+                                        ]
+                                      },
+                                      "code": {
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": [
+                                      "kind",
+                                      "code"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                },
+                                "previewCounts": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "list": {
+                                        "type": "string"
+                                      },
+                                      "count": {
+                                        "type": "integer",
+                                        "minimum": 0,
+                                        "maximum": 9007199254740991
+                                      }
+                                    },
+                                    "required": [
+                                      "list",
+                                      "count"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                },
                                 "fields": {
                                   "type": "array",
                                   "items": {
@@ -1185554,6 +1185911,9 @@
                                       "roomName": {
                                         "nullable": true,
                                         "type": "string"
+                                      },
+                                      "hasData": {
+                                        "type": "boolean"
                                       }
                                     },
                                     "required": [
@@ -1185563,7 +1185923,8 @@
                                       "unitName",
                                       "subjectNames",
                                       "teacherName",
-                                      "roomName"
+                                      "roomName",
+                                      "hasData"
                                     ],
                                     "additionalProperties": false
                                   }
@@ -1185601,6 +1185962,9 @@
                                 "group",
                                 "summary",
                                 "recordName",
+                                "recordNames",
+                                "previewIssues",
+                                "previewCounts",
                                 "fields",
                                 "previewLessons",
                                 "previewMore",
@@ -1187836,6 +1188200,71 @@
                                   "nullable": true,
                                   "type": "string"
                                 },
+                                "recordNames": {
+                                  "nullable": true,
+                                  "type": "object",
+                                  "properties": {
+                                    "uz": {
+                                      "type": "string"
+                                    },
+                                    "ru": {
+                                      "type": "string"
+                                    },
+                                    "en": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "uz",
+                                    "ru",
+                                    "en"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                "previewIssues": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "kind": {
+                                        "type": "string",
+                                        "enum": [
+                                          "warning",
+                                          "blocked"
+                                        ]
+                                      },
+                                      "code": {
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": [
+                                      "kind",
+                                      "code"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                },
+                                "previewCounts": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "list": {
+                                        "type": "string"
+                                      },
+                                      "count": {
+                                        "type": "integer",
+                                        "minimum": 0,
+                                        "maximum": 9007199254740991
+                                      }
+                                    },
+                                    "required": [
+                                      "list",
+                                      "count"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                },
                                 "fields": {
                                   "type": "array",
                                   "items": {
@@ -1187902,6 +1188331,9 @@
                                       "roomName": {
                                         "nullable": true,
                                         "type": "string"
+                                      },
+                                      "hasData": {
+                                        "type": "boolean"
                                       }
                                     },
                                     "required": [
@@ -1187911,7 +1188343,8 @@
                                       "unitName",
                                       "subjectNames",
                                       "teacherName",
-                                      "roomName"
+                                      "roomName",
+                                      "hasData"
                                     ],
                                     "additionalProperties": false
                                   }
@@ -1187949,6 +1188382,9 @@
                                 "group",
                                 "summary",
                                 "recordName",
+                                "recordNames",
+                                "previewIssues",
+                                "previewCounts",
                                 "fields",
                                 "previewLessons",
                                 "previewMore",

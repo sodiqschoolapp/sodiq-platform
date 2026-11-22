@@ -83115,6 +83115,7 @@ export interface operations {
                                 id: string;
                                 name: string;
                             } | null;
+                            viaAssistant: boolean;
                             teacher: {
                                 before: {
                                     /** Format: uuid */
@@ -209189,6 +209190,20 @@ export interface operations {
                                 group: "setup" | "calendar" | "staff" | "students" | "classes" | "timetable" | "journal" | "plans" | "results" | "announcements" | "search";
                                 summary: string;
                                 recordName: string | null;
+                                recordNames: {
+                                    uz: string;
+                                    ru: string;
+                                    en: string;
+                                } | null;
+                                previewIssues: {
+                                    /** @enum {string} */
+                                    kind: "warning" | "blocked";
+                                    code: string;
+                                }[];
+                                previewCounts: {
+                                    list: string;
+                                    count: number;
+                                }[];
                                 fields: {
                                     name: string;
                                     value: string;
@@ -209205,6 +209220,7 @@ export interface operations {
                                     } | null;
                                     teacherName: string | null;
                                     roomName: string | null;
+                                    hasData: boolean;
                                 }[];
                                 previewMore: number;
                                 /** @enum {string} */
@@ -209602,6 +209618,20 @@ export interface operations {
                                     group: "setup" | "calendar" | "staff" | "students" | "classes" | "timetable" | "journal" | "plans" | "results" | "announcements" | "search";
                                     summary: string;
                                     recordName: string | null;
+                                    recordNames: {
+                                        uz: string;
+                                        ru: string;
+                                        en: string;
+                                    } | null;
+                                    previewIssues: {
+                                        /** @enum {string} */
+                                        kind: "warning" | "blocked";
+                                        code: string;
+                                    }[];
+                                    previewCounts: {
+                                        list: string;
+                                        count: number;
+                                    }[];
                                     fields: {
                                         name: string;
                                         value: string;
@@ -209618,6 +209648,7 @@ export interface operations {
                                         } | null;
                                         teacherName: string | null;
                                         roomName: string | null;
+                                        hasData: boolean;
                                     }[];
                                     previewMore: number;
                                     /** @enum {string} */
@@ -210014,6 +210045,20 @@ export interface operations {
                                 group: "setup" | "calendar" | "staff" | "students" | "classes" | "timetable" | "journal" | "plans" | "results" | "announcements" | "search";
                                 summary: string;
                                 recordName: string | null;
+                                recordNames: {
+                                    uz: string;
+                                    ru: string;
+                                    en: string;
+                                } | null;
+                                previewIssues: {
+                                    /** @enum {string} */
+                                    kind: "warning" | "blocked";
+                                    code: string;
+                                }[];
+                                previewCounts: {
+                                    list: string;
+                                    count: number;
+                                }[];
                                 fields: {
                                     name: string;
                                     value: string;
@@ -210030,6 +210075,7 @@ export interface operations {
                                     } | null;
                                     teacherName: string | null;
                                     roomName: string | null;
+                                    hasData: boolean;
                                 }[];
                                 previewMore: number;
                                 /** @enum {string} */
@@ -210425,6 +210471,20 @@ export interface operations {
                                 group: "setup" | "calendar" | "staff" | "students" | "classes" | "timetable" | "journal" | "plans" | "results" | "announcements" | "search";
                                 summary: string;
                                 recordName: string | null;
+                                recordNames: {
+                                    uz: string;
+                                    ru: string;
+                                    en: string;
+                                } | null;
+                                previewIssues: {
+                                    /** @enum {string} */
+                                    kind: "warning" | "blocked";
+                                    code: string;
+                                }[];
+                                previewCounts: {
+                                    list: string;
+                                    count: number;
+                                }[];
                                 fields: {
                                     name: string;
                                     value: string;
@@ -210441,6 +210501,7 @@ export interface operations {
                                     } | null;
                                     teacherName: string | null;
                                     roomName: string | null;
+                                    hasData: boolean;
                                 }[];
                                 previewMore: number;
                                 /** @enum {string} */
@@ -211143,6 +211204,20 @@ export interface operations {
                                 group: "setup" | "calendar" | "staff" | "students" | "classes" | "timetable" | "journal" | "plans" | "results" | "announcements" | "search";
                                 summary: string;
                                 recordName: string | null;
+                                recordNames: {
+                                    uz: string;
+                                    ru: string;
+                                    en: string;
+                                } | null;
+                                previewIssues: {
+                                    /** @enum {string} */
+                                    kind: "warning" | "blocked";
+                                    code: string;
+                                }[];
+                                previewCounts: {
+                                    list: string;
+                                    count: number;
+                                }[];
                                 fields: {
                                     name: string;
                                     value: string;
@@ -211159,6 +211234,7 @@ export interface operations {
                                     } | null;
                                     teacherName: string | null;
                                     roomName: string | null;
+                                    hasData: boolean;
                                 }[];
                                 previewMore: number;
                                 /** @enum {string} */
@@ -211546,6 +211622,20 @@ export interface operations {
                                 group: "setup" | "calendar" | "staff" | "students" | "classes" | "timetable" | "journal" | "plans" | "results" | "announcements" | "search";
                                 summary: string;
                                 recordName: string | null;
+                                recordNames: {
+                                    uz: string;
+                                    ru: string;
+                                    en: string;
+                                } | null;
+                                previewIssues: {
+                                    /** @enum {string} */
+                                    kind: "warning" | "blocked";
+                                    code: string;
+                                }[];
+                                previewCounts: {
+                                    list: string;
+                                    count: number;
+                                }[];
                                 fields: {
                                     name: string;
                                     value: string;
@@ -211562,6 +211652,7 @@ export interface operations {
                                     } | null;
                                     teacherName: string | null;
                                     roomName: string | null;
+                                    hasData: boolean;
                                 }[];
                                 previewMore: number;
                                 /** @enum {string} */
