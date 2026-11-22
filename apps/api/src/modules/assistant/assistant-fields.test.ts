@@ -174,7 +174,10 @@ describe('the fields that never go to the model, through every tool of the Super
   }
 
   it('gives the model no sentinel of any such field, whatever tool it calls', async () => {
-    const routes = Object.keys(assistantRoutesOf('super_admin'));
+    // The reads (task 11.13 adds changes, which are proposed, never read).
+    const routes = Object.keys(assistantRoutesOf('super_admin')).filter((route) =>
+      route.startsWith('GET '),
+    );
     expect(routes.length).toBeGreaterThan(50);
     scene.model.requests.length = 0;
     const statuses: Record<string, number> = {};

@@ -12,6 +12,7 @@ import { sql } from 'kysely';
 import type { JsonValue } from '../../database/types.generated.js';
 import type { Transaction } from '../../database/transactions.js';
 import { accountNames } from '../timetable/edit-lock.js';
+import { proposalsOf } from './proposal-views.js';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -150,6 +151,7 @@ export async function conversationOf(
     archived: isArchived(last, now),
     archivesAt: archivesAt(last).toISOString(),
     messages: (await messagesOf(transaction, row.id)).map(messageOf),
+    proposals: await proposalsOf(transaction, row.id, now),
   };
 }
 

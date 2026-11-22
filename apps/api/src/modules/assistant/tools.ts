@@ -1,8 +1,12 @@
-import type { AssistantRole } from '@sodiq/shared';
 import { MENU_ITEMS } from '@sodiq/shared';
-import { assistantRoutesOf } from '../access/assistant-routes.js';
+import { WARNING_FLAGS, type AssistantChangeLine } from '../access/assistant-change-routes.js';
+import type { AssistantRouteLine } from '../access/assistant-routes.js';
+import { isRemovedKey } from './field-filter.js';
 import type { ModelTool, ToolArgumentsSchema, ToolParameterSchema } from './model.js';
 import { GENERATED_TOOLS } from './tools.generated.js';
+
+/** The lines open to the chosen role, by route name (`AssistantRoutes.linesOf`). */
+export type RoleLines = Readonly<Record<string, AssistantRouteLine>>;
 
 /** One parameter of a route as the OpenAPI document gives it. */
 export interface GeneratedParameter {
@@ -21,13 +25,26 @@ export interface GeneratedTool {
   /** Express's path, `/api/classes/:id`. */
   path: string;
   parameters: GeneratedParameter[];
+  /** Task 11.13: the JSON body of a change or a preview (OpenAPI 3.0). */
+  body?: unknown;
 }
+
+/** The prefix of a change's tool: the model proposes, it never runs a change (task 11.13). */
+export const PROPOSE = 'propose_';
+
+/** The tool argument that holds a change's body, and the model's one line about it. */
+export const BODY_ARGUMENT = 'body';
+export const SUMMARY_ARGUMENT = 'summary';
 
 /** The virtual tool that names a page of the menu (plan decision 16). */
 export const SUGGEST_PAGE = 'suggest_page';
 
 interface ParameterSchema {
   type?: unknown;
+  properties?: unknown;
+  required?: unknown;
+  additionalProperties?: unknown;
+  nullable?: unknown;
   format?: unknown;
   pattern?: unknown;
   enum?: unknown;
@@ -35,6 +52,8 @@ interface ParameterSchema {
   maximum?: unknown;
   minLength?: unknown;
   maxLength?: unknown;
+  minItems?: unknown;
+  maxItems?: unknown;
   items?: unknown;
   description?: unknown;
   /** A number given as a number or as its text (the grade of a report): the first is shown. */
@@ -52,9 +71,41 @@ function asSchema(value: unknown): ParameterSchema {
 export function modelSchemaOf(value: unknown, where: string): ToolParameterSchema {
   const schema = asSchema(value);
   if (Array.isArray(schema.anyOf) && schema.anyOf.length > 0) {
+    const options = schema.anyOf.map(asSchema);
+    // A number of a few values (a weekday): one schema with their enum.
+    if (options.every((option) => option.type === 'number' && Array.isArray(option.enum))) {
+      return {
+        type: 'integer',
+        enum: options.flatMap((option) => option.enum as number[]),
+        ...(schema.nullable === true ? { nullable: true } : {}),
+      };
+    }
+    if (options.some((option) => option.type === 'object')) {
+      // A body of several shapes (task 11.13): each is given.
+      return {
+        anyOf: options.map((option, index) => modelSchemaOf(option, `${where}|${String(index)}`)),
+      };
+    }
     return modelSchemaOf(schema.anyOf[0], where);
   }
   const type = schema.type;
+  if (type === 'object') {
+    const properties: Record<string, ToolParameterSchema> = {};
+    const shape =
+      schema.properties !== null && typeof schema.properties === 'object' ? schema.properties : {};
+    for (const [key, property] of Object.entries(shape)) {
+      properties[key] = modelSchemaOf(property, `${where}.${key}`);
+    }
+    const required = Array.isArray(schema.required)
+      ? schema.required.filter((key): key is string => typeof key === 'string')
+      : [];
+    return {
+      type: 'object',
+      properties,
+      required,
+      ...(schema.nullable === true ? { nullable: true } : {}),
+    };
+  }
   if (
     type !== 'string' &&
     type !== 'integer' &&
@@ -65,8 +116,14 @@ export function modelSchemaOf(value: unknown, where: string): ToolParameterSchem
     throw new Error(`The parameter ${where} has a schema the assistant's tools do not take.`);
   }
   const out: ToolParameterSchema = { type };
-  if (Array.isArray(schema.enum) && schema.enum.every((item) => typeof item === 'string')) {
-    out.enum = schema.enum;
+  if (schema.nullable === true) {
+    out.nullable = true;
+  }
+  if (
+    Array.isArray(schema.enum) &&
+    schema.enum.every((item) => typeof item === 'string' || typeof item === 'number')
+  ) {
+    out.enum = schema.enum as (string | number)[];
   }
   if (typeof schema.format === 'string') {
     out.format = schema.format;
@@ -80,14 +137,109 @@ export function modelSchemaOf(value: unknown, where: string): ToolParameterSchem
   return out;
 }
 
-/** The tools of a role: its routes, and `suggest_page` with the pages it may open. */
-export function toolsOf(role: AssistantRole, pages: readonly string[]): ModelTool[] {
-  const lines = assistantRoutesOf(role);
-  const tools: ModelTool[] = Object.entries(lines).map(([route, line]) => {
-    const generated = GENERATED_TOOLS[route];
-    if (generated === undefined) {
-      throw new Error(`${route} has no generated tool: run "pnpm api:client".`);
+/** The generated tool of a listed route. */
+export function generatedOf(route: string): GeneratedTool {
+  const generated = GENERATED_TOOLS[route];
+  if (generated === undefined) {
+    throw new Error(`${route} has no generated tool: run "pnpm api:client".`);
+  }
+  return generated;
+}
+
+/** The name of a route's tool: a read by its operation, a change as `propose_<operation>`. */
+export function toolNameOf(route: string, line: AssistantRouteLine): string {
+  const name = generatedOf(route).name;
+  return line.kind === 'change' ? `${PROPOSE}${name}`.slice(0, 64) : name;
+}
+
+/**
+ * The body of a change as the model may give it (task 11.13): the route's body with every field
+ * that never goes to the model removed at any depth (`isRemovedKey`, the 11.12 field filter;
+ * plan review must fix 4), every warning flag but the line's own (review correction 2), the
+ * fields the basis gives, and on a line with `only` every other field.
+ */
+export function changeBodySchemaOf(route: string, line: AssistantChangeLine): unknown {
+  const body = generatedOf(route).body;
+  if (body === undefined) {
+    return undefined;
+  }
+  const kept = new Set(line.keepsFlags ?? []);
+  const top = (key: string): boolean =>
+    (line.only === undefined || line.only.includes(key)) &&
+    !(line.fromBasis ?? []).includes(key) &&
+    (!WARNING_FLAGS.includes(key) || kept.has(key));
+  return stripSchema(body, top, true);
+}
+
+function stripSchema(value: unknown, keep: (key: string) => boolean, top: boolean): unknown {
+  const schema = asSchema(value);
+  if (Array.isArray(schema.anyOf)) {
+    return { ...schema, anyOf: schema.anyOf.map((option) => stripSchema(option, keep, top)) };
+  }
+  if (schema.type === 'array') {
+    return { ...schema, items: stripSchema(schema.items, keep, false) };
+  }
+  if (schema.type !== 'object' || schema.properties === null || typeof schema.properties !== 'object') {
+    return schema;
+  }
+  const properties: Record<string, unknown> = {};
+  for (const [key, property] of Object.entries(schema.properties)) {
+    if (isRemovedKey(key) || (top && !keep(key)) || (!top && WARNING_FLAGS.includes(key))) {
+      continue;
     }
+    properties[key] = stripSchema(property, keep, false);
+  }
+  const required = Array.isArray(schema.required)
+    ? schema.required.filter((key) => typeof key === 'string' && key in properties)
+    : undefined;
+  return { ...schema, properties, ...(required === undefined ? {} : { required }) };
+}
+
+/**
+ * The required fields of a change's body that the model is not given (never-fields only: a
+ * warning flag or a basis field is never required). A listed change has none; a test holds it.
+ */
+export function requiredFieldsWithheld(route: string): string[] {
+  const withheld: string[] = [];
+  const walk = (value: unknown, where: string): void => {
+    const schema = asSchema(value);
+    if (Array.isArray(schema.anyOf)) {
+      schema.anyOf.forEach((option) => {
+        walk(option, where);
+      });
+      return;
+    }
+    if (schema.type === 'array') {
+      walk(schema.items, `${where}[]`);
+      return;
+    }
+    if (schema.type !== 'object' || schema.properties === null || typeof schema.properties !== 'object') {
+      return;
+    }
+    const required = Array.isArray(schema.required) ? schema.required : [];
+    for (const [key, property] of Object.entries(schema.properties)) {
+      if (isRemovedKey(key)) {
+        if (required.includes(key)) {
+          withheld.push(`${where}.${key}`);
+        }
+        continue;
+      }
+      walk(property, `${where}.${key}`);
+    }
+  };
+  walk(generatedOf(route).body, route);
+  return withheld;
+}
+
+/** The tools of the chosen role: its reads and proposals, and `suggest_page` with its pages. */
+export function toolsOf(lines: RoleLines, pages: readonly string[]): ModelTool[] {
+  const tools: ModelTool[] = [];
+  for (const [route, line] of Object.entries(lines)) {
+    if (line.kind === 'preview') {
+      // A preview is run by the engine with a proposed change, never asked for by the model.
+      continue;
+    }
+    const generated = generatedOf(route);
     const parameters: ToolArgumentsSchema = { type: 'object', properties: {}, required: [] };
     for (const parameter of generated.parameters) {
       parameters.properties[parameter.name] = modelSchemaOf(
@@ -98,8 +250,27 @@ export function toolsOf(role: AssistantRole, pages: readonly string[]): ModelToo
         parameters.required.push(parameter.name);
       }
     }
-    return { name: generated.name, description: line.description, parameters };
-  });
+    if (line.kind === 'change') {
+      const body = changeBodySchemaOf(route, line);
+      if (body !== undefined) {
+        parameters.properties[BODY_ARGUMENT] = modelSchemaOf(body, `${route} body`);
+        parameters.required.push(BODY_ARGUMENT);
+      }
+      parameters.properties[SUMMARY_ARGUMENT] = {
+        type: 'string',
+        description:
+          'One sentence in the person’s language saying what this step changes, naming the records, dates and slots.',
+      };
+      parameters.required.push(SUMMARY_ARGUMENT);
+      tools.push({
+        name: toolNameOf(route, line),
+        description: `Proposes, never makes: ${line.description} The step runs only if the person confirms.`,
+        parameters,
+      });
+      continue;
+    }
+    tools.push({ name: generated.name, description: line.description, parameters });
+  }
   tools.push({
     name: SUGGEST_PAGE,
     description:
@@ -118,26 +289,53 @@ export function toolsOf(role: AssistantRole, pages: readonly string[]): ModelToo
   return tools;
 }
 
-/** The route of a tool name on the role's list, or `undefined`. */
-export function routeOfTool(role: AssistantRole, toolName: string): GeneratedTool | undefined {
-  for (const route of Object.keys(assistantRoutesOf(role))) {
+/** The route and line of a tool name on the role's list, or `undefined`. */
+export function routeOfTool(
+  lines: RoleLines,
+  toolName: string,
+): { route: string; tool: GeneratedTool; line: AssistantRouteLine } | undefined {
+  for (const [route, line] of Object.entries(lines)) {
+    if (line.kind === 'preview') {
+      continue;
+    }
     const generated = GENERATED_TOOLS[route];
-    if (generated?.name === toolName) {
-      return generated;
+    if (generated !== undefined && toolNameOf(route, line) === toolName) {
+      return { route, tool: generated, line };
     }
   }
   return undefined;
 }
 
 /** Why one value does not pass its parameter's schema, or `undefined` when it does. */
-function valueFault(value: unknown, schemaIn: unknown): string | undefined {
+export function valueFault(value: unknown, schemaIn: unknown): string | undefined {
   const schema = asSchema(schemaIn);
+  if (value === null && schema.nullable === true) {
+    return undefined;
+  }
   if (Array.isArray(schema.anyOf)) {
     const faults = schema.anyOf.map((option) => valueFault(value, option));
     return faults.includes(undefined) ? undefined : faults[0];
   }
+  if (schema.type === 'object') {
+    if (value === null || typeof value !== 'object' || Array.isArray(value)) return 'not an object';
+    const shape =
+      schema.properties !== null && typeof schema.properties === 'object' ? schema.properties : {};
+    const record = value as Record<string, unknown>;
+    for (const key of Array.isArray(schema.required) ? schema.required : []) {
+      if (typeof key === 'string' && record[key] === undefined) return `${key} is required`;
+    }
+    for (const [key, item] of Object.entries(record)) {
+      if (!Object.hasOwn(shape, key)) return `${key} is not a field`;
+      if (item === undefined) continue;
+      const fault = valueFault(item, (shape as Record<string, unknown>)[key]);
+      if (fault !== undefined) return `${key} is ${fault}`;
+    }
+    return undefined;
+  }
   if (schema.type === 'array') {
     if (!Array.isArray(value)) return 'not a list';
+    if (typeof schema.minItems === 'number' && value.length < schema.minItems) return 'too short';
+    if (typeof schema.maxItems === 'number' && value.length > schema.maxItems) return 'too long';
     for (const item of value) {
       const fault = valueFault(item, schema.items);
       if (fault !== undefined) return fault;

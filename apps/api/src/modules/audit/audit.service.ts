@@ -77,6 +77,9 @@ export class Audit {
       // Task 10.10 (`02`, Audit: "recorded as the person's change, with the key named"):
       // every entry written while a request made through a key runs names that key.
       integration_key_id: currentRequestContext()?.integrationKey?.id ?? null,
+      // Task 11.13 (`02`, Audit: "marked 'via assistant', and the audit log shows the request
+      // it came from"): every entry written while a confirmed step runs names that step.
+      assistant_step_id: currentRequestContext()?.assistantStep?.id ?? null,
     };
     if (entry.branchId === null) {
       await transaction.insertInto('audit_log_school').values(values).execute();

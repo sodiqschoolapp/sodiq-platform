@@ -15,6 +15,7 @@ import { noStoreMiddleware } from './http/no-store.js';
 import { requestIdMiddleware } from './http/request-id.js';
 import { requestContextMiddleware } from './http/request-context.js';
 import { sameSiteMiddleware } from './http/same-site.js';
+import { AssistantCalls } from './modules/access/assistant-calls.js';
 import { securityHeadersMiddleware } from './http/security-headers.js';
 import { ResponseSchemaInterceptor } from './http/response-schema.interceptor.js';
 import { webFilesMiddleware } from './http/web-files.js';
@@ -53,7 +54,10 @@ export function configureApp(app: NestExpressApplication): void {
   app.use(app.get(RequestMetrics).middleware());
   app.use(noStoreMiddleware);
   // Before the body parser too: a request from another site is not even read.
-  app.use(sameSiteMiddleware(config.trustProxy));
+  const assistantCalls = app.get(AssistantCalls, { strict: false });
+  app.use(
+    sameSiteMiddleware(config.trustProxy, (headers) => assistantCalls.carriesOwnMark(headers)),
+  );
   // Nor is a body that is not JSON.
   app.use(jsonOnlyMiddleware);
   // Nor is a write from a page too old to know what the API takes (task 8.3a).

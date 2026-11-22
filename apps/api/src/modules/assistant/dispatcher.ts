@@ -1,7 +1,12 @@
 import type { AddressInfo } from 'node:net';
 import { Injectable } from '@nestjs/common';
 import { HttpAdapterHost } from '@nestjs/core';
-import { BRANCH_HEADER, type AssistantRole } from '@sodiq/shared';
+import {
+  ASSISTANT_STEP_HEADER,
+  BRANCH_HEADER,
+  REQUEST_KEY_HEADER,
+  type AssistantRole,
+} from '@sodiq/shared';
 import type { SessionPass } from '../../http/session-cookie.js';
 import { AssistantCalls } from '../access/assistant-calls.js';
 
@@ -50,19 +55,37 @@ export class AssistantDispatcher {
     url: string,
     as: { pass: SessionPass; branchId: string; role: AssistantRole },
   ): Promise<ReadOutcome> {
+    return this.send('GET', url, undefined, as);
+  }
+
+  /**
+   * A preview (no step) or a step of a confirmed proposal (task 11.13), sent as the person with
+   * the same marks as a read, the step's id and a request key made from it.
+   */
+  async send(
+    method: string,
+    url: string,
+    payload: unknown,
+    as: { pass: SessionPass; branchId: string; role: AssistantRole; stepId?: string },
+  ): Promise<ReadOutcome> {
     if (!url.startsWith('/api/')) {
       throw new Error('The assistant reads only routes of the API.');
     }
     let response: Response;
     try {
       response = await fetch(`${this.origin()}${url}`, {
-        method: 'GET',
+        method,
         headers: {
           Accept: 'application/json',
           Cookie: as.pass.cookieHeader,
           [BRANCH_HEADER]: as.branchId,
           ...this.calls.headersFor(as.role),
+          ...(payload === undefined ? {} : { 'Content-Type': 'application/json' }),
+          ...(as.stepId === undefined
+            ? {}
+            : { [ASSISTANT_STEP_HEADER]: as.stepId, [REQUEST_KEY_HEADER]: as.stepId }),
         },
+        ...(payload === undefined ? {} : { body: JSON.stringify(payload) }),
         redirect: 'error',
         signal: AbortSignal.timeout(READ_TIMEOUT_MS),
       });

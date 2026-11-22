@@ -14,7 +14,9 @@ import { sql } from 'kysely';
 import { Transactions, transactionMoment, type Transaction } from '../../database/transactions.js';
 import { ApiException } from '../../http/api-exception.js';
 import type { SessionPass } from '../../http/session-cookie.js';
-import { assistantRoutesOf } from '../access/assistant-routes.js';
+import { ASSISTANT_PROPOSAL_MINUTES } from '@sodiq/shared';
+import { AssistantRoutes } from '../access/assistant-routes.check.js';
+import type { JsonValue } from '../../database/types.generated.js';
 import { PERMISSION_TABLE } from '../access/permission-table.token.js';
 import type { Access } from '../access/permission.guard.js';
 import { AssistantSettingsService, MICROS_PER_DOLLAR } from './assistant-settings.service.js';
@@ -36,7 +38,9 @@ import {
   type ModelReply,
   type ModelTurn,
 } from './model.js';
-import { routeOfTool, SUGGEST_PAGE, toolsOf, urlOf } from './tools.js';
+import { proposalsOf } from './proposal-views.js';
+import { draftStep, type StoredStep } from './proposals.js';
+import { routeOfTool, SUGGEST_PAGE, toolsOf, urlOf, type RoleLines } from './tools.js';
 
 /** At most this many reads per question; then the model answers without tools (decision 15). */
 export const MAX_READS = 6;
@@ -102,6 +106,7 @@ export class AssistantEngine {
     @Inject(ASSISTANT_MODEL) private readonly model: AssistantModel,
     @Inject(ASSISTANT_PRICES) private readonly prices: AssistantPrices,
     @Inject(PERMISSION_TABLE) private readonly table: PermissionTable,
+    private readonly routes: AssistantRoutes,
   ) {}
 
   /** Whether the person holds the role now in the branch of the request, and it has the panel. */
@@ -144,7 +149,8 @@ export class AssistantEngine {
         }
       }
       await this.refuseWhenClosed(transaction, access.accountId, role, now);
-      const history = existing === undefined ? [] : await this.history(transaction, existing.id);
+      const history =
+        existing === undefined ? [] : await this.history(transaction, existing.id, now);
       const conversation =
         existing === undefined
           ? await this.create(transaction, access, branchId, role, question.text, now)
@@ -173,7 +179,11 @@ export class AssistantEngine {
     });
 
     const pages = visibleMenu(role, BUILT_PAGES, this.table);
-    const tools = toolsOf(role, pages);
+    const lines = this.routes.linesOf(role);
+    const tools = toolsOf(lines, pages);
+    // Task 11.13: the steps the model proposes in this question, stored as one proposal with
+    // the answer; nothing is changed here.
+    const steps: StoredStep[] = [];
     const turns: ModelTurn[] = [
       ...start.history,
       { role: 'person', parts: [{ kind: 'text', text: filterWords(question.text) }] },
@@ -220,8 +230,27 @@ export class AssistantEngine {
           });
           continue;
         }
+        // A proposal reads (its basis, its preview) and counts as a read (review should fix 10).
         reads += 1;
-        const result = await this.read(asker, start, role, call, reads > MAX_READS);
+        const found = routeOfTool(lines, call.name);
+        if (found?.line.kind === 'change' && reads <= MAX_READS) {
+          const drafted = await draftStep(
+            this.dispatcher,
+            { pass: asker.pass, branchId: start.conversation.branchId, role, lines },
+            { route: found.route, tool: found.tool, line: found.line, args: call.args },
+            steps,
+          );
+          if (drafted.step !== undefined) {
+            steps.push(drafted.step);
+          }
+          await this.store(
+            start,
+            readContent(call, found.route, lines, drafted.step === undefined ? 0 : 200, drafted.given),
+          );
+          results.parts.push({ kind: 'result', name: call.name, result: drafted.given });
+          continue;
+        }
+        const result = await this.read(asker, start, { role, lines }, call, reads > MAX_READS);
         results.parts.push({ kind: 'result', name: call.name, result });
       }
       turns.push(results);
@@ -235,6 +264,21 @@ export class AssistantEngine {
         { kind: 'answer', text, pages: linked },
         now,
       );
+      if (steps.length > 0) {
+        await transaction
+          .insertInto('assistant_proposals')
+          .values({
+            conversation_id: start.conversation.id,
+            branch_id: start.conversation.branchId,
+            account_id: start.conversation.accountId,
+            question_id: start.questionId,
+            role,
+            steps: sql<JsonValue>`${JSON.stringify(steps)}::jsonb`,
+            created_at: now,
+            expires_at: new Date(now.getTime() + ASSISTANT_PROPOSAL_MINUTES * 60_000),
+          })
+          .execute();
+      }
       const row = await conversationsQuery(transaction)
         .where('c.id', '=', start.conversation.id)
         .executeTakeFirstOrThrow();
@@ -293,18 +337,47 @@ export class AssistantEngine {
     return { id: inserted.id, branchId, accountId: access.accountId };
   }
 
-  /** The earlier questions and answers, filtered, without their reads (decision 15). */
-  private async history(transaction: Transaction, conversationId: string): Promise<ModelTurn[]> {
-    const messages = (await messagesOf(transaction, conversationId)).filter(
-      (message) => message.content.kind === 'question' || message.content.kind === 'answer',
-    );
-    return messages.slice(-HISTORY_MESSAGES).map((message) => {
+  /**
+   * The earlier questions and answers, filtered, without their reads (decision 15); an answer
+   * that came with a proposal names it, its state and each step's outcome (task 11.13), so the
+   * next question can build on what was confirmed, declined or found outdated.
+   */
+  private async history(
+    transaction: Transaction,
+    conversationId: string,
+    now: Date,
+  ): Promise<ModelTurn[]> {
+    const all = await messagesOf(transaction, conversationId);
+    const proposals = await proposalsOf(transaction, conversationId, now);
+    const byQuestion = new Map(proposals.map((proposal) => [proposal.questionId, proposal]));
+    let lastQuestion: string | undefined;
+    const turns: { seq: number; turn: ModelTurn }[] = [];
+    for (const message of all) {
       const content = message.content;
-      const text = content.kind === 'question' || content.kind === 'answer' ? content.text : '';
-      return content.kind === 'question'
-        ? { role: 'person', parts: [{ kind: 'text', text: filterWords(text) }] }
-        : { role: 'model', parts: [{ kind: 'text', text }] };
-    });
+      if (content.kind === 'question') {
+        lastQuestion = message.id;
+        turns.push({
+          seq: message.seq,
+          turn: { role: 'person', parts: [{ kind: 'text', text: filterWords(content.text) }] },
+        });
+      } else if (content.kind === 'answer') {
+        const proposal = lastQuestion === undefined ? undefined : byQuestion.get(lastQuestion);
+        const note =
+          proposal === undefined
+            ? ''
+            : `\n[Proposal ${proposal.state}: ${proposal.steps
+                .map(
+                  (step) =>
+                    `${String(step.seq)}. ${step.summary} (${step.state}${step.code === null ? '' : `, ${step.code}`})`,
+                )
+                .join('; ')}]`;
+        turns.push({
+          seq: message.seq,
+          turn: { role: 'model', parts: [{ kind: 'text', text: content.text + note }] },
+        });
+      }
+    }
+    return turns.slice(-HISTORY_MESSAGES).map(({ turn }) => turn);
   }
 
   /**
@@ -365,28 +438,45 @@ export class AssistantEngine {
   }
 
   /** One read the model asked for, stored, and what the model is given back. */
+  /** A message of the conversation in a transaction of its own. */
+  private async store(
+    start: { conversation: { id: string; branchId: string; accountId: string } },
+    content: StoredContent,
+  ): Promise<void> {
+    await this.transactions.run([start.conversation.branchId], async (transaction) => {
+      await appendMessage(
+        transaction,
+        start.conversation,
+        content,
+        await transactionMoment(transaction),
+      );
+    });
+  }
+
   private async read(
     asker: Asker,
     start: { conversation: { id: string; branchId: string; accountId: string } },
-    role: AssistantRole,
+    as: { role: AssistantRole; lines: RoleLines },
     call: { name: string; args: Record<string, unknown> },
     overLimit: boolean,
   ): Promise<unknown> {
-    const tool = routeOfTool(role, call.name);
+    const { role, lines } = as;
+    const found = routeOfTool(lines, call.name);
+    const tool = found?.tool;
     let stored: Extract<StoredContent, { kind: 'read' }>;
     let given: unknown;
     if (tool === undefined) {
       given = { error: 'not_open_to_assistant' };
-      stored = readContent(call, null, null, 0, given, 'not_open_to_assistant');
+      stored = readContent(call, null, lines, 0, given, 'not_open_to_assistant');
     } else if (overLimit) {
       given = { error: 'too_many_reads' };
-      stored = readContent(call, tool.method + ' ' + tool.path, role, 0, given, 'too_many_reads');
+      stored = readContent(call, tool.method + ' ' + tool.path, lines, 0, given, 'too_many_reads');
     } else {
       const route = `${tool.method} ${tool.path}`;
       const url = urlOf(tool, call.args);
       if ('fault' in url) {
         given = { error: 'invalid_arguments', detail: url.fault };
-        stored = readContent(call, route, role, 0, given, url.fault);
+        stored = readContent(call, route, lines, 0, given, url.fault);
       } else {
         const outcome = await this.dispatcher.read(url.url, {
           pass: asker.pass,
@@ -394,7 +484,7 @@ export class AssistantEngine {
           role,
         });
         given = givenOf(outcome);
-        stored = readContent(call, route, role, outcome.status, given);
+        stored = readContent(call, route, lines, outcome.status, given);
       }
     }
     await this.transactions.run([start.conversation.branchId], async (transaction) => {
@@ -412,13 +502,12 @@ export class AssistantEngine {
 function readContent(
   call: { name: string; args: Record<string, unknown> },
   route: string | null,
-  role: AssistantRole | null,
+  lines: RoleLines,
   status: number,
   result: unknown,
   fault?: string,
 ): Extract<StoredContent, { kind: 'read' }> {
-  const group =
-    route === null || role === null ? null : (assistantRoutesOf(role)[route]?.group ?? null);
+  const group = route === null ? null : (lines[route]?.group ?? null);
   return {
     kind: 'read',
     tool: call.name,

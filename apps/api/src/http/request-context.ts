@@ -10,6 +10,11 @@ import type { NextFunction, Request, Response } from 'express';
 export interface RequestContext {
   /** Set by `SessionGuard` once the key is found; never by anything the caller sends. */
   integrationKey?: { id: string; name: string };
+  /**
+   * Task 11.13: the step of a confirmed proposal this request runs, set by `PermissionGuard` only
+   * for a change marked with the process's secret and sent by Confirm ("via assistant").
+   */
+  assistantStep?: { id: string };
 }
 
 const storage = new AsyncLocalStorage<RequestContext>();

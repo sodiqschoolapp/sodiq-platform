@@ -7,6 +7,12 @@
 /** Why the Super Admin reads it: "Reading: everything their role reads, except the fields below" (`02`). */
 const SUPER_ADMIN_READS = 'the Super Admin reads it (build plan 11.12)';
 
+/** A read a proposed change is checked against (task 11.13). */
+const BASIS_READ = 'a change of the list rests on it (build plan 11.13)';
+
+/** A change proposed and run only at Confirm, or its preview (task 11.13). */
+const CHANGE = 'proposed, run only at the person’s Confirm (build plan 11.13)';
+
 /** The Super Admin's reads in 11.12; plan decision 4 (Look first) names what is left out. */
 const SUPER_ADMIN: Readonly<Record<string, string>> = {
   'GET /api/setup/branch': SUPER_ADMIN_READS,
@@ -80,9 +86,139 @@ const SUPER_ADMIN: Readonly<Record<string, string>> = {
   'GET /api/search/staff': SUPER_ADMIN_READS,
   'GET /api/search/classes': SUPER_ADMIN_READS,
   'GET /api/search/groups': SUPER_ADMIN_READS,
+  // Task 11.13: the reads a change rests on (plan "Basis of a step"; decision 15).
+  'GET /api/timetable/lessons/:id/history': BASIS_READ,
+  'GET /api/timetable/versions/:id/load': BASIS_READ,
+  'GET /api/people/students/:id/relatives': BASIS_READ,
+  // Task 11.13: the changes of `02`, "What the Super Admin and the Academic Vice Principal can do
+  // through it", and their previews (plan of pull request #376, decision 2 for what is left out).
+  'POST /api/setup/rooms': CHANGE,
+  'PUT /api/setup/rooms/:id': CHANGE,
+  'POST /api/setup/buildings': CHANGE,
+  'PUT /api/setup/buildings/:id': CHANGE,
+  'POST /api/setup/buildings/:id/archive': CHANGE,
+  'POST /api/setup/buildings/:id/restore': CHANGE,
+  'POST /api/setup/buildings/:id/floors': CHANGE,
+  'PUT /api/setup/floors/:id': CHANGE,
+  'POST /api/setup/floors/:id/archive': CHANGE,
+  'POST /api/setup/floors/:id/restore': CHANGE,
+  'POST /api/setup/calendar-entries/preview': CHANGE,
+  'POST /api/setup/calendar-entries': CHANGE,
+  'PATCH /api/setup/calendar-entries/:id': CHANGE,
+  'POST /api/setup/calendar-entries/:id/archive': CHANGE,
+  'POST /api/setup/calendar-entries/:id/restore': CHANGE,
+  'POST /api/setup/day-template-table/preview': CHANGE,
+  'POST /api/setup/slot-types': CHANGE,
+  'PATCH /api/setup/slot-types/:id': CHANGE,
+  'POST /api/setup/slot-types/:id/lengths': CHANGE,
+  'POST /api/setup/slot-types/:id/archive': CHANGE,
+  'POST /api/setup/slot-types/:id/restore': CHANGE,
+  'POST /api/setup/day-templates': CHANGE,
+  'PATCH /api/setup/day-templates/:id': CHANGE,
+  'POST /api/setup/day-templates/:id/versions': CHANGE,
+  'POST /api/setup/day-templates/:id/archive': CHANGE,
+  'POST /api/setup/day-templates/:id/restore': CHANGE,
+  'POST /api/setup/day-template-assignments': CHANGE,
+  'POST /api/setup/day-template-assignments/:id/end': CHANGE,
+  'POST /api/setup/academic-years': CHANGE,
+  'PUT /api/setup/academic-years/:id': CHANGE,
+  'POST /api/setup/academic-years/:id/quarters/preview': CHANGE,
+  'PUT /api/setup/academic-years/:id/quarters': CHANGE,
+  'POST /api/setup/subjects': CHANGE,
+  'PUT /api/setup/subjects/:id': CHANGE,
+  'PUT /api/setup/subjects/:id/daily-weights': CHANGE,
+  'POST /api/setup/subjects/:id/archive': CHANGE,
+  'POST /api/setup/subjects/:id/restore': CHANGE,
+  'POST /api/setup/subjects/:id/quarter-weights/:quarterId/preview': CHANGE,
+  'PUT /api/setup/subjects/:id/quarter-weights/:quarterId': CHANGE,
+  'POST /api/setup/subjects/:id/quarter-weights/copy/preview': CHANGE,
+  'POST /api/setup/subjects/:id/quarter-weights/copy': CHANGE,
+  'PUT /api/people/staff/:id/teaching': CHANGE,
+  'PUT /api/people/staff/:id/availability': CHANGE,
+  'POST /api/classes': CHANGE,
+  'PUT /api/classes/:id': CHANGE,
+  'POST /api/classes/:id/archive': CHANGE,
+  'POST /api/classes/:id/restore': CHANGE,
+  'POST /api/classes/:id/members': CHANGE,
+  'POST /api/classes/:id/members/:memberId/withdraw': CHANGE,
+  'POST /api/classes/transfers': CHANGE,
+  'POST /api/classes/transfers/:id/change': CHANGE,
+  'POST /api/classes/transfers/:id/cancel': CHANGE,
+  'POST /api/classes/transfers/:id/undo': CHANGE,
+  'POST /api/groups': CHANGE,
+  'PUT /api/groups/:id': CHANGE,
+  'POST /api/groups/:id/archive': CHANGE,
+  'POST /api/groups/:id/restore': CHANGE,
+  'POST /api/groups/:id/members': CHANGE,
+  'POST /api/groups/:id/members/:memberId/withdraw': CHANGE,
+  'POST /api/groups/:id/members/:memberId/reviewed': CHANGE,
+  'POST /api/groups/placement/automatic': CHANGE,
+  'POST /api/groups/transfers': CHANGE,
+  'PUT /api/people/students/:id/uid': CHANGE,
+  'POST /api/people/students/:id/leaving': CHANGE,
+  'POST /api/people/students/:id/leaving/cancel': CHANGE,
+  'POST /api/people/students/:id/leaving/undo': CHANGE,
+  'POST /api/people/students/:id/return/cancel': CHANGE,
+  'POST /api/people/students/:id/restore': CHANGE,
+  'PATCH /api/people/students/:id/relatives/:relativeId': CHANGE,
+  'POST /api/timetable/versions/:id/load': CHANGE,
+  'PATCH /api/timetable/versions/:id/load/:rowId': CHANGE,
+  'DELETE /api/timetable/versions/:id/load/:rowId': CHANGE,
+  'POST /api/timetable/lessons/:id/cancel': CHANGE,
+  'POST /api/timetable/lessons/:id/restore': CHANGE,
+  'POST /api/timetable/lessons/:id/room': CHANGE,
+  'POST /api/timetable/lessons/:id/move': CHANGE,
+  'POST /api/timetable/bulk-cancels/check': CHANGE,
+  'POST /api/timetable/bulk-cancels': CHANGE,
+  'POST /api/timetable/absences': CHANGE,
+  'PATCH /api/timetable/absences/:id': CHANGE,
+  'POST /api/timetable/absences/:id/withdraw': CHANGE,
+  'POST /api/timetable/lessons/:id/substitute': CHANGE,
+  'POST /api/timetable/lessons/:id/substitution/withdraw': CHANGE,
+  'POST /api/timetable/exams/check': CHANGE,
+  'POST /api/timetable/exams': CHANGE,
+  'PUT /api/timetable/exams/:id': CHANGE,
+  'POST /api/timetable/exams/:id/cancel': CHANGE,
+  'POST /api/people/vacancies': CHANGE,
+  'PUT /api/people/vacancies/:id': CHANGE,
+  'POST /api/people/vacancies/:id/close': CHANGE,
+  'POST /api/people/vacancies/:id/reopen': CHANGE,
+  'PUT /api/plans/windows/:quarterId': CHANGE,
+  'POST /api/plans/windows/:quarterId/extensions': CHANGE,
 };
 
-/** Every list, by role: the Academic Vice Principal comes with 11.13, the Teacher with 11.14. */
+/**
+ * The Academic Vice Principal's list (task 11.13, plan decision 4): the Super Admin's lines but
+ * these, which the permission table gives the Super Admin alone ("rooms and buildings (Super
+ * Admin)", academic years, a graduate restored).
+ */
+const SUPER_ADMIN_ONLY: readonly string[] = [
+  'GET /api/journal/attendance-today',
+  'GET /api/results/branch-summary',
+  'POST /api/setup/rooms',
+  'PUT /api/setup/rooms/:id',
+  'POST /api/setup/buildings',
+  'PUT /api/setup/buildings/:id',
+  'POST /api/setup/buildings/:id/archive',
+  'POST /api/setup/buildings/:id/restore',
+  'POST /api/setup/buildings/:id/floors',
+  'PUT /api/setup/floors/:id',
+  'POST /api/setup/floors/:id/archive',
+  'POST /api/setup/floors/:id/restore',
+  'POST /api/setup/academic-years',
+  'PUT /api/setup/academic-years/:id',
+  'POST /api/people/students/:id/restore',
+];
+
+const ACADEMIC_VICE_PRINCIPAL: Readonly<Record<string, string>> = Object.fromEntries(
+  Object.entries(SUPER_ADMIN).filter(([name]) => !SUPER_ADMIN_ONLY.includes(name)),
+);
+
+/** Every list, by role: the Teacher comes with 11.14. */
 export const ASSISTANT_ROUTE_COPY: Readonly<Record<string, Readonly<Record<string, string>>>> = {
   super_admin: SUPER_ADMIN,
+  academic_vice_principal: ACADEMIC_VICE_PRINCIPAL,
 };
+
+/** The roles whose list is written in code (the others are derived by the table). */
+export const WRITTEN_ASSISTANT_LISTS: readonly string[] = ['super_admin'];
