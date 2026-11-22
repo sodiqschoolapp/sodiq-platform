@@ -106,7 +106,7 @@ export class AssistantProposals {
     if (!switches.schoolOn || !switches.rolesOn.includes(role)) {
       throw new ApiException('assistant_off', 409);
     }
-    return proposal as ProposalRow;
+    return proposal;
   }
 
   /** Writes the decision; a second at the same moment meets the primary key (decision 10). */
@@ -152,7 +152,7 @@ export class AssistantProposals {
     role: AssistantRole,
   ): Promise<AssistantConversation> {
     const proposal = await this.decide(access, id, role, 'confirmed');
-    const steps = proposal.steps as unknown as StoredStep[];
+    const steps = proposal.steps as StoredStep[];
     const lines = this.routes.linesOf(role);
     const as = { pass, branchId: proposal.branch_id, role };
     let stopped = false;

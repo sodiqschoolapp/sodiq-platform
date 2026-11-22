@@ -113,7 +113,8 @@ function calendarPreview(action: 'create' | 'edit' | 'archive' | 'restore'): Ass
     route: 'POST /api/setup/calendar-entries/preview',
     args: {},
     body: (body) => {
-      const { dayChangesKey: _key, dayDecisions: _decisions, ...rest } = body;
+      // The key and the decisions answer a preview; the preview itself takes neither.
+      const rest = withoutKeys(body, ['dayChangesKey', 'dayDecisions']);
       const choices = pickKeys(rest, ['dayKeeps', 'examBlocks', 'groupBlocks']);
       if (action === 'create') {
         return { action, record: withoutKeys(rest, CHOICE_KEYS), ...choices };

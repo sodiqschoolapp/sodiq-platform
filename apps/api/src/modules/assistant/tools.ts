@@ -128,7 +128,7 @@ export function modelSchemaOf(value: unknown, where: string): ToolParameterSchem
     Array.isArray(schema.enum) &&
     schema.enum.every((item) => typeof item === 'string' || typeof item === 'number')
   ) {
-    out.enum = schema.enum as (string | number)[];
+    out.enum = schema.enum;
   }
   if (typeof schema.format === 'string') {
     out.format = schema.format;

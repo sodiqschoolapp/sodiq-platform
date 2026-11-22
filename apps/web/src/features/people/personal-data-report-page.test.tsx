@@ -32,6 +32,7 @@ const REPORT: StudentReport = {
       action: 'student.edit',
       actor: { id: uid(21), name: 'Saidova Dilnoza' },
       viaKey: null,
+      viaAssistant: null,
       assignment: { id: uid(31), role: 'academic_vice_principal' },
       person: null,
       record: { type: 'student', id: STUDENT, name: 'Ismoilova Gulnoza' },

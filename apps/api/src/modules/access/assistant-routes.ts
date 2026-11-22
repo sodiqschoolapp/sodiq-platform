@@ -1,7 +1,6 @@
 import {
   permits,
   type Action,
-  type Area,
   type AssistantReadGroup,
   type AssistantRole,
   type PermissionTable,
@@ -381,7 +380,7 @@ export function derivedOpens(
   return (
     declaration.area !== undefined &&
     declaration.action !== undefined &&
-    permits(table, role, declaration.area as Area, declaration.action)
+    permits(table, role, declaration.area, declaration.action)
   );
 }
 

@@ -11130,6 +11130,11 @@ export interface operations {
                             viaKey: {
                                 name: string;
                             } | null;
+                            viaAssistant: {
+                                question: string;
+                                /** Format: uuid */
+                                conversationId: string | null;
+                            } | null;
                             assignment: {
                                 /** Format: uuid */
                                 id: string;
@@ -11475,6 +11480,11 @@ export interface operations {
                         } | null;
                         viaKey: {
                             name: string;
+                        } | null;
+                        viaAssistant: {
+                            question: string;
+                            /** Format: uuid */
+                            conversationId: string | null;
                         } | null;
                         assignment: {
                             /** Format: uuid */
@@ -147226,6 +147236,11 @@ export interface operations {
                             viaKey: {
                                 name: string;
                             } | null;
+                            viaAssistant: {
+                                question: string;
+                                /** Format: uuid */
+                                conversationId: string | null;
+                            } | null;
                             assignment: {
                                 /** Format: uuid */
                                 id: string;
@@ -147887,6 +147902,11 @@ export interface operations {
                             viaKey: {
                                 name: string;
                             } | null;
+                            viaAssistant: {
+                                question: string;
+                                /** Format: uuid */
+                                conversationId: string | null;
+                            } | null;
                             assignment: {
                                 /** Format: uuid */
                                 id: string;
@@ -148367,6 +148387,11 @@ export interface operations {
                             } | null;
                             viaKey: {
                                 name: string;
+                            } | null;
+                            viaAssistant: {
+                                question: string;
+                                /** Format: uuid */
+                                conversationId: string | null;
                             } | null;
                             assignment: {
                                 /** Format: uuid */

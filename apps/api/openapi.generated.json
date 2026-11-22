@@ -15121,6 +15121,26 @@
                             ],
                             "additionalProperties": false
                           },
+                          "viaAssistant": {
+                            "nullable": true,
+                            "type": "object",
+                            "properties": {
+                              "question": {
+                                "type": "string"
+                              },
+                              "conversationId": {
+                                "nullable": true,
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              }
+                            },
+                            "required": [
+                              "question",
+                              "conversationId"
+                            ],
+                            "additionalProperties": false
+                          },
                           "assignment": {
                             "nullable": true,
                             "type": "object",
@@ -15223,6 +15243,7 @@
                           "action",
                           "actor",
                           "viaKey",
+                          "viaAssistant",
                           "assignment",
                           "person",
                           "record",
@@ -17187,6 +17208,26 @@
                       ],
                       "additionalProperties": false
                     },
+                    "viaAssistant": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "question": {
+                          "type": "string"
+                        },
+                        "conversationId": {
+                          "nullable": true,
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        }
+                      },
+                      "required": [
+                        "question",
+                        "conversationId"
+                      ],
+                      "additionalProperties": false
+                    },
                     "assignment": {
                       "nullable": true,
                       "type": "object",
@@ -17289,6 +17330,7 @@
                     "action",
                     "actor",
                     "viaKey",
+                    "viaAssistant",
                     "assignment",
                     "person",
                     "record",
@@ -807957,6 +807999,26 @@
                             ],
                             "additionalProperties": false
                           },
+                          "viaAssistant": {
+                            "nullable": true,
+                            "type": "object",
+                            "properties": {
+                              "question": {
+                                "type": "string"
+                              },
+                              "conversationId": {
+                                "nullable": true,
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              }
+                            },
+                            "required": [
+                              "question",
+                              "conversationId"
+                            ],
+                            "additionalProperties": false
+                          },
                           "assignment": {
                             "nullable": true,
                             "type": "object",
@@ -808059,6 +808121,7 @@
                           "action",
                           "actor",
                           "viaKey",
+                          "viaAssistant",
                           "assignment",
                           "person",
                           "record",
@@ -811453,6 +811516,26 @@
                             ],
                             "additionalProperties": false
                           },
+                          "viaAssistant": {
+                            "nullable": true,
+                            "type": "object",
+                            "properties": {
+                              "question": {
+                                "type": "string"
+                              },
+                              "conversationId": {
+                                "nullable": true,
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              }
+                            },
+                            "required": [
+                              "question",
+                              "conversationId"
+                            ],
+                            "additionalProperties": false
+                          },
                           "assignment": {
                             "nullable": true,
                             "type": "object",
@@ -811555,6 +811638,7 @@
                           "action",
                           "actor",
                           "viaKey",
+                          "viaAssistant",
                           "assignment",
                           "person",
                           "record",
@@ -814132,6 +814216,26 @@
                             ],
                             "additionalProperties": false
                           },
+                          "viaAssistant": {
+                            "nullable": true,
+                            "type": "object",
+                            "properties": {
+                              "question": {
+                                "type": "string"
+                              },
+                              "conversationId": {
+                                "nullable": true,
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              }
+                            },
+                            "required": [
+                              "question",
+                              "conversationId"
+                            ],
+                            "additionalProperties": false
+                          },
                           "assignment": {
                             "nullable": true,
                             "type": "object",
@@ -814234,6 +814338,7 @@
                           "action",
                           "actor",
                           "viaKey",
+                          "viaAssistant",
                           "assignment",
                           "person",
                           "record",

@@ -37,6 +37,7 @@ const conversation = (
   archived: false,
   archivesAt: '2027-02-18T05:00:00.000Z',
   messages,
+  proposals: [],
   ...fields,
 });
 
@@ -326,5 +327,116 @@ describe('the assistant’s settings and conversations of the Super Admin', () =
         ),
       ).toBe(true);
     });
+  });
+});
+
+// Task 11.13 (pull request #376): a proposal in the panel. `02`, Reading and proposing: "it is
+// shown as a proposal that lists every change in plain words, with the platform's own preview …
+// Nothing changes until the person presses Confirm"; the answer lists what was done and what not.
+describe('a proposal of the assistant', () => {
+  const step = (state: 'waiting' | 'done' | 'refused' | 'not_run', code: string | null = null) => ({
+    id: uid(700),
+    seq: 1,
+    action: 'BulkCancelsController_save',
+    group: 'timetable' as const,
+    summary: 'Cancel lesson 3 of 7 Oxford today.',
+    recordName: null,
+    fields: [{ name: 'reason', value: 'No electricity' }],
+    previewLessons: [
+      {
+        list: 'cancel',
+        date: '2026-11-20',
+        start: 9 * 60 + 50,
+        unitName: '7 Oxford',
+        subjectNames: { uz: 'Matematika', ru: 'Математика', en: 'Mathematics' },
+        teacherName: 'Karimov Aziz',
+        roomName: '204',
+      },
+    ],
+    previewMore: 0,
+    state,
+    status: state === 'done' ? 200 : 0,
+    code,
+  });
+  const withProposal = (state: 'waiting' | 'confirmed', steps: ReturnType<typeof step>[]) =>
+    conversation(
+      [
+        message(1, { kind: 'question', text: 'Cancel the rest of today.' }),
+        message(2, { kind: 'answer', text: 'I propose a bulk cancel from lesson 3.', pages: [] }),
+      ],
+      {
+        proposals: [
+          {
+            id: uid(800),
+            questionId: uid(501),
+            createdAt: '2026-11-20T05:00:00.000Z',
+            expiresAt: '2026-11-20T05:15:00.000Z',
+            state,
+            decidedAt: state === 'confirmed' ? '2026-11-20T05:01:00.000Z' : null,
+            steps,
+          },
+        ],
+      },
+    );
+
+  it('names the action and every lesson in the platform’s words, and confirms in the chosen role', async () => {
+    const waiting = withProposal('waiting', [step('waiting')]);
+    const done = withProposal('confirmed', [step('done')]);
+    const calls = fakeApi({
+      'GET /api/auth/session': () => json(admin()),
+      'GET /api/assistant/status': () => json(ON),
+      'GET /api/assistant/conversations': () =>
+        json({ conversations: [{ ...waiting, messages: undefined, proposals: undefined }] }),
+      [`GET /api/assistant/conversations/${uid(1)}`]: () => json(waiting),
+      [`POST /api/assistant/proposals/${uid(800)}/confirm`]: () => json(done),
+    });
+    renderApp('/', 'en');
+    const panel = await openPanel();
+    fireEvent.click(await panel.findByRole('button', { name: /Which classes have no Tutor/ }));
+    const card = within(await panel.findByRole('region', { name: en.assistant.proposal.title }));
+    expect(card.getByText(`1. ${en.assistant.actions.BulkCancelsController_save}`)).toBeTruthy();
+    expect(card.getByText(/7 Oxford, Mathematics/)).toBeTruthy();
+    expect(card.getByText(/09:50/)).toBeTruthy();
+    expect(card.getByText(en.assistant.proposal.states.waiting, { exact: false })).toBeTruthy();
+    fireEvent.click(card.getByRole('button', { name: en.assistant.proposal.confirm }));
+    await waitFor(() => {
+      expect(
+        calls.find((call) => call.route === `POST /api/assistant/proposals/${uid(800)}/confirm`)
+          ?.body,
+      ).toEqual({ role: 'super_admin' });
+    });
+    const after = within(await panel.findByRole('region', { name: en.assistant.proposal.title }));
+    expect(await after.findByText(en.assistant.proposal.stepStates.done)).toBeTruthy();
+    expect(after.queryByRole('button', { name: en.assistant.proposal.confirm })).toBeNull();
+  });
+
+  it('shows each step’s outcome after a refusal, and offers no Confirm once decided', async () => {
+    fakeApi({
+      'GET /api/auth/session': () => json(admin()),
+      'GET /api/assistant/status': () => json(ON),
+      'GET /api/assistant/conversations': () =>
+        json({
+          conversations: [
+            { ...withProposal('confirmed', []), messages: undefined, proposals: undefined },
+          ],
+        }),
+      [`GET /api/assistant/conversations/${uid(1)}`]: () =>
+        json(
+          withProposal('confirmed', [
+            step('refused', 'lesson_started'),
+            { ...step('not_run'), id: uid(701), seq: 2 },
+          ]),
+        ),
+    });
+    renderApp('/', 'en');
+    const panel = await openPanel();
+    fireEvent.click(await panel.findByRole('button', { name: /Which classes have no Tutor/ }));
+    const card = within(await panel.findByRole('region', { name: en.assistant.proposal.title }));
+    expect(
+      await card.findByText(new RegExp(en.assistant.proposal.stepStates.refused)),
+    ).toBeTruthy();
+    expect(card.getByText(en.assistant.proposal.stepStates.not_run)).toBeTruthy();
+    expect(card.queryByRole('button', { name: en.assistant.proposal.confirm })).toBeNull();
+    cleanup();
   });
 });

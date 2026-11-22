@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import type { NestExpressApplication } from '@nestjs/platform-express';
-import { ASSISTANT_ROLES, PERMISSIONS, permits, type Area } from '@sodiq/shared';
+import { ASSISTANT_ROLES, PERMISSIONS, permits } from '@sodiq/shared';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   assistantToolsOf,
@@ -85,7 +85,7 @@ describe('the actions open to the assistant', () => {
       const [access] = byName.get(name)?.access ?? [];
       return (
         access?.kind === 'requires' &&
-        permits(PERMISSIONS, 'academic_vice_principal', access.area as Area, access.action)
+        permits(PERMISSIONS, 'academic_vice_principal', access.area, access.action)
       );
     });
     expect(Object.keys(linesOf('academic_vice_principal')).sort()).toEqual(expected.sort());

@@ -18,6 +18,7 @@ const EDIT: AuditEntryAnswer = {
   actor: { id: uid(21), name: 'Saidova Dilnoza' },
   // Task 10.10: a change made through an integration key names it.
   viaKey: { name: 'English platform' },
+  viaAssistant: null,
   assignment: { id: uid(31), role: 'academic_vice_principal' },
   person: null,
   record: { type: 'student', id: uid(41), name: 'Qodirova Madina' },
@@ -42,6 +43,7 @@ const EXPORT: AuditEntryAnswer = {
   action: 'staff.export',
   actor: null,
   viaKey: null,
+  viaAssistant: null,
   assignment: null,
   person: null,
   record: null,
