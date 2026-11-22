@@ -1344,6 +1344,18 @@ export const ERROR_CODES = [
   'assistant_call_invalid',
   /** Task 11.12: the route is not on the assistant's list for the chosen role (`02`: "a list fixed in code for each of the three roles"). */
   'assistant_route_closed',
+  /** Task 11.13: the proposal was not confirmed within 15 minutes (`02`, Reading and proposing). */
+  'assistant_proposal_expired',
+  /** Task 11.13: the proposal was already confirmed or declined. */
+  'assistant_proposal_decided',
+  /** Task 11.13: a newer proposal of the same conversation took its place. */
+  'assistant_proposal_superseded',
+  /** Task 11.13: the record a step was proposed on has changed since (`02`: "refused as outdated"). */
+  'assistant_step_outdated',
+  /** Task 11.13: a proposal may hold one step per record. */
+  'assistant_step_same_record',
+  /** Task 11.13: a change marked as the assistant's names no step that is running now. */
+  'assistant_step_invalid',
   /** Any other refusal that has no code of its own yet. */
   'request_refused',
   /** A fault on the server. The answer says nothing about it; the log does. */

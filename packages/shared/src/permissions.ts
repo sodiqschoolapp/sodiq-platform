@@ -410,6 +410,8 @@ export const PERMISSIONS = freezeTable({
    */
   assistant: rows({
     super_admin: ['view'],
+    // Task 11.13: approved by the owner in chat on 21 November 2026 (stop-list item 5).
+    academic_vice_principal: ['view'],
   }),
   subjects: rows({
     super_admin: ['view', 'create', 'edit', 'archive', 'export'],

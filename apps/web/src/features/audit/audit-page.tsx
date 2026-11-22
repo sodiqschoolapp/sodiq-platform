@@ -24,7 +24,7 @@ import { auditEntriesQuery } from './audit-api';
 import { filtersOf, personOf, type AuditSearch } from './audit-search';
 import { actionName, EntryPanel, recordTypeName } from './entry-panel';
 import { formatMoment } from '@/lib/dates';
-import { withViaKey } from '../../lib/via-key';
+import { withVia } from '../../lib/via-key';
 
 /** The people of one kind the reader may open in the branch, by name, for the person filter. */
 function usePeople(kind: AuditPersonKind | undefined, branchId: string | null) {
@@ -133,9 +133,11 @@ export function AuditPage() {
       {
         key: 'who',
         header: t('audit.who'),
-        cell: (row) => withViaKey(t, named(row.actor, t('audit.system')), row.viaKey),
+        cell: (row) =>
+          withVia(t, named(row.actor, t('audit.system')), row.viaKey, row.viaAssistant),
         sortValue: (row) => named(row.actor, t('audit.system')),
-        searchText: (row) => withViaKey(t, named(row.actor, t('audit.system')), row.viaKey),
+        searchText: (row) =>
+          withVia(t, named(row.actor, t('audit.system')), row.viaKey, row.viaAssistant),
       },
       {
         key: 'about',

@@ -134,11 +134,11 @@ Neither was done by hand (owner, 29 October 2026, issue #42). In their place: th
 
 ## The routes in numbers
 
-- Routes of the application: 554, each called by the role harness as the 15 roles, an account without a role, a Parent account (task 11.1) and nobody, in the own and in another branch.
-- Without sign-in: 5. For the own account: 24. The parent portal: 8. With a permission of the table: 516.
+- Routes of the application: 556, each called by the role harness as the 15 roles, an account without a role, a Parent account (task 11.1) and nobody, in the own and in another branch.
+- Without sign-in: 5. For the own account: 24. The parent portal: 8. With a permission of the table: 518.
 - Open to integration keys: 98 (tasks 10.10 and 10.11).
 - Routes with a limit inside the route: 158.
-- Routes that take an id: 427, with 874 ids (branch 760, school 79, own 14, none 21).
+- Routes that take an id: 429, with 876 ids (branch 760, school 79, own 16, none 21).
 - Areas of the permission table: 66.
 
 ## Routes without a role
@@ -895,6 +895,8 @@ For every id a route takes, in its path, its query or its body, the record it na
 | `POST /api/announcements/:id/archive` | `path:id` | announcement | branch | `src/modules/announcements/announcements.test.ts > answers 404 for another branch’s and an unknown id, the Super Admin included` |
 | `POST /api/announcements/:id/restore` | `path:id` | announcement | branch | `src/modules/announcements/announcements.test.ts > answers 404 for another branch’s and an unknown id, the Super Admin included` |
 | `POST /api/assistant/all-conversations/:id/restore` | `path:id` | assistant conversation | none | 02, Assistant, Audit: the Super Admin sees all of them, of every branch, by design, and can restore one; an unknown id is 404 (assistant-conversations.test.ts: "answers 404 for an unknown conversation on the Super Admin’s read", "refuses a restore of a conversation that is not archived (409) and of an unknown one (404)") |
+| `POST /api/assistant/proposals/:id/confirm` | `path:id` | assistant proposal | own | `src/modules/assistant/assistant-confirm-refusals.test.ts > answers 404 for an unknown proposal, another person’s and the own one in another branch, to Confirm and Decline alike, with every row unchanged` |
+| `POST /api/assistant/proposals/:id/decline` | `path:id` | assistant proposal | own | `src/modules/assistant/assistant-confirm-refusals.test.ts > answers 404 for an unknown proposal, another person’s and the own one in another branch, to Confirm and Decline alike, with every row unchanged` |
 | `POST /api/assistant/questions` | `body:conversationId` | assistant conversation | own | `src/modules/assistant/assistant-conversations.test.ts > refuses a question on a conversation of another branch, of another person and an unknown one (404): nothing stored, nothing counted` |
 | `POST /api/audit/entries/:id/show` | `path:id` | audit entry | branch | `src/modules/audit/audit-entries.test.ts > answers 404 to an entry the reader may not read, and logs nothing` |
 | `POST /api/classes` | `body:mainRoomId` | room | branch | `src/modules/classes/classes.test.ts > answers 404 for a year or a room of another branch or unknown, with nothing written` |
@@ -1635,6 +1637,7 @@ Every area of `PERMISSIONS` (`packages/shared/src/permissions.ts`), the table th
 | Role | view | create | edit | archive | export |
 | --- | :-: | :-: | :-: | :-: | :-: |
 | super_admin | yes |  |  |  |  |
+| academic_vice_principal | yes |  |  |  |  |
 
 ### `attendance_report`
 

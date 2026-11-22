@@ -7,6 +7,7 @@ import {
   assistantConversationListSchema,
   assistantConversationParamsSchema,
   assistantConversationSchema,
+  assistantDecisionSchema,
   assistantQuestionSchema,
   assistantSettingsRecordSchema,
   assistantSettingsSchema,
@@ -19,6 +20,7 @@ import {
   type AssistantConversation,
   type AssistantConversationList,
   type AssistantConversationParams,
+  type AssistantDecision,
   type AssistantQuestion,
   type AssistantSettings,
   type AssistantSettingsRecord,
@@ -36,6 +38,7 @@ import type { ActiveSession } from '../auth/sessions.service.js';
 import { AssistantEngine } from './assistant.engine.js';
 import { AssistantSettingsService } from './assistant-settings.service.js';
 import { AssistantConversations } from './assistant.service.js';
+import { AssistantProposals } from './assistant-proposals.service.js';
 
 /**
  * The chat panel of the assistant (`02`, Assistant; task 11.12), for the person in the role
@@ -47,6 +50,7 @@ export class AssistantController {
   constructor(
     private readonly engine: AssistantEngine,
     private readonly conversations: AssistantConversations,
+    private readonly proposals: AssistantProposals,
   ) {}
 
   @Get('status')
@@ -62,8 +66,11 @@ export class AssistantController {
   @Get('conversations')
   @Requires('assistant', 'view')
   @Returns(assistantConversationListSchema)
-  list(@CurrentAccess() access: Access): Promise<AssistantConversationList> {
-    return this.conversations.own(access);
+  list(
+    @CurrentAccess() access: Access,
+    @CurrentSession() session: ActiveSession,
+  ): Promise<AssistantConversationList> {
+    return this.conversations.own(access, session.assignments);
   }
 
   @Get('conversations/:id')
@@ -71,9 +78,10 @@ export class AssistantController {
   @Returns(assistantConversationSchema)
   read(
     @CurrentAccess() access: Access,
+    @CurrentSession() session: ActiveSession,
     @ValidParams(assistantConversationParamsSchema) params: AssistantConversationParams,
   ): Promise<AssistantConversation> {
-    return this.conversations.ownOne(access, params.id);
+    return this.conversations.ownOne(access, session.assignments, params.id);
   }
 
   /** A question; the answer holds the conversation with its new messages. */
@@ -92,6 +100,40 @@ export class AssistantController {
       throw new ApiException('not_signed_in', 401);
     }
     return this.engine.ask({ access, pass, language: session.language }, question);
+  }
+
+  /**
+   * Task 11.13 (`02`, Reading and proposing): runs the steps of a waiting proposal in order,
+   * through their own routes as the person, and stops at the first refusal. No request key:
+   * the one decision of a proposal makes a repeat 409 (plan review, should fix 11).
+   */
+  @Post('proposals/:id/confirm')
+  @HttpCode(200)
+  @Requires('assistant', 'view')
+  @Returns(assistantConversationSchema)
+  confirm(
+    @CurrentAccess() access: Access,
+    @RequestSessionPass() pass: SessionPass | undefined,
+    @ValidParams(assistantConversationParamsSchema) params: AssistantConversationParams,
+    @ValidBody(assistantDecisionSchema) decision: AssistantDecision,
+  ): Promise<AssistantConversation> {
+    if (pass === undefined) {
+      throw new ApiException('not_signed_in', 401);
+    }
+    return this.proposals.confirm(access, pass, params.id, decision.role);
+  }
+
+  /** Task 11.13: declines a waiting proposal; nothing changes. */
+  @Post('proposals/:id/decline')
+  @HttpCode(200)
+  @Requires('assistant', 'view')
+  @Returns(assistantConversationSchema)
+  decline(
+    @CurrentAccess() access: Access,
+    @ValidParams(assistantConversationParamsSchema) params: AssistantConversationParams,
+    @ValidBody(assistantDecisionSchema) decision: AssistantDecision,
+  ): Promise<AssistantConversation> {
+    return this.proposals.decline(access, params.id, decision.role);
   }
 }
 

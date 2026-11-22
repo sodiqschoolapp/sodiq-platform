@@ -74,8 +74,12 @@ export class AssistantConversations {
     });
   }
 
-  /** The person's own conversations, not archived, of every branch. */
-  async own(access: Access): Promise<AssistantConversationList> {
+  /**
+   * The person's own conversations, not archived, of the branches and roles they hold now (task
+   * 11.13, decision 3 of the plan of pull request #376, Look first): a person who left a branch
+   * or a role no longer reads the answers given there; the Super Admin reads them all.
+   */
+  async own(access: Access, held: readonly HeldRole[]): Promise<AssistantConversationList> {
     return this.inEveryBranch(async (transaction) => {
       const now = await transactionMoment(transaction);
       const rows = await conversationsQuery(transaction)
@@ -83,6 +87,7 @@ export class AssistantConversations {
         .execute();
       return {
         conversations: rows
+          .filter((row) => holds(held, row))
           .filter((row) => !isArchived(new Date(row.last_activity_at), now))
           .sort(newestFirst)
           .map(summaryOf),
@@ -90,15 +95,23 @@ export class AssistantConversations {
     });
   }
 
-  /** One own conversation, not archived; anything else is unknown (404). */
-  async ownOne(access: Access, id: string): Promise<AssistantConversation> {
+  /** One own conversation, not archived, of a branch and role held now; anything else is 404. */
+  async ownOne(
+    access: Access,
+    held: readonly HeldRole[],
+    id: string,
+  ): Promise<AssistantConversation> {
     return this.inEveryBranch(async (transaction) => {
       const now = await transactionMoment(transaction);
       const row = await conversationsQuery(transaction)
         .where('c.id', '=', id)
         .where('c.account_id', '=', access.accountId)
         .executeTakeFirst();
-      if (row === undefined || isArchived(new Date(row.last_activity_at), now)) {
+      if (
+        row === undefined ||
+        !holds(held, row) ||
+        isArchived(new Date(row.last_activity_at), now)
+      ) {
         throw new ApiException('not_found', 404);
       }
       return conversationOf(transaction, row, now);
@@ -202,4 +215,17 @@ function newestFirst(
   b: { last_activity_at: Date | string },
 ): number {
   return new Date(b.last_activity_at).getTime() - new Date(a.last_activity_at).getTime();
+}
+
+/** A role the person holds now, with its branch (`null`: every branch). */
+export interface HeldRole {
+  role: string;
+  branchId: string | null;
+}
+
+/** Whether the person holds the conversation's role in its branch now. */
+function holds(held: readonly HeldRole[], row: { role: string; branch_id: string }): boolean {
+  return held.some(
+    (one) => one.role === row.role && (one.branchId === null || one.branchId === row.branch_id),
+  );
 }

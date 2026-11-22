@@ -18,6 +18,7 @@ const EDIT: AuditEntryAnswer = {
   actor: { id: uid(21), name: 'Saidova Dilnoza' },
   // Task 10.10: a change made through an integration key names it.
   viaKey: { name: 'English platform' },
+  viaAssistant: null,
   assignment: { id: uid(31), role: 'academic_vice_principal' },
   person: null,
   record: { type: 'student', id: uid(41), name: 'Qodirova Madina' },
@@ -42,6 +43,7 @@ const EXPORT: AuditEntryAnswer = {
   action: 'staff.export',
   actor: null,
   viaKey: null,
+  viaAssistant: null,
   assignment: null,
   person: null,
   record: null,
@@ -302,5 +304,27 @@ describe('the values of an entry', () => {
       [ru.people.account.role, '', ru.roles.head_tutor],
       ['sex', '', ru.people.staff.sexes.female],
     ]);
+  });
+});
+
+// Task 11.13 (pull request #376): `02`, Audit: "Every change made through the assistant is
+// recorded as the person's change, marked 'via assistant', and the audit log shows the request
+// it came from."
+describe('a change made through the assistant on the audit log page', () => {
+  it('names the person "via assistant" in the list', async () => {
+    const viaAssistant: AuditEntryAnswer = {
+      ...OLDER,
+      id: uid(9),
+      action: 'class.archive',
+      viaAssistant: { question: 'Archive 7 Oxford.', conversationId: null },
+    };
+    fakeApi({
+      'GET /api/auth/session': () => json(sessionAs('principal')),
+      'GET /api/audit/entries': () => json(page([viaAssistant])),
+    });
+    renderApp(PATH);
+    await waitFor(() => {
+      expect(rowsDrawn().some((row) => row.includes('Karimova Aziza via assistant'))).toBe(true);
+    });
   });
 });

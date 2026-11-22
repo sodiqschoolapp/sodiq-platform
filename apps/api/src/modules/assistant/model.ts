@@ -7,12 +7,18 @@
 
 /** A JSON schema of a tool's arguments, in the subset the tools use (`tools.ts`). */
 export interface ToolParameterSchema {
-  type: 'string' | 'integer' | 'number' | 'boolean' | 'array';
+  /** Left out only on a choice between schemas (`anyOf`). */
+  type?: 'string' | 'integer' | 'number' | 'boolean' | 'array' | 'object';
   description?: string;
-  enum?: string[];
+  enum?: (string | number)[];
   format?: string;
   pattern?: string;
   items?: ToolParameterSchema;
+  /** An object (task 11.13: the body of a proposed change). */
+  properties?: Record<string, ToolParameterSchema>;
+  required?: string[];
+  nullable?: boolean;
+  anyOf?: ToolParameterSchema[];
 }
 
 export interface ToolArgumentsSchema {

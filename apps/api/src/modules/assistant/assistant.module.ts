@@ -10,6 +10,7 @@ import {
 import { ASSISTANT_PRICES, AssistantEngine } from './assistant.engine.js';
 import { AssistantSettingsService } from './assistant-settings.service.js';
 import { AssistantConversations } from './assistant.service.js';
+import { AssistantProposals } from './assistant-proposals.service.js';
 import { AssistantDispatcher } from './dispatcher.js';
 import { GeminiModel } from './gemini-model.js';
 import { ASSISTANT_MODEL } from './model.js';
@@ -26,6 +27,7 @@ import { ScriptedModel } from './scripted-model.js';
     AssistantEngine,
     AssistantSettingsService,
     AssistantConversations,
+    AssistantProposals,
     AssistantDispatcher,
     {
       provide: ASSISTANT_MODEL,

@@ -82,7 +82,16 @@ export function carriesIntegrationKey(headers: IncomingMessage['headers']): bool
  * forgery). The session cookie is `SameSite=Strict` already; this is the second
  * guard, and it needs no token because web app and API share one origin.
  */
-export function sameSiteMiddleware(trustProxy: boolean) {
+export function sameSiteMiddleware(
+  trustProxy: boolean,
+  /**
+   * Task 11.13: whether a request carries the assistant's mark with the process's own secret
+   * (`AssistantCalls.carriesOwnMark`, compared in constant time). Such a request is sent by the
+   * server to its own address at a person's Confirm; a page of another site cannot know the
+   * secret, which never leaves the server. A wrong or missing secret meets the check below.
+   */
+  carriesOwnMark: (headers: Request['headers']) => boolean = () => false,
+) {
   return (request: Request, response: Response, next: NextFunction): void => {
     if (READING_METHODS.has(request.method)) {
       next();
@@ -92,6 +101,10 @@ export function sameSiteMiddleware(trustProxy: boolean) {
     // page of another site cannot add this header without a CORS preflight, which this API never
     // answers; the forgery this check stops cannot happen through it.
     if (carriesIntegrationKey(request.headers)) {
+      next();
+      return;
+    }
+    if (carriesOwnMark(request.headers)) {
       next();
       return;
     }

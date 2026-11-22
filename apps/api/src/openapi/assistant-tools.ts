@@ -22,6 +22,7 @@ interface DocumentParameter {
 interface DocumentOperation {
   operationId?: string;
   parameters?: DocumentParameter[];
+  requestBody?: { content?: Record<string, { schema?: unknown }> };
 }
 
 export interface ToolsDocument {
@@ -57,11 +58,14 @@ export function assistantToolsOf(document: ToolsDocument): Record<string, Genera
         required: parameter.required === true || parameter.in === 'path',
         schema: parameter.schema ?? {},
       }));
+    const body = operation.requestBody?.content?.['application/json']?.schema;
     tools[name] = {
       name: operation.operationId.replace(/[^A-Za-z0-9_]/g, '_').slice(0, 64),
       method,
       path,
       parameters,
+      // Task 11.13: the body of a change or a preview, as the OpenAPI document gives it.
+      ...(method === 'GET' || body === undefined ? {} : { body }),
     };
   }
   return tools;

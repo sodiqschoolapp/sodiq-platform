@@ -3,6 +3,7 @@ import { Injectable } from '@nestjs/common';
 import {
   ASSISTANT_CALL_HEADER,
   ASSISTANT_ROLE_HEADER,
+  ASSISTANT_STEP_HEADER,
   INTEGRATION_KEY_HEADER,
   isAssistantRole,
   type AssistantRole,
@@ -17,9 +18,48 @@ import { ApiException } from '../../http/api-exception.js';
  * server's own address only. A browser cannot know it, and the mark can only narrow what the
  * person's session may do (`PermissionGuard`).
  */
+/** A step of a confirmed proposal while Confirm sends it (task 11.13). */
+export interface RunningStep {
+  stepId: string;
+  accountId: string;
+  branchId: string;
+  role: AssistantRole;
+  /** `<METHOD> /api/<path>` as listed. */
+  route: string;
+}
+
 @Injectable()
 export class AssistantCalls {
   private readonly secret = randomBytes(32).toString('base64url');
+  /**
+   * The steps being sent now, by id (task 11.13): Confirm registers a step just before it sends it
+   * to the server's own address and removes it when the answer came, so a change marked as the
+   * assistant's runs only for the one step Confirm is sending, as its account, branch, role and
+   * route. Held in memory: the request comes back to this same process.
+   */
+  private readonly running = new Map<string, RunningStep>();
+
+  /** Registers a step while `work` sends it; removed afterwards, whatever happens. */
+  async whileRunning<T>(step: RunningStep, work: () => Promise<T>): Promise<T> {
+    this.running.set(step.stepId, step);
+    try {
+      return await work();
+    } finally {
+      this.running.delete(step.stepId);
+    }
+  }
+
+  /** The running step a change names, or `undefined` (refused by the guard). */
+  stepOf(headers: IncomingHttpHeaders): RunningStep | undefined {
+    const value = headers[ASSISTANT_STEP_HEADER.toLowerCase()];
+    return typeof value === 'string' ? this.running.get(value) : undefined;
+  }
+
+  /** Whether the request carries the mark with the right secret (the same-site check, 11.13). */
+  carriesOwnMark(headers: IncomingHttpHeaders): boolean {
+    const call = headers[ASSISTANT_CALL_HEADER.toLowerCase()];
+    return typeof call === 'string' && this.matches(call);
+  }
 
   /** The two headers of a read for the chosen role. */
   headersFor(role: AssistantRole): Record<string, string> {

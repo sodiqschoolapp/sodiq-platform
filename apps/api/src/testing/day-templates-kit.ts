@@ -137,7 +137,14 @@ export interface DayTemplatesKit {
 export async function dayTemplatesKit(
   options: Pick<
     TestAppOptions,
-    'photoStore' | 'mailer' | 'pdfRenderer' | 'config' | 'monitoringFetch' | 'telegramFetch'
+    | 'photoStore'
+    | 'mailer'
+    | 'pdfRenderer'
+    | 'config'
+    | 'monitoringFetch'
+    | 'telegramFetch'
+    | 'assistantModel'
+    | 'listen'
   > & {
     /** For a test whose routes enqueue jobs: the job queue of the test database. */
     jobs?: boolean;

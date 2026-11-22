@@ -113,3 +113,23 @@ export const restoreConversation = async (id: string) =>
       api.POST('/api/assistant/all-conversations/{id}/restore', { params: { path: { id } } }),
     ),
   );
+
+/** Task 11.13: Confirm or Decline of a proposal, in the tab's branch and chosen role. */
+export const decideProposal = async (input: {
+  id: string;
+  which: 'confirm' | 'decline';
+  role: AssistantRole;
+}) =>
+  assistantConversationSchema.parse(
+    await answerOf(
+      input.which === 'confirm'
+        ? api.POST('/api/assistant/proposals/{id}/confirm', {
+            params: { path: { id: input.id }, header: branchHeader() },
+            body: { role: input.role },
+          })
+        : api.POST('/api/assistant/proposals/{id}/decline', {
+            params: { path: { id: input.id }, header: branchHeader() },
+            body: { role: input.role },
+          }),
+    ),
+  );

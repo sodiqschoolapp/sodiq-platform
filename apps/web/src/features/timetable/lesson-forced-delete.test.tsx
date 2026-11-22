@@ -84,6 +84,7 @@ const HISTORY: LessonHistory = {
       kind: 'changed',
       changedAt: '2026-10-09T10:00:00.000Z',
       who: { id: uid(700), name: 'Yusupova Nodira' },
+      viaAssistant: false,
       teacher: {
         before: { id: uid(600), name: 'Karimova Aziza' },
         after: { id: uid(601), name: 'Saidova Dilnoza' },
@@ -100,6 +101,7 @@ const HISTORY: LessonHistory = {
       kind: 'changed',
       changedAt: '2026-10-09T11:00:00.000Z',
       who: null,
+      viaAssistant: false,
       teacher: {
         before: { id: uid(601), name: 'Saidova Dilnoza' },
         after: { id: uid(601), name: 'Saidova Dilnoza' },

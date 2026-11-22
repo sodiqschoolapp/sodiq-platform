@@ -1368,13 +1368,17 @@ export class LessonHistoryReader {
       const xacts = [...new Set(lines.map((one) => one.xact))];
       const entries = await transaction
         .selectFrom('audit_log')
-        .select(['actor_id', sql<string>`written_xact::text`.as('xact')])
+        .select(['actor_id', 'assistant_step_id', sql<string>`written_xact::text`.as('xact')])
         .where('branch_id', '=', branchId)
         .where(sql<boolean>`written_xact::text = any(${xacts}::text[])`)
         .orderBy('occurred_at')
         .orderBy('id')
         .execute();
       const actorOf = new Map<string, string | null>();
+      // Task 11.13 (`02`, Audit: "marked 'via assistant'"): a change made by a confirmed step.
+      const viaAssistant = new Set(
+        entries.filter((one) => one.assistant_step_id !== null).map((one) => one.xact),
+      );
       for (const one of entries) {
         if (!actorOf.has(one.xact) || actorOf.get(one.xact) === null) {
           actorOf.set(one.xact, one.actor_id);
@@ -1451,6 +1455,7 @@ export class LessonHistoryReader {
             kind: one.kind,
             changedAt: one.changed_at.toISOString(),
             who: actor === null ? null : { id: actor, name: names.get(actor) ?? '' },
+            viaAssistant: viaAssistant.has(one.xact),
             teacher: { before: person(one.teacher_before), after: person(one.teacher_after) },
             room: { before: room(one.room_before), after: room(one.room_after) },
             date: { before: one.date_before_text, after: one.date_after_text },

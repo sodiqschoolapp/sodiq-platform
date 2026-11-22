@@ -50,6 +50,8 @@ describe('OpenAPI document', () => {
         '/api/assistant/all-conversations/{id}/restore',
         '/api/assistant/conversations',
         '/api/assistant/conversations/{id}',
+        '/api/assistant/proposals/{id}/confirm',
+        '/api/assistant/proposals/{id}/decline',
         '/api/assistant/questions',
         '/api/assistant/status',
         '/api/audit/entries',

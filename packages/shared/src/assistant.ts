@@ -151,11 +151,121 @@ export const assistantConversationListSchema = z.object({
 
 export type AssistantConversationList = z.infer<typeof assistantConversationListSchema>;
 
+/** Task 11.13: the header naming the step of a proposal that a change runs for. */
+export const ASSISTANT_STEP_HEADER = 'X-Assistant-Step';
+
+/** At most this many steps in one proposal (plan decision 8). */
+export const ASSISTANT_MAX_STEPS = 10;
+
+/** How long a proposal may be confirmed (`02`: "not confirmed within 15 minutes expires"). */
+export const ASSISTANT_PROPOSAL_MINUTES = 15;
+
+/** The state of a proposal, read from its stored moments and decision (plan decisions 8, 17). */
+export const ASSISTANT_PROPOSAL_STATES = [
+  'waiting',
+  'confirmed',
+  'declined',
+  'expired',
+  'superseded',
+] as const;
+
+export type AssistantProposalState = (typeof ASSISTANT_PROPOSAL_STATES)[number];
+
+/**
+ * The state of a step: `waiting` before Confirm; `unknown` when Confirm started it and no outcome
+ * was stored (a crash: plan decision 10).
+ */
+export const ASSISTANT_STEP_STATES = [
+  'waiting',
+  'done',
+  'refused',
+  'outdated',
+  'not_run',
+  'unknown',
+] as const;
+
+export type AssistantStepState = (typeof ASSISTANT_STEP_STATES)[number];
+
+/** A field of a step's request, as the panel shows it: the value as text. */
+export const assistantStepFieldSchema = z.object({ name: z.string(), value: z.string() });
+
+/** A lesson a step's preview names, in plain words (`edge/people-roles-accounts`, first row). */
+export const assistantPreviewLessonSchema = z.object({
+  /** The list of the preview it is in (`cancel`, `withData`, `held` …). */
+  list: z.string(),
+  date: z.string(),
+  /** Clock minutes of the day in branch time. */
+  start: z.int().nonnegative(),
+  unitName: z.string(),
+  subjectNames: z.object({ uz: z.string(), ru: z.string(), en: z.string() }).nullable(),
+  teacherName: z.string().nullable(),
+  roomName: z.string().nullable(),
+  /** The lesson already holds attendance or marks (the bulk cancel's `withData`). */
+  hasData: z.boolean(),
+  /**
+   * What Confirm does to this lesson where the person chooses (a lesson with data, a shared block
+   * of a bulk cancel): `keep` (kept as held, the data choice), `cancel`, or `held` (a lesson of a
+   * shared block kept for the other classes); `null` where nothing is chosen.
+   */
+  choice: z.enum(['keep', 'cancel', 'held']).nullable(),
+});
+
+export type AssistantPreviewLesson = z.infer<typeof assistantPreviewLessonSchema>;
+
+export const assistantStepSchema = z.object({
+  id: z.uuid(),
+  seq: z.int().positive(),
+  /** The operation of the route, the key of its name in the panel's texts. */
+  action: z.string(),
+  group: assistantReadGroupSchema,
+  /** The model's own sentence, shown beside the platform's words, never instead (decision 5). */
+  summary: z.string(),
+  /** The record the step changes, by the name its basis read gives, or `null`. */
+  recordName: z.string().nullable(),
+  /** The same in the three languages when the record is named so (a subject). */
+  recordNames: z.object({ uz: z.string(), ru: z.string(), en: z.string() }).nullable(),
+  /** The warnings and blocks of the step's check or preview, by code (plan decision 6). */
+  previewIssues: z.array(z.object({ kind: z.enum(['warning', 'blocked']), code: z.string() })),
+  /** How many entries each list of the preview holds (its impact beyond lessons). */
+  previewCounts: z.array(z.object({ list: z.string(), count: z.int().nonnegative() })),
+  fields: z.array(assistantStepFieldSchema),
+  /** The lessons of the step's preview, and how many more it names. */
+  previewLessons: z.array(assistantPreviewLessonSchema),
+  previewMore: z.int().nonnegative(),
+  state: z.enum(ASSISTANT_STEP_STATES),
+  /** The HTTP status of the step's route, 0 when not sent or not run. */
+  status: z.int().nonnegative(),
+  /** The refusal code when refused or outdated. */
+  code: z.string().nullable(),
+});
+
+export type AssistantStep = z.infer<typeof assistantStepSchema>;
+
+export const assistantProposalSchema = z.object({
+  id: z.uuid(),
+  /** The question the proposal answers. */
+  questionId: z.uuid(),
+  createdAt: moment,
+  expiresAt: moment,
+  state: z.enum(ASSISTANT_PROPOSAL_STATES),
+  decidedAt: moment.nullable(),
+  steps: z.array(assistantStepSchema),
+});
+
+export type AssistantProposal = z.infer<typeof assistantProposalSchema>;
+
+/** Confirm or Decline, in the role chosen in the tab (`02`: "with the person's session and chosen role"). */
+export const assistantDecisionSchema = z.strictObject({ role: assistantRoleSchema });
+
+export type AssistantDecision = z.infer<typeof assistantDecisionSchema>;
+
 export const assistantConversationSchema = assistantConversationSummarySchema.extend({
   archived: z.boolean(),
   /** When it is archived, or will be without a new question or a restore. */
   archivesAt: moment,
   messages: z.array(assistantMessageSchema),
+  /** Task 11.13: the proposals of the conversation, oldest first. */
+  proposals: z.array(assistantProposalSchema),
 });
 
 export type AssistantConversation = z.infer<typeof assistantConversationSchema>;

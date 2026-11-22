@@ -21,9 +21,11 @@ import { Button } from '@/components/ui/button';
 import { FIELD, SECTION_TITLE } from '@/components/ui/control';
 import { BUILT_PAGES } from '@/features/access/menu-pages';
 import { useMayView, useView } from '@/features/access/use-view';
+import { ProposalCard } from './proposal-card';
 import {
   ASSISTANT_KEY,
   askAssistant,
+  decideProposal,
   assistantConversationQuery,
   assistantConversationsQuery,
   assistantStatusQuery,
@@ -175,6 +177,19 @@ export function AssistantPanel({
     },
   });
 
+  // Task 11.13: Confirm or Decline; the answer is the conversation with each step's outcome.
+  const decide = useMutation({
+    mutationFn: (input: { id: string; which: 'confirm' | 'decline' }) =>
+      decideProposal({ ...input, role }),
+    onSuccess: (answer) => {
+      queryClient.setQueryData(assistantConversationQuery(answer.id).queryKey, answer);
+    },
+    onError: async () => {
+      // An expired, decided or superseded proposal: read the conversation again.
+      await queryClient.invalidateQueries({ queryKey: [...ASSISTANT_KEY, 'conversation'] });
+    },
+  });
+
   const open = conversation.data;
   // A conversation of another branch or role is read only: a question runs in this tab's
   // branch and role (plan decision 9).
@@ -248,7 +263,20 @@ export function AssistantPanel({
         ) : open === undefined ? (
           <LoadingOutline />
         ) : (
-          <Messages conversation={open} />
+          <>
+            <Messages
+              conversation={open}
+              deciding={decide.isPending}
+              {...(readOnly
+                ? {}
+                : {
+                    onDecide: (id: string, which: 'confirm' | 'decline') => {
+                      decide.mutate({ id, which });
+                    },
+                  })}
+            />
+            {decide.error !== null && <FailureAlert error={decide.error} />}
+          </>
         )}
       </div>
       <footer className="grid gap-2 border-t px-6 py-3 max-sm:px-4">
@@ -337,16 +365,61 @@ function ConversationList({
   );
 }
 
-/** The messages of a conversation, as plain text (plan decision 14): never HTML or Markdown. */
-export function Messages({ conversation }: { conversation: AssistantConversation }) {
+/**
+ * The messages of a conversation, as plain text (plan decision 14): never HTML or Markdown.
+ * Task 11.13: a proposal follows the answer to the question it came with; `onDecide` gives
+ * its Confirm and Decline (left out where the conversation is only read).
+ */
+export function Messages({
+  conversation,
+  onDecide,
+  deciding,
+}: {
+  conversation: AssistantConversation;
+  onDecide?: (proposalId: string, which: 'confirm' | 'decline') => void;
+  deciding?: boolean;
+}) {
   const { t } = useTranslation();
+  // The question each answer follows, so that its proposal is drawn after it.
+  const askedBefore = new Map<string, string>();
+  for (const [index, message] of conversation.messages.entries()) {
+    if (message.kind === 'answer') {
+      const question = conversation.messages
+        .slice(0, index)
+        .findLast((earlier) => earlier.kind === 'question');
+      if (question !== undefined) askedBefore.set(message.id, question.id);
+    }
+  }
+  const items = conversation.messages.flatMap((message) => {
+    const asked = askedBefore.get(message.id);
+    const proposals =
+      asked === undefined
+        ? []
+        : conversation.proposals.filter((proposal) => proposal.questionId === asked);
+    return [
+      <li key={message.id}>
+        <MessageView message={message} />
+      </li>,
+      ...proposals.map((proposal) => (
+        <li key={proposal.id}>
+          <ProposalCard
+            proposal={proposal}
+            {...(onDecide === undefined
+              ? {}
+              : {
+                  onDecide: (which: 'confirm' | 'decline') => {
+                    onDecide(proposal.id, which);
+                  },
+                  deciding: deciding === true,
+                })}
+          />
+        </li>
+      )),
+    ];
+  });
   return (
     <ol aria-label={conversation.title} className="grid gap-3">
-      {conversation.messages.map((message) => (
-        <li key={message.id}>
-          <MessageView message={message} />
-        </li>
-      ))}
+      {items}
       {conversation.messages.length === 0 && (
         <li className="text-sm text-muted-foreground">{t('assistant.empty')}</li>
       )}

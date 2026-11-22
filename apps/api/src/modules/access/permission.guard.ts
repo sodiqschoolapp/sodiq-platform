@@ -21,6 +21,7 @@ import { ApiException } from '../../http/api-exception.js';
 import { HeaderPipe } from '../../http/validation.js';
 import { keyActorOf, owedStepsAllowedOn, sessionOf } from '../auth/session.guard.js';
 import { keyRouteOf } from './key-routes.js';
+import { currentRequestContext } from '../../http/request-context.js';
 import { AssistantCalls } from './assistant-calls.js';
 import { AssistantRoutes } from './assistant-routes.check.js';
 import { declarationsOf, type RouteAccess } from './access.decorators.js';
@@ -137,7 +138,7 @@ export class PermissionGuard implements CanActivate {
     // actions of the list").
     const assistantRole = this.assistantCalls.roleOf(request.headers);
     if (assistantRole !== undefined) {
-      return this.assistantRead(context, access, request, assistantRole);
+      return this.assistantCall(context, access, request, assistantRole);
     }
     if (access.kind === 'public') {
       return true;
@@ -209,16 +210,20 @@ export class PermissionGuard implements CanActivate {
   }
 
   /**
-   * A read the assistant makes as the person, for the chosen role (task 11.12): the route on
-   * that role's list, a staff session, and the assignments of that role only.
+   * A request the assistant makes as the person, for the chosen role (task 11.12): the route on
+   * that role's list, a staff session, and the assignments of that role only. Task 11.13: a
+   * route listed as a preview may be sent with any method; a change only for the step Confirm is
+   * sending now, of this account, branch, role and route (`AssistantCalls.stepOf`), and the audit
+   * entries it writes name that step ("via assistant").
    */
-  private async assistantRead(
+  private async assistantCall(
     context: ExecutionContext,
     access: RouteAccess,
     request: Request,
     role: AssistantRole,
   ): Promise<boolean> {
-    if (access.kind !== 'requires' || !this.assistantRoutes.opens(context.getHandler(), role)) {
+    const handler = context.getHandler();
+    if (access.kind !== 'requires' || !this.assistantRoutes.opens(handler, role)) {
       throw new ApiException('assistant_route_closed', 403);
     }
     const session = sessionOf(request);
@@ -228,11 +233,43 @@ export class PermissionGuard implements CanActivate {
     if (session.kind === 'parent') {
       throw new ApiException('permission_denied', 403);
     }
-    return this.decide(context, access, request, {
+    const name = this.assistantRoutes.nameOf(handler);
+    const line = name === undefined ? undefined : this.assistantRoutes.linesOf(role)[name];
+    let stepId: string | undefined;
+    if (request.method !== 'GET') {
+      if (line?.kind === 'change') {
+        const step = this.assistantCalls.stepOf(request.headers);
+        const branch = request.headers[BRANCH_HEADER.toLowerCase()];
+        if (
+          step === undefined ||
+          step.accountId !== session.accountId ||
+          step.role !== role ||
+          step.route !== name ||
+          typeof branch !== 'string' ||
+          step.branchId !== branch.toLowerCase()
+        ) {
+          throw new ApiException('assistant_step_invalid', 403);
+        }
+        stepId = step.stepId;
+      } else if (line?.kind !== 'preview') {
+        throw new ApiException('assistant_route_closed', 403);
+      }
+    } else if ((line?.kind ?? 'read') !== 'read') {
+      throw new ApiException('assistant_route_closed', 403);
+    }
+    await this.decide(context, access, request, {
       accountId: session.accountId,
       assignments: session.assignments.filter((assignment) => assignment.role === role),
       assistantRole: role,
     });
+    if (stepId !== undefined) {
+      const requestContext = currentRequestContext();
+      if (requestContext === undefined) {
+        throw new Error('A step of the assistant runs outside a request context.');
+      }
+      requestContext.assistantStep = { id: stepId };
+    }
+    return true;
   }
 
   /**
