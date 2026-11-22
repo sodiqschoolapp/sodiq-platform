@@ -26,6 +26,11 @@ export interface AssistantReadLine {
   group: AssistantReadGroup;
   /** The tool's description, the line the model reads: what the route answers, in English. */
   description: string;
+  /**
+   * Keys removed at any depth from this read before the model is given it, beside the field
+   * filter (task 11.13): a relative's name is of the student's Contact group (11.12 decision 2).
+   */
+  withheld?: readonly string[];
 }
 
 /**
@@ -333,7 +338,9 @@ const SUPER_ADMIN_READS: Readonly<Record<string, AssistantReadLine>> = {
   // Decision 15 of the plan of pull request #376: names and relationship; phones are removed.
   'GET /api/people/students/:id/relatives': {
     group: 'students',
-    description: 'The relatives of one student: name, relationship and the portal access switch.',
+    description:
+      'The relatives of one student: relationship, main contact and the portal access switch (names and phones are withheld).',
+    withheld: ['fullName', 'name', 'firstName', 'lastName', 'patronymic', 'paternalName'],
   },
 };
 

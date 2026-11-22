@@ -625,6 +625,57 @@ describe('the assistant: proposals and Confirm', () => {
     void ROOM_CREATE;
   });
 
+  // Decision 3 of the plan (Look first): the person's list holds the branches and roles held now.
+  it('leaves a conversation of a branch the person no longer holds out of their list; the Super Admin reads it', async () => {
+    const person = await scene.kit.completeSession('Malika', 'Rahimova');
+    const north = await scene.kit.giveRole(person.account.id, {
+      role: 'academic_vice_principal',
+      branchId: scene.north,
+    });
+    await scene.kit.giveRole(person.account.id, {
+      role: 'academic_vice_principal',
+      branchId: scene.south,
+    });
+    scene.model.script(answer('Hello.'));
+    const asked = await ask(scene, person.cookie, scene.north, {
+      text: 'Hello.',
+      role: 'academic_vice_principal',
+    });
+    expect(asked.status).toBe(200);
+    const id = (asked.body as { conversation: { id: string } }).conversation.id;
+    const list = async () =>
+      (
+        (
+          await request(server())
+            .get('/api/assistant/conversations')
+            .set('Cookie', person.cookie)
+            .set(BRANCH_HEADER, scene.south)
+        ).body as { conversations: { id: string }[] }
+      ).conversations.map((one) => one.id);
+    expect(await list()).toContain(id);
+    await scene.database.migrator
+      .updateTable('assignments')
+      .set({
+        valid_from: new Date('2026-11-20T08:00:00+05:00'),
+        valid_until: new Date('2026-11-20T09:00:00+05:00'),
+      })
+      .where('id', '=', north.id)
+      .execute();
+    expect(await list()).not.toContain(id);
+    expect(
+      (
+        await request(server())
+          .get(`/api/assistant/conversations/${id}`)
+          .set('Cookie', person.cookie)
+          .set(BRANCH_HEADER, scene.south)
+      ).status,
+    ).toBe(404);
+    const all = await request(server())
+      .get(`/api/assistant/all-conversations/${id}`)
+      .set('Cookie', scene.admin);
+    expect(all.status).toBe(200);
+  });
+
   // Last: the clock moves on 15 minutes, past the idle end of the sessions.
   it('expires a proposal 15 minutes after it was made, read from the stored moment', async () => {
     const target = await room();

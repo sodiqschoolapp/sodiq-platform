@@ -66,8 +66,11 @@ export class AssistantController {
   @Get('conversations')
   @Requires('assistant', 'view')
   @Returns(assistantConversationListSchema)
-  list(@CurrentAccess() access: Access): Promise<AssistantConversationList> {
-    return this.conversations.own(access);
+  list(
+    @CurrentAccess() access: Access,
+    @CurrentSession() session: ActiveSession,
+  ): Promise<AssistantConversationList> {
+    return this.conversations.own(access, session.assignments);
   }
 
   @Get('conversations/:id')
@@ -75,9 +78,10 @@ export class AssistantController {
   @Returns(assistantConversationSchema)
   read(
     @CurrentAccess() access: Access,
+    @CurrentSession() session: ActiveSession,
     @ValidParams(assistantConversationParamsSchema) params: AssistantConversationParams,
   ): Promise<AssistantConversation> {
-    return this.conversations.ownOne(access, params.id);
+    return this.conversations.ownOne(access, session.assignments, params.id);
   }
 
   /** A question; the answer holds the conversation with its new messages. */

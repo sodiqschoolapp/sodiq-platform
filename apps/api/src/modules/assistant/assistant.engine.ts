@@ -483,7 +483,9 @@ export class AssistantEngine {
           branchId: start.conversation.branchId,
           role,
         });
-        given = givenOf(outcome);
+        const line = lines[route];
+        const withheld = line?.kind === undefined || line.kind === 'read' ? line?.withheld : undefined;
+        given = givenOf(withheld === undefined ? outcome : withholding(outcome, withheld));
         stored = readContent(call, route, lines, outcome.status, given);
       }
     }
@@ -567,4 +569,21 @@ export function systemInstruction(input: {
     'You cannot make changes, enter journal data (attendance, marks, totals, comments), grant exemptions, close a quarter, publish a timetable, start or close a year, delete, change accounts, passwords, roles or permissions, or export. For these, say that the person does it on the page, and link the page with suggest_page.',
     'Some personal fields (phones, addresses, document numbers, financial and medical data) are removed before you see the data and appear as [removed]; never ask for them.',
   ].join('\n');
+}
+
+/** A read with the line's withheld keys removed at any depth (task 11.13). */
+function withholding(outcome: ReadOutcome, keys: readonly string[]): ReadOutcome {
+  if ('failure' in outcome && outcome.failure !== undefined) return outcome;
+  const strip = (value: unknown): unknown => {
+    if (Array.isArray(value)) return value.map(strip);
+    if (value !== null && typeof value === 'object') {
+      return Object.fromEntries(
+        Object.entries(value)
+          .filter(([key]) => !keys.includes(key))
+          .map(([key, item]) => [key, strip(item)]),
+      );
+    }
+    return value;
+  };
+  return { status: outcome.status, body: strip('body' in outcome ? outcome.body : null) };
 }
