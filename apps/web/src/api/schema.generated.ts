@@ -209221,6 +209221,8 @@ export interface operations {
                                     teacherName: string | null;
                                     roomName: string | null;
                                     hasData: boolean;
+                                    /** @enum {string|null} */
+                                    choice: "keep" | "cancel" | null;
                                 }[];
                                 previewMore: number;
                                 /** @enum {string} */
@@ -209649,6 +209651,8 @@ export interface operations {
                                         teacherName: string | null;
                                         roomName: string | null;
                                         hasData: boolean;
+                                        /** @enum {string|null} */
+                                        choice: "keep" | "cancel" | null;
                                     }[];
                                     previewMore: number;
                                     /** @enum {string} */
@@ -210076,6 +210080,8 @@ export interface operations {
                                     teacherName: string | null;
                                     roomName: string | null;
                                     hasData: boolean;
+                                    /** @enum {string|null} */
+                                    choice: "keep" | "cancel" | null;
                                 }[];
                                 previewMore: number;
                                 /** @enum {string} */
@@ -210502,6 +210508,8 @@ export interface operations {
                                     teacherName: string | null;
                                     roomName: string | null;
                                     hasData: boolean;
+                                    /** @enum {string|null} */
+                                    choice: "keep" | "cancel" | null;
                                 }[];
                                 previewMore: number;
                                 /** @enum {string} */
@@ -211235,6 +211243,8 @@ export interface operations {
                                     teacherName: string | null;
                                     roomName: string | null;
                                     hasData: boolean;
+                                    /** @enum {string|null} */
+                                    choice: "keep" | "cancel" | null;
                                 }[];
                                 previewMore: number;
                                 /** @enum {string} */
@@ -211653,6 +211663,8 @@ export interface operations {
                                     teacherName: string | null;
                                     roomName: string | null;
                                     hasData: boolean;
+                                    /** @enum {string|null} */
+                                    choice: "keep" | "cancel" | null;
                                 }[];
                                 previewMore: number;
                                 /** @enum {string} */

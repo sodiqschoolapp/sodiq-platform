@@ -1,10 +1,11 @@
 import { BRANCH_HEADER, ASSISTANT_STEP_HEADER, type AssistantRole } from '@sodiq/shared';
 import request from 'supertest';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { answer, calls } from '../../testing/assistant-model.js';
 import { ask, assistantScene, type AssistantScene } from '../../testing/assistant-kit.js';
 import { errorCode } from '../../testing/sign-in-kit.js';
 import { AssistantCalls } from '../access/assistant-calls.js';
+import { AssistantDispatcher } from './dispatcher.js';
 import { GENERATED_TOOLS } from './tools.generated.js';
 
 // Task 11.13 (pull request #376), the permission review of the code: every refusal of Confirm
@@ -301,5 +302,54 @@ describe('Confirm and Decline: refusals, 404s and the mark of a step', () => {
     ).toBe('cross_site_request');
     // The right secret passes the same-site check and meets the guard's step check.
     expect(errorCode(await send(marked))).toBe('assistant_step_invalid');
+  });
+
+  // Review of the code, finding 3: a step whose answer does not come back (a timeout, a lost
+  // connection) may still have been made by its route; it is "not known", never "refused".
+  it('records a step whose answer was lost as not known, stops the rest, and the change it made is audited as the step’s', async () => {
+    const first = await room();
+    const second = await room();
+    scene.model.script(
+      calls(roomEdit(first, 'Lost answer'), roomEdit(second, 'Never run')),
+      answer('Proposed.'),
+    );
+    const asked = await ask(scene, scene.admin, scene.north, { text: 'Rename both rooms.' });
+    const proposal = (asked.body as { conversation: { proposals: { id: string }[] } }).conversation
+      .proposals[0];
+    const dispatcher = scene.app.get(AssistantDispatcher);
+    const send = dispatcher.send.bind(dispatcher);
+    const spy = vi.spyOn(dispatcher, 'send').mockImplementation(async (method, url, body, as) => {
+      const outcome = await send(method, url, body, as);
+      // The route ran and answered; the answer is lost on the way back.
+      return as.stepId === undefined ? outcome : { status: 0, failure: 'timeout' };
+    });
+    try {
+      const confirmed = await decide(
+        'confirm',
+        proposal?.id ?? '',
+        scene.admin,
+        scene.north,
+        'super_admin',
+      );
+      expect(confirmed.status, JSON.stringify(confirmed.body).slice(0, 300)).toBe(200);
+      const steps = (
+        confirmed.body as { proposals: { id: string; steps: { id: string; state: string }[] }[] }
+      ).proposals.find((one) => one.id === proposal?.id)?.steps;
+      expect(steps?.map((one) => one.state)).toEqual(['unknown', 'not_run']);
+      const entry = await scene.database.migrator
+        .selectFrom('audit_log')
+        .select('assistant_step_id')
+        .where('record_id', '=', first.id)
+        .executeTakeFirstOrThrow();
+      expect(entry.assistant_step_id).toBe(steps?.[0]?.id);
+      const untouched = await scene.database.migrator
+        .selectFrom('audit_log')
+        .select('id')
+        .where('record_id', '=', second.id)
+        .execute();
+      expect(untouched).toEqual([]);
+    } finally {
+      spy.mockRestore();
+    }
   });
 });

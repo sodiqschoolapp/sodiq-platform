@@ -28,8 +28,10 @@ import {
 
 /** The longest sentence of the model kept for a step. */
 export const SUMMARY_MAX_LENGTH = 300;
-/** At most this many lessons of a preview are kept for the panel. */
-export const PREVIEW_LESSONS_SHOWN = 60;
+/**
+ * Every lesson of a preview is kept for the panel (review of the code, finding 2: "names every
+ * lesson"); the route's own limits bound how many a preview can name.
+ */
 /** A preview given back to the model is cut at this many characters. */
 const PREVIEW_MAX_CHARACTERS = 12_000;
 
@@ -254,13 +256,14 @@ export function lessonsOfPreview(value: unknown): AssistantPreviewLesson[] {
     }
   };
   collect(value, false);
-  const walk = (item: unknown, list: string): void => {
+  const walk = (item: unknown, list: string, blockId: string | null = null): void => {
     if (Array.isArray(item)) {
-      for (const each of item) walk(each, list);
+      for (const each of item) walk(each, list, blockId);
       return;
     }
     if (item === null || typeof item !== 'object') return;
     const record = item as Record<string, unknown>;
+    const inBlock = typeof record.blockId === 'string' ? record.blockId : blockId;
     const unit = record.unit as { name?: unknown } | undefined;
     if (
       typeof record.date === 'string' &&
@@ -286,15 +289,57 @@ export function lessonsOfPreview(value: unknown): AssistantPreviewLesson[] {
         teacherName: typeof teacher?.name === 'string' ? teacher.name : null,
         roomName: typeof room?.name === 'string' ? room.name : null,
         hasData: typeof record.id === 'string' && withData.has(record.id),
+        choice: null,
+        ...(typeof record.id === 'string' ? { lessonId: record.id } : {}),
+        ...(inBlock === null ? {} : { blockId: inBlock }),
       });
       return;
     }
     for (const [key, each] of Object.entries(record)) {
-      walk(each, Array.isArray(each) ? key : list);
+      walk(each, Array.isArray(each) ? key : list, inBlock);
     }
   };
   walk(value, 'preview');
   return found;
+}
+
+/** A lesson of a preview with the ids its choice is matched by. */
+type InternalLesson = AssistantPreviewLesson & { lessonId?: string; blockId?: string };
+
+/**
+ * The choice the step's body sends for each lesson (review of the code, finding 1): a bulk
+ * cancel's `dataChoices` by lesson ("keep as held" or "cancel") and its `blocks` by shared block,
+ * so the person reads, lesson by lesson, what Confirm will do with lessons that hold data.
+ */
+function withChoices(
+  lessons: readonly InternalLesson[],
+  body: Readonly<Record<string, unknown>>,
+): InternalLesson[] {
+  const byLesson = new Map<string, 'keep' | 'cancel'>();
+  const byBlock = new Map<string, 'keep' | 'cancel'>();
+  const read = (
+    value: unknown,
+    key: 'lessonId' | 'blockId',
+    into: Map<string, 'keep' | 'cancel'>,
+  ) => {
+    if (!Array.isArray(value)) return;
+    for (const one of value) {
+      const record = one as Record<string, unknown> | null;
+      const id = record?.[key];
+      const choice = record?.choice;
+      if (typeof id === 'string' && (choice === 'keep' || choice === 'cancel'))
+        into.set(id, choice);
+    }
+  };
+  read(body.dataChoices, 'lessonId', byLesson);
+  read(body.blocks, 'blockId', byBlock);
+  return lessons.map((lesson) => {
+    const choice =
+      (lesson.lessonId === undefined ? undefined : byLesson.get(lesson.lessonId)) ??
+      (lesson.blockId === undefined ? undefined : byBlock.get(lesson.blockId)) ??
+      null;
+    return { ...lesson, choice };
+  });
 }
 
 function cut(value: unknown): unknown {
@@ -439,7 +484,7 @@ export async function draftStep(
       fingerprint: fingerprintOf(bodyOf(outcome)),
     };
     const filtered = filterRead(bodyOf(outcome));
-    previewLessons = lessonsOfPreview(filtered);
+    previewLessons = withChoices(lessonsOfPreview(filtered), body);
     previewIssues = issuesOfPreview(filtered);
     previewCounts = countsOfPreview(filtered);
     previewGiven = cut(filtered);
@@ -484,8 +529,14 @@ export async function draftStep(
       recordName: nameOfRecord(picked),
       recordNames: namesOfRecord(picked),
       fields: fieldsOf(tool.body === undefined ? null : body),
-      previewLessons: previewLessons.slice(0, PREVIEW_LESSONS_SHOWN),
-      previewMore: Math.max(0, previewLessons.length - PREVIEW_LESSONS_SHOWN),
+      // Only the panel's fields: the ids that matched a choice are not kept.
+      previewLessons: previewLessons.map((lesson: InternalLesson) => {
+        const shown: InternalLesson = { ...lesson };
+        delete shown.lessonId;
+        delete shown.blockId;
+        return shown;
+      }),
+      previewMore: 0,
       previewIssues,
       previewCounts,
     },
@@ -506,6 +557,11 @@ export function stateOfOutcome(
   outcome: ReadOutcome,
   outdatedCodes: readonly string[],
 ): { state: AssistantStepState; status: number; code: string | null } {
+  // No answer came (a timeout, a lost connection, an answer too large): the route may still have
+  // made the change, so the step is not known, never refused (review of the code, finding 3).
+  if ('failure' in outcome && outcome.failure !== undefined) {
+    return { state: 'unknown', status: 0, code: `read_${outcome.failure}` };
+  }
   const refused = refusalOf(outcome);
   if (refused === undefined) {
     return { state: 'done', status: outcome.status, code: null };

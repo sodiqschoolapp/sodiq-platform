@@ -1331,6 +1331,8 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       moreLessons_few: 'и ещё {{count}} урока',
       moreLessons_many: 'и ещё {{count}} уроков',
       moreLessons_other: 'и ещё {{count}} урока',
+      choice_keep: '→ остаётся проведённым',
+      choice_cancel: '→ отменяется',
       hasData: 'есть посещаемость или оценки',
       issue_warning: 'Предупреждение: {{text}}',
       issue_blocked: 'Запрещено: {{text}}',

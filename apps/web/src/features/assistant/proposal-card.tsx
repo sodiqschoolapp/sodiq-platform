@@ -93,6 +93,11 @@ export function ProposalCard({
                             {t('assistant.proposal.hasData')}
                           </span>
                         )}
+                        {lesson.choice !== null && (
+                          <span className="ml-2 font-semibold">
+                            {t(`assistant.proposal.choice_${lesson.choice}`)}
+                          </span>
+                        )}
                       </li>
                     ))}
                 </ul>

@@ -216,6 +216,11 @@ export class AssistantProposals {
     step: StoredStep,
     outcome: { state: AssistantStepState; status: number; code: string | null },
   ): Promise<void> {
+    if (outcome.state === 'unknown' || outcome.state === 'waiting') {
+      // No outcome row: a confirmed step without one is shown "not known: check the page",
+      // the state of decision 12's interrupted step.
+      return;
+    }
     await this.transactions.run([proposal.branch_id], async (transaction) => {
       await transaction
         .insertInto('assistant_proposal_steps')

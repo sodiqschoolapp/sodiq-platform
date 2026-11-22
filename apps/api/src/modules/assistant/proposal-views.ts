@@ -72,6 +72,7 @@ export async function proposalsOf(
           previewLessons: step.shown.previewLessons.map((lesson) => ({
             ...lesson,
             hasData: lesson.hasData ?? false,
+            choice: lesson.choice ?? null,
           })),
           previewMore: step.shown.previewMore,
           previewIssues: step.shown.previewIssues ?? [],

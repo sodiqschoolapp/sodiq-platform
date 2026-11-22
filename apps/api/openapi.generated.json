@@ -1174207,6 +1174207,14 @@
                                       },
                                       "hasData": {
                                         "type": "boolean"
+                                      },
+                                      "choice": {
+                                        "nullable": true,
+                                        "type": "string",
+                                        "enum": [
+                                          "keep",
+                                          "cancel"
+                                        ]
                                       }
                                     },
                                     "required": [
@@ -1174217,7 +1174225,8 @@
                                       "subjectNames",
                                       "teacherName",
                                       "roomName",
-                                      "hasData"
+                                      "hasData",
+                                      "choice"
                                     ],
                                     "additionalProperties": false
                                   }
@@ -1176661,6 +1176670,14 @@
                                           },
                                           "hasData": {
                                             "type": "boolean"
+                                          },
+                                          "choice": {
+                                            "nullable": true,
+                                            "type": "string",
+                                            "enum": [
+                                              "keep",
+                                              "cancel"
+                                            ]
                                           }
                                         },
                                         "required": [
@@ -1176671,7 +1176688,8 @@
                                           "subjectNames",
                                           "teacherName",
                                           "roomName",
-                                          "hasData"
+                                          "hasData",
+                                          "choice"
                                         ],
                                         "additionalProperties": false
                                       }
@@ -1179117,6 +1179135,14 @@
                                       },
                                       "hasData": {
                                         "type": "boolean"
+                                      },
+                                      "choice": {
+                                        "nullable": true,
+                                        "type": "string",
+                                        "enum": [
+                                          "keep",
+                                          "cancel"
+                                        ]
                                       }
                                     },
                                     "required": [
@@ -1179127,7 +1179153,8 @@
                                       "subjectNames",
                                       "teacherName",
                                       "roomName",
-                                      "hasData"
+                                      "hasData",
+                                      "choice"
                                     ],
                                     "additionalProperties": false
                                   }
@@ -1181567,6 +1181594,14 @@
                                       },
                                       "hasData": {
                                         "type": "boolean"
+                                      },
+                                      "choice": {
+                                        "nullable": true,
+                                        "type": "string",
+                                        "enum": [
+                                          "keep",
+                                          "cancel"
+                                        ]
                                       }
                                     },
                                     "required": [
@@ -1181577,7 +1181612,8 @@
                                       "subjectNames",
                                       "teacherName",
                                       "roomName",
-                                      "hasData"
+                                      "hasData",
+                                      "choice"
                                     ],
                                     "additionalProperties": false
                                   }
@@ -1185914,6 +1185950,14 @@
                                       },
                                       "hasData": {
                                         "type": "boolean"
+                                      },
+                                      "choice": {
+                                        "nullable": true,
+                                        "type": "string",
+                                        "enum": [
+                                          "keep",
+                                          "cancel"
+                                        ]
                                       }
                                     },
                                     "required": [
@@ -1185924,7 +1185968,8 @@
                                       "subjectNames",
                                       "teacherName",
                                       "roomName",
-                                      "hasData"
+                                      "hasData",
+                                      "choice"
                                     ],
                                     "additionalProperties": false
                                   }
@@ -1188334,6 +1188379,14 @@
                                       },
                                       "hasData": {
                                         "type": "boolean"
+                                      },
+                                      "choice": {
+                                        "nullable": true,
+                                        "type": "string",
+                                        "enum": [
+                                          "keep",
+                                          "cancel"
+                                        ]
                                       }
                                     },
                                     "required": [
@@ -1188344,7 +1188397,8 @@
                                       "subjectNames",
                                       "teacherName",
                                       "roomName",
-                                      "hasData"
+                                      "hasData",
+                                      "choice"
                                     ],
                                     "additionalProperties": false
                                   }

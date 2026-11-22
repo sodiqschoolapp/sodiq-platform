@@ -16,6 +16,10 @@ import {
 } from '../../testing/assistant-model.js';
 import { dayTemplatesKit, MONDAY, type DayTemplatesKit } from '../../testing/day-templates-kit.js';
 import { LoadKit } from '../../testing/load-kit.js';
+import { MembersKit } from '../../testing/members-kit.js';
+import { Transactions } from '../../database/transactions.js';
+import { Audit } from '../audit/audit.service.js';
+import { saveCells } from '../journal/cells.js';
 import { GENERATED_TOOLS } from './tools.generated.js';
 
 // Task 11.13 (pull request #376). `edge/people-roles-accounts`, The assistant: "'Cancel today,
@@ -366,5 +370,113 @@ describe('the assistant at a power cut: no day off today, a bulk cancel from the
         ?.steps.map((one) => [one.state, one.code]),
     ).toEqual([['outdated', 'assistant_step_outdated']]);
     expect(await cancelledNumbers()).toEqual([]);
+  });
+
+  // Review of the code, finding 1, and the plan's power-cut test: a lesson with data is named
+  // with the choice the step sends ("keep as held" or "cancel"); without a choice the route
+  // refuses the step, with it the lesson with data stays held and the other is cancelled.
+  it('names each lesson with data with the choice it sends, refuses the cancel without one, and keeps it as held with one', async () => {
+    const NEXT = '2026-10-19';
+    const lessons = await t.database.migrator
+      .selectFrom('lessons')
+      .select(['id', 'starts_at'])
+      .where('branch_id', '=', branch)
+      .where('lesson_date', '=', NEXT)
+      .orderBy('starts_at')
+      .execute();
+    expect(lessons.length).toBe(3);
+    const marked = lessons[2]?.id ?? '';
+    const members = new MembersKit(t.database.migrator, await load.classes.account());
+    const studentId = await members.student(branch, { startsOn: '2026-09-01' });
+    await t.database.migrator.transaction().execute(async (transaction) => {
+      await members.member({ branch, classId: oxford, studentId, from: '2026-09-01' }, transaction);
+    });
+    const account = await load.classes.account();
+    await t.app
+      .get(Transactions)
+      .run([branch], (transaction) =>
+        saveCells(transaction, t.app.get(Audit), { accountId: account }, [
+          { lessonId: marked, studentId, workId: null, value: 1, version: null },
+        ]),
+      );
+    const askWith = async (dataChoices: { lessonId: string; choice: 'keep' | 'cancel' }[]) => {
+      model.script(
+        calls({
+          name: BULK_CHECK,
+          args: { body: { date: NEXT, classIds: [oxford], lessonNumbers: [2, 3] } },
+        }),
+        (request) => {
+          const check = lastResults(request).at(-1)?.result as {
+            data?: { cancel?: { lesson: { id: string } }[] };
+          };
+          const keep = new Set(
+            dataChoices.filter((one) => one.choice === 'keep').map((one) => one.lessonId),
+          );
+          return calls({
+            name: BULK,
+            args: {
+              body: {
+                date: NEXT,
+                classIds: [oxford],
+                lessonNumbers: [2, 3],
+                reason: 'No electricity',
+                blocks: [],
+                lessonIds: (check.data?.cancel ?? [])
+                  .map((one) => one.lesson.id)
+                  .filter((id) => !keep.has(id)),
+                dataChoices,
+              },
+              summary: 'Cancel lessons 2 and 3 of 7 Oxford next Monday.',
+            },
+          })(request);
+        },
+        answer('Proposed.'),
+      );
+      const response = await request(t.kit.server)
+        .post('/api/assistant/questions')
+        .set('Cookie', vice.cookie)
+        .set(BRANCH_HEADER, branch)
+        .send({ role: 'academic_vice_principal', text: 'Cancel lessons 2 and 3 next Monday.' });
+      expect(response.status, JSON.stringify(response.body).slice(0, 400)).toBe(200);
+      return assistantConversationSchema.parse(
+        (response.body as { conversation: unknown }).conversation,
+      ).proposals[0];
+    };
+    const cancelledOn = async () =>
+      (
+        await t.database.migrator
+          .selectFrom('lessons')
+          .select(['id', 'cancel_cause'])
+          .where('branch_id', '=', branch)
+          .where('lesson_date', '=', NEXT)
+          .orderBy('starts_at')
+          .execute()
+      ).map((one) => one.cancel_cause !== null);
+
+    // Without a choice: the lesson with data is shown with its data and no choice; refused.
+    const none = await askWith([]);
+    const withData = none?.steps[0]?.previewLessons.find((one) => one.hasData);
+    expect(withData?.choice).toBeNull();
+    const refused = await confirm(none?.id ?? '');
+    expect(
+      assistantConversationSchema
+        .parse(refused.body)
+        .proposals[0]?.steps.map((one) => [one.state, one.code]),
+    ).toEqual([['refused', 'bulk_data_choice_missing']]);
+    expect(await cancelledOn()).toEqual([false, false, false]);
+
+    // "Keep as held": named so on the lesson with data; Confirm cancels lesson 2 only.
+    const kept = await askWith([{ lessonId: marked, choice: 'keep' }]);
+    const lines = kept?.steps[0]?.previewLessons ?? [];
+    expect(lines.filter((one) => one.hasData).map((one) => one.choice)).toEqual(['keep']);
+    expect(lines.filter((one) => !one.hasData).map((one) => one.choice)).toEqual([null]);
+    const done = await confirm(kept?.id ?? '');
+    expect(
+      assistantConversationSchema
+        .parse(done.body)
+        .proposals.at(-1)
+        ?.steps.map((one) => one.state),
+    ).toEqual(['done']);
+    expect(await cancelledOn()).toEqual([false, true, false]);
   });
 });

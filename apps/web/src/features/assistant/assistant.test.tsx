@@ -355,6 +355,7 @@ describe('a proposal of the assistant', () => {
         teacherName: 'Karimov Aziz',
         roomName: '204',
         hasData: true,
+        choice: 'keep' as const,
       },
     ],
     previewMore: 0,
@@ -404,6 +405,8 @@ describe('a proposal of the assistant', () => {
     // Grouped under its list, with its data marked, the warning shown and the field named.
     expect(card.getByText(en.assistant.proposal.lists.cancel)).toBeTruthy();
     expect(card.getByText(en.assistant.proposal.hasData)).toBeTruthy();
+    // The choice the step sends for a lesson with data, in plain words (review finding 1).
+    expect(card.getByText(en.assistant.proposal.choice_keep)).toBeTruthy();
     expect(card.getByText(/^Warning: /)).toBeTruthy();
     expect(card.getByText(en.assistant.fields.reason)).toBeTruthy();
     expect(card.getByText(en.assistant.proposal.states.waiting, { exact: false })).toBeTruthy();

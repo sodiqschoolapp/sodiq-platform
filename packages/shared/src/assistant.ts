@@ -202,6 +202,11 @@ export const assistantPreviewLessonSchema = z.object({
   roomName: z.string().nullable(),
   /** The lesson already holds attendance or marks (the bulk cancel's `withData`). */
   hasData: z.boolean(),
+  /**
+   * What the step sends for this lesson where the person chooses (a lesson with data, a shared
+   * block of a bulk cancel): "keep" (as held) or "cancel"; `null` where nothing is chosen.
+   */
+  choice: z.enum(['keep', 'cancel']).nullable(),
 });
 
 export type AssistantPreviewLesson = z.infer<typeof assistantPreviewLessonSchema>;
