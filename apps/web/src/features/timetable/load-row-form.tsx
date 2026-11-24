@@ -31,6 +31,7 @@ import { CHECKED, CheckboxField, Field, NumberField, SelectField } from '@/compo
 import type { FormSchema } from '@/components/form/form-messages';
 import { wholeNumber } from '@/components/form/form-messages';
 import { RecordForm } from '@/components/form/record-form';
+import { asFormSchema } from '@/features/people/form-schema';
 import { useRecordForm } from '@/components/form/use-record-form';
 import { ErrorState } from '@/components/states';
 import { Button } from '@/components/ui/button';
@@ -88,6 +89,10 @@ const NEW_ROW_REQUIRED: RequiredWhen = {
   teacherId: () => loadRowTeacherNeeded(true, false),
 };
 const NO_MORE: RequiredWhen = {};
+/** A new row as its form shows it: "a class or a group" is said at the one field that chooses it. */
+const NEW_ROW_FORM = asFormSchema<LoadRowRecord>(loadRowRecordSchema, (path) =>
+  path[0] === 'classId' || path[0] === 'groupId' ? ['unit'] : [...path],
+);
 
 /**
  * A row of the teaching load (`05`, Teaching load: "For each class or group
@@ -120,7 +125,7 @@ export function LoadRowForm({
   const { branchId } = useView();
   const number = new Intl.NumberFormat(i18n.language);
   const schema: FormSchema<LoadRowRecord | LoadRowEdit> =
-    row === null ? loadRowRecordSchema : loadRowEditSchema;
+    row === null ? NEW_ROW_FORM : loadRowEditSchema;
   /** Whether the group is a split: it draws from one class or a pair. */
   const isSplit = (groupId: string | null) => isSplitOf(groups.find((one) => one.id === groupId));
 
