@@ -1,6 +1,7 @@
 import {
   classDisplayName,
   listName,
+  vacancyFillCheckBodySchema,
   vacancyFillRowKeyOf,
   type DayChangeChoice,
   type Subject,
@@ -18,6 +19,7 @@ import { useTranslation } from 'react-i18next';
 import { useConfirm } from '@/components/confirm-dialog';
 import { FailureAlert } from '@/components/failure-alert';
 import { DateField, SelectField } from '@/components/field';
+import { requiredOf } from '@/components/form/use-record-form';
 import { ErrorState, LoadingOutline } from '@/components/states';
 import { Button } from '@/components/ui/button';
 import {
@@ -237,6 +239,9 @@ export function VacancyFillDialog({
     );
   }
 
+  // What the route's body takes, for the red asterisks (task 11.18).
+  const typedFill = { vacancyId: vacancy.id, personId, startsOn };
+
   return (
     <Dialog
       open
@@ -263,6 +268,7 @@ export function VacancyFillDialog({
                   label={t('people.vacancies.fill.person')}
                   name="fillPerson"
                   value={personId}
+                  required={requiredOf(vacancyFillCheckBodySchema, typedFill, 'personId')}
                   disabled={staff.data === undefined}
                   options={[
                     { value: '', label: t('people.vacancies.fill.choosePerson') },
@@ -278,6 +284,7 @@ export function VacancyFillDialog({
                   label={t('people.vacancies.fill.startsOn')}
                   name="fillStartsOn"
                   value={startsOn}
+                  required={requiredOf(vacancyFillCheckBodySchema, typedFill, 'startsOn')}
                   min={tomorrow}
                   error={
                     startsOn !== '' && startsOn < tomorrow

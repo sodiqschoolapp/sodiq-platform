@@ -1,6 +1,7 @@
 import { timeText, type DayLesson, type ErrorDetail, type HeldData } from '@sodiq/shared';
 import { useTranslation } from 'react-i18next';
 import { CheckboxField } from '@/components/field';
+import type { FieldBinding } from '@/components/form/use-record-form';
 
 /**
  * What a lesson that holds data holds (task 6.1b-2, decision 2;
@@ -35,7 +36,8 @@ export function HeldDataTick({
   details: readonly ErrorDetail[];
   /** The lessons the list may name (the refusal names each by `recordId`): its time and class or group. */
   lessons: readonly DayLesson[];
-  confirm: Omit<Parameters<typeof CheckboxField>[0], 'label'>;
+  /** The tick of the form (`form.bind('confirm')`), marked from its schema (task 11.18). */
+  confirm: FieldBinding;
 }) {
   const { t } = useTranslation();
   return (

@@ -1,10 +1,16 @@
-import { PLAN_REQUEST_DAYS_MAX, type PlanRequest, type PlanRequests } from '@sodiq/shared';
+import {
+  PLAN_REQUEST_DAYS_MAX,
+  planEventDecisionSchema,
+  type PlanRequest,
+  type PlanRequests,
+} from '@sodiq/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useSearch } from '@tanstack/react-router';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useConfirm } from '@/components/confirm-dialog';
 import { FailureAlert } from '@/components/failure-alert';
+import { requiredOf } from '@/components/form/use-record-form';
 import { SelectField } from '@/components/field';
 import { ListPage } from '@/components/list/list-page';
 import type { Column, ListSearch } from '@/components/list/list-state';
@@ -185,6 +191,9 @@ function Events({ events }: { events: PlanRequests['events'] }) {
         <SelectField
           label={t('plans.requests.daysLabel')}
           name="days"
+          required={requiredOf(planEventDecisionSchema, { days }, 'days', {
+            read: (values) => ({ days: Number(values.days) }),
+          })}
           value={days}
           onChange={(event) => {
             setDays(event.target.value);

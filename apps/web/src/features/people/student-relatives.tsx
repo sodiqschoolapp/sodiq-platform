@@ -48,7 +48,18 @@ import {
   type StaffMatch,
 } from './relative-form';
 import { SECTION_TITLE } from '@/components/ui/control';
+import { requiredOf } from '@/components/form/use-record-form';
+import { filledOnPage } from '@/components/form/page-checks';
+
 import type { PanelEditing } from '@/components/list/use-panel-editing';
+
+/**
+ * The unlink of the main contact names the next one: the route takes none
+ * (`relativeUnlinkSchema`), but this form, drawn only when one must be
+ * named, refuses it empty (`chooseMainFirst`), so it is marked (task 11.18,
+ * decision 2).
+ */
+const NEW_MAIN_PAGE = filledOnPage(['newMain']);
 
 type AddField =
   | 'owner'
@@ -473,6 +484,7 @@ function UnlinkChoiceForm({
         ]}
         name="newMain"
         value={choice}
+        required={requiredOf(NEW_MAIN_PAGE, { newMain: choice }, 'newMain')}
         error={mainMissing && choice === '' ? t('people.relatives.chooseMainFirst') : undefined}
         onChange={(event) => {
           setNextMain(event.target.value);

@@ -530,6 +530,7 @@ export function NoticesField({
       label={label}
       note={note}
       {...bound}
+      required={bound.required}
       value={shown ? CHECKED : ''}
       disabled={!hasPhone}
     />

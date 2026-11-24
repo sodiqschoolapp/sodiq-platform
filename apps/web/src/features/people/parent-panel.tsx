@@ -3,6 +3,7 @@ import {
   phoneText,
   DEFAULT_PHONE_PREFIX,
   relativeDetailSchema,
+  relativeMergeSchema,
   relativeIdentitySchema,
   relativePreviousPhoneSchema,
   type RelativeDetail,
@@ -30,6 +31,7 @@ import { ReportLink } from './report-link';
 import { useView } from '@/features/access/use-view';
 import { invalidateRelatives, phoneMatch, relativeDetailQuery } from './people-api';
 import { asFormSchema } from './form-schema';
+import { requiredOf } from '@/components/form/use-record-form';
 import { RelativeForm, type TakenPhone } from './relative-form';
 import { momentDateText } from '@/lib/dates';
 import { SECTION_TITLE, SUBSECTION_TITLE } from '@/components/ui/control';
@@ -416,6 +418,7 @@ function TakenChoices({
             {...bindOf('mergeName', nameOf, (value) => {
               setNameOf(value === 'other' ? 'other' : 'this');
             })}
+            required={requiredOf(relativeMergeSchema, { nameOf, phoneOf }, 'nameOf')}
           />
           <SelectField
             label={t('people.relatives.mergePhone')}
@@ -428,6 +431,7 @@ function TakenChoices({
             {...bindOf('mergePhone', phoneOf, (value) => {
               setPhoneOf(value === 'other' ? 'other' : 'this');
             })}
+            required={requiredOf(relativeMergeSchema, { nameOf, phoneOf }, 'phoneOf')}
           />
           <div className="flex flex-wrap items-center gap-3">
             {/* Danger: a merge is not undone; the record form's Save is the one primary. */}

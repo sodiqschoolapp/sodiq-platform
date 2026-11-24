@@ -63,7 +63,7 @@ export function RequiredMark() {
 const fillable = (
   required: boolean | undefined,
   disabled: boolean | undefined,
-  readOnly?: boolean | undefined,
+  readOnly?: boolean,
 ): boolean => required === true && disabled !== true && readOnly !== true;
 
 /** A label, or legend, with the mark after it when the field is required. */
@@ -334,6 +334,46 @@ function RequiredWord({ id }: { id: string }) {
     <span id={id} className="sr-only">
       {t('form.requiredWord')}
     </span>
+  );
+}
+
+/**
+ * A hand-drawn group of radios or ticks that make one field of a form (a
+ * choice a save waits for): a `fieldset` whose legend carries the red
+ * asterisk when the field must be filled, and whose description says
+ * "Required field" to a screen reader (task 11.18). `required` comes from
+ * the schema (`requiredOf`), as for every field.
+ */
+export function RequiredGroup({
+  label,
+  required,
+  legendClassName,
+  className,
+  children,
+  ...fieldset
+}: Omit<ComponentProps<'fieldset'>, 'children'> & {
+  label: ReactNode;
+  required: boolean;
+  /** `sr-only` for a group named only for a screen reader. */
+  legendClassName?: string;
+  children: ReactNode;
+}) {
+  const id = useId();
+  const group = groupRequired(id, fieldset['aria-describedby'], required);
+  return (
+    <fieldset {...fieldset} className={className} aria-describedby={group.describedBy}>
+      <legend className={legendClassName}>
+        {label}
+        {required && (
+          <>
+            {' '}
+            <RequiredMark />
+          </>
+        )}
+      </legend>
+      {group.word}
+      {children}
+    </fieldset>
   );
 }
 

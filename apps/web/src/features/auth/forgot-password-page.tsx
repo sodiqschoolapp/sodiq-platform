@@ -7,6 +7,8 @@ import { api } from '@/api/client';
 import { answerOf } from '@/api/failure';
 import { FailureAlert } from '@/components/failure-alert';
 import { Field } from '@/components/field';
+import { requiredOf } from '@/components/form/use-record-form';
+import { FORGOT_PAGE } from './page-checks';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { AuthPage } from './auth-page';
@@ -60,6 +62,7 @@ export function ForgotPasswordPage() {
             maxLength={64}
             value={login}
             error={loginError}
+            required={requiredOf(FORGOT_PAGE, { login }, 'login')}
             onChange={(event) => {
               setLogin(event.target.value);
             }}

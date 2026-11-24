@@ -1,4 +1,6 @@
 import {
+  lessonTopicSchema,
+  planWorkRenameSchema,
   PLAN_TOPIC_MAX_LENGTH,
   WORK_TITLE_MAX,
   WORK_TOTAL_MAX,
@@ -15,6 +17,7 @@ import { cn } from 'cn';
 import { FailureAlert } from '@/components/failure-alert';
 import { Field } from '@/components/field';
 import { wholeNumber } from '@/components/form/form-messages';
+import { requiredOf } from '@/components/form/use-record-form';
 import { DeleteIcon, EditIcon } from '@/components/icons';
 import { Button } from '@/components/ui/button';
 import { FIELD, SECTION_TITLE } from '@/components/ui/control';
@@ -343,6 +346,10 @@ function TopicForm({
       <Field
         label={t('journal.card.topic')}
         value={typed}
+        // Optional: an empty topic clears it (task 11.18, from `lessonTopicSchema`).
+        required={requiredOf(lessonTopicSchema, { topic: typed }, 'topic', {
+          read: (values) => ({ topic: values.topic, baseTopic: stored }),
+        })}
         autoComplete="off"
         error={
           tooLong ? t('journal.editor.topicTooLong', { max: PLAN_TOPIC_MAX_LENGTH }) : undefined
@@ -534,6 +541,10 @@ export function WorkTitleForm({
       <Field
         label={label}
         value={typed}
+        // The title of a work, required (task 11.18, from `workTitleSchema`).
+        required={requiredOf(planWorkRenameSchema, { title: typed }, 'title', {
+          read: (values) => ({ title: values.title, baseTitle: initial }),
+        })}
         autoComplete="off"
         // A form opened to add or rename: the person types at once.
         autoFocus

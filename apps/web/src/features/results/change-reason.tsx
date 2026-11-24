@@ -9,10 +9,36 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Textarea } from '@/components/ui/textarea';
+import { TextAreaField } from '@/components/field';
+import { requiredOf } from '@/components/form/use-record-form';
 import { nameOf } from '@/features/setup/setup-api';
 
 type Answer = (reason: string | null) => void;
+
+/**
+ * The dialog's one field as a form reads it: `changeReasonSchema` at `reason`,
+ * so its red asterisk comes from the schema (task 11.18). The routes take the
+ * reason as optional; this dialog asks for it, and the server needs it once
+ * stored grades change.
+ */
+const REASON_FORM = {
+  safeParse: (input: unknown) => {
+    const reason =
+      typeof input === 'object' && input !== null && 'reason' in input ? input.reason : undefined;
+    const checked = changeReasonSchema.safeParse(reason);
+    return checked.success
+      ? { success: true as const, data: checked.data }
+      : {
+          success: false as const,
+          error: {
+            issues: checked.error.issues.map((issue) => ({
+              ...issue,
+              path: ['reason', ...issue.path],
+            })),
+          },
+        };
+  },
+};
 
 /**
  * The preview and the reason of a change of a quarter's weights or of its late
@@ -110,15 +136,14 @@ function ReasonDialog({
               ))}
             </ul>
           )}
-          <label className="grid gap-1 text-sm">
-            <span>{t('results.change.reason')}</span>
-            <Textarea
-              value={reason}
-              maxLength={CHANGE_REASON_MAX_LENGTH}
-              aria-invalid={tried && !checked.success}
-              onChange={(event) => setReason(event.target.value)}
-            />
-          </label>
+          <TextAreaField
+            label={t('results.change.reason')}
+            value={reason}
+            required={requiredOf(REASON_FORM, { reason }, 'reason')}
+            maxLength={CHANGE_REASON_MAX_LENGTH}
+            aria-invalid={tried && !checked.success}
+            onChange={(event) => setReason(event.target.value)}
+          />
           {tried && !checked.success && (
             <span role="alert" className="text-sm text-destructive">
               {t('results.change.reasonMissing')}

@@ -1,6 +1,7 @@
 import {
   EARLY_WARNING_NOTE_MAX_LENGTH,
   EARLY_WARNING_REASONS,
+  earlyWarningHandleSchema,
   type EarlyWarningEntry,
   type EarlyWarningList,
   type EarlyWarningReasonKind,
@@ -11,6 +12,7 @@ import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FailureAlert } from '@/components/failure-alert';
 import { SelectField, TextAreaField } from '@/components/field';
+import { requiredOf } from '@/components/form/use-record-form';
 import { ListPage } from '@/components/list/list-page';
 import {
   listSearch,
@@ -281,6 +283,17 @@ function EntryPanel({
   const [reason, setReason] = useState<EarlyWarningReasonKind>(first);
   const [note, setNote] = useState('');
   const chosen = entry.reasons.some((one) => one.kind === reason) ? reason : first;
+  // The red asterisk (task 11.18), from the schema of "Mark handled".
+  const handleRequired = (field: 'reason' | 'note') =>
+    requiredOf(earlyWarningHandleSchema, { reason: chosen, note }, field, {
+      read: (values) => ({
+        quarterId,
+        studentId: entry.student.id,
+        subjectId: entry.subject.id,
+        reason: values.reason,
+        note: values.note,
+      }),
+    });
   const handle = useMutation({
     mutationFn: () =>
       markHandled({
@@ -393,6 +406,7 @@ function EntryPanel({
             <SelectField
               label={t('results.earlyWarning.which')}
               value={chosen}
+              required={handleRequired('reason')}
               options={entry.reasons.map((one) => ({
                 value: one.kind,
                 label: t(`results.earlyWarning.reason.${one.kind}`),
@@ -406,6 +420,7 @@ function EntryPanel({
           <TextAreaField
             label={t('results.earlyWarning.note')}
             value={note}
+            required={handleRequired('note')}
             maxLength={EARLY_WARNING_NOTE_MAX_LENGTH}
             onChange={(event) => {
               setNote(event.target.value);

@@ -1,4 +1,9 @@
-import { demoClockSchema, schoolDateOf, type DemoClockState } from '@sodiq/shared';
+import {
+  demoClockJumpSchema,
+  demoClockSchema,
+  schoolDateOf,
+  type DemoClockState,
+} from '@sodiq/shared';
 import { queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -7,6 +12,7 @@ import { answerOf } from '@/api/failure';
 import { useConfirm } from '@/components/confirm-dialog';
 import { FailureAlert } from '@/components/failure-alert';
 import { DateField, Field } from '@/components/field';
+import { requiredOf } from '@/components/form/use-record-form';
 import { PageHeader } from '@/components/page-header';
 import { EmptyState, ErrorState, LoadingOutline } from '@/components/states';
 import { Button } from '@/components/ui/button';
@@ -133,6 +139,9 @@ export function DemoClockPage() {
   }
   const shown: DemoClockState = state.data;
   const chosen = date !== '' && time !== '' ? momentAt(date, time, timeZone) : null;
+  // The date and the time make the one moment the jump sends (`to`): both
+  // carry its red asterisk, from the schema (task 11.18).
+  const momentRequired = requiredOf(demoClockJumpSchema, { to: chosen ?? '' }, 'to');
 
   return (
     <>
@@ -177,6 +186,7 @@ export function DemoClockPage() {
           <div className="mt-6 grid gap-4 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
             <DateField
               label={t('setup.demoClock.date')}
+              required={momentRequired}
               value={date}
               onChange={(event) => {
                 setDate(event.target.value);
@@ -185,6 +195,7 @@ export function DemoClockPage() {
             <Field
               type="time"
               label={t('setup.demoClock.time')}
+              required={momentRequired}
               value={time}
               onChange={(event) => {
                 setTime(event.target.value);
