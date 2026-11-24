@@ -65,6 +65,14 @@ The owner's answers to the decided-ahead questions for Phase 10, given in chat o
 19. Production deploys only after 18:00 or at the weekend, Tashkent time.
 20. The test environment stays after go-live; every change is tried there first.
 
+## 24 November 2026: the red asterisk comes from the schema (task 11.18)
+
+| Decision | Reason |
+| --- | --- |
+| A field is marked when its form's schema refuses it empty by the field's own rule (`requiredOf`: the field emptied, any issue but `custom` at its path), or when the schema's `requiredWhen` map in `packages/shared` says so for what is typed now. Never a `required` typed by hand, never the native attribute | The mark and "Fill in this field." follow one rule and cannot disagree; zod 4 skips an object-level refine while another field is wrong, and a server check (`student_needs_class`) is not in the schema, so those are declared beside the schema and tied to it by a test. |
+| Every control of the web app is either marked from a schema or named in `NOT_FORM_FIELDS` of `tooling/required-marks.test.ts` with its reason (list filters, view pickers, switchers, search, upload actions, confirmation ticks) | `12`, No lost work, speaks of fields that must be filled on a form; a filter or a confirmation is not one. |
+| `test-setup.ts` fails a web test that draws a form where emptying a field adds no issue at that field but one at a path the form does not draw | Such a field shows neither its message nor its mark (found in the plan copy and request forms). |
+
 ## 24 November 2026: an optional student contract with a number that may repeat (outside the loop)
 
 The owner's request of 24 November 2026, in chat, built on its own branch beside task 11.16 (`04`, Contract; `docs/spec-changes.md`). Answer 22 ("The contract number is unique across the whole school, archived students included") no longer holds.
