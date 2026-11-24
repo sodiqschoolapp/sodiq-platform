@@ -1,6 +1,6 @@
 # The assistant: Frankfurt first with a worldwide fallback, a page of its own, and answers that show while they are written
 
-Proposal of 24 November 2026, from the owner's first hand test of the assistant on the test environment (23 and 24 November 2026, in chat). Apply each section with `/spec-change`, one commit per section, in this order. Where a sentence is quoted as "old", replace it word for word. The build-plan edits (not spec) are in the same pull request: task 11.15 is extended and task 11.16 is added.
+Proposal of 24 November 2026, approved and applied the same day with one addition (the Limits bullet of `02` names the Assistant page beside the panel), from the owner's first hand test of the assistant on the test environment (23 and 24 November 2026, in chat). Apply each section with `/spec-change`, one commit per section, in this order. Where a sentence is quoted as "old", replace it word for word. The build-plan edits (not spec) are in the same pull request: task 11.15 is extended and task 11.16 is added.
 
 ## Why
 
