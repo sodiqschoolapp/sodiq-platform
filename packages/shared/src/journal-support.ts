@@ -170,7 +170,7 @@ export const journalSupportSchema = z.object({
   lessons: z.array(
     z.object({
       lesson: journalLessonSchema,
-      /** The cell as the grid shows it, with its percents and the lesson score from `packages/calc`. */
+      /** The cell as the grid shows it, with its percents from `packages/calc`. */
       cell: journalCellSchema,
       /** The values stored in the cells, also those an exemption hides. */
       stored: z.object({

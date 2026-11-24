@@ -114,7 +114,6 @@ export interface JournalExportTexts {
     readonly homeworkShort: string;
     readonly percent: string;
     readonly total: string;
-    readonly lessonScore: string;
     readonly note: string;
     readonly date: string;
   };
@@ -133,7 +132,6 @@ export interface JournalExportTexts {
     readonly markNames: Readonly<Record<'0' | '1' | '2' | '3' | '4' | '5', string>>;
     readonly bands: string;
     readonly weights: string;
-    readonly daily: string;
     readonly quarterly: string;
     /** A journal of grades 0 and 1 of a rating subject: the rating exam left out (10 November 2026). */
     readonly quarterlyNoRating: string;
@@ -168,7 +166,6 @@ const en: JournalExportTexts = {
     homeworkShort: 'HW',
     percent: '%',
     total: 'of {{total}}',
-    lessonScore: 'Avg',
     note: 'Note',
     date: 'Date',
   },
@@ -193,7 +190,6 @@ const en: JournalExportTexts = {
     },
     bands: 'Grades: 0–49 is 2, 50–66 is 3, 67–83 is 4, 84–100 is 5',
     weights: 'Weights',
-    daily: 'Lesson: attendance {{attendance}} · classwork {{classwork}} · homework {{homework}}',
     quarterly:
       'Quarter: attendance {{attendance}} · classwork {{classwork}} · homework {{homework}} · rating exam {{ratingExam}}',
     quarterlyNoRating:
@@ -229,7 +225,6 @@ const ru: JournalExportTexts = {
     homeworkShort: 'Д/з',
     percent: '%',
     total: 'из {{total}}',
-    lessonScore: 'Ср.',
     note: 'Примечание',
     date: 'Дата',
   },
@@ -254,8 +249,6 @@ const ru: JournalExportTexts = {
     },
     bands: 'Оценки: 0–49 — 2, 50–66 — 3, 67–83 — 4, 84–100 — 5',
     weights: 'Веса',
-    daily:
-      'Урок: посещаемость {{attendance}} · классная работа {{classwork}} · домашняя работа {{homework}}',
     quarterly:
       'Четверть: посещаемость {{attendance}} · классная работа {{classwork}} · домашняя работа {{homework}} · рейтинговый экзамен {{ratingExam}}',
     quarterlyNoRating:
@@ -291,7 +284,6 @@ const uz: JournalExportTexts = {
     homeworkShort: 'UV',
     percent: '%',
     total: 'Soni {{total}}',
-    lessonScore: 'Oʻrt',
     note: 'Izoh',
     date: 'Sana',
   },
@@ -316,7 +308,6 @@ const uz: JournalExportTexts = {
     },
     bands: 'Baholar: 0–49 — 2, 50–66 — 3, 67–83 — 4, 84–100 — 5',
     weights: 'Ulushlar',
-    daily: 'Dars: davomat {{attendance}} · sinf ishi {{classwork}} · uy ishi {{homework}}',
     quarterly:
       'Chorak: davomat {{attendance}} · sinf ishi {{classwork}} · uy ishi {{homework}} · reyting imtihoni {{ratingExam}}',
     quarterlyNoRating:

@@ -241,8 +241,6 @@ export const journalCellSchema = z.object({
       notGraded: z.boolean(),
     }),
   ),
-  /** The lesson score (`07`, Calculation rules, rule 3), `null` when blank or for an attendance-only subject. */
-  score: z.int().min(0).max(100).nullable(),
 });
 
 export type JournalCell = z.infer<typeof journalCellSchema>;
@@ -408,7 +406,6 @@ export const journalGridSchema = z.object({
   legend: z.object({
     lateValue: z.int(),
     skippedValue: z.int(),
-    daily: journalWeightsSchema.nullable(),
     quarterly: journalWeightsSchema.extend({ ratingExam: z.int().nullable() }).nullable(),
     /** `edge/calculation`: "The journal legend shows 'changed on [date]'" (decision 22). */
     weightsChangedOn: schoolDateSchema.nullable(),

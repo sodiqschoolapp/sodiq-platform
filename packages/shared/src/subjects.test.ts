@@ -1,7 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import {
-  dailyWeightsSchema,
-  newSubjectRecordSchema,
   quarterWeightsSchema,
   SUBJECT_COLOURS,
   SUBJECT_GRADES,
@@ -23,7 +21,6 @@ const SUBJECT = {
   groupSubject: false,
   languageRule: true,
   demanding: true,
-  daily: { attendance: 10, classwork: 50, homework: 40 },
 };
 
 const paths = (result: { success: boolean; error?: { issues: { path: PropertyKey[] }[] } }) =>
@@ -31,16 +28,6 @@ const paths = (result: { success: boolean; error?: { issues: { path: PropertyKey
 
 describe('the weights of a subject', () => {
   // `05`: "Each distribution must total 100. The form will not save otherwise."
-  it('take a daily distribution that totals 100 and refuse 99 and 101', () => {
-    expect(
-      dailyWeightsSchema.safeParse({ attendance: 10, classwork: 50, homework: 40 }).success,
-    ).toBe(true);
-    for (const homework of [39, 41]) {
-      const result = dailyWeightsSchema.safeParse({ attendance: 10, classwork: 50, homework });
-      expect(paths(result)).toEqual(['total']);
-    }
-  });
-
   it('take a quarterly distribution of three or four parts that totals 100', () => {
     const three = { attendance: 10, classwork: 50, homework: 40, ratingExam: null };
     const four = { attendance: 10, classwork: 30, homework: 20, ratingExam: 40 };
@@ -56,13 +43,13 @@ describe('the weights of a subject', () => {
   it('refuse a part of 0, a negative part and a decimal', () => {
     expect(WEIGHT_MIN).toBe(1);
     expect(
-      paths(dailyWeightsSchema.safeParse({ attendance: 0, classwork: 60, homework: 40 })),
+      paths(quarterWeightsSchema.safeParse({ attendance: 0, classwork: 60, homework: 40, ratingExam: null })),
     ).toContain('attendance');
     expect(
-      paths(dailyWeightsSchema.safeParse({ attendance: -10, classwork: 70, homework: 40 })),
+      paths(quarterWeightsSchema.safeParse({ attendance: -10, classwork: 70, homework: 40, ratingExam: null })),
     ).toContain('attendance');
     expect(
-      paths(dailyWeightsSchema.safeParse({ attendance: 10.5, classwork: 49.5, homework: 40 })),
+      paths(quarterWeightsSchema.safeParse({ attendance: 10.5, classwork: 49.5, homework: 40, ratingExam: null })),
     ).toContain('attendance');
     expect(
       paths(
@@ -78,44 +65,31 @@ describe('the weights of a subject', () => {
 });
 
 describe('a subject record', () => {
-  it('is taken with its school-wide fields and the daily distribution', () => {
-    expect(newSubjectRecordSchema.parse(SUBJECT)).toEqual(SUBJECT);
+  it('is taken with its school-wide fields', () => {
+    expect(subjectRecordSchema.parse(SUBJECT)).toEqual(SUBJECT);
   });
 
-  // The build plan's "done when": a graded subject cannot be saved without
-  // weights that total 100 (answer 6).
-  it('refuses a graded subject without a daily distribution, or with one of 99', () => {
-    expect(paths(newSubjectRecordSchema.safeParse({ ...SUBJECT, daily: null }))).toEqual(['daily']);
-    expect(
-      paths(
-        newSubjectRecordSchema.safeParse({
-          ...SUBJECT,
-          daily: { attendance: 10, classwork: 50, homework: 39 },
-        }),
-      ),
-    ).toEqual(['daily.total']);
+  // Task 11.17: there is no daily distribution; a body that still sends one saves without it.
+  it('takes a graded subject with no daily distribution and drops a daily one sent', () => {
+    const sent = { ...SUBJECT, daily: { attendance: 10, classwork: 50, homework: 40 } };
+    expect(subjectRecordSchema.parse(sent)).toEqual(SUBJECT);
   });
 
-  it('lets an edit leave the daily distribution out (it has its own route)', () => {
-    expect(subjectRecordSchema.safeParse({ ...SUBJECT, daily: null }).success).toBe(true);
-  });
-
-  // `edge/calculation`: attendance-only subjects have no weights and no result.
-  it('refuses weights and a rating exam on an attendance-only subject', () => {
+  // `edge/calculation`: attendance-only subjects have no rating exam and no result.
+  it('refuses a rating exam on an attendance-only subject', () => {
     const attendanceOnly = { ...SUBJECT, journalType: 'attendance_only', ratingExam: false };
-    expect(newSubjectRecordSchema.safeParse({ ...attendanceOnly, daily: null }).success).toBe(true);
-    expect(paths(newSubjectRecordSchema.safeParse(attendanceOnly))).toEqual(['daily']);
-    expect(
-      paths(newSubjectRecordSchema.safeParse({ ...attendanceOnly, ratingExam: true, daily: null })),
-    ).toEqual(['ratingExam']);
+    expect(subjectRecordSchema.safeParse(attendanceOnly).success).toBe(true);
+    expect(paths(subjectRecordSchema.safeParse({ ...attendanceOnly, ratingExam: true }))).toEqual([
+      'ratingExam',
+    ]);
   });
 
   it('takes the 12 colours and nothing else', () => {
     expect(SUBJECT_COLOURS).toHaveLength(12);
     for (const colour of SUBJECT_COLOURS) {
-      expect(newSubjectRecordSchema.safeParse({ ...SUBJECT, colour }).success).toBe(true);
+      expect(subjectRecordSchema.safeParse({ ...SUBJECT, colour }).success).toBe(true);
     }
-    expect(paths(newSubjectRecordSchema.safeParse({ ...SUBJECT, colour: 'black' }))).toEqual([
+    expect(paths(subjectRecordSchema.safeParse({ ...SUBJECT, colour: 'black' }))).toEqual([
       'colour',
     ]);
   });
@@ -124,16 +98,16 @@ describe('a subject record', () => {
     const long = 'a'.repeat(SUBJECT_NAME_MAX_LENGTH + 1);
     expect(
       paths(
-        newSubjectRecordSchema.safeParse({ ...SUBJECT, names: { ...SUBJECT.names, ru: long } }),
+        subjectRecordSchema.safeParse({ ...SUBJECT, names: { ...SUBJECT.names, ru: long } }),
       ),
     ).toEqual(['names.ru']);
     expect(
       paths(
-        newSubjectRecordSchema.safeParse({ ...SUBJECT, names: { ...SUBJECT.names, en: '  ' } }),
+        subjectRecordSchema.safeParse({ ...SUBJECT, names: { ...SUBJECT.names, en: '  ' } }),
       ),
     ).toEqual(['names.en']);
     expect(
-      newSubjectRecordSchema.parse({ ...SUBJECT, names: { ...SUBJECT.names, en: ' Maths ' } }).names
+      subjectRecordSchema.parse({ ...SUBJECT, names: { ...SUBJECT.names, en: ' Maths ' } }).names
         .en,
     ).toBe('Maths');
   });

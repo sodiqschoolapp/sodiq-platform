@@ -212,10 +212,6 @@ export const ERROR_CODES = [
   'department_archived',
   /** A department cannot be archived while an active subject is in it (task 2.1, decision 9). */
   'department_has_subjects',
-  /** A graded subject is not saved without its daily distribution in the branch (answer 6; task 2.1). */
-  'daily_weights_required',
-  /** The daily distribution of the branch is already set; it is changed on its own route (task 2.1, decision 15). */
-  'daily_weights_set',
   /** An attendance-only subject has no weights (`edge/calculation`; task 2.1). */
   'attendance_only_no_weights',
   /** A subject is not restored while its department is archived (task 2.1, decision 9). */
