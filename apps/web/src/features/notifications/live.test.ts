@@ -62,6 +62,8 @@ function handlersSpy(): LiveHandlers & { calls: Record<string, unknown[][]> } {
     onNew: [],
     onRead: [],
     onReadAll: [],
+    onAssistant: [],
+    onConnected: [],
     onEnded: [],
   };
   const record =
@@ -75,6 +77,8 @@ function handlersSpy(): LiveHandlers & { calls: Record<string, unknown[][]> } {
     onNew: record('onNew'),
     onRead: record('onRead'),
     onReadAll: record('onReadAll'),
+    onAssistant: record('onAssistant'),
+    onConnected: record('onConnected'),
     onEnded: record('onEnded'),
   };
 }

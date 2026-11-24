@@ -200,6 +200,12 @@ const environmentSchema = z.object({
   // Tutor (`ScriptedModel`), never a call outside the server. Refused outside the environments
   // of the demo clock and on the production address, as DEMO_CLOCK is.
   ASSISTANT_SCRIPTED_MODEL: z.preprocess(emptyAsUnset, z.enum(['0', '1']).optional()),
+  // Task 11.16: how long the scripted model waits before its answer, so a browser test sees the
+  // progress while it works; through the injected wait. Refused as the scripted model is.
+  ASSISTANT_SCRIPTED_DELAY_MS: z.preprocess(
+    emptyAsUnset,
+    z.coerce.number().int().min(0).max(60_000).default(0),
+  ),
   // Micro-dollars per million tokens (plan decision 11 of 11.12). Task 11.15: the defaults are
   // the prices of gemini-3.5-flash on Google's page of 23 November 2026, the region's (non-global)
   // price for Frankfurt and the global price for the worldwide endpoint.
@@ -313,6 +319,8 @@ const PROBLEM: Record<VariableName, string> = {
     'ASSISTANT_MODEL must be the name of a Gemini model, for example gemini-3.5-flash',
   ASSISTANT_SCRIPTED_MODEL:
     'ASSISTANT_SCRIPTED_MODEL must be 0 or 1, and 1 only for the browser tests (SENTRY_ENVIRONMENT test or development, never the production address)',
+  ASSISTANT_SCRIPTED_DELAY_MS:
+    'ASSISTANT_SCRIPTED_DELAY_MS must be a whole number of milliseconds up to 60000, and above 0 only for the browser tests (SENTRY_ENVIRONMENT test or development, never the production address)',
   ASSISTANT_PRICE_IN_MICROS:
     'ASSISTANT_PRICE_IN_MICROS must be a whole number of micro-dollars per million tokens in',
   ASSISTANT_PRICE_OUT_MICROS:
@@ -377,6 +385,8 @@ export interface AssistantConfig {
   model: string;
   /** The browser tests only: the scripted model in place of Gemini. */
   scripted: boolean;
+  /** Task 11.16: the browser tests only: the scripted model's wait before its answer. */
+  scriptedDelayMs: number;
   /** Task 11.15: the prices of the region and of the worldwide endpoint. */
   prices: { region: ModelPrice; global: ModelPrice };
 }
@@ -508,6 +518,13 @@ export function loadConfig(environment: Record<string, string | undefined>): App
   ) {
     wrong.push('ASSISTANT_SCRIPTED_MODEL');
   }
+  if (
+    data.ASSISTANT_SCRIPTED_DELAY_MS > 0 &&
+    (!DEMO_CLOCK_ENVIRONMENTS.includes(data.SENTRY_ENVIRONMENT) ||
+      new URL(data.WEB_ORIGIN).origin === PRODUCTION_WEB_ORIGIN)
+  ) {
+    wrong.push('ASSISTANT_SCRIPTED_DELAY_MS');
+  }
   // Task 11.12: the project and the credentials of the assistant's model, both or none.
   if (
     (data.ASSISTANT_VERTEX_PROJECT === undefined) !==
@@ -600,6 +617,7 @@ export function loadConfig(environment: Record<string, string | undefined>): App
       vertexLocation: data.ASSISTANT_VERTEX_LOCATION,
       model: data.ASSISTANT_MODEL,
       scripted: data.ASSISTANT_SCRIPTED_MODEL === '1',
+      scriptedDelayMs: data.ASSISTANT_SCRIPTED_DELAY_MS,
       prices: {
         region: {
           priceInMicros: data.ASSISTANT_PRICE_IN_MICROS,

@@ -5,6 +5,7 @@ import {
   type ModelPlace,
   type ModelReply,
   type ModelRequest,
+  type TextSink,
 } from '../modules/assistant/model.js';
 
 /**
@@ -14,7 +15,14 @@ import {
 export type FakeTurn = (
   request: ModelRequest,
   place: ModelPlace,
-) => ModelReply | Promise<ModelReply>;
+  onText?: TextSink,
+) => FakeReply | Promise<FakeReply>;
+
+/**
+ * A reply of the fake model; task 11.16: `pieces`, the text as it is streamed (by default the
+ * whole text in one piece, when it has any).
+ */
+export type FakeReply = ModelReply & { pieces?: string[] };
 
 /** The tokens of a fake turn, unless a turn says others. */
 export const FAKE_TOKENS = { tokensIn: 1_000, tokensOut: 200 } as const;
@@ -45,11 +53,17 @@ export class FakeModel implements AssistantModel {
     return place === 'global' ? 'global' : 'europe-west3';
   }
 
-  async generate(request: ModelRequest, place: ModelPlace): Promise<ModelReply> {
+  async generate(request: ModelRequest, place: ModelPlace, onText?: TextSink): Promise<ModelReply> {
     this.requests.push(structuredClone(request));
     this.places.push(place);
     const turn = this.turns.shift();
-    return turn === undefined ? answer('Done.')(request, place) : turn(request, place);
+    const { pieces, ...reply } = await (turn === undefined
+      ? answer('Done.')(request, place)
+      : turn(request, place, onText));
+    for (const piece of pieces ?? (reply.text === '' ? [] : [reply.text])) {
+      onText?.(piece);
+    }
+    return reply;
   }
 }
 
@@ -117,4 +131,49 @@ export function lastResults(request: ModelRequest): { name: string; result: unkn
   return (last?.parts ?? []).flatMap((part) =>
     part.kind === 'result' ? [{ name: part.name, result: part.result }] : [],
   );
+}
+
+/** Task 11.16: a call that writes these pieces of text, then fails as `failure` does. */
+export function streamsThenFails(pieces: string[], failure: FakeTurn): FakeTurn {
+  return (request, place, onText) => {
+    for (const piece of pieces) onText?.(piece);
+    return failure(request, place);
+  };
+}
+
+/** Task 11.16: an answer streamed in these pieces. */
+export function streamed(...pieces: string[]): FakeTurn {
+  return () => ({
+    text: pieces.join(''),
+    calls: [],
+    pieces,
+    ...FAKE_TOKENS,
+    model: 'fake-model',
+  });
+}
+
+/**
+ * Task 11.16: a turn held until the test opens it (`open()`); `reached` settles once the model
+ * was called with it, so a test acts while the question is being answered.
+ */
+export function held(turn: FakeTurn): { turn: FakeTurn; open: () => void; reached: Promise<void> } {
+  let open: () => void = () => undefined;
+  let reach: () => void = () => undefined;
+  const gate = new Promise<void>((resolve) => {
+    open = resolve;
+  });
+  const reached = new Promise<void>((resolve) => {
+    reach = resolve;
+  });
+  return {
+    turn: async (request, place, onText) => {
+      reach();
+      await gate;
+      return turn(request, place, onText);
+    },
+    open: () => {
+      open();
+    },
+    reached,
+  };
 }

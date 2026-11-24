@@ -1,4 +1,5 @@
 import { sql } from 'kysely';
+import { assistantProgressSchema } from '@sodiq/shared';
 import { z } from 'zod';
 import type { Transaction } from '../../../database/transactions.js';
 
@@ -16,7 +17,12 @@ export const LIVE_CHANNEL = 'sodiq_notifications';
  */
 export const LIVE_CHUNK = 100;
 
-/** What a payload holds: ids and moments only, never the data of a notification. */
+/**
+ * What a payload holds: ids and moments only, never the data of a notification. The one exception
+ * is the assistant's progress (task 11.16, plan decision 5, Look first): a piece of the answer's
+ * text as it is written, for the asking account's own tabs (`02`, While it works); a read's data
+ * never goes.
+ */
 export const livePayloadSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('new'), ids: z.array(z.uuid()).min(1).max(LIVE_CHUNK) }),
   z.object({
@@ -28,6 +34,8 @@ export const livePayloadSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('read_all'), accountId: z.uuid(), readAt: z.iso.datetime() }),
   // Task 10.11: the tabs of the account read their state again (after a key marked some read).
   z.object({ kind: z.literal('state'), accountId: z.uuid() }),
+  // Task 11.16: the progress of a question, told to the asking account's tabs only.
+  assistantProgressSchema.extend({ kind: z.literal('assistant'), accountId: z.uuid() }),
 ]);
 
 export type LivePayload = z.infer<typeof livePayloadSchema>;

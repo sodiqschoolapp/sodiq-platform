@@ -20,6 +20,7 @@ import { openPlanWindows } from '../../testing/plan-windows-kit.js';
 import { publishedScene, type PublishedScene } from '../../testing/published-scene.js';
 import { OPEN_LESSON_JOURNAL } from './tools.js';
 import { GENERATED_TOOLS } from './tools.generated.js';
+import { settle } from '../../testing/assistant-kit.js';
 
 // Task 11.14 (pull request #377). `02`, Assistant, "What a Teacher can do through it": "Read their
 // own timetable, their classes and groups, their journals and the results calculated by the
@@ -126,7 +127,8 @@ describe('the assistant for teachers (task 11.14)', () => {
       .set('Cookie', cookie)
       .set(BRANCH_HEADER, scene.branch)
       .send({ role: 'teacher', text: 'Please.' });
-    expect(response.status, JSON.stringify(response.body).slice(0, 600)).toBe(200);
+    expect(response.status, JSON.stringify(response.body).slice(0, 600)).toBe(202);
+    await settle(t.app, response, cookie, scene.branch);
     return assistantConversationSchema.parse(
       (response.body as { conversation: unknown }).conversation,
     );
@@ -553,7 +555,8 @@ describe('the assistant for teachers (task 11.14)', () => {
       .set('Cookie', t.admin)
       .set(BRANCH_HEADER, scene.branch)
       .send({ role: 'super_admin', text: 'Add a room.' });
-    expect(theirs.status, JSON.stringify(theirs.body).slice(0, 400)).toBe(200);
+    expect(theirs.status, JSON.stringify(theirs.body).slice(0, 400)).toBe(202);
+    await settle(t.app, theirs, t.admin, scene.branch);
     const conversation = assistantConversationSchema.parse(
       (theirs.body as { conversation: unknown }).conversation,
     );

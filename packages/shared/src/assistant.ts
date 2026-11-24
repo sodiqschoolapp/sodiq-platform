@@ -85,6 +85,25 @@ export const ASSISTANT_REFUSALS = [
 
 export type AssistantRefusal = (typeof ASSISTANT_REFUSALS)[number];
 
+/**
+ * The notices a question can end in, stored in the conversation (task 11.16): the model busy or
+ * out of reach, as in 11.15, or the work failed on the server for another reason.
+ */
+export const ASSISTANT_NOTICES = [
+  'assistant_model_unavailable',
+  'assistant_model_busy',
+  'assistant_answer_failed',
+] as const;
+
+export type AssistantNotice = (typeof ASSISTANT_NOTICES)[number];
+
+/**
+ * How long a question is being answered after its stored moment (task 11.16, plan decision 4;
+ * review correction 1): the model calls stop at 240 s (`QUESTION_TIME_LIMIT_MS` of the API), and
+ * past this window the work writes and sends nothing more, and a new question may be asked.
+ */
+export const ASSISTANT_ANSWER_WINDOW_MS = 270_000;
+
 const moment = z.iso.datetime({ offset: true });
 
 export const assistantStatusQuerySchema = z.strictObject({ role: assistantRoleSchema });
@@ -146,7 +165,7 @@ export const assistantMessageSchema = z.discriminatedUnion('kind', [
     /** The HTTP status the platform answered, or 0 when the read was not sent. */
     status: z.int().nonnegative(),
   }),
-  z.object({ ...messageBase, kind: z.literal('notice'), code: z.enum(ASSISTANT_REFUSALS) }),
+  z.object({ ...messageBase, kind: z.literal('notice'), code: z.enum(ASSISTANT_NOTICES) }),
 ]);
 
 export type AssistantMessage = z.infer<typeof assistantMessageSchema>;
@@ -285,6 +304,11 @@ export const assistantConversationSchema = assistantConversationSummarySchema.ex
   messages: z.array(assistantMessageSchema),
   /** Task 11.13: the proposals of the conversation, oldest first. */
   proposals: z.array(assistantProposalSchema),
+  /**
+   * Task 11.16: the question being answered now, read from its stored moment, or `null`. Past
+   * `until` nothing more is written for it.
+   */
+  working: z.object({ questionId: z.uuid(), askedAt: moment, until: moment }).nullable(),
 });
 
 export type AssistantConversation = z.infer<typeof assistantConversationSchema>;
@@ -299,6 +323,43 @@ export const assistantAnswerSchema = z.object({
 });
 
 export type AssistantAnswer = z.infer<typeof assistantAnswerSchema>;
+
+/**
+ * Task 11.16 (`02`, While it works): what the live connection tells the asking account's tabs
+ * while a question is answered. Every message names the conversation and the question; the
+ * reader shows only those of the conversation it shows. A read names its group and status,
+ * never its data.
+ */
+export const ASSISTANT_MESSAGES = { progress: 'assistant.progress' } as const;
+
+/** The longest piece of the answer's text in one message (under PostgreSQL's 8 000 bytes). */
+export const ASSISTANT_TEXT_PIECE = 1_500;
+
+export const assistantProgressSchema = z.object({
+  conversationId: z.uuid(),
+  questionId: z.uuid(),
+  event: z.discriminatedUnion('kind', [
+    /** The question is stored: other tabs read the conversation again. */
+    z.object({ kind: z.literal('question') }),
+    z.object({
+      kind: z.literal('read'),
+      group: assistantReadGroupSchema.nullable(),
+      status: z.int().nonnegative(),
+    }),
+    /** A piece of the answer as it is written; `seq` counts from 1 after each reset. */
+    z.object({
+      kind: z.literal('text'),
+      seq: z.int().positive(),
+      delta: z.string().max(ASSISTANT_TEXT_PIECE),
+    }),
+    /** The text so far is dropped: a call tried again, or a turn that read instead of answering. */
+    z.object({ kind: z.literal('reset') }),
+    /** The answer, proposal or notice is stored: read the conversation again. */
+    z.object({ kind: z.literal('done') }),
+  ]),
+});
+
+export type AssistantProgress = z.infer<typeof assistantProgressSchema>;
 
 /** A conversation in the Super Admin's list of every conversation. */
 export const assistantAnyConversationSchema = assistantConversationSummarySchema.extend({

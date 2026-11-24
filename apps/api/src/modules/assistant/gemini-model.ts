@@ -16,6 +16,7 @@ import {
   type ModelPart,
   type ModelReply,
   type ModelRequest,
+  type TextSink,
 } from './model.js';
 
 /** The location of Google's worldwide endpoint (`02`, Where the model runs). */
@@ -63,13 +64,20 @@ export class GeminiModel implements AssistantModel {
     return place === 'global' ? GLOBAL_LOCATION : this.config.vertexLocation;
   }
 
-  async generate(request: ModelRequest, place: ModelPlace): Promise<ModelReply> {
+  async generate(request: ModelRequest, place: ModelPlace, onText?: TextSink): Promise<ModelReply> {
     if (this.clients === undefined) {
       throw new ModelUnavailable(undefined);
     }
-    let response: GenerateContentResponse;
+    // Task 11.16 (`02`, While it works: "the answer as it is written"): the streaming call; each
+    // text part that is not a thought goes to `onText` as it comes, and the reply is gathered
+    // as before. A stream that fails midway is a failure of the call, as a refused call is.
+    const calls: ModelReply['calls'] = [];
+    const texts: string[] = [];
+    let usage: GenerateContentResponse['usageMetadata'];
+    let modelVersion: string | undefined;
+    let sawParts = false;
     try {
-      response = await this.clients[place].models.generateContent({
+      const stream = await this.clients[place].models.generateContentStream({
         model: this.config.model,
         contents: request.turns.map(contentOf),
         config: {
@@ -89,32 +97,53 @@ export class GeminiModel implements AssistantModel {
               }),
         },
       });
-    } catch (error) {
-      throw new ModelUnavailable(undefined, { cause: error, reason: failureOf(error) });
-    }
-    const usage = response.usageMetadata;
-    const tokensIn = (usage?.promptTokenCount ?? 0) + (usage?.toolUsePromptTokenCount ?? 0);
-    const tokensOut = (usage?.candidatesTokenCount ?? 0) + (usage?.thoughtsTokenCount ?? 0);
-    const model = response.modelVersion ?? this.config.model;
-    const parts = response.candidates?.[0]?.content?.parts;
-    if (parts === undefined) {
-      throw new ModelUnavailable({ tokensIn, tokensOut, model });
-    }
-    const calls: ModelReply['calls'] = [];
-    const texts: string[] = [];
-    for (const part of parts) {
-      if (part.functionCall?.name !== undefined) {
-        calls.push({
-          name: part.functionCall.name,
-          args: part.functionCall.args ?? {},
-          ...(part.thoughtSignature === undefined ? {} : { signature: part.thoughtSignature }),
-        });
-      } else if (typeof part.text === 'string' && part.thought !== true) {
-        texts.push(part.text);
+      for await (const chunk of stream) {
+        usage = chunk.usageMetadata ?? usage;
+        modelVersion = chunk.modelVersion ?? modelVersion;
+        const parts = chunk.candidates?.[0]?.content?.parts;
+        if (parts === undefined) continue;
+        sawParts = true;
+        for (const part of parts) {
+          if (part.functionCall?.name !== undefined) {
+            calls.push({
+              name: part.functionCall.name,
+              args: part.functionCall.args ?? {},
+              ...(part.thoughtSignature === undefined ? {} : { signature: part.thoughtSignature }),
+            });
+          } else if (typeof part.text === 'string' && part.thought !== true) {
+            texts.push(part.text);
+            if (part.text !== '') onText?.(part.text);
+          }
+        }
       }
+    } catch (error) {
+      throw new ModelUnavailable(
+        usage === undefined ? undefined : billedOf(usage, modelVersion, this.config.model),
+        {
+          cause: error,
+          reason: failureOf(error),
+        },
+      );
     }
-    return { text: texts.join(''), calls, tokensIn, tokensOut, model };
+    const billed = billedOf(usage, modelVersion, this.config.model);
+    if (!sawParts) {
+      throw new ModelUnavailable(billed);
+    }
+    return { text: texts.join(''), calls, ...billed };
   }
+}
+
+/** The tokens a call billed, as the last chunk that said them gives them (plan decision 11 of 11.12). */
+function billedOf(
+  usage: GenerateContentResponse['usageMetadata'],
+  modelVersion: string | undefined,
+  configured: string,
+): { tokensIn: number; tokensOut: number; model: string } {
+  return {
+    tokensIn: (usage?.promptTokenCount ?? 0) + (usage?.toolUsePromptTokenCount ?? 0),
+    tokensOut: (usage?.candidatesTokenCount ?? 0) + (usage?.thoughtsTokenCount ?? 0),
+    model: modelVersion ?? configured,
+  };
 }
 
 /**

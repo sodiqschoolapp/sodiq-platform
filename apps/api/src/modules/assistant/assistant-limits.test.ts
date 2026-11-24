@@ -3,7 +3,13 @@ import { sql } from 'kysely';
 import request from 'supertest';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { answer, calls, FAKE_TOKENS, fails } from '../../testing/assistant-model.js';
-import { ask, assistantScene, read, type AssistantScene } from '../../testing/assistant-kit.js';
+import {
+  ask,
+  assistantScene,
+  read,
+  type AssistantScene,
+  noticeOf,
+} from '../../testing/assistant-kit.js';
 import { errorCode } from '../../testing/sign-in-kit.js';
 import { costMicros } from './assistant.engine.js';
 
@@ -91,7 +97,7 @@ describe('the assistant: the switch, the daily limit and the monthly cap', () =>
 
     expect((await put(settingsBody())).status).toBe(200);
     expect(await status()).toEqual({ available: true, refusal: null, questionsLeftToday: 30 });
-    expect((await ask(scene, scene.admin, scene.north, { text: 'Hello?' })).status).toBe(200);
+    expect((await ask(scene, scene.admin, scene.north, { text: 'Hello?' })).status).toBe(202);
   });
 
   it('audits each change of the settings in the same transaction, and nothing for a save without change', async () => {
@@ -139,8 +145,8 @@ describe('the assistant: the switch, the daily limit and the monthly cap', () =>
 
   it('counts the person’s questions of the Tashkent day in every branch together', async () => {
     await put(settingsBody({ dailyLimit: 2 }));
-    expect((await ask(scene, scene.admin, scene.north, { text: 'One.' })).status).toBe(200);
-    expect((await ask(scene, scene.admin, scene.south, { text: 'Two.' })).status).toBe(200);
+    expect((await ask(scene, scene.admin, scene.north, { text: 'One.' })).status).toBe(202);
+    expect((await ask(scene, scene.admin, scene.south, { text: 'Two.' })).status).toBe(202);
     expect(await status()).toEqual({
       available: false,
       refusal: 'assistant_daily_limit',
@@ -229,13 +235,15 @@ describe('the assistant: the switch, the daily limit and the monthly cap', () =>
   it('counts every model call of the month against the cap, a failed one too, in whole micro-dollars rounded up once', async () => {
     await put(settingsBody({ monthlyCapDollars: 1 }));
     scene.model.script(calls({ name: 'ClassesController_list' }), answer('Read.'));
-    expect((await ask(scene, scene.admin, scene.north, { text: 'Read once.' })).status).toBe(200);
+    expect((await ask(scene, scene.admin, scene.north, { text: 'Read once.' })).status).toBe(202);
     // A question that reads, then fails after it was billed: both calls count.
     scene.model.script(
       calls({ name: 'ClassesController_list' }),
       fails({ tokensIn: 500, tokensOut: 0 }),
     );
-    expect((await ask(scene, scene.admin, scene.north, { text: 'Fail.' })).status).toBe(503);
+    // Task 11.16: the failure ends in its notice; the request answered 202 (plan decision 2).
+    const failed = await ask(scene, scene.admin, scene.north, { text: 'Fail.' });
+    expect([failed.status, noticeOf(failed)]).toEqual([202, 'assistant_model_unavailable']);
     const rows = await scene.database.migrator
       .selectFrom('assistant_model_calls')
       .selectAll()
@@ -250,7 +258,7 @@ describe('the assistant: the switch, the daily limit and the monthly cap', () =>
       String(costMicros({ tokensIn: 500, tokensOut: 0 }, REGION_PRICES)),
     ]);
     // The spend is the school's: a question asked in South is counted for North.
-    expect((await ask(scene, scene.admin, scene.south, { text: 'From South.' })).status).toBe(200);
+    expect((await ask(scene, scene.admin, scene.south, { text: 'From South.' })).status).toBe(202);
     // Reaching the cap: the month's spend from earlier calls of the school.
     await sql`
       insert into assistant_model_calls (message_id, branch_id, model, tokens_in, tokens_out, cost_micros, processed_in, created_at)

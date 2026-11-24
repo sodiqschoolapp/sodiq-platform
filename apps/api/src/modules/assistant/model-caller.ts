@@ -1,6 +1,6 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import type { Clock } from '@sodiq/shared';
-import { REAL_CLOCK } from '../../clock/clock.module.js';
+import { CLOCK } from '../../clock/clock.module.js';
 import {
   ASSISTANT_MODEL,
   MODEL_TIMEOUT_MS,
@@ -10,6 +10,7 @@ import {
   type ModelPlace,
   type ModelReply,
   type ModelRequest,
+  type TextSink,
 } from './model.js';
 
 /**
@@ -84,14 +85,17 @@ export class ModelCaller {
 
   constructor(
     @Inject(ASSISTANT_MODEL) private readonly model: AssistantModel,
-    @Inject(REAL_CLOCK) private readonly clock: Clock,
+    // Task 11.16 (review of the plan, correction 1): the clock of the transactions, the one the
+    // question's stored moment and its answer window are read on.
+    @Inject(CLOCK) private readonly clock: Clock,
     @Inject(ASSISTANT_WAIT) private readonly wait: AssistantWait,
   ) {}
 
-  begin(fallbackOn: boolean): CallBudget {
+  /** The budget of a question, its time limit counted from the question's stored moment. */
+  begin(fallbackOn: boolean, askedAt: Date): CallBudget {
     return {
       attempts: 0,
-      deadline: this.clock.now().getTime() + QUESTION_TIME_LIMIT_MS,
+      deadline: askedAt.getTime() + QUESTION_TIME_LIMIT_MS,
       fallbackOn,
     };
   }
@@ -112,6 +116,7 @@ export class ModelCaller {
     budget: CallBudget,
     request: ModelRequest,
     onAttempt: (attempt: Attempt) => Promise<void>,
+    onText?: TextSink,
   ): Promise<ModelReply> {
     if (!this.fits(budget, 0)) {
       throw new ModelCallFailed(true);
@@ -122,14 +127,14 @@ export class ModelCaller {
         if (!this.fits(budget, wait)) break;
         await this.wait(wait);
       }
-      const outcome = await this.attempt(budget, request, 'region', onAttempt);
+      const outcome = await this.attempt(budget, request, 'region', onAttempt, onText);
       if ('reply' in outcome) return outcome.reply;
       if (outcome.failure.kind !== 'busy') {
         throw new ModelCallFailed(false);
       }
     }
     if (budget.fallbackOn && this.fits(budget, 0)) {
-      const outcome = await this.attempt(budget, request, 'global', onAttempt);
+      const outcome = await this.attempt(budget, request, 'global', onAttempt, onText);
       if ('reply' in outcome) return outcome.reply;
     }
     throw new ModelCallFailed(true);
@@ -140,12 +145,13 @@ export class ModelCaller {
     request: ModelRequest,
     place: ModelPlace,
     onAttempt: (attempt: Attempt) => Promise<void>,
+    onText: TextSink | undefined,
   ): Promise<{ reply: ModelReply } | { failure: ModelFailure }> {
     budget.attempts += 1;
     const location = this.model.locationOf(place);
     let reply: ModelReply;
     try {
-      reply = await this.model.generate(request, place);
+      reply = await this.model.generate(request, place, onText);
     } catch (error) {
       const failure: ModelFailure =
         error instanceof ModelUnavailable

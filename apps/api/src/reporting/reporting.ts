@@ -2,7 +2,7 @@ import * as Sentry from '@sentry/node';
 import type { ReportingConfig } from '../config/config.js';
 
 /** Which part of the process a fault that belongs to no request or job came from. */
-export type FaultPart = 'live' | 'jobs';
+export type FaultPart = 'live' | 'jobs' | 'assistant';
 
 export interface FaultTags {
   requestId?: string;

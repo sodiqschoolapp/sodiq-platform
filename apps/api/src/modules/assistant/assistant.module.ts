@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { CONFIG } from '../../config/config.module.js';
 import type { AppConfig } from '../../config/config.js';
 import { AccessModule } from '../access/access.module.js';
+import { AuthModule } from '../auth/auth.module.js';
 import {
   AssistantAdminController,
   AssistantController,
@@ -14,7 +15,8 @@ import { AssistantProposals } from './assistant-proposals.service.js';
 import { AssistantDispatcher } from './dispatcher.js';
 import { GeminiModel } from './gemini-model.js';
 import { ASSISTANT_MODEL } from './model.js';
-import { ASSISTANT_WAIT, ModelCaller, REAL_WAIT } from './model-caller.js';
+import { ASSISTANT_WAIT, ModelCaller, REAL_WAIT, type AssistantWait } from './model-caller.js';
+import { AssistantWork } from './assistant-work.js';
 import { ScriptedModel } from './scripted-model.js';
 
 /**
@@ -22,7 +24,7 @@ import { ScriptedModel } from './scripted-model.js';
  * conversations and the switches. Nothing else in the platform depends on it (`02`, Limits).
  */
 @Module({
-  imports: [AccessModule],
+  imports: [AccessModule, AuthModule],
   controllers: [AssistantController, AssistantAdminController, AssistantSettingsController],
   providers: [
     AssistantEngine,
@@ -32,9 +34,11 @@ import { ScriptedModel } from './scripted-model.js';
     AssistantDispatcher,
     {
       provide: ASSISTANT_MODEL,
-      useFactory: (config: AppConfig) =>
-        config.assistant.scripted ? new ScriptedModel() : new GeminiModel(config.assistant),
-      inject: [CONFIG],
+      useFactory: (config: AppConfig, wait: AssistantWait) =>
+        config.assistant.scripted
+          ? new ScriptedModel(wait, config.assistant.scriptedDelayMs)
+          : new GeminiModel(config.assistant),
+      inject: [CONFIG, ASSISTANT_WAIT],
     },
     {
       provide: ASSISTANT_PRICES,
@@ -42,6 +46,7 @@ import { ScriptedModel } from './scripted-model.js';
       inject: [CONFIG],
     },
     ModelCaller,
+    AssistantWork,
     { provide: ASSISTANT_WAIT, useValue: REAL_WAIT },
   ],
 })

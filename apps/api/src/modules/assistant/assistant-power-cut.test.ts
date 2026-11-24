@@ -21,6 +21,7 @@ import { Transactions } from '../../database/transactions.js';
 import { Audit } from '../audit/audit.service.js';
 import { saveCells } from '../journal/cells.js';
 import { GENERATED_TOOLS } from './tools.generated.js';
+import { settle } from '../../testing/assistant-kit.js';
 
 // Task 11.13 (pull request #376). `edge/people-roles-accounts`, The assistant: "'Cancel today,
 // there is no electricity' at 11:05 after lesson 3 began. Today cannot become a day off
@@ -302,7 +303,8 @@ describe('the assistant at a power cut: no day off today, a bulk cancel from the
         role: 'academic_vice_principal',
         text: 'We had a power cut, cancel the rest of today.',
       });
-    expect(response.status, JSON.stringify(response.body).slice(0, 500)).toBe(200);
+    expect(response.status, JSON.stringify(response.body).slice(0, 500)).toBe(202);
+    await settle(t.app, response, vice.cookie, branch);
     return assistantConversationSchema.parse(
       (response.body as { conversation: unknown }).conversation,
     );
@@ -342,7 +344,8 @@ describe('the assistant at a power cut: no day off today, a bulk cancel from the
       .set('Cookie', vice.cookie)
       .set(BRANCH_HEADER, branch)
       .send({ role: 'academic_vice_principal', text: 'Hold lesson 3 another day instead.' });
-    expect(asked.status, JSON.stringify(asked.body).slice(0, 400)).toBe(200);
+    expect(asked.status, JSON.stringify(asked.body).slice(0, 400)).toBe(202);
+    await settle(t.app, asked, vice.cookie, branch);
     const proposal = assistantConversationSchema.parse(
       (asked.body as { conversation: unknown }).conversation,
     ).proposals[0];
@@ -522,7 +525,8 @@ describe('the assistant at a power cut: no day off today, a bulk cancel from the
         .set('Cookie', vice.cookie)
         .set(BRANCH_HEADER, branch)
         .send({ role: 'academic_vice_principal', text: 'Cancel lessons 2 and 3 next Monday.' });
-      expect(response.status, JSON.stringify(response.body).slice(0, 400)).toBe(200);
+      expect(response.status, JSON.stringify(response.body).slice(0, 400)).toBe(202);
+      await settle(t.app, response, vice.cookie, branch);
       return assistantConversationSchema.parse(
         (response.body as { conversation: unknown }).conversation,
       ).proposals[0];
@@ -616,7 +620,8 @@ describe('the assistant at a power cut: no day off today, a bulk cancel from the
         .set('Cookie', browser.cookie)
         .set(BRANCH_HEADER, other)
         .send({ role: 'academic_vice_principal', text: 'Cancel English of 7 Oxford next Monday.' });
-      expect(response.status, JSON.stringify(response.body).slice(0, 400)).toBe(200);
+      expect(response.status, JSON.stringify(response.body).slice(0, 400)).toBe(202);
+      await settle(t.app, response, browser.cookie, other);
       const step = assistantConversationSchema.parse(
         (response.body as { conversation: unknown }).conversation,
       ).proposals[0]?.steps[0];

@@ -4,6 +4,7 @@ import type { ParseKeys } from 'i18next';
 import {
   AssignmentIcon,
   BarChartIcon,
+  ChatIcon,
   CalendarMonthIcon,
   ForumIcon,
   GridViewIcon,
@@ -35,6 +36,8 @@ export const MENU_ICONS: Record<MenuItem, Icon> = {
   requests: ForumIcon,
   // Task 2.6a, decision 9 of pull request #75.
   audit_log: HistoryIcon,
+  // Task 11.16: the Assistant page.
+  assistant: ChatIcon,
 };
 
 export interface MenuPage {
@@ -129,6 +132,14 @@ export const BUILT_PAGES: Partial<Record<MenuItem, MenuPage>> = {
     shortKey: 'menu.short.audit_log',
     to: '/audit',
     icon: MENU_ICONS.audit_log,
+  },
+  // Task 11.16: the Assistant page; shown for the chosen role while the assistant is on for it
+  // (`use-menu.ts`).
+  assistant: {
+    titleKey: 'menu.assistant',
+    shortKey: 'menu.short.assistant',
+    to: '/assistant',
+    icon: MENU_ICONS.assistant,
   },
 };
 
