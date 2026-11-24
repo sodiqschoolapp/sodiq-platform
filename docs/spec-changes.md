@@ -2,6 +2,17 @@
 
 The spec in `docs/spec/` was taken from the full spec document on 3 October 2026 (revision 88). Every later change to a spec file is listed here, newest first, with the date, what changed, why, and the files touched. Changes are made only with the `/spec-change` skill and the owner's approval.
 
+## 24 November 2026: the assistant runs in Frankfurt first, has a page of its own and shows its work
+
+- What changed:
+  1. **Frankfurt first, with a worldwide fallback.** Each request goes first to the model in Frankfurt. When Frankfurt is busy or does not answer, the platform waits and tries again; only when it still does not answer does the same request go once, to the same model, through Google's worldwide endpoint, where Google chooses the country that processes it. The Super Admin can switch the fallback off; it is on until switched off. Each answer records where it was processed, and the Settings show how many questions of the month used the fallback.
+  2. **A page of its own.** The same conversations also open on the page Assistant, in the menu of the Super Admin, the Academic Vice Principal and the Teacher, with the person's conversations beside the chat; the panel links to it.
+  3. **While it works.** A sent question shows at once and the box empties; the conversation shows what the assistant reads as it reads it, and the answer as it is written. Closing the panel or leaving the page loses nothing. A second question sent while the first is still being answered is refused with a short message, never lost or asked twice.
+- Why: the owner's first hand test on the test environment, 23 and 24 November 2026, in chat. Google retired `gemini-2.5-flash` on Vertex AI; of the EU regions tested only Frankfurt serves `gemini-3.5-flash`, and on 23 November Frankfurt's shared capacity answered 429 "resource exhausted" to every request for most of a morning, with no other EU region to fall back to. The owner chose the middle way (Frankfurt first, the worldwide endpoint only as a backup) over the worldwide endpoint for every question, which would offer every Gemini model but send every request to a country Google chooses. A question that showed only when its whole answer was ready, with Send spinning, irritated users; the owner also asked for the chat on a page of its own. Proposal `docs/proposals/spec-change-assistant-fallback-and-page.md`, with one addition at approval: the Limits bullet names the Assistant page beside the panel.
+- Not changed: the model (`gemini-3.5-flash`, the same in both places), the rights (the page and the live progress use the `assistant` view the three roles already have; no role gains a right), what never goes to the model, the audit, the daily limit and the $300 cap. Conversations stay stored in Frankfurt; only the processing of a fallback request may happen elsewhere.
+- Owner's steps outside the spec: the lawyer's view on fallback requests processed outside the EU (Resolution No. 415; the EU–US Data Privacy Framework) and on the consent text signed at enrolment; until then the Super Admin can switch the fallback off.
+- Files: `docs/spec/02-roles-and-access.md` (Assistant: first paragraph; Where; While it works, new; Where the model runs, new; Limits), `docs/spec/edge-cases/people-roles-accounts.md` (The assistant: four new rows), `docs/spec/13-technology.md` (Hosting and data; Running cost).
+
 ## 21 November 2026: the assistant for the Super Admin, the Academic Vice Principal and teachers
 
 - What changed:
