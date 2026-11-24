@@ -31,6 +31,9 @@ const SOURCE_HASHES: readonly string[] = [
   // 7: task 9.4b, the attendance figures of the home pages (`dailyAttendance`, `attendanceBelow`, `absentNow`); no
   // existing formula changes.
   '0b9e0d932f80f48b31b768e40f281ee4147dda0dc0a94e9a1112a6a45069d9ae',
+  // 8: task 11.17, the lesson score and its daily weights removed (`lessonScore`), the type `Work`
+  // moved to `work.ts`; no other formula changes.
+  '6276951e4455d0d9462fbd0b204a8c5aa804e9e4d7296a721e1e463594e7538f',
 ];
 
 const directory = new URL('./', import.meta.url);

@@ -2,6 +2,19 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 24 November 2026: task 11.17, no lesson score and no daily distribution
+
+- **The journal** (grid, Excel and PDF, support view, legend) shows no lesson score ("Oʻrt / Ср. / Avg"); `packages/calc` lost `lessonScore` and its daily weights only, `Work` moved to `work.ts`, `CALC_VERSION` is 8 (`version.test.ts` pins it).
+- **Subjects** have no daily distribution: the form, panel, list and its Excel, the import template and reader (an old template is refused `import_not_template`), `PUT /api/setup/subjects/:id/daily-weights` (removed), the publish check, the setup checklist, the assistant's lists, the demo school and the Monitoring branch.
+- **Proof**: `testing/demo/quarter-results.test.ts` reads every quarter-1 result of the demo school, stores the old daily distributions and reads them again: the same; a quarter closed on version 7 compares on version 8 with no difference (`closing.test.ts`). The demo differs from run to run, so a pin of one run fails another (the report of #382).
+
+Left out: nothing of the task. The rows of `subject_daily_weights` stay untouched and unread (no migration); dropping them is the owner's, if ever.
+
+The next sessions must know:
+
+- The audit action `subject_daily_weights.set` and its labels stay for the entries already in the log; nothing writes it.
+- The demo seed is not reproducible: its teachers draw from one random source at the same time, and rows are ordered by new ids; a test of the demo compares within one run.
+
 ## 24 November 2026: an optional student contract (outside the loop, the owner's request)
 
 - **Spec change** (`04`, Contract; Excel import): the contract is optional, a number may be left empty, and two students may share a number.

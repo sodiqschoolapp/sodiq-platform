@@ -952,7 +952,6 @@ describe('groups', () => {
           groupSubject: false,
           languageRule: true,
           demanding: false,
-          daily: { attendance: 20, classwork: 40, homework: 40 },
           switchesFrom: 1,
         },
         t.admin,

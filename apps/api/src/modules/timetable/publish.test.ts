@@ -936,16 +936,6 @@ describe('publish', () => {
       ).map((one) => one.id);
 
     const weigh = async (branch: string, subject: string, quarters: readonly string[]) => {
-      await t.database.migrator
-        .insertInto('subject_daily_weights')
-        .values({
-          branch_id: branch,
-          subject_id: subject,
-          attendance: 20,
-          classwork: 40,
-          homework: 40,
-        })
-        .execute();
       for (const quarter of quarters) {
         await t.database.migrator
           .insertInto('subject_quarter_weights')
@@ -961,10 +951,10 @@ describe('publish', () => {
       }
     };
 
-    it('refuses a graded subject without its daily distribution and the quarters the version touches', async () => {
+    // Task 11.17: a graded subject needs no daily distribution; only the quarters the version touches.
+    it('refuses a graded subject without the quarterly distributions the version touches, never for a daily one', async () => {
       const s = await scene({ journalType: 'graded' });
       expect(blockedBy(await publish(s.branch, s.version, MONDAY))).toEqual([
-        { code: 'subject_daily_weights', path: `subjects.${s.subject}` },
         ...[1, 2, 3, 4].map((quarter) => ({
           code: 'subject_quarter_weights',
           path: `subjects.${s.subject}.quarters.${String(quarter)}`,
@@ -991,16 +981,6 @@ describe('publish', () => {
         .updateTable('subjects')
         .set({ rating_exam: true })
         .where('id', '=', s.subject)
-        .execute();
-      await t.database.migrator
-        .insertInto('subject_daily_weights')
-        .values({
-          branch_id: s.branch,
-          subject_id: s.subject,
-          attendance: 20,
-          classwork: 40,
-          homework: 40,
-        })
         .execute();
       const quarters = await quarterIds(s.year);
       for (const quarter of quarters) {
@@ -1037,16 +1017,6 @@ describe('publish', () => {
         .updateTable('subjects')
         .set({ rating_exam: true })
         .where('id', '=', reading)
-        .execute();
-      await t.database.migrator
-        .insertInto('subject_daily_weights')
-        .values({
-          branch_id: s.branch,
-          subject_id: reading,
-          attendance: 20,
-          classwork: 40,
-          homework: 40,
-        })
         .execute();
       const quarters = await quarterIds(s.year);
       for (const quarter of quarters) {
@@ -1096,7 +1066,6 @@ describe('publish', () => {
         .where('id', '=', s.subject)
         .execute();
       expect(blockedBy(await publish(s.branch, s.version, MONDAY))).toEqual([
-        { code: 'subject_daily_weights', path: `subjects.${s.subject}` },
         ...[1, 2, 3, 4].map((quarter) => ({
           code: 'subject_quarter_weights',
           path: `subjects.${s.subject}.quarters.${String(quarter)}`,

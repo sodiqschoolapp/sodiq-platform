@@ -111,7 +111,6 @@ const GRID: JournalGrid = {
   legend: {
     lateValue: 50,
     skippedValue: 0,
-    daily: null,
     quarterly: null,
     weightsChangedOn: null,
     countsFrom: null,

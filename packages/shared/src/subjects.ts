@@ -70,19 +70,6 @@ const weightSchema = z.int().min(WEIGHT_MIN).max(WEIGHT_MAX);
 
 const TOTAL_MESSAGE = 'The parts total 100.';
 
-/** The daily distribution (`05`): attendance, classwork, homework, totalling 100. */
-export const dailyWeightsSchema = z
-  .object({ attendance: weightSchema, classwork: weightSchema, homework: weightSchema })
-  .refine(
-    (weights) => weights.attendance + weights.classwork + weights.homework === WEIGHTS_TOTAL,
-    {
-      path: ['total'],
-      message: TOTAL_MESSAGE,
-    },
-  );
-
-export type DailyWeights = z.infer<typeof dailyWeightsSchema>;
-
 /**
  * The quarterly distribution of one quarter (`05`): attendance, classwork,
  * homework and, for a subject with a rating exam, the rating exam
@@ -145,15 +132,12 @@ const subjectFieldsSchema = z.object({
 });
 
 /**
- * What is typed for a subject: its school-wide fields and the daily
- * distribution of the branch in use. A graded subject cannot be saved without
- * a daily distribution (answer 6); an attendance-only subject has none and no
- * rating exam (`edge/calculation`: "no weights, no lesson score, no result").
- * On an edit, `daily` is sent only when the branch has none yet (decision 15).
+ * What is typed for a subject: its school-wide fields. An attendance-only
+ * subject has no rating exam (`edge/calculation`: "no weights, no result").
+ * There is no daily distribution (task 11.17; `07`, Calculation rules, rule 3).
  */
 export const subjectRecordSchema = subjectFieldsSchema
   .extend({
-    daily: dailyWeightsSchema.nullable(),
     /**
      * The start date of a department move of the subject (`edge/people-roles-accounts`,
      * row 15; task 3.4c, decision 2): sent with a move only, today or later in
@@ -169,40 +153,16 @@ export const subjectRecordSchema = subjectFieldsSchema
     switchesFrom: z.int().min(1).max(4).nullable().optional(),
   })
   .superRefine((subject, context) => {
-    if (subject.journalType === 'attendance_only') {
-      if (subject.ratingExam) {
-        context.addIssue({
-          code: 'custom',
-          path: ['ratingExam'],
-          message: 'An attendance-only subject has no rating exam.',
-        });
-      }
-      if (subject.daily !== null) {
-        context.addIssue({
-          code: 'custom',
-          path: ['daily'],
-          message: 'An attendance-only subject has no weights.',
-        });
-      }
+    if (subject.journalType === 'attendance_only' && subject.ratingExam) {
+      context.addIssue({
+        code: 'custom',
+        path: ['ratingExam'],
+        message: 'An attendance-only subject has no rating exam.',
+      });
     }
   });
 
 export type SubjectRecord = z.infer<typeof subjectRecordSchema>;
-
-/**
- * The create additionally needs the daily distribution of a graded subject
- * (answer 6: "A graded subject cannot be saved without a daily distribution
- * that totals 100").
- */
-export const newSubjectRecordSchema = subjectRecordSchema.superRefine((subject, context) => {
-  if (subject.journalType === 'graded' && subject.daily === null) {
-    context.addIssue({
-      code: 'custom',
-      path: ['daily'],
-      message: 'A graded subject has a daily distribution.',
-    });
-  }
-});
 
 /** A subject as the routes answer it, with the weights of the branch of the request. */
 export const subjectSchema = subjectFieldsSchema.extend({
@@ -220,8 +180,6 @@ export const subjectSchema = subjectFieldsSchema.extend({
    */
   departmentMove: z.object({ departmentId: z.uuid(), startsOn: schoolDateSchema }).nullable(),
   archivedAt: z.iso.datetime().nullable(),
-  /** This branch's daily distribution; `null` while not set (decision 2). */
-  daily: dailyWeightsSchema.nullable(),
   /**
    * How many quarters of the branch's planned and current years have no
    * quarterly distribution that fits the rating switch (decision 3); 0 for

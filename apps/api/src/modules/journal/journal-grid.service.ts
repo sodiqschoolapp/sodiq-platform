@@ -2,7 +2,6 @@ import { Injectable } from '@nestjs/common';
 import {
   Fraction,
   groupAverage,
-  lessonScore,
   quarterAttendanceAverage,
   quarterResult,
   shownPercent,
@@ -622,7 +621,6 @@ export class JournalGridReader {
     const attendanceValues = { lateValue: weights.lateValue, skippedValue: weights.skippedValue };
     // The database keeps the quarterly weights at a total of 100 (0020).
     const quarterly = weights.quarterly;
-    const daily = weights.daily;
     // Task 8.2 (From 2.1 and 5.5c): the switches of the quarter shown.
     const quarterSwitches = switchesIn(journal, quarter.id);
     const attendanceOnly = quarterSwitches?.attendanceOnly ?? true;
@@ -753,23 +751,6 @@ export class JournalGridReader {
         const exempt = exemptOf.get(lesson.id)?.get(student.id) ?? null;
         // A mark the exemption hides is not shown (decision 2).
         const mark = exempt === null ? (marks.get(lesson.id) ?? null) : null;
-        let score: number | null = null;
-        if (
-          shape !== 'attendance' &&
-          !attendanceOnly &&
-          daily !== null &&
-          lesson.cancelCause === null &&
-          isExpected
-        ) {
-          const found = lessonScore({
-            weights: daily,
-            mark: mark as AttendanceMark | null,
-            attendanceValues,
-            classworks: countedWorks(lessonWorksOf, 'classwork', scores),
-            homeworks: countedWorks(lessonWorksOf, 'homework', scores),
-          });
-          score = found.kind === 'score' ? Number(found.value.roundHalfUp()) : null;
-        }
         return {
           closed: !isExpected || lesson.startsAt.getTime() > now.getTime(),
           exempt,
@@ -803,7 +784,6 @@ export class JournalGridReader {
                     notGraded: work.id !== '' && notGraded.has(work.id),
                   };
                 }),
-          score,
         };
       });
 
@@ -1266,7 +1246,6 @@ export class JournalGridReader {
       legend: {
         lateValue: weights.lateValue,
         skippedValue: weights.skippedValue,
-        daily: attendanceOnly ? null : weights.daily,
         quarterly: attendanceOnly ? null : weights.quarterly,
         weightsChangedOn:
           changedAt !== null && changedAt > quarter.startDate && !attendanceOnly ? changedAt : null,

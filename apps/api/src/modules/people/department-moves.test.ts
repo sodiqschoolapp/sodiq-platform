@@ -130,8 +130,6 @@ describe('the department move against the load', () => {
     groupSubject: subject.groupSubject,
     languageRule: subject.languageRule,
     demanding: subject.demanding,
-    // The kit's subjects have no daily distribution in the North yet.
-    daily: subject.daily === null ? { attendance: 10, classwork: 50, homework: 40 } : null,
     ...overrides,
   });
 

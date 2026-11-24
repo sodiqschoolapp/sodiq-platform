@@ -1153,7 +1153,6 @@ describe('the students of a class', () => {
       languageRule: true,
       demanding: false,
       archivedAt: null,
-      daily: { attendance: 10, classwork: 50, homework: 40 },
       quarterWeightsMissing: 0,
       quarterCount: 4,
     };

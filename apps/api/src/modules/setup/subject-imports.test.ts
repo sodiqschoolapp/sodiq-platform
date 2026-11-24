@@ -269,7 +269,7 @@ describe('the subject import', () => {
   });
 
   describe('a clean file', () => {
-    it('saves every row with the daily distribution of the branch and the quarterly one on every open quarter of the current and later years, with no notice', async () => {
+    it('saves every row with the quarterly distribution on every open quarter of the current and later years and no daily distribution (task 11.17), with no notice', async () => {
       const southBefore =
         await sql`select * from subject_daily_weights where branch_id = ${t.south} order by subject_id`.execute(
           t.database.migrator,
@@ -287,9 +287,6 @@ describe('the subject import', () => {
           nameEn: 'Choir',
           journalType: 'Attendance only',
           ratingExam: 'No',
-          dailyAttendance: '',
-          dailyClasswork: '',
-          dailyHomework: '',
           quarterAttendance: '',
           quarterClasswork: '',
           quarterHomework: '',
@@ -325,7 +322,7 @@ describe('the subject import', () => {
         .select(['branch_id', 'attendance', 'classwork', 'homework'])
         .where('subject_id', '=', robotics)
         .execute();
-      expect(daily).toEqual([{ branch_id: t.north, attendance: 10, classwork: 50, homework: 40 }]);
+      expect(daily).toEqual([]);
       // Every open quarter of the current and the planned year; not the closed quarter 1.
       expect(await quartersOf(robotics)).toEqual(
         [...northCurrent.quarterIds.slice(1), ...northPlanned.quarterIds].sort(),
@@ -375,12 +372,7 @@ describe('the subject import', () => {
         assignment_id: t.adminAssignment,
         details: { importId: answer.importId },
       });
-      const daily = await t.entries('subject_daily_weights.set', id);
-      expect(daily).toHaveLength(1);
-      expect(daily[0]).toMatchObject({
-        branch_id: t.north,
-        details: { importId: answer.importId },
-      });
+      expect(await t.entries('subject_daily_weights.set', id)).toEqual([]);
       const quarters = await t.entries('subject_quarter_weights.set', id);
       expect(quarters).toHaveLength(7);
       for (const entry of quarters) {
@@ -497,13 +489,13 @@ describe('the subject import', () => {
     it('saves nothing when one row has a problem, and answers the preview again', async () => {
       const answer = await uploaded([
         subjectRow({ nameEn: 'Calligraphy' }),
-        subjectRow({ nameEn: 'Pottery', dailyHomework: 41 }),
+        subjectRow({ nameEn: 'Pottery', quarterHomework: 21 }),
       ]);
       const before = await rowsOf();
       const result = await confirmed(answer.importId);
       expect(result.outcome).toBe('not_clean');
       if (result.outcome === 'not_clean') {
-        expect(codesAt(result.preview, 4)).toEqual(['dailyAttendance:weights_total']);
+        expect(codesAt(result.preview, 4)).toEqual(['quarterAttendance:weights_total']);
       }
       expect(await rowsOf()).toEqual(before);
     });
@@ -553,6 +545,40 @@ describe('the subject import', () => {
         422,
         'import_not_template',
       );
+      // Task 11.17: a file of the old template, with its three daily columns, is not the template.
+      const OLD_KEYS = [
+        'nameUz',
+        'nameRu',
+        'nameEn',
+        'department',
+        'grades',
+        'colour',
+        'journalType',
+        'ratingExam',
+        'groupSubject',
+        'languageRule',
+        'demanding',
+        'dailyAttendance',
+        'dailyClasswork',
+        'dailyHomework',
+        'quarterAttendance',
+        'quarterClasswork',
+        'quarterHomework',
+        'quarterRatingExam',
+      ];
+      const before = await rowsOf();
+      refusedWith(
+        await upload(
+          await filledSubjectTemplate([subjectRow()], (sheet) => {
+            OLD_KEYS.forEach((key, index) => {
+              sheet.getRow(1).getCell(index + 1).value = key;
+            });
+          }),
+        ),
+        422,
+        'import_not_template',
+      );
+      expect(await rowsOf()).toEqual(before);
       const answer = await uploaded([subjectRow()]);
       refusedWith(
         await t.post(`/api/setup/subjects/imports/${answer.importId}/preview`, t.north, {

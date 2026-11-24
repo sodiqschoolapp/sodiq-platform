@@ -1111,7 +1111,6 @@ describe('the student results (08, Student results)', () => {
         (await get(s.scene.branch, `/api/journal/journals/${s.journal}`)).body,
       );
       expect(grid.legend.quarterly).toBeNull();
-      expect(grid.legend.daily).not.toBeNull();
       expect(
         resultsOf(await get(s.scene.branch, `/api/results/students/${s.aziz}`)).subjects,
       ).toEqual([]);
@@ -1122,9 +1121,9 @@ describe('the student results (08, Student results)', () => {
     });
   });
 
-  it('takes no daily distribution of an earlier round, while the quarter’s fitting rows still give the result', async () => {
+  it('takes the quarter’s fitting rows of a new weights round for the result', async () => {
     const s = await scene();
-    // A new weights round; the quarterly rows are written again in it, the daily row is not.
+    // A new weights round; the quarterly rows are written again in it.
     await switchSubject(s, (eb) => ({
       weights_round: eb('weights_round', '+', 1),
       switches_from: 1,
@@ -1139,7 +1138,6 @@ describe('the student results (08, Student results)', () => {
       const grid = journalGridSchema.parse(
         (await get(s.scene.branch, `/api/journal/journals/${s.journal}`)).body,
       );
-      expect(grid.legend.daily).toBeNull();
       expect(grid.legend.quarterly).toEqual({
         attendance: 20,
         classwork: 40,

@@ -158,10 +158,6 @@ export const uz: Texts<'one' | 'other'> = {
     department_archived: 'Kafedra arxivda. Faol kafedrani tanlang yoki avval kafedrani tiklang.',
     department_has_subjects:
       'Kafedrada hali faol fanlar bor. Avval ularni boshqa kafedraga oʻtkazing yoki arxivga yuboring.',
-    daily_weights_required:
-      'Baholanadigan fanga shu filialda kunlik taqsimot kerak. Davomat, sinf ishi va uy vazifasini kiriting.',
-    daily_weights_set:
-      'Bu filialda fanning kunlik taqsimoti allaqachon bor. Uni fan panelida oʻzgartiring.',
     attendance_only_no_weights:
       'Faqat davomatli fanning vaznlari yoʻq. Vazn berish uchun avval uni baholanadigan qiling.',
     subject_department_archived:
@@ -1496,7 +1492,6 @@ export const uz: Texts<'one' | 'other'> = {
       AcademicYearsController_saveQuarters: 'Chorak sanalarini belgilash',
       SubjectsController_create: 'Fan qoʻshish',
       SubjectsController_edit: 'Fanni oʻzgartirish',
-      SubjectsController_setDaily: 'Fanning kunlik vaznlarini belgilash',
       SubjectsController_archive: 'Fanni arxivlash',
       SubjectsController_restore: 'Fanni tiklash',
       SubjectsController_setQuarterWeights: 'Fanning chorak vaznlarini belgilash',
@@ -2210,7 +2205,6 @@ export const uz: Texts<'one' | 'other'> = {
       languageRule: 'Til qoidasi',
       demanding: 'Murakkab fan',
       switches: 'Xususiyatlar',
-      daily: 'Kunlik taqsimot',
       quarterly: 'Choraklik taqsimot',
       changeWeights: 'Taqsimotni oʻzgartirish',
       changeWeightsOf: 'Taqsimotni oʻzgartirish: {{name}}',
@@ -2339,8 +2333,6 @@ export const uz: Texts<'one' | 'other'> = {
       calendarCount_other: '{{count}} ta yozuv',
       undatedYears: 'Sanasiz: {{years}}',
       wholeSchool: 'butun maktab',
-      subjectsMissing_one: 'Bu yerda kunlik taqsimoti yoʻq {{count}} ta baholanadigan fan',
-      subjectsMissing_other: 'Bu yerda kunlik taqsimoti yoʻq {{count}} ta baholanadigan fan',
     },
     calendar: {
       emptyTitle: 'Dam olish kunlari hali yoʻq',
@@ -6523,8 +6515,6 @@ export const uz: Texts<'one' | 'other'> = {
         date_blocked: '{{date}}: {{rule}}',
         pattern_blocked_any: 'Bir dars dars jadvali qoidasini buzadi.',
         year_quarters: 'Oʻquv yilida sanasi belgilangan toʻrtta chorak yoʻq.',
-        subject_daily_weights: '{{subject}} fanining bu filialda kunlik taqsimoti yoʻq.',
-        subject_daily_weights_any: 'Yuklamadagi bir fanning bu filialda kunlik taqsimoti yoʻq.',
         subject_quarter_weights: '{{subject}} fanining {{quarter}}-chorak taqsimoti yoʻq.',
         subject_quarter_weights_any: 'Yuklamadagi bir fanning {{quarter}}-chorak taqsimoti yoʻq.',
       },
@@ -7331,8 +7321,6 @@ export const uz: Texts<'one' | 'other'> = {
       noLessons: 'Bu sanada jurnalda dars yoʻq.',
       quarterFigures:
         'Chorak: davomat {{attendance}} · sinf ishi {{classwork}} · uy ishi {{homework}} · reyting imtihoni {{ratingExam}} · natija {{result}}',
-      daily:
-        'Dars ulushlari: davomat {{attendance}} · sinf ishi {{classwork}} · uy ishi {{homework}}',
       quarterly:
         'Chorak ulushlari: davomat {{attendance}} · sinf ishi {{classwork}} · uy ishi {{homework}} · reyting imtihoni {{ratingExam}}',
       values: 'Kechikish {{late}}, darsga kirmaslik {{skipped}} hisoblanadi',
@@ -7378,7 +7366,6 @@ export const uz: Texts<'one' | 'other'> = {
       },
       work: '{{title}}: {{total}} dan {{score}}, {{percent}}%',
       mark: 'Belgi {{mark}}',
-      lessonScore: 'dars bahosi {{score}}',
       stored: 'Saqlangan: belgi {{mark}}, sonlar {{works}}',
       hiddenBy: '{{kind}} ozod qilish bilan yashirilgan {{from}} – {{until}}',
     },
@@ -7838,8 +7825,6 @@ export const uz: Texts<'one' | 'other'> = {
       givenFrom: '{{date}} dan',
       givenOn: '{{date}} kuni berilgan, shu darsda tekshiriladi',
       notHeld: 'oʻtkazilmagan',
-      avg: 'Oʻrt',
-      lessonScore: 'Dars bahosi',
       quarterFigures: '{{number}}-chorak',
       monthFigures: 'Oy',
       folded_one: 'Ketgan yoki koʻchgan: {{count}} nafar oʻquvchi',
@@ -7853,7 +7838,6 @@ export const uz: Texts<'one' | 'other'> = {
       band: '{{from}}–{{to}}',
       weights: 'Ulushlar',
       attendanceOnly: 'Faqat davomat: ulush, natija va baho yoʻq.',
-      daily: 'Dars bahosi: davomat {{attendance}} · sinf ishi {{classwork}} · uy ishi {{homework}}',
       quarterly:
         'Chorak natijasi: davomat {{attendance}} · sinf ishi {{classwork}} · uy ishi {{homework}}',
       quarterlyNoRating:

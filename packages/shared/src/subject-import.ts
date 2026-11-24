@@ -7,15 +7,13 @@ import type { JournalType, SubjectColour } from './subjects.js';
  * The subject import from the system's Excel template (the owner's change of
  * 7 November 2026, pull request #316; `05`, "Excel import of subjects"). One
  * row is one subject: its school-wide fields, and for a graded subject the
- * daily and quarterly distributions of the branch of the import. The
+ * quarterly distribution of the branch of the import (no daily distribution:
+ * task 11.17). The
  * quarterly distribution applies to every quarter not closed of the current
  * and later years of that branch. Preview first; all rows or none; the same
  * file not twice; a name already used is a problem. The Super Admin and the
  * Academic Vice Principal import subjects.
  */
-
-/** The weight columns of the daily distribution. */
-const DAILY_COLUMNS = ['dailyAttendance', 'dailyClasswork', 'dailyHomework'] as const;
 
 /** The weight columns of the quarterly distribution; the rating exam's last. */
 const QUARTERLY_COLUMNS = [
@@ -32,8 +30,6 @@ export type SubjectImportSwitchColumn = (typeof SWITCH_COLUMNS)[number];
 
 export const SUBJECT_IMPORT_SWITCH_COLUMNS: readonly SubjectImportSwitchColumn[] = SWITCH_COLUMNS;
 
-export const SUBJECT_IMPORT_DAILY_COLUMNS: readonly SubjectImportColumn[] = DAILY_COLUMNS;
-
 export const SUBJECT_IMPORT_QUARTERLY_COLUMNS: readonly SubjectImportColumn[] = QUARTERLY_COLUMNS;
 
 /**
@@ -49,7 +45,6 @@ export const SUBJECT_IMPORT_COLUMNS = [
   'colour',
   'journalType',
   ...SWITCH_COLUMNS,
-  ...DAILY_COLUMNS,
   ...QUARTERLY_COLUMNS,
 ] as const;
 
@@ -94,9 +89,6 @@ export const SUBJECT_IMPORT_WORDS: Readonly<Record<Language, SubjectImportWords>
       groupSubject: 'Guruhli fan',
       languageRule: 'Til qoidasi',
       demanding: 'Murakkab fan',
-      dailyAttendance: 'Kunlik: davomat',
-      dailyClasswork: 'Kunlik: sinf ishi',
-      dailyHomework: 'Kunlik: uy vazifasi',
       quarterAttendance: 'Choraklik: davomat',
       quarterClasswork: 'Choraklik: sinf ishi',
       quarterHomework: 'Choraklik: uy vazifasi',
@@ -132,9 +124,6 @@ export const SUBJECT_IMPORT_WORDS: Readonly<Record<Language, SubjectImportWords>
       groupSubject: 'Предмет по группам',
       languageRule: 'Правило языка',
       demanding: 'Трудный предмет',
-      dailyAttendance: 'Ежедневно: посещаемость',
-      dailyClasswork: 'Ежедневно: классная работа',
-      dailyHomework: 'Ежедневно: домашнее задание',
       quarterAttendance: 'За четверть: посещаемость',
       quarterClasswork: 'За четверть: классная работа',
       quarterHomework: 'За четверть: домашнее задание',
@@ -170,9 +159,6 @@ export const SUBJECT_IMPORT_WORDS: Readonly<Record<Language, SubjectImportWords>
       groupSubject: 'Group subject',
       languageRule: 'Language rule',
       demanding: 'Demanding',
-      dailyAttendance: 'Daily: attendance',
-      dailyClasswork: 'Daily: classwork',
-      dailyHomework: 'Daily: homework',
       quarterAttendance: 'Quarterly: attendance',
       quarterClasswork: 'Quarterly: classwork',
       quarterHomework: 'Quarterly: homework',

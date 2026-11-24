@@ -65,7 +65,7 @@ const shortDate = (date: string): string => `${date.slice(8, 10)}.${date.slice(5
  * The journal grid (task 6.2, pull request #210; `07`, Layout): AG Grid
  * Community with the student columns and the figures pinned on the left, one
  * column group per dated lesson (row 1: date, weekday, slot; row 2: attendance, each
- * classwork and homework with its title, the lesson score; row 3: the total label and the
+ * classwork and homework with its title (no lesson score: task 11.17); row 3: the total label and the
  * total; the short labels in the person's language, spec change of 18 November 2026),
  * the bottom row of class or group averages pinned at the bottom, and the
  * folded section of students who left or moved. Every number is the server's,
@@ -582,7 +582,6 @@ export function JournalGridView({
         : undefined,
     [comments],
   );
-  const whole = grid.shape === 'whole';
   const figuresShown = grid.shape !== 'lessons';
   const graded = !grid.journal.attendanceOnly && grid.shape !== 'attendance';
   // The categories of the reasons of absence by student and date (task 6.3, decision 7).
@@ -1288,24 +1287,6 @@ export function JournalGridView({
           },
         });
       });
-      if (whole && !grid.journal.attendanceOnly && lesson.works.length > 0) {
-        children.push({
-          colId: `${lesson.id}:avg`,
-          headerName: t('journal.grid.avg'),
-          headerComponentParams: {
-            label: t('journal.grid.lessonScore'),
-            hover: t('journal.grid.lessonScore'),
-          },
-          width: 60,
-          cellClass: () => todayFill,
-          cellRenderer: (params: ICellRendererParams<GridRow>) => {
-            const row = params.data;
-            if (row?.kind !== 'student') return null;
-            const score = row.student.cells[index]?.score ?? null;
-            return score === null ? null : <span className="font-semibold">{score}</span>;
-          },
-        });
-      }
       // "No plan" on a held lesson with no plan item (edge/journal).
       const noPlan = graded && lesson.held && !lesson.planItem ? t('journal.works.noPlan') : '';
       // Task 8.7 (`07`, Lesson status: "in the journal header"), in words.
@@ -1406,7 +1387,6 @@ export function JournalGridView({
     figuresOf,
     figuresShown,
     graded,
-    whole,
     month,
     reasons,
     busy,
@@ -1587,11 +1567,10 @@ export function JournalGridView({
         onGridReady={onGridReady}
         onFirstDataRendered={(event) => {
           // The lesson of the date at the right edge, whole, with the lessons before it in view on
-          // its left: its last column (AVG, else its last work, else A) is brought to the end.
+          // its left: its last column (its last work, else A) is brought to the end.
           if (scrollTo === null) return;
           const lesson = grid.lessons.find((one) => one.id === scrollTo);
           const last = [
-            `${scrollTo}:avg`,
             ...[...(lesson?.works ?? [])].reverse().map((work) => `${scrollTo}:${workKey(work)}`),
             `${scrollTo}:a`,
           ].find((colId) => event.api.getColumn(colId) !== null);

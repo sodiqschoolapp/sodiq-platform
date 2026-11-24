@@ -49,8 +49,7 @@ interface SubjectPanelProps {
 }
 
 /**
- * A subject in the side panel of the list: its record, this branch's daily
- * distribution and its quarterly distributions per year (`05`, Grading
+ * A subject in the side panel of the list: its record, this branch's quarterly distributions per year (`05`, Grading
  * weights on a subject: "The quarterly distribution is set for each quarter
  * separately"), and its archive. The record is the same in every branch; the
  * weights are this branch's (owner's answer 3).
@@ -72,7 +71,7 @@ export function SubjectPanel({
   const active = subject.archivedAt === null;
   const graded = subject.journalType === 'graded';
   const refresh = () => invalidateSubjects(queryClient);
-  // One form open at a time: the record, the daily or a quarter's distribution (task 2.7c-2b-1).
+  // One form open at a time: the record or a quarter's distribution (task 2.7c-2b-1).
   const panel = usePanelEditing();
   const editable = canEdit && active;
 
@@ -82,21 +81,6 @@ export function SubjectPanel({
         api.PUT('/api/setup/subjects/{id}', {
           params: { header: branchHeader(), path: { id: subject.id } },
           body: record,
-        }),
-      ),
-    onSuccess: refresh,
-  });
-
-  const setDaily = useMutation({
-    mutationFn: (weights: Weights) =>
-      answerOf(
-        api.PUT('/api/setup/subjects/{id}/daily-weights', {
-          params: { header: branchHeader(), path: { id: subject.id } },
-          body: {
-            attendance: weights.attendance,
-            classwork: weights.classwork,
-            homework: weights.homework,
-          },
         }),
       ),
     onSuccess: refresh,
@@ -140,7 +124,6 @@ export function SubjectPanel({
           <SubjectForm
             subject={subject}
             departments={departments}
-            hasDaily={graded && subject.daily !== null}
             departmentLocked={!mayMoveDepartment}
             label={name}
             onSave={async (record) => {
@@ -210,40 +193,6 @@ export function SubjectPanel({
               </div>
             ))}
           </dl>
-
-          {graded && (
-            <section className="grid gap-3">
-              <h3 className={SECTION_TITLE}>{t('setup.subjects.daily')}</h3>
-              {subject.daily === null ? (
-                <p className="text-sm text-muted-foreground">{t('setup.subjects.notSet')}</p>
-              ) : editable && panel.editing === 'weights:daily' ? (
-                <WeightsForm
-                  kind="daily"
-                  parts={THREE}
-                  weights={subject.daily}
-                  label={t('setup.subjects.daily')}
-                  onSave={async (weights) => {
-                    await setDaily.mutateAsync(weights);
-                    panel.stop({ saved: true, key: 'weights:daily' });
-                  }}
-                  onCancel={() => {
-                    panel.stop();
-                  }}
-                />
-              ) : (
-                <>
-                  <p className="text-sm">{weightsText(subject.daily, language)}</p>
-                  {editable && (
-                    <ChangeWeights
-                      panel={panel}
-                      editKey="weights:daily"
-                      name={t('setup.subjects.daily')}
-                    />
-                  )}
-                </>
-              )}
-            </section>
-          )}
 
           {graded && <QuarterWeights subject={subject} canEdit={editable} panel={panel} />}
         </>
@@ -558,7 +507,6 @@ function QuarterWeights({
               {canEdit && !frozen && panel.editing === `weights:${row.quarterId}` ? (
                 <WeightsForm
                   key={`${row.quarterId}-${String(row.ratingExam)}-${row.number === 1 ? '' : String(copies)}`}
-                  kind="quarter"
                   // Task 8.2: the shape of the quarter's own rating exam switch.
                   parts={row.ratingExam ? FOUR : THREE}
                   weights={row.fits ? row.weights : null}

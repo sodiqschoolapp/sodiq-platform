@@ -495,24 +495,11 @@ export class Settings {
                   ),
                 )
                 .executeTakeFirstOrThrow(),
-          // School-wide subjects with this branch's daily distributions (task
-          // 2.1, decision 7): done when an active subject exists and every
-          // active graded one has its daily distribution here, of the subject's
-          // current round (db/migrations/0021).
+          // School-wide subjects (task 2.1, decision 7): done when an active
+          // subject exists; there is no daily distribution to count (task 11.17).
           transaction
             .selectFrom('subjects')
-            .leftJoin('subject_daily_weights', (join) =>
-              join
-                .onRef('subject_daily_weights.subject_id', '=', 'subjects.id')
-                .on('subject_daily_weights.branch_id', '=', branchId)
-                .onRef('subject_daily_weights.weights_round', '=', 'subjects.weights_round'),
-            )
-            .select([
-              sql<number>`count(*)::int`.as('active'),
-              sql<number>`(count(*) filter (where subjects.journal_type = 'graded' and subject_daily_weights.subject_id is null))::int`.as(
-                'missing',
-              ),
-            ])
+            .select(sql<number>`count(*)::int`.as('active'))
             .where('subjects.archived_at', 'is', null)
             .executeTakeFirstOrThrow(),
         ]);
@@ -579,9 +566,7 @@ export class Settings {
           item('slotTypes', slotTypes.count > 0),
           item('defaultTemplate', defaults.count > 0),
           item('calendar', null, { count: entries.count }),
-          item('subjects', subjects.active > 0 && subjects.missing === 0, {
-            count: subjects.missing,
-          }),
+          item('subjects', subjects.active > 0),
           item('classes', classes.count > 0),
           item('groups', groups.count > 0),
           item('teachingLoad', teachingLoad.count > 0),

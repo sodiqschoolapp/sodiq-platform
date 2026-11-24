@@ -1240,8 +1240,8 @@ export const patternBlockParamsSchema = z.object({ id: z.uuid(), blockId: z.uuid
  * result of the pattern, a difference from the load (`06`, Rules, last row),
  * and the year and subject settings (`edge/academic-year`: "Publishing is
  * blocked unless the year has four dated quarters and every subject in the
- * load has its journal type and, if it is graded, its daily distribution and
- * its quarterly distribution for each quarter the version touches").
+ * load has its journal type and, if it is graded, its quarterly distribution
+ * for each quarter the version touches"; no daily distribution since task 11.17).
  * Task 5.5a-2a: `date_blocked`, a blocked result that only a date of the
  * version shows (`edge/timetable`, "The pattern is valid but one date is
  * not": "A blocked conflict on any date stops the save and is listed by date").
@@ -1257,7 +1257,6 @@ export const PUBLISH_REFUSALS = [
   'date_blocked',
   'load_mismatch',
   'year_quarters',
-  'subject_daily_weights',
   'subject_quarter_weights',
   // Task 5.5a-2b-1, decision 11: a transition week that differs from the load, not acknowledged.
   'transition_unacknowledged',
@@ -1295,7 +1294,7 @@ export const publishRefusalSchema = z.object({
   /** `load_problem` and `load_mismatch`: the row; `load_problem` also names its problem. */
   loadRowId: z.uuid().optional(),
   problem: loadProblemSchema.optional(),
-  /** `subject_daily_weights` and `subject_quarter_weights`: the subject; the second also its quarter, 1 to 4. */
+  /** `subject_quarter_weights`: the subject and its quarter, 1 to 4. */
   subjectId: z.uuid().optional(),
   quarter: z.int().min(1).max(4).optional(),
   /** `pattern_blocked`, `date_blocked` and `load_mismatch`: the result of the rule engine. */

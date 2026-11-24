@@ -3821,16 +3821,6 @@ try {
       }
       if (scene.publishable === true) {
         await transaction
-          .insertInto('subject_daily_weights')
-          .values({
-            branch_id: gridBranch,
-            subject_id: geometry.id,
-            attendance: 20,
-            classwork: 40,
-            homework: 40,
-          })
-          .execute();
-        await transaction
           .insertInto('subject_quarter_weights')
           .values(
             quarters.map((quarter) => ({
@@ -5403,10 +5393,6 @@ try {
           .execute();
         const weights = { attendance: 20, classwork: 40, homework: 40 };
         await transaction
-          .insertInto('subject_daily_weights')
-          .values({ branch_id: journalBranch, subject_id: geography, ...weights })
-          .execute();
-        await transaction
           .insertInto('subject_quarter_weights')
           .values(
             quarters.map((quarter) => ({
@@ -5822,10 +5808,6 @@ try {
           .execute();
         const weights = { attendance: 20, classwork: 40, homework: 40 };
         await transaction
-          .insertInto('subject_daily_weights')
-          .values({ branch_id: attendanceBranch, subject_id: algebra, ...weights })
-          .execute();
-        await transaction
           .insertInto('subject_quarter_weights')
           .values(
             quarters.map((quarter) => ({
@@ -6046,10 +6028,6 @@ try {
           .execute();
         const weights = { attendance: 20, classwork: 40, homework: 40 };
         await transaction
-          .insertInto('subject_daily_weights')
-          .values({ branch_id: statusBranch, subject_id: cartography, ...weights })
-          .execute();
-        await transaction
           .insertInto('subject_quarter_weights')
           .values(
             quarters.map((quarter) => ({
@@ -6263,10 +6241,6 @@ try {
           .returning('id')
           .execute();
         const weights = { attendance: 20, classwork: 40, homework: 40 };
-        await transaction
-          .insertInto('subject_daily_weights')
-          .values({ branch_id: deliveryBranch, subject_id: geodesy, ...weights })
-          .execute();
         await transaction
           .insertInto('subject_quarter_weights')
           .values(
@@ -6508,10 +6482,6 @@ try {
           .returning('id')
           .execute();
         const weights = { attendance: 20, classwork: 40, homework: 40 };
-        await transaction
-          .insertInto('subject_daily_weights')
-          .values({ branch_id: cardPlanBranch, subject_id: cartography, ...weights })
-          .execute();
         await transaction
           .insertInto('subject_quarter_weights')
           .values(
@@ -7719,10 +7689,6 @@ try {
           .execute();
         const weights = { attendance: 20, classwork: 40, homework: 40 };
         await transaction
-          .insertInto('subject_daily_weights')
-          .values({ branch_id: locksBranch, subject_id: algebra, ...weights })
-          .execute();
-        await transaction
           .insertInto('subject_quarter_weights')
           .values(
             quarters.map((quarter) => ({
@@ -7952,10 +7918,6 @@ try {
           .returning('id')
           .execute();
         const weights = { attendance: 20, classwork: 40, homework: 40 };
-        await transaction
-          .insertInto('subject_daily_weights')
-          .values({ branch_id: exemptionsBranch, subject_id: algebra, ...weights })
-          .execute();
         await transaction
           .insertInto('subject_quarter_weights')
           .values(
@@ -8213,10 +8175,6 @@ try {
           .returning('id')
           .execute();
         const weights = { attendance: 20, classwork: 40, homework: 40 };
-        await transaction
-          .insertInto('subject_daily_weights')
-          .values({ branch_id: transfersBranch, subject_id: algebra, ...weights })
-          .execute();
         await transaction
           .insertInto('subject_quarter_weights')
           .values(
@@ -8861,10 +8819,6 @@ try {
       quarters.push(quarter.id);
     }
     const weights = { attendance: 20, classwork: 40, homework: 40 };
-    await migrator
-      .insertInto('subject_daily_weights')
-      .values({ branch_id: portalBranch, subject_id: biology, ...weights })
-      .execute();
     await migrator
       .insertInto('subject_quarter_weights')
       .values(

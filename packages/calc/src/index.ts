@@ -8,14 +8,6 @@ export {
   type DailyAttendance,
 } from './daily-attendance.js';
 export {
-  lessonScore,
-  type DailyWeights,
-  type LessonParts,
-  type LessonScore,
-  type LessonScoreInput,
-  type Work,
-} from './daily.js';
-export {
   currentAbsenceRun,
   currentWorkFigure,
   earlyWarningReasons,
@@ -72,5 +64,5 @@ export {
   type SubjectsFigure,
 } from './rating.js';
 export { CALC_VERSION } from './version.js';
-export { shownPercent, workPercent } from './work.js';
+export { shownPercent, workPercent, type Work } from './work.js';
 export { yearResult, type QuarterOutcome, type YearResult } from './year.js';

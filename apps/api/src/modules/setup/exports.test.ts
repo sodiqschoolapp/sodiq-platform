@@ -145,7 +145,7 @@ describe('the export of the setup lists', () => {
     headTeacher = headBrowser.cookie;
     physics = await subject('Physics', 'Физика', 'Fizika', 'graded');
     music = await subject('Music', 'Музыка', 'Musiqa', 'attendance_only');
-    // Each branch has its own daily distribution of the same subject.
+    // Each branch has a daily distribution stored before task 11.17, which the export no longer reads.
     await t.database.migrator
       .insertInto('subject_daily_weights')
       .values([
@@ -329,7 +329,8 @@ describe('the export of the setup lists', () => {
   });
 
   describe('of the subjects', () => {
-    it("writes the branch's own daily distribution as three numbers, never another branch's", async () => {
+    // Task 11.17: no daily distribution column; the export of another branch is logged there.
+    it('writes the subjects with no daily distribution, and logs the export in the branch of the request', async () => {
       await speak('en');
       const columns = [
         'name',
@@ -337,7 +338,6 @@ describe('the export of the setup lists', () => {
         'grades',
         'journalType',
         'ratingExam',
-        'daily',
         'quarterly',
         'switches',
         'status',
@@ -351,37 +351,26 @@ describe('the export of the setup lists', () => {
         'Grades',
         'Journal type',
         'Rating exam',
-        'Daily distribution: Attendance',
-        'Daily distribution: Classwork',
-        'Daily distribution: Homework',
         'Quarters not set',
         'Switches',
         'Status',
       ]);
       expect(north.sheet.rows).toEqual([
-        [
-          'Physics',
-          'STEAM',
-          '7–9',
-          'Graded',
-          'No',
-          10,
-          60,
-          30,
-          null,
-          'Group subject, Demanding',
-          'Active',
-        ],
-        ['Music', 'STEAM', '7–9', 'Attendance only', 'No', null, null, null, null, '', 'Active'],
+        ['Physics', 'STEAM', '7–9', 'Graded', 'No', null, 'Group subject, Demanding', 'Active'],
+        ['Music', 'STEAM', '7–9', 'Attendance only', 'No', null, '', 'Active'],
       ]);
       const south = await fileOf(
-        await exportOf('/api/setup/subjects/export', send([physics], ['daily']), t.admin, t.south),
+        await exportOf('/api/setup/subjects/export', send([physics], ['name']), t.admin, t.south),
       );
-      expect(south.sheet.rows).toEqual([[20, 50, 30]]);
+      expect(south.sheet.rows).toEqual([['Physics']]);
       expect(await auditAt('subject.export')).toMatchObject({
         branch_id: t.south,
-        details: { list: 'subjects', columns: ['daily'], rows: 1 },
+        details: { list: 'subjects', columns: ['name'], rows: 1 },
       });
+      // The column is gone: a request that names it is refused.
+      expect(
+        (await exportOf('/api/setup/subjects/export', send([physics], ['daily']))).status,
+      ).toBe(400);
     });
 
     it('writes Uzbek names and headings with U+02BB', async () => {

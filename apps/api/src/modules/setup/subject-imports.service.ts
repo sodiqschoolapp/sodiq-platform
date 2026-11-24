@@ -53,7 +53,6 @@ function branchOf(access: Access): string {
 const CODE_COLUMNS: Partial<Record<string, SubjectImportColumn>> = {
   department_not_academic: 'department',
   department_archived: 'department',
-  daily_weights_required: 'dailyAttendance',
   weights_shape_mismatch: 'quarterRatingExam',
 };
 
@@ -81,7 +80,7 @@ interface RunResult {
  * The subject import (the owner's change of 7 November 2026, pull request
  * #316; `05`, "Excel import of subjects"). The preview and the confirm run the
  * hand steps for each row in a savepoint: `Subjects.createIn` (the subject,
- * its school-wide entry and the branch's daily distribution) and
+ * its school-wide entry) and
  * `Subjects.writeQuarterWeightsIn` for each quarter not closed of the
  * branch's years not closed that end today or later, so every check of the
  * hand path is made on every row. The preview is always rolled back; the
@@ -419,8 +418,7 @@ export class SubjectImports {
   }
 
   /**
-   * One row through the hand steps in a savepoint: the subject with the branch's daily
-   * distribution, then the quarterly distribution of each open quarter. The deferred checks
+   * One row through the hand steps in a savepoint: the subject, then the quarterly distribution of each open quarter. The deferred checks
    * run at the end of the row (`set constraints all immediate`), so a row that a commit would
    * refuse is refused here, and the deferred ones are deferred again for the next row.
    */

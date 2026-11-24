@@ -1,7 +1,6 @@
 import {
   departmentChangeKind,
   JOURNAL_TYPES,
-  newSubjectRecordSchema,
   SUBJECT_COLOURS,
   SUBJECT_GRADES,
   subjectRecordSchema,
@@ -21,15 +20,14 @@ import {
   listValues,
   SelectField,
 } from '@/components/field';
-import { wholeNumber, type FormIssue, type FormSchema } from '@/components/form/form-messages';
+import { type FormIssue, type FormSchema } from '@/components/form/form-messages';
 import { RecordForm } from '@/components/form/record-form';
 import { useRecordForm } from '@/components/form/use-record-form';
 import { takenNameOf } from './division-panel';
 import { SubjectSwatch } from './subject-colour';
-import { WeightFields } from './weights-form';
 import { schoolDateText } from '@/lib/dates';
 
-/** The fields of the form: one per input, the daily parts under `daily`, and the total. */
+/** The fields of the form: one per input. */
 type SubjectField =
   | 'nameUz'
   | 'nameRu'
@@ -42,22 +40,14 @@ type SubjectField =
   | 'groupSubject'
   | 'languageRule'
   | 'demanding'
-  | 'dailyattendance'
-  | 'dailyclasswork'
-  | 'dailyhomework'
-  | 'dailyratingExam'
-  | 'dailytotal'
   | 'departmentStartsOn'
   | 'switchesFrom';
 
-/** The field of the form an issue of the record names: `names.uz` is `nameUz`, `daily.total` is `dailytotal`. */
+/** The field of the form an issue of the record names: `names.uz` is `nameUz`. */
 function fieldOf(path: readonly PropertyKey[]): PropertyKey[] {
   const [first, second] = path;
   if (first === 'names' && typeof second === 'string') {
     return [`name${second.charAt(0).toUpperCase()}${second.slice(1)}`];
-  }
-  if (first === 'daily') {
-    return [`daily${typeof second === 'string' ? second : 'total'}`];
   }
   return [...path];
 }
@@ -66,11 +56,10 @@ function fieldOf(path: readonly PropertyKey[]): PropertyKey[] {
  * The schema of `packages/shared` the server checks the record with, its
  * issues named by the fields of this form: the rules stay the shared ones.
  */
-function formSchema(isNew: boolean): FormSchema<SubjectRecord> {
-  const schema = isNew ? newSubjectRecordSchema : subjectRecordSchema;
+function formSchema(): FormSchema<SubjectRecord> {
   return {
     safeParse: (input) => {
-      const result = schema.safeParse(input);
+      const result = subjectRecordSchema.safeParse(input);
       if (result.success) {
         return { success: true, data: result.data };
       }
@@ -97,13 +86,6 @@ interface SubjectFormProps {
   subject: Subject | null;
   /** The active departments of Academic (decision 6). */
   departments: readonly DepartmentChoice[];
-  /**
-   * Whether this branch already has the daily distribution of the subject in
-   * its current round. When it has none, a graded subject (as typed) asks for
-   * it: always for a new subject, after "attendance only" is changed to
-   * "graded", and while the branch has none (decisions 14 and 15).
-   */
-  hasDaily: boolean;
   /** Only the Super Admin moves a subject to another department (decision 17). */
   departmentLocked?: boolean;
   label: string;
@@ -116,14 +98,13 @@ interface SubjectFormProps {
 /**
  * The record of a subject (`05`, Subject: "Name in three languages, colour,
  * department, grades, rating exam switch, group subject switch, ... journal
- * type (graded or attendance only), daily distribution, ... language rule
+ * type (graded or attendance only), ... language rule
  * switch (on by default)"; `edge/timetable`: the "demanding" switch). An
  * attendance-only subject has no rating exam and no weights.
  */
 export function SubjectForm({
   subject,
   departments,
-  hasDaily,
   departmentLocked = false,
   label,
   onSave,
@@ -149,7 +130,7 @@ export function SubjectForm({
   const switchesChange = (journalType: string, ratingExam: boolean): boolean =>
     subject !== null && (journalType !== subject.journalType || ratingExam !== subject.ratingExam);
   const form = useRecordForm<SubjectField, SubjectRecord>({
-    schema: formSchema(subject === null),
+    schema: formSchema(),
     // Keyed by the subject alone: its own save keeps "Saved." (finding 18).
     followInitial: subject !== null,
     initial: {
@@ -164,11 +145,6 @@ export function SubjectForm({
       groupSubject: switchValue(subject?.groupSubject ?? false),
       languageRule: switchValue(subject?.languageRule ?? true),
       demanding: switchValue(subject?.demanding ?? false),
-      dailyattendance: '',
-      dailyclasswork: '',
-      dailyhomework: '',
-      dailyratingExam: '',
-      dailytotal: '',
       departmentStartsOn: subject?.departmentMove?.startsOn ?? '',
       switchesFrom: '1',
     },
@@ -194,17 +170,8 @@ export function SubjectForm({
         groupSubject: typed.groupSubject === CHECKED,
         languageRule: typed.languageRule === CHECKED,
         demanding: typed.demanding === CHECKED,
-        daily:
-          graded && !hasDaily
-            ? {
-                attendance: wholeNumber(typed.dailyattendance),
-                classwork: wholeNumber(typed.dailyclasswork),
-                homework: wholeNumber(typed.dailyhomework),
-              }
-            : null,
       };
     },
-    message: (field) => (field === 'dailytotal' ? t('setup.subjects.totalWrong') : undefined),
     // Finding 21: the grades say what is missing on Save, not as they are ticked.
     checkedOnSave: ['grades'],
     save: onSave,
@@ -306,16 +273,6 @@ export function SubjectForm({
       <CheckboxField label={t('setup.subjects.groupSubject')} {...form.bind('groupSubject')} />
       <CheckboxField label={t('setup.subjects.languageRule')} {...form.bind('languageRule')} />
       <CheckboxField label={t('setup.subjects.demanding')} {...form.bind('demanding')} />
-      {graded && !hasDaily && (
-        <fieldset className="grid gap-2">
-          <legend className="mb-1.5 text-sm font-medium">{t('setup.subjects.daily')}</legend>
-          <WeightFields
-            form={form}
-            parts={['attendance', 'classwork', 'homework']}
-            prefix="daily"
-          />
-        </fieldset>
-      )}
     </RecordForm>
   );
 }

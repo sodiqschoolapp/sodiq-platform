@@ -2,7 +2,6 @@ import { Inject, Injectable } from '@nestjs/common';
 import type {
   Clock,
   CopyQuarterWeightsRecord,
-  DailyWeights,
   ErrorCode,
   GradeChanges,
   JournalType,
@@ -58,7 +57,7 @@ import {
 import { weightsNoticeAccounts } from '../results/weights-notice.js';
 import { lockOpenQuarter } from './closed-quarters.js';
 import { switchKey, switchesOf, type QuarterSwitches } from './subject-switches.js';
-import { dailyWeightsFit, quarterWeightsFit } from './subject-weights.js';
+import { quarterWeightsFit } from './subject-weights.js';
 import { changesOf, notFound, refusingConstraints, refusingDuplicates } from './setup-refusals.js';
 
 /** The field of the record each unique index of the names covers. */
@@ -192,12 +191,6 @@ const columnsOf = (fields: SubjectFields) => ({
   group_subject: fields.groupSubject,
   language_rule: fields.languageRule,
   demanding: fields.demanding,
-});
-
-const dailyOf = (row: WeightsRow): DailyWeights => ({
-  attendance: row.attendance,
-  classwork: row.classwork,
-  homework: row.homework,
 });
 
 const quarterOf = (row: QuarterWeightsRow): QuarterWeights => ({
@@ -341,7 +334,7 @@ const superAdminOf = (access: Access): string | undefined =>
  * Subjects and their weights (docs/spec/05-classes-groups-subjects.md, Subject
  * and "Grading weights on a subject"; task 2.1). The subject is school-wide
  * (owner's answer 3) and every change of it is an audit entry of the whole
- * school; the daily and quarterly distributions are per branch and their
+ * school; the quarterly distributions are per branch and their
  * entries carry the branch. Every write locks the subject row first, so an
  * edit, an archive and a weights write of one subject never interleave.
  * Archived, never deleted (decision 5: the archive is the "active switch").
@@ -365,9 +358,9 @@ export class Subjects {
   }
 
   /**
-   * The Excel file of the list (task 2.2c-1): the school-wide subjects with
-   * the daily distribution of the branch of the request, never another
-   * branch's, read as the list reads them in one transaction.
+   * The Excel file of the list (task 2.2c-1): the school-wide subjects, read
+   * as the list reads them in one transaction (no daily distribution since
+   * task 11.17).
    */
   export(access: Access, request: SubjectExport, requestId: string): Promise<XlsxFile> {
     const branchId = branchOf(access);
@@ -396,8 +389,8 @@ export class Subjects {
   }
 
   /**
-   * A new subject; a graded one with this branch's daily distribution, in one
-   * transaction (answer 6). The department is an active one of Academic.
+   * A new subject, in one transaction. The department is an active one of
+   * Academic. A graded subject has no daily distribution (task 11.17).
    */
   create(access: Access, record: SubjectRecord, requestId: string): Promise<Subject> {
     const branchId = branchOf(access);
@@ -412,7 +405,7 @@ export class Subjects {
   /**
    * The create on a transaction given (the subject import, pull request #316, runs it for each
    * row in a savepoint, so a row is refused exactly as the form is): the subject, its
-   * school-wide entry and this branch's daily distribution. `importId` is given only by the
+   * school-wide entry. `importId` is given only by the
    * import and is named in the entries. The caller maps the refusals (`refusingSubjects`).
    */
   async createIn(
@@ -422,10 +415,6 @@ export class Subjects {
     requestId: string,
     importId?: string,
   ): Promise<string> {
-    const branchId = branchOf(access);
-    if (record.journalType === 'graded' && record.daily === null) {
-      throw refused('daily_weights_required');
-    }
     moveStartsOn(false, record.departmentStartsOn);
     await this.checkDepartment(transaction, record.departmentId);
     const fields = recordFields(record);
@@ -444,18 +433,6 @@ export class Subjects {
       ...(importId === undefined ? {} : { details: { importId } }),
       requestId,
     });
-    if (record.daily !== null) {
-      await this.writeDaily(
-        transaction,
-        access,
-        branchId,
-        row.id,
-        1,
-        record.daily,
-        requestId,
-        importId,
-      );
-    }
     return row.id;
   }
 
@@ -465,10 +442,7 @@ export class Subjects {
   }
 
   /**
-   * Changes the school-wide fields. `daily` is taken only when the subject is
-   * or becomes graded and this branch has no daily distribution yet, and is
-   * then required (decision 15): an edit never writes back weights that the
-   * branch already has, and a graded subject is never saved here without them.
+   * Changes the school-wide fields. There is no daily distribution (task 11.17).
    */
   edit(access: Access, id: string, record: SubjectRecord, requestId: string): Promise<Subject> {
     const branchId = branchOf(access);
@@ -581,16 +555,9 @@ export class Subjects {
             : row.weights_round;
         // Decision 19: a change of the rating switch starts a new rating round;
         // the quarterly distributions of every branch from before no longer
-        // count. The daily distribution has no rating part and stays.
+        // count.
         const ratingRound =
           before.ratingExam === after.ratingExam ? row.rating_round : row.rating_round + 1;
-        const daily = await this.currentDaily(transaction, branchId, id, round);
-        if (record.daily !== null && daily !== undefined) {
-          throw refused('daily_weights_set');
-        }
-        if (record.journalType === 'graded' && daily === undefined && record.daily === null) {
-          throw refused('daily_weights_required');
-        }
         // Task 8.2 (decisions 1 to 3 and 16): a change of the switches names the
         // quarter it takes effect from and is refused while a started quarter it
         // reaches holds scores, in any branch; the subject row is held FOR UPDATE
@@ -648,33 +615,9 @@ export class Subjects {
             requestId,
           });
         }
-        if (record.daily !== null) {
-          await this.writeDaily(transaction, access, branchId, id, round, record.daily, requestId);
-        }
         return this.readSubject(transaction, branchId, id);
       }),
     );
-  }
-
-  /** This branch's daily distribution of a graded subject, on its own route (decision 15). */
-  setDaily(access: Access, id: string, weights: DailyWeights, requestId: string): Promise<Subject> {
-    const branchId = branchOf(access);
-    return this.transactions.run(access.branchIds, async (transaction) => {
-      const row = await this.lockActive(transaction, id);
-      if (row.journal_type !== 'graded') {
-        throw refused('attendance_only_no_weights');
-      }
-      await this.writeDaily(
-        transaction,
-        access,
-        branchId,
-        id,
-        row.weights_round,
-        weights,
-        requestId,
-      );
-      return this.readSubject(transaction, branchId, id);
-    });
   }
 
   /** At the moment of the clock. An archived subject stays as it is. */
@@ -1141,77 +1084,6 @@ export class Subjects {
     }
   }
 
-  /** This branch's daily distribution of the subject's round, or nothing. */
-  private currentDaily(
-    transaction: Transaction,
-    branchId: string,
-    subjectId: string,
-    round: number,
-  ): Promise<WeightsRow | undefined> {
-    return transaction
-      .selectFrom('subject_daily_weights')
-      .select(['attendance', 'classwork', 'homework'])
-      .where('branch_id', '=', branchId)
-      .where('subject_id', '=', subjectId)
-      .where('weights_round', '=', round)
-      .forUpdate()
-      .executeTakeFirst();
-  }
-
-  /**
-   * Stores the daily distribution of the round and its audit entry with the
-   * values before and after (`05`: "Each change is logged"); a row of an
-   * earlier round counts as none before.
-   */
-  private async writeDaily(
-    transaction: Transaction,
-    access: Access,
-    branchId: string,
-    subjectId: string,
-    round: number,
-    weights: DailyWeights,
-    requestId: string,
-    importId?: string,
-  ): Promise<void> {
-    const stored = await transaction
-      .selectFrom('subject_daily_weights')
-      .select(['attendance', 'classwork', 'homework', 'weights_round'])
-      .where('branch_id', '=', branchId)
-      .where('subject_id', '=', subjectId)
-      .forUpdate()
-      .executeTakeFirst();
-    const oldValue =
-      stored === undefined || stored.weights_round !== round ? null : dailyOf(stored);
-    if (oldValue !== null && JSON.stringify(oldValue) === JSON.stringify(dailyOf(weights))) {
-      return;
-    }
-    const columns = { ...dailyOf(weights), weights_round: round };
-    if (stored === undefined) {
-      await transaction
-        .insertInto('subject_daily_weights')
-        .values({ branch_id: branchId, subject_id: subjectId, ...columns })
-        .execute();
-    } else {
-      await transaction
-        .updateTable('subject_daily_weights')
-        .set(columns)
-        .where('branch_id', '=', branchId)
-        .where('subject_id', '=', subjectId)
-        .execute();
-    }
-    await this.audit.record(transaction, {
-      branchId,
-      actorId: access.accountId,
-      assignmentId: access.assignmentId,
-      action: 'subject_daily_weights.set',
-      record: { type: 'subject', id: subjectId },
-      oldValue: { daily: oldValue },
-      newValue: { daily: dailyOf(weights) },
-      ...(importId === undefined ? {} : { details: { importId } }),
-      requestId,
-    });
-  }
-
   /** Stores one quarter's distribution and its audit entry with the values before and after. */
   private async writeQuarter(
     transaction: Transaction,
@@ -1427,8 +1299,7 @@ export class Subjects {
   }
 
   /**
-   * The subjects with this branch's daily distribution and the count of
-   * quarters of the branch's planned and current years without a fitting
+   * The subjects with the count of quarters of the branch's planned and current years without a fitting
    * quarterly distribution (decision 3).
    */
   private async withWeights(
@@ -1440,13 +1311,7 @@ export class Subjects {
       return [];
     }
     const ids = rows.map((row) => row.id);
-    const [daily, quarters, weights] = await Promise.all([
-      transaction
-        .selectFrom('subject_daily_weights')
-        .select(['subject_id', 'attendance', 'classwork', 'homework', 'weights_round'])
-        .where('branch_id', '=', branchId)
-        .where('subject_id', 'in', ids)
-        .execute(),
+    const [quarters, weights] = await Promise.all([
       transaction
         .selectFrom('quarters')
         .innerJoin('academic_years', 'academic_years.id', 'quarters.academic_year_id')
@@ -1483,9 +1348,6 @@ export class Subjects {
     return rows.map((row) => {
       const graded = row.journal_type === 'graded';
       const shown = departmentInForce(row, today);
-      const own = daily.find(
-        (weights) => weights.subject_id === row.id && dailyWeightsFit(row, weights),
-      );
       // The graded quarters of the subject, each against its own switches (task 8.2).
       const counted = quarters.filter(
         (quarter) => switches.get(switchKey(row.id, quarter.id))?.journal_type === 'graded',
@@ -1511,7 +1373,6 @@ export class Subjects {
             ? null
             : { departmentId: shown.move.departmentId, startsOn: shown.move.startsOn },
         archivedAt: row.archived_at === null ? null : row.archived_at.toISOString(),
-        daily: !graded || own === undefined ? null : dailyOf(own),
         quarterWeightsMissing: graded && counted.length > 0 ? counted.length - fitting : null,
         quarterCount: graded && counted.length > 0 ? counted.length : null,
       };
@@ -1597,8 +1458,7 @@ export class Subjects {
 }
 
 /**
- * The columns of the subjects file: the daily distribution as three number
- * columns, empty for an attendance-only subject or one not set; the quarters
+ * The columns of the subjects file: the quarters
  * not set as a number, empty when there is nothing to count.
  */
 function subjectExportColumns(
@@ -1625,16 +1485,6 @@ function subjectExportColumns(
       (texts) => texts.subjects.columns.ratingExam,
       (row, texts) => (row.ratingExam ? texts.yes : texts.no),
     ),
-    daily: {
-      headings: (texts) =>
-        [texts.weightParts.attendance, texts.weightParts.classwork, texts.weightParts.homework].map(
-          (part) => `${texts.subjects.columns.daily}: ${part}`,
-        ),
-      cells: (row) =>
-        row.daily === null
-          ? [null, null, null]
-          : [row.daily.attendance, row.daily.classwork, row.daily.homework],
-    },
     quarterly: oneCell(
       (texts) => texts.subjects.columns.quarterly,
       (row) => row.quarterWeightsMissing,

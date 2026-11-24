@@ -10,6 +10,12 @@
 import { Fraction } from './fraction.js';
 import { CalcInputError, wholeNumber } from './input.js';
 
+/** A work with its total set; `score` is `null` while empty or "not graded". */
+export interface Work {
+  readonly total: number;
+  readonly score: number | null;
+}
+
 /** The exact percent of `score` out of `total`. */
 export function workPercent(score: number, total: number): Fraction {
   const whole = wholeNumber(total, 'total');

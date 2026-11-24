@@ -17,7 +17,7 @@ One page per area, in the order a school meets them:
 | `05-teaching-load-and-timetable.md` | The teaching load, the timetable and its versions, the board, generation, publishing, one-day changes, absences and substitutions, exams |
 | `06-journal.md` | Journals, attendance, marks, works and totals, exemptions, locks and unlock requests, exports, the support view, closing a quarter |
 | `07-lesson-plans.md` | Lesson plans, windows and requests |
-| `08-results.md` | Lesson scores, quarter and year results, grades, ratings and reports |
+| `08-results.md` | Quarter and year results, grades, ratings and reports |
 | `09-notices-and-the-log.md` | Notifications, reminders and the audit log |
 
 A page is created by the first task that builds something in its area.

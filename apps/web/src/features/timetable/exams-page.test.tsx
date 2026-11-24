@@ -68,7 +68,6 @@ const MATHS: Subject = {
   languageRule: true,
   demanding: false,
   archivedAt: null,
-  daily: null,
   quarterWeightsMissing: null,
   quarterCount: null,
 };

@@ -504,7 +504,6 @@ describe('the readers of the rating exam and comments', () => {
           groupSubject: subject.groupSubject,
           languageRule: subject.languageRule,
           demanding: subject.demanding,
-          daily: subject.daily === null ? { attendance: 20, classwork: 40, homework: 40 } : null,
           switchesFrom: 1,
         });
         expect(codeOf(refused)).toBe('subject_switch_scores');

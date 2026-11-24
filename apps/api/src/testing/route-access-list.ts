@@ -495,7 +495,6 @@ export const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
   'POST /api/setup/subjects/imports/:id/preview': { branch: 'request', roles: SUBJECT_WRITERS },
   'POST /api/setup/subjects/imports/:id/confirm': { branch: 'request', roles: SUBJECT_WRITERS },
   'PUT /api/setup/subjects/:id': { branch: 'request', roles: SUBJECT_WRITERS },
-  'PUT /api/setup/subjects/:id/daily-weights': { branch: 'request', roles: SUBJECT_WRITERS },
   'POST /api/setup/subjects/:id/archive': { branch: 'request', roles: SUBJECT_WRITERS },
   'POST /api/setup/subjects/:id/restore': { branch: 'request', roles: SUBJECT_WRITERS },
   'GET /api/setup/subjects/:id/quarter-weights': { branch: 'request', roles: SUBJECT_VIEWERS },

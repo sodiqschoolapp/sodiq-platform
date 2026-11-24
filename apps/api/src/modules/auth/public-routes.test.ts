@@ -585,7 +585,6 @@ describe('the routes that work without sign-in', () => {
       'PUT /api/setup/settings/edit-days',
       'PUT /api/setup/settings/plan-windows',
       'PUT /api/setup/subjects/:id',
-      'PUT /api/setup/subjects/:id/daily-weights',
       'PUT /api/setup/subjects/:id/quarter-weights/:quarterId',
       'PUT /api/setup/subjects/imports',
       'PUT /api/setup/travel-times',

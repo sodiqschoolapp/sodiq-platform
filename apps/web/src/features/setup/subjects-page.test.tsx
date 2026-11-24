@@ -63,7 +63,6 @@ const MATHS: Subject = {
   languageRule: true,
   demanding: true,
   archivedAt: null,
-  daily: { attendance: 10, classwork: 50, homework: 40 },
   quarterWeightsMissing: 3,
   quarterCount: 4,
 };
@@ -75,7 +74,6 @@ const PHYSICS: Subject = {
   colour: 'violet',
   ratingExam: false,
   demanding: false,
-  daily: null,
   quarterWeightsMissing: 4,
   quarterCount: 4,
 };
@@ -92,7 +90,6 @@ const SPIRIT: Subject = {
   journalType: 'attendance_only',
   ratingExam: false,
   demanding: false,
-  daily: null,
   quarterWeightsMissing: null,
   quarterCount: null,
 };
@@ -195,8 +192,6 @@ async function openList({
     [`PUT /api/setup/subjects/${MATHS.id}`]: (body) => json({ ...MATHS, ...(body as object) }),
     [`PUT /api/setup/subjects/${PHYSICS.id}`]: (body) => json({ ...PHYSICS, ...(body as object) }),
     [`PUT /api/setup/subjects/${SPIRIT.id}`]: (body) => json({ ...SPIRIT, ...(body as object) }),
-    [`PUT /api/setup/subjects/${MATHS.id}/daily-weights`]: (body) =>
-      json({ ...MATHS, daily: body }),
     [`PUT /api/setup/subjects/${MATHS.id}/quarter-weights/${uid(41)}`]: (body) =>
       json(answer([quarter(1, body as SubjectQuarter['weights']), ...quarters.slice(1)])),
     [`POST /api/setup/subjects/${MATHS.id}/quarter-weights/copy`]: () =>
@@ -237,10 +232,10 @@ async function changeWeights(panel: HTMLElement, name: string): Promise<HTMLElem
 
 // subject"; the owner's answers 3 to 8; the plan approved on pull request #52.
 describe('the subjects page', () => {
-  it('lists the subjects with their department, grades, journal type and this branch daily distribution', async () => {
+  it('lists the subjects with their department, grades, journal type and quarters, and no daily distribution (task 11.17)', async () => {
     await openList();
 
-    expect(rowsDrawn().map((row) => row.slice(1, 8))).toEqual([
+    expect(rowsDrawn().map((row) => row.slice(1, 7))).toEqual([
       [
         'Mathematics',
         'STEAM',
@@ -248,7 +243,6 @@ describe('the subjects page', () => {
         '5–7',
         subjectsText.journalTypes.graded,
         subjectsText.yes,
-        '10 · 50 · 40',
         '3 of 4 not set',
       ],
       [
@@ -257,7 +251,6 @@ describe('the subjects page', () => {
         '5–7',
         subjectsText.journalTypes.graded,
         subjectsText.no,
-        subjectsText.notSet,
         '4 of 4 not set',
       ],
       [
@@ -267,7 +260,6 @@ describe('the subjects page', () => {
         subjectsText.journalTypes.attendance_only,
         subjectsText.no,
         subjectsText.none,
-        subjectsText.none,
       ],
       [
         'Drawing',
@@ -275,7 +267,6 @@ describe('the subjects page', () => {
         '5–7',
         subjectsText.journalTypes.graded,
         subjectsText.no,
-        subjectsText.notSet,
         subjectsText.allSet,
       ],
     ]);
@@ -287,9 +278,8 @@ describe('the subjects page', () => {
     expect(rowsDrawn().map((row) => row[1])).toEqual(['Математика', 'Физика']);
   });
 
-  // The build plan's "done when": a graded subject cannot be saved with
-  // weights that do not total 100.
-  it('refuses a new graded subject whose daily distribution totals 99 without calling, and saves it at 100', async () => {
+  // Task 11.17: a graded subject is saved with no daily distribution; the form asks for none.
+  it('saves a new graded subject with no daily distribution', async () => {
     const { calls } = await openList();
 
     fireEvent.click(screen.getByRole('button', { name: subjectsText.add }));
@@ -305,15 +295,7 @@ describe('the subjects page', () => {
     });
     fireEvent.click(within(form).getByLabelText(subjectsText.grade.replace('{{grade}}', '8')));
     fireEvent.click(within(form).getByLabelText(subjectsText.grade.replace('{{grade}}', '9')));
-    type(within(form).getByLabelText(subjectsText.parts.attendance), '10');
-    type(within(form).getByLabelText(subjectsText.parts.classwork), '50');
-    type(within(form).getByLabelText(subjectsText.parts.homework), '39');
-    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
-
-    expect(await within(form).findByText(subjectsText.totalWrong, { exact: false })).toBeDefined();
-    expect(calls.some((call) => call.route === 'POST /api/setup/subjects')).toBe(false);
-
-    type(within(form).getByLabelText(subjectsText.parts.homework), '40');
+    expect(within(form).queryByLabelText(subjectsText.parts.attendance)).toBeNull();
     fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
 
     await waitFor(() => {
@@ -327,7 +309,6 @@ describe('the subjects page', () => {
         groupSubject: false,
         languageRule: true,
         demanding: false,
-        daily: { attendance: 10, classwork: 50, homework: 40 },
       });
     });
     // The panel shows the saved record (task 2.7c-2a).
@@ -354,9 +335,6 @@ describe('the subjects page', () => {
     });
     fireEvent.click(within(form).getByLabelText(subjectsText.grade.replace('{{grade}}', '1')));
     fireEvent.click(within(form).getByLabelText(subjectsText.grade.replace('{{grade}}', '0')));
-    type(within(form).getByLabelText(subjectsText.parts.attendance), '10');
-    type(within(form).getByLabelText(subjectsText.parts.classwork), '50');
-    type(within(form).getByLabelText(subjectsText.parts.homework), '40');
     fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
     await waitFor(() => {
       expect(calls.find((call) => call.route === 'POST /api/setup/subjects')?.body).toMatchObject({
@@ -391,7 +369,6 @@ describe('the subjects page', () => {
       expect(calls.find((call) => call.route === 'POST /api/setup/subjects')?.body).toMatchObject({
         journalType: 'attendance_only',
         ratingExam: false,
-        daily: null,
       });
     });
   });
@@ -413,46 +390,9 @@ describe('the subjects page', () => {
     expect(screen.getByText(subjectsText.needsDepartment)).toBeDefined();
   });
 
-  it('changes the daily distribution on its own route and keeps the other fields out of it', async () => {
-    const { calls } = await openList();
-    fireEvent.click(rowButton('Mathematics'));
-    const panel = await screen.findByRole('complementary', { name: 'Mathematics' });
-
-    const daily = await changeWeights(panel, subjectsText.daily);
-    type(within(daily).getByLabelText(subjectsText.parts.attendance), '20');
-    type(within(daily).getByLabelText(subjectsText.parts.classwork), '40');
-    fireEvent.click(within(daily).getByRole('button', { name: en.form.save }));
-
-    await waitFor(() => {
-      expect(
-        calls.find((call) => call.route === `PUT /api/setup/subjects/${MATHS.id}/daily-weights`)
-          ?.body,
-      ).toEqual({ attendance: 20, classwork: 40, homework: 40 });
-    });
-  });
-
-  // Decision 15: an edit carries the daily distribution only while the branch has none.
-  it('asks for the daily distribution in the edit of a graded subject this branch has none for', async () => {
-    const { calls } = await openList();
-    fireEvent.click(rowButton('Physics'));
-    const panel = await screen.findByRole('complementary', { name: 'Physics' });
-
-    const form = await edit(panel, 'Physics');
-    type(within(form).getByLabelText(subjectsText.parts.attendance), '20');
-    type(within(form).getByLabelText(subjectsText.parts.classwork), '40');
-    type(within(form).getByLabelText(subjectsText.parts.homework), '40');
-    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
-
-    await waitFor(() => {
-      expect(
-        calls.find((call) => call.route === `PUT /api/setup/subjects/${PHYSICS.id}`)?.body,
-      ).toMatchObject({ daily: { attendance: 20, classwork: 40, homework: 40 } });
-    });
-  });
-
   // Issue #39, hand test of 13 October 2026, finding 18 (task 2.7b-2, decision
   // 7): a save that changes what the form shows keeps the form and its sign.
-  it('keeps "Saved." after an edit that gives the subject its daily distribution, and after a daily change', async () => {
+  it('keeps "Saved." after an edit that changes what the panel shows', async () => {
     let subjects = [MATHS, PHYSICS, SPIRIT, OLD];
     const saveOne = (one: Subject) => (body: unknown) => {
       const saved = { ...one, ...(body as object) };
@@ -463,60 +403,43 @@ describe('the subjects page', () => {
       extra: {
         'GET /api/setup/subjects': () => json({ subjects, mayMoveDepartment: true }),
         [`PUT /api/setup/subjects/${PHYSICS.id}`]: saveOne(PHYSICS),
-        [`PUT /api/setup/subjects/${MATHS.id}/daily-weights`]: (body) =>
-          saveOne(MATHS)({ daily: body }),
       },
     });
     fireEvent.click(rowButton('Physics'));
-    let panel = await screen.findByRole('complementary', { name: 'Physics' });
+    const panel = await screen.findByRole('complementary', { name: 'Physics' });
     const form = await edit(panel, 'Physics');
-    type(within(form).getByLabelText(subjectsText.parts.attendance), '20');
-    type(within(form).getByLabelText(subjectsText.parts.classwork), '40');
-    type(within(form).getByLabelText(subjectsText.parts.homework), '40');
+    fireEvent.click(within(form).getByLabelText(subjectsText.demanding));
     fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
     // Task 2.7c-2b-1: the form closes and the bottom row keeps "Saved." while
     // the record is read again with what the save changed.
     await savedInPanel(panel);
     await waitFor(() => {
-      expect(subjects.find((one) => one.id === PHYSICS.id)?.daily).not.toBeNull();
+      expect(subjects.find((one) => one.id === PHYSICS.id)?.demanding).toBe(true);
     });
-    expect(await within(panel).findByText('20 · 40 · 40')).toBeDefined();
     expect(panelActions(panel)?.textContent).toContain(en.form.saved);
-
-    fireEvent.click(rowButton('Mathematics'));
-    panel = await screen.findByRole('complementary', { name: 'Mathematics' });
-    const daily = await changeWeights(panel, subjectsText.daily);
-    type(within(daily).getByLabelText(subjectsText.parts.attendance), '20');
-    type(within(daily).getByLabelText(subjectsText.parts.classwork), '40');
-    fireEvent.click(within(daily).getByRole('button', { name: en.form.save }));
-    await savedInPanel(panel);
   });
 
-  // Decision 14: an attendance-only subject made graded again needs this
-  // branch's daily distribution in the same request (the spec review).
-  it('asks for the daily distribution when an attendance-only subject is made graded, and sends it', async () => {
+  // Task 11.17: an attendance-only subject made graded asks for no daily distribution.
+  it('makes an attendance-only subject graded without asking for a daily distribution', async () => {
     const { calls } = await openList();
     fireEvent.click(rowButton('Spiritual hour'));
     const panel = await screen.findByRole('complementary', { name: 'Spiritual hour' });
     const form = await edit(panel, 'Spiritual hour');
-    expect(within(form).queryByLabelText(subjectsText.parts.attendance)).toBeNull();
 
     fireEvent.change(within(form).getByLabelText(subjectsText.journalType), {
       target: { value: 'graded' },
     });
-    type(within(form).getByLabelText(subjectsText.parts.attendance), '20');
-    type(within(form).getByLabelText(subjectsText.parts.classwork), '40');
-    type(within(form).getByLabelText(subjectsText.parts.homework), '40');
+    expect(within(form).queryByLabelText(subjectsText.parts.attendance)).toBeNull();
     fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
 
     await waitFor(() => {
       expect(
         calls.find((call) => call.route === `PUT /api/setup/subjects/${SPIRIT.id}`)?.body,
-      ).toMatchObject({
-        journalType: 'graded',
-        daily: { attendance: 20, classwork: 40, homework: 40 },
-      });
+      ).toMatchObject({ journalType: 'graded' });
     });
+    expect(
+      calls.find((call) => call.route === `PUT /api/setup/subjects/${SPIRIT.id}`)?.body,
+    ).not.toHaveProperty('daily');
   });
 
   it('sets quarter 1 with four parts for a rating subject and copies it after asking when other quarters are set', async () => {
@@ -913,12 +836,14 @@ describe('the subjects page', () => {
     fireEvent.click(rowButton('Mathematics'));
     const panel = await screen.findByRole('complementary', { name: 'Mathematics' });
     expect(within(panel).queryByRole('form')).toBeNull();
-    expect(within(panel).getByText('10 · 50 · 40')).toBeDefined();
     expect(within(panel).queryByRole('button', { name: subjectsText.archiveSubject })).toBeNull();
     expect(panelActions(panel)).toBeNull();
     expect(
       within(panel).queryByRole('button', {
-        name: subjectsText.changeWeightsOf.replace('{{name}}', subjectsText.daily),
+        name: subjectsText.changeWeightsOf.replace(
+          '{{name}}',
+          subjectsText.quarter.replace('{{n}}', '1'),
+        ),
       }),
     ).toBeNull();
   });
@@ -939,20 +864,21 @@ describe('the subjects page', () => {
     expect(await moreActionNames(panel)).toEqual([subjectsText.archiveSubject]);
     expect(actionsInHeader(panel)).toBe(true);
 
-    const daily = await changeWeights(panel, subjectsText.daily);
+    const first = subjectsText.quarter.replace('{{n}}', '1');
+    const open = await changeWeights(panel, first);
     expect(panelActions(panel)).toBeNull();
-    type(within(daily).getByLabelText(subjectsText.parts.attendance), '20');
+    type(within(open).getByLabelText(subjectsText.parts.attendance), '20');
     fireEvent.click(
       within(panel).getByRole('button', {
         name: subjectsText.changeWeightsOf.replace(
           '{{name}}',
-          subjectsText.quarter.replace('{{n}}', '1'),
+          subjectsText.quarter.replace('{{n}}', '2'),
         ),
       }),
     );
     await goOn(en.unsent.stay);
-    expect(within(panel).getByRole('form', { name: subjectsText.daily })).toBe(daily);
-    fireEvent.click(within(daily).getByRole('button', { name: en.form.cancel }));
+    expect(within(panel).getByRole('form', { name: first })).toBe(open);
+    fireEvent.click(within(open).getByRole('button', { name: en.form.cancel }));
     await goOn(en.unsent.leave);
     await waitFor(() => {
       expect(within(panel).queryByRole('form')).toBeNull();

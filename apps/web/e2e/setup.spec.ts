@@ -1092,8 +1092,9 @@ test('the Academic Vice Principal changes the edit days and a late value, and th
 
 // docs/build-plan.md, task 2.1, done when: "a graded subject cannot be saved
 // with weights that do not total 100". The owner's answers 3 to 8: one subject
-// list, weights per branch, the copy of quarter 1 (answer 6).
-test('the Academic Vice Principal adds a graded subject, is refused at 99, saves at 100, sets quarter 1 and copies it', async ({
+// list, weights per branch, the copy of quarter 1 (answer 6). Task 11.17: a graded
+// subject has no daily distribution; the weights that total 100 are the quarter's.
+test('the Academic Vice Principal adds a graded subject with no daily distribution, sets quarter 1 (refused at 99, saved at 100) and copies it', async ({
   page,
 }) => {
   test.setTimeout(90_000);
@@ -1110,16 +1111,10 @@ test('the Academic Vice Principal adds a graded subject, is refused at 99, saves
   await form.getByLabel(texts.grade.replace('{{grade}}', '10'), { exact: true }).check();
   await form.getByLabel(texts.grade.replace('{{grade}}', '11'), { exact: true }).check();
   await form.getByLabel(texts.ratingExam, { exact: true }).check();
-  await form.getByLabel(texts.parts.attendance, { exact: true }).fill('10');
-  await form.getByLabel(texts.parts.classwork, { exact: true }).fill('50');
-  await form.getByLabel(texts.parts.homework, { exact: true }).fill('39');
-  await form.getByRole('button', { name: en.form.save, exact: true }).click();
-  await expect(form.getByText(texts.totalWrong, { exact: false })).toBeVisible();
-
-  await form.getByLabel(texts.parts.homework, { exact: true }).fill('40');
+  await expect(form.getByLabel(texts.parts.attendance, { exact: true })).toHaveCount(0);
   await form.getByRole('button', { name: en.form.save, exact: true }).click();
   const row = page.getByRole('row').filter({ hasText: 'Astronomy' });
-  await expect(row).toContainText('10 · 50 · 40');
+  await expect(row).toBeVisible();
 
   await row.getByRole('button', { name: 'Astronomy' }).click();
   const panel = page.getByRole('complementary', { name: 'Astronomy' });
@@ -1131,6 +1126,9 @@ test('the Academic Vice Principal adds a graded subject, is refused at 99, saves
   await first.getByLabel(texts.parts.attendance, { exact: true }).fill('10');
   await first.getByLabel(texts.parts.classwork, { exact: true }).fill('30');
   await first.getByLabel(texts.parts.homework, { exact: true }).fill('20');
+  await first.getByLabel(texts.parts.ratingExam, { exact: true }).fill('39');
+  await first.getByRole('button', { name: en.form.save, exact: true }).click();
+  await expect(first.getByText(texts.totalWrong, { exact: false })).toBeVisible();
   await first.getByLabel(texts.parts.ratingExam, { exact: true }).fill('40');
   await first.getByRole('button', { name: en.form.save, exact: true }).click();
   await expect(saved(panel)).toBeVisible();

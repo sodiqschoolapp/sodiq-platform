@@ -4,7 +4,7 @@ Not written yet for most of the journal: the journal grid, attendance, marks, wo
 
 ## The title and the column labels
 
-<!-- Sources: spec 07 (Opening a journal; Layout, Lessons row and the table of short labels); spec change of 18 November 2026 -->
+<!-- Sources: spec 07 (Opening a journal; Layout, Lessons row and the table of short labels; Calculation rules, rule 3); spec changes of 18 and 24 November 2026 -->
 
 **What it is.** A journal is titled by its class or group and its subject, for example "5 Oxford · Ingliz tili", so a teacher with several classes sees at once which journal is open. The page's name, **Sinf jurnali** (**Классный журнал**, **Class journal**), is in the line above the title. The short labels over the lesson columns are in the language of the screen, with the full word when the pointer rests on them:
 
@@ -13,10 +13,11 @@ Not written yet for most of the journal: the journal grid, attendance, marks, wo
 | Attendance | Dav | Пос | Att |
 | Classwork | SI | Кл/р | CW |
 | Homework | UV | Д/з | HW |
-| Lesson score | Oʻrt | Ср. | Avg |
 | Total (of 30) | Soni 30 | из 30 | of 30 |
 
 The exported and printed journal uses the same labels, under the heading **Sinf jurnali** in its language.
+
+There is no lesson score column (Oʻrt / Ср. / Avg) and a subject has no daily distribution: a lesson's attendance and works count only in the quarter averages and the quarter result, on screen, in the exported and printed journal and in the support view (owner, 24 November 2026).
 
 ## Today's lesson and the short headers
 

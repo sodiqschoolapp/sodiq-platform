@@ -248,7 +248,7 @@ const CHECKLIST: SetupChecklist = {
     { key: 'slotTypes', done: true, count: null, years: [] },
     { key: 'defaultTemplate', done: false, count: null, years: [] },
     { key: 'calendar', done: null, count: 3, years: [] },
-    { key: 'subjects', done: false, count: 2, years: [] },
+    { key: 'subjects', done: false, count: null, years: [] },
     { key: 'classes', done: true, count: null, years: [] },
     // Task 3.2a, decision 14.
     { key: 'groups', done: false, count: null, years: [] },
@@ -280,10 +280,8 @@ describe('the setup checklist', () => {
     expect(items[4]?.textContent).toContain('2026–2027');
     expect(items[2]?.textContent).toContain(en.setup.checklist.wholeSchool);
     expect(items[7]?.textContent).toContain('3 entries');
-    // Task 2.1, decision 7: the graded subjects without their daily distribution here.
-    expect(items[8]?.textContent).toContain(
-      en.setup.checklist.subjectsMissing_other.replace('{{count}}', '2'),
-    );
+    // Task 11.17: no count of subjects without a daily distribution.
+    expect(items[8]?.textContent).not.toMatch(/daily|graded subject/i);
     expect(
       within(items[8] as HTMLElement)
         .getByRole('link', { name: en.setup.checklist.items.subjects })

@@ -116,7 +116,6 @@ const gridOf = (old: EditLock, students = [student(1, 'Zokirov')]): JournalGrid 
   legend: {
     lateValue: 50,
     skippedValue: 0,
-    daily: null,
     quarterly: null,
     weightsChangedOn: null,
     countsFrom: null,
