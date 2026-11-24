@@ -53,6 +53,10 @@ Section "Calculation rules", rule 3: replace the whole rule, which starts "3. Le
 
 `docs/spec/edge-cases/calculation.md`: remove the row that starts "| The lesson score of a lesson where one student has no classwork number".
 
+`docs/spec/edge-cases/calculation.md`, row "A lesson has three classworks: 100%, 50% and 60%. The only other classwork of the quarter is 90%.", old: "The lesson's classwork part is 70. The quarter classwork average counts each work once:"
+New: "The quarter classwork average counts each work once:"
+(Added from the review of pull request #380, code round 1: the "lesson's classwork part" was defined by old rule 3.)
+
 `docs/spec/edge-cases/calculation.md`, row "Ma'naviyat soati and the Homework slot.", old: "Attendance-only subjects have no weights, no lesson score, no result and no grade."
 New: "Attendance-only subjects have no weights, no result and no grade."
 

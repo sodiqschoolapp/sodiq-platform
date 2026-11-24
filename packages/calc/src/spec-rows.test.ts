@@ -158,7 +158,8 @@ const CALCULATION: readonly Row[] = [
   },
   {
     case: 'A lesson has three classworks: 100%, 50% and 60%. The only other classwork of the quarter is 90%.',
-    rule: '95db9798c784c9ff',
+    // Rule re-pinned by the spec change of 24 November 2026 (no lesson score).
+    rule: '81ea82d9ace019b2',
     tests: [['daily.test.ts'], ['quarter.test.ts']],
     tasks: [],
   },
