@@ -10,7 +10,7 @@ No question is open. The decided ones are kept as a record.
 | 1 | Is Ma'naviyat soati graded, or attendance only? | Attendance only. | Decided |
 | 2 | What is a late arrival worth in the attendance average? And a skipped lesson (mark 3)? | Late 50, skipped 0. Both can be changed in settings. | Decided |
 | 3 | Is an empty score left out of the average, or counted as 0? | Left out. The teacher types 0 for work not done. | Decided |
-| 4 | What is the daily distribution across attendance, classwork and homework? | Set in the settings of each subject. No system default. | Decided |
+| 4 | What is the daily distribution across attendance, classwork and homework? | Set in the settings of each subject. No system default. Removed on 24 November 2026: there is no daily distribution and no lesson score. | Decided |
 | 5 | What are the quarterly weights? | Set and editable in the settings of each subject. A new subject starts with 10 · 30 · 20 · 40 (rating subject) or 10 · 50 · 40. | Decided |
 | 6 | How is the year result calculated? | The mean of the four quarter results. | Decided |
 | 7 | Does "qarzdorlik" mean homework debt, payment debtors, or both? | Both are removed. | Decided |

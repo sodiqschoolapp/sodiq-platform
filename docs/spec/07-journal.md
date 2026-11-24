@@ -18,8 +18,8 @@ There is one journal for each class or group and subject in an academic year. It
 | --- | --- | --- |
 | Student list | Number, surname and name in alphabetical order, UID. | Fixed on the left. Filled by the system. |
 | Quarter results | Attendance average, classwork average, homework average, rating exam (rating subjects only), quarter result, grade 2–5. | Fixed next to the names. Calculated by the system; a switch shows the same figures for the selected month. |
-| Lessons | One block per dated lesson. Row 1: date, weekday, slot. Row 2: the attendance column, then one classwork column for each classwork of the lesson and one homework column for each homework checked at it, each with its title and, in front of the title, a small coloured tag with the letter of its kind (S for sinf ishi and U for uy vazifasi in Uzbek, К and Д in Russian, C and H in English; the full word on hover), then the lesson score column. Row 3: "all present" button; under each classwork and each homework, the total label and the total set by the teacher for that work (for example 30, 5 or 100). The short labels follow the person's language, with the full word on hover (table below). A lesson with no classwork and no homework is one narrow attendance column. | Scrolls sideways. Cancelled lessons are grey with the reason. |
-| Lesson cells | Attendance mark; for each classwork and each homework, the number typed by the teacher and next to it the percent; lesson score. | The teacher types the attendance mark and the numbers. The system calculates the percents and the lesson score. |
+| Lessons | One block per dated lesson. Row 1: date, weekday, slot. Row 2: the attendance column, then one classwork column for each classwork of the lesson and one homework column for each homework checked at it, each with its title and, in front of the title, a small coloured tag with the letter of its kind (S for sinf ishi and U for uy vazifasi in Uzbek, К and Д in Russian, C and H in English; the full word on hover). Row 3: "all present" button; under each classwork and each homework, the total label and the total set by the teacher for that work (for example 30, 5 or 100). The short labels follow the person's language, with the full word on hover (table below). A lesson with no classwork and no homework is one narrow attendance column. | Scrolls sideways. Cancelled lessons are grey with the reason. |
+| Lesson cells | Attendance mark; for each classwork and each homework, the number typed by the teacher and next to it the percent. | The teacher types the attendance mark and the numbers. The system calculates the percents. |
 | Bottom row | Class or group averages: attendance, classwork, homework, rating exam, quarter result. | Calculated. |
 | Legend | Attendance marks, grade bands, and the weights in force for this subject and quarter. | Always visible under the grid. |
 
@@ -30,7 +30,6 @@ Short labels of the lesson columns, in the grid and in the exported and printed 
 | Attendance | Dav | Пос | Att |
 | Classwork | SI | Кл/р | CW |
 | Homework | UV | Д/з | HW |
-| Lesson score | Oʻrt | Ср. | Avg |
 | Total label (a total of 30) | Soni 30 | из 30 | of 30 |
 
 Students who left or moved are shown in a folded section at the bottom with their data intact.
@@ -130,7 +129,7 @@ One rule covers every figure: a student is measured only on the lessons they wer
 
 1. Attendance value of a lesson: present 100, late 50, skipped lesson 0, absent 0. The values for late and skipped can be changed in settings. Exempt lessons (marks 4 and 5, set by the system from exemptions) are left out of all that student's averages.
 2. Classwork percent = number typed ÷ total of that work × 100. Homework percent is calculated the same way. Whatever total the teacher chose, only this percent is used from here on.
-3. Lesson score = the subject's daily distribution applied to the attendance value, classwork part and homework part of that lesson. The classwork part is the mean of the percents of that lesson's classworks; the homework part is the mean of the percents of the homeworks checked at that lesson. If the lesson had no classwork or no homework, that part is left out and the other weights are scaled up to 100.
+3. There is no lesson score (owner, 24 November 2026). A lesson's attendance and works count only in the quarter averages of rules 5 and 6. This rule keeps its number so that the numbers of the rules after it do not change.
 4. An empty score is not counted. For work not done the teacher types 0. Reminders show lessons where some present students have no score.
 5. Quarter attendance average = the mean of the attendance values of all the student's lessons held in the quarter, without exempt and cancelled lessons.
 6. Quarter classwork average = the mean of the student's classwork scores in the quarter; each work counts equally, also when one lesson has several. The homework average is calculated the same way.
