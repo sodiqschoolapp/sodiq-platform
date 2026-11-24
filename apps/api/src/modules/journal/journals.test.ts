@@ -373,7 +373,6 @@ describe('the journal grid', () => {
       expect(grid.legend).toEqual({
         lateValue: 50,
         skippedValue: 0,
-        daily: { attendance: 20, classwork: 40, homework: 40 },
         quarterly: { attendance: 20, classwork: 40, homework: 40, ratingExam: null },
         weightsChangedOn: null,
         countsFrom: null,

@@ -281,7 +281,7 @@ describe('the setup checklist', () => {
     expect(items[2]?.textContent).toContain(en.setup.checklist.wholeSchool);
     expect(items[7]?.textContent).toContain('3 entries');
     // Task 11.17: no count of subjects without a daily distribution.
-    expect(items[8]?.querySelectorAll('span.text-muted-foreground')).toHaveLength(0);
+    expect(items[8]?.textContent).not.toMatch(/daily|graded subject/i);
     expect(
       within(items[8] as HTMLElement)
         .getByRole('link', { name: en.setup.checklist.items.subjects })

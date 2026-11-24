@@ -435,12 +435,7 @@ function LessonFigures({ lesson: one }: { lesson: Lesson }) {
   return (
     <div className="grid gap-1" data-support-lesson={lesson.id}>
       <p className="font-semibold">{time}</p>
-      <p>
-        {[
-          t('journal.support.mark', { mark }),
-          ...works,
-        ].join(' · ')}
-      </p>
+      <p>{[t('journal.support.mark', { mark }), ...works].join(' · ')}</p>
       <p className="text-muted-foreground">
         {[
           t('journal.support.stored', {

@@ -1,4 +1,4 @@
-import { recalculateAndCompare, storedQuarterOutcome } from '@sodiq/calc';
+import { CALC_VERSION, recalculateAndCompare, storedQuarterOutcome } from '@sodiq/calc';
 import {
   CLOSING_WARNINGS,
   closingChecklistSchema,
@@ -3753,6 +3753,50 @@ describe('the closing checklist (07, Closing a quarter)', () => {
           );
           expect(done.status, JSON.stringify(done.body)).toBe(200);
           expect(done.body).toEqual({ version: 2, stored: 1 });
+        },
+        REOPEN,
+      );
+    });
+
+    // Task 11.17: the lesson score left `packages/calc` and raised its version (7 to 8); a quarter
+    // closed on version 7 is compared on version 8 and nothing differs (`docs/spec-changes.md`,
+    // 24 November 2026: the quarter results stay exactly as they are).
+    it('finds no difference for a quarter closed on version 7 of the module, compared on version 8', async () => {
+      expect(CALC_VERSION).toBe(8);
+      const b = await closeBase(await base({ teacher: (await account()).account.id }));
+      const stored = await t.database.migrator
+        .selectFrom('quarter_final_results')
+        .select(['id', 'record'])
+        .where('quarter_id', '=', b.q1)
+        .execute();
+      expect(stored.length).toBeGreaterThan(0);
+      // As a release of version 7 stored them; the record is append-only for everyone but its
+      // owner, which writes past its trigger.
+      await t.database.migrator.transaction().execute(async (transaction) => {
+        await sql`alter table quarter_final_results disable trigger quarter_final_results_merge_carry`.execute(
+          transaction,
+        );
+        await transaction
+          .updateTable('quarter_final_results')
+          .set({ record: sql`jsonb_set(record, '{moduleVersion}', '7'::jsonb)` })
+          .where('quarter_id', '=', b.q1)
+          .execute();
+        await sql`alter table quarter_final_results enable trigger quarter_final_results_merge_carry`.execute(
+          transaction,
+        );
+      });
+      const versions = await t.database.migrator
+        .selectFrom('quarter_final_results')
+        .select(sql<number>`(record->>'moduleVersion')::int`.as('version'))
+        .where('quarter_id', '=', b.q1)
+        .execute();
+      expect(new Set(versions.map((one) => one.version))).toEqual(new Set([7]));
+      await vice(
+        b.s.branch,
+        async (calls) => {
+          const answer = await calls.get(b.s.branch, recalculationPath(b.q1));
+          expect(answer.status, JSON.stringify(answer.body)).toBe(200);
+          expect(answer.body).toMatchObject({ currentVersion: 8, rows: [] });
         },
         REOPEN,
       );

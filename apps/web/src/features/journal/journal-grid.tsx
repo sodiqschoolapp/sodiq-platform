@@ -582,7 +582,6 @@ export function JournalGridView({
         : undefined,
     [comments],
   );
-  const whole = grid.shape === 'whole';
   const figuresShown = grid.shape !== 'lessons';
   const graded = !grid.journal.attendanceOnly && grid.shape !== 'attendance';
   // The categories of the reasons of absence by student and date (task 6.3, decision 7).
@@ -1388,7 +1387,6 @@ export function JournalGridView({
     figuresOf,
     figuresShown,
     graded,
-    whole,
     month,
     reasons,
     busy,

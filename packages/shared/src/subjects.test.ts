@@ -43,13 +43,34 @@ describe('the weights of a subject', () => {
   it('refuse a part of 0, a negative part and a decimal', () => {
     expect(WEIGHT_MIN).toBe(1);
     expect(
-      paths(quarterWeightsSchema.safeParse({ attendance: 0, classwork: 60, homework: 40, ratingExam: null })),
+      paths(
+        quarterWeightsSchema.safeParse({
+          attendance: 0,
+          classwork: 60,
+          homework: 40,
+          ratingExam: null,
+        }),
+      ),
     ).toContain('attendance');
     expect(
-      paths(quarterWeightsSchema.safeParse({ attendance: -10, classwork: 70, homework: 40, ratingExam: null })),
+      paths(
+        quarterWeightsSchema.safeParse({
+          attendance: -10,
+          classwork: 70,
+          homework: 40,
+          ratingExam: null,
+        }),
+      ),
     ).toContain('attendance');
     expect(
-      paths(quarterWeightsSchema.safeParse({ attendance: 10.5, classwork: 49.5, homework: 40, ratingExam: null })),
+      paths(
+        quarterWeightsSchema.safeParse({
+          attendance: 10.5,
+          classwork: 49.5,
+          homework: 40,
+          ratingExam: null,
+        }),
+      ),
     ).toContain('attendance');
     expect(
       paths(
@@ -97,14 +118,10 @@ describe('a subject record', () => {
   it('bounds each name and trims it', () => {
     const long = 'a'.repeat(SUBJECT_NAME_MAX_LENGTH + 1);
     expect(
-      paths(
-        subjectRecordSchema.safeParse({ ...SUBJECT, names: { ...SUBJECT.names, ru: long } }),
-      ),
+      paths(subjectRecordSchema.safeParse({ ...SUBJECT, names: { ...SUBJECT.names, ru: long } })),
     ).toEqual(['names.ru']);
     expect(
-      paths(
-        subjectRecordSchema.safeParse({ ...SUBJECT, names: { ...SUBJECT.names, en: '  ' } }),
-      ),
+      paths(subjectRecordSchema.safeParse({ ...SUBJECT, names: { ...SUBJECT.names, en: '  ' } })),
     ).toEqual(['names.en']);
     expect(
       subjectRecordSchema.parse({ ...SUBJECT, names: { ...SUBJECT.names, en: ' Maths ' } }).names

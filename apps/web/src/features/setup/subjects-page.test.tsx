@@ -369,7 +369,7 @@ describe('the subjects page', () => {
       expect(calls.find((call) => call.route === 'POST /api/setup/subjects')?.body).toMatchObject({
         journalType: 'attendance_only',
         ratingExam: false,
-            });
+      });
     });
   });
 

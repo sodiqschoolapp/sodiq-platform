@@ -26,7 +26,6 @@ import { SubjectChip } from './subject-colour';
 import { SubjectForm, type DepartmentChoice } from './subject-form';
 import { SubjectPanel } from './subject-panel';
 import { invalidateSubjects, subjectsQuery } from './subjects-api';
-import { weightsText } from './weights-form';
 
 /** What a bulk archive or restore did: how many went through, and the names refused, by reason. */
 interface Outcome {
