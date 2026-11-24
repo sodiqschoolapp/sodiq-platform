@@ -151,6 +151,37 @@ describe('loadConfig', () => {
       );
     });
 
+    // Task 11.15: the price of each place, read from its own variables.
+    it('reads the prices of the region and of the worldwide endpoint from their own variables', () => {
+      expect(
+        loadConfig({
+          ...VALID,
+          ASSISTANT_PRICE_IN_MICROS: '1',
+          ASSISTANT_PRICE_OUT_MICROS: '2',
+          ASSISTANT_GLOBAL_PRICE_IN_MICROS: '3',
+          ASSISTANT_GLOBAL_PRICE_OUT_MICROS: '4',
+          ASSISTANT_VERTEX_LOCATION: 'europe-west4',
+        }).assistant,
+      ).toEqual(
+        expect.objectContaining({
+          vertexLocation: 'europe-west4',
+          prices: {
+            region: { priceInMicros: 1, priceOutMicros: 2 },
+            global: { priceInMicros: 3, priceOutMicros: 4 },
+          },
+        }),
+      );
+    });
+
+    it.each([
+      ['ASSISTANT_GLOBAL_PRICE_IN_MICROS', '1.5'],
+      ['ASSISTANT_GLOBAL_PRICE_IN_MICROS', '-1'],
+      ['ASSISTANT_GLOBAL_PRICE_OUT_MICROS', 'nine'],
+      ['ASSISTANT_GLOBAL_PRICE_OUT_MICROS', '1000000001'],
+    ])('refuses %s = %s at the start, with its message', (name, value) => {
+      expect(problemOf({ ...VALID, [name]: value })).toContain(`${name} must`);
+    });
+
     it('refuses credentials that are not a JSON key at the start, with its message', () => {
       expect(
         problemOf({

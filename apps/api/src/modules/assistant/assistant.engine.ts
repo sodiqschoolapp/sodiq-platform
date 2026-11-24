@@ -469,10 +469,9 @@ export class AssistantEngine {
     try {
       return await this.caller.call(start.budget, request, record);
     } catch (error) {
-      const code =
-        error instanceof ModelCallFailed && error.busy
-          ? 'assistant_model_busy'
-          : 'assistant_model_unavailable';
+      // Only a failure of the model; a failure of our own (the database) is not the model's.
+      if (!(error instanceof ModelCallFailed)) throw error;
+      const code = error.busy ? 'assistant_model_busy' : 'assistant_model_unavailable';
       await this.store(start, { kind: 'notice', code });
       throw new ApiException(code, 503);
     }
