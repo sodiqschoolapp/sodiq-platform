@@ -232,6 +232,11 @@ describe('the room list', () => {
     fireEvent.click(field(form, en.setup.rooms.sharedSwitch));
     fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
     const lessons = field(form, en.setup.rooms.maxLessons);
+    // Task 11.18: a shared room needs its number of lessons (`roomRecordRequiredWhen`):
+    // the field is marked, as the name, which the schema needs, is.
+    expect(lessons.getAttribute('aria-required')).toBe('true');
+    expect(field(form, en.setup.rooms.name).getAttribute('aria-required')).toBe('true');
+    expect(form.querySelector('[required]')).toBeNull();
     expect(lessons.getAttribute('aria-invalid')).toBe('true');
     expect(within(form).getByText(en.form.required)).toBeDefined();
     expect(calls.some((call) => call.route.startsWith('PUT'))).toBe(false);

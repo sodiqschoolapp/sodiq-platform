@@ -36,6 +36,24 @@ describe('the sign-in page', () => {
     expect(en.signIn.trustNote).toContain('Do not use on a shared computer');
   });
 
+  // Task 11.18 (`12`, No lost work): `passwordSignInSchema` needs the login and
+  // the password; "Trust this device" may be left off, so it has no mark.
+  it('marks the login and the password as required, and not the switch', async () => {
+    fakeApi({ 'GET /api/auth/session': signedOut });
+
+    renderApp('/sign-in');
+    await heading(en.signIn.title);
+
+    const login = screen.getByLabelText(en.signIn.login);
+    const password = screen.getByLabelText(en.signIn.password);
+    const trust = screen.getByRole('checkbox', { name: en.signIn.trust });
+    expect(login.getAttribute('aria-required')).toBe('true');
+    expect(password.getAttribute('aria-required')).toBe('true');
+    expect(trust.hasAttribute('aria-required')).toBe(false);
+    expect(document.querySelectorAll('main [data-required-mark]')).toHaveLength(2);
+    expect(document.querySelector('[required]')).toBeNull();
+  });
+
   // A login is compared exactly: the field must not change what is typed.
   it('keeps the browser from changing the login', async () => {
     fakeApi({ 'GET /api/auth/session': signedOut });
