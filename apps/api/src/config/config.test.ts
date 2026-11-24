@@ -49,10 +49,13 @@ describe('loadConfig', () => {
       telegram: undefined,
       assistant: {
         vertex: undefined,
-        model: 'gemini-2.5-flash',
+        vertexLocation: 'europe-west3',
+        model: 'gemini-3.5-flash',
         scripted: false,
-        priceInMicros: 2_000_000,
-        priceOutMicros: 12_000_000,
+        prices: {
+          region: { priceInMicros: 1_650_000, priceOutMicros: 9_900_000 },
+          global: { priceInMicros: 1_500_000, priceOutMicros: 9_000_000 },
+        },
       },
     });
   });
@@ -115,12 +118,17 @@ describe('loadConfig', () => {
   // Task 11.12: the assistant's model (plan decision 5: Vertex AI, the Frankfurt region).
   describe('the model of the assistant', () => {
     it('has no model by default, in europe-west3, with the prices of 13 (Running cost)', () => {
+      // Task 11.15: gemini-3.5-flash, at its prices on Google's page of 23 November 2026, the
+      // region's (non-global) for Frankfurt and the global price for the worldwide endpoint.
       expect(loadConfig(VALID).assistant).toEqual({
         vertex: undefined,
-        model: 'gemini-2.5-flash',
+        vertexLocation: 'europe-west3',
+        model: 'gemini-3.5-flash',
         scripted: false,
-        priceInMicros: 2_000_000,
-        priceOutMicros: 12_000_000,
+        prices: {
+          region: { priceInMicros: 1_650_000, priceOutMicros: 9_900_000 },
+          global: { priceInMicros: 1_500_000, priceOutMicros: 9_000_000 },
+        },
       });
     });
 

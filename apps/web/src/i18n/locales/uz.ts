@@ -1052,6 +1052,8 @@ export const uz: Texts<'one' | 'other'> = {
       'Maktabning yordamchi uchun oylik xarajat chegarasiga yetildi. Barcha sahifalar odatdagidek ishlaydi; Super Admin chegarani oshirishi mumkin.',
     assistant_model_unavailable:
       'Yordamchi hozir til modeliga ulana olmayapti. Keyinroq urinib koʻring; barcha sahifalar odatdagidek ishlaydi.',
+    assistant_model_busy:
+      'Yordamchi hozir band. Bir daqiqadan keyin qayta urinib koʻring; barcha sahifalar odatdagidek ishlaydi.',
     assistant_role_not_held: 'Yordamchi bu filialda ushbu rol uchun ochiq emas.',
     assistant_conversation_other_role: 'Bu suhbat boshqa rolda boshlangan. Yangi suhbat boshlang.',
     assistant_not_archived: 'Bu suhbat arxivlanmagan, tiklash uchun hech narsa yoʻq.',
@@ -1304,6 +1306,8 @@ export const uz: Texts<'one' | 'other'> = {
         'Maktabning yordamchi uchun oylik xarajat chegarasiga yetildi. Barcha sahifalar odatdagidek ishlaydi; Super Admin chegarani oshirishi mumkin.',
       assistant_model_unavailable:
         'Yordamchi hozir til modeliga ulana olmayapti. Keyinroq urinib koʻring; barcha sahifalar odatdagidek ishlaydi.',
+      assistant_model_busy:
+        'Yordamchi hozir band. Bir daqiqadan keyin qayta urinib koʻring; barcha sahifalar odatdagidek ishlaydi.',
     },
     open: 'Yordamchi',
     title: 'Yordamchi',
@@ -1545,6 +1549,9 @@ export const uz: Texts<'one' | 'other'> = {
       roles: 'Yoqilgan rollar',
       dailyLimit: 'Bir kishi uchun kunlik savollar',
       monthlyCap: 'Oylik xarajat chegarasi, AQSh dollari',
+      fallbackOn: 'Frankfurt band boʻlganda jahon zaxira manzili',
+      fallbackNote:
+        'Frankfurt band boʻlsa yoki javob bermasa, savol Googleʼning jahon manzili orqali yuboriladi va Google tanlagan mamlakatda qayta ishlanadi. Bu oy shu yoʻl bilan berilgan savollar: {{number}}.',
       spent: 'Shu oy sarflandi: {{amount}} (model {{model}}).',
       noModel:
         'Serverda til modeli sozlanmagan: yordamchi buni aytadi, barcha sahifalar odatdagidek ishlaydi.',

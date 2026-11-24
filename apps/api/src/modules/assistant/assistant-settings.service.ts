@@ -23,6 +23,8 @@ export interface AssistantSwitches {
   rolesOn: AssistantRole[];
   dailyLimit: number;
   monthlyCapDollars: number;
+  /** Task 11.15: the worldwide fallback. */
+  fallbackOn: boolean;
 }
 
 /** The start and the end of the school day or month of a moment, in Asia/Tashkent. */
@@ -75,13 +77,14 @@ export class AssistantSettingsService {
   async switches(transaction: Transaction): Promise<AssistantSwitches> {
     const row = await transaction
       .selectFrom('assistant_settings')
-      .select(['school_on', 'roles_on', 'daily_limit', 'monthly_cap_dollars'])
+      .select(['school_on', 'roles_on', 'daily_limit', 'monthly_cap_dollars', 'fallback_on'])
       .executeTakeFirstOrThrow();
     return {
       schoolOn: row.school_on,
       rolesOn: ASSISTANT_ROLES.filter((role) => row.roles_on.includes(role)),
       dailyLimit: row.daily_limit,
       monthlyCapDollars: row.monthly_cap_dollars,
+      fallbackOn: row.fallback_on,
     };
   }
 
@@ -103,6 +106,18 @@ export class AssistantSettingsService {
     return BigInt(found.rows[0]?.spend ?? '0');
   }
 
+  /**
+   * Task 11.15: the questions of the school's calendar month of `now` with a call through the
+   * worldwide endpoint (`02`, Where the model runs), the month of the cap.
+   */
+  async fallbackQuestionsThisMonth(transaction: Transaction, now: Date): Promise<number> {
+    const month = await periodOf(transaction, 'month', now);
+    const found = await sql<{ count: string }>`
+      select assistant_fallback_questions_between(${month.from}, ${month.until}) as count
+    `.execute(transaction);
+    return Number(found.rows[0]?.count ?? 0);
+  }
+
   private async viewIn(transaction: Transaction): Promise<AssistantSettings> {
     const now = await transactionMoment(transaction);
     const switches = await this.switches(transaction);
@@ -112,6 +127,7 @@ export class AssistantSettingsService {
       roles: this.rolesWithPanel(),
       // Whole cents, rounded down, for the page only: the cap compares micro-dollars.
       spentThisMonthCents: Number(spend / 10_000n),
+      fallbackQuestionsThisMonth: await this.fallbackQuestionsThisMonth(transaction, now),
       modelConfigured: this.model.name !== null,
       model: this.model.name,
     };
@@ -136,6 +152,7 @@ export class AssistantSettingsService {
           roles_on: ASSISTANT_ROLES.filter((role) => record.rolesOn.includes(role)),
           daily_limit: record.dailyLimit,
           monthly_cap_dollars: record.monthlyCapDollars,
+          fallback_on: record.fallbackOn,
         })
         .execute();
       const after = await this.switches(transaction);

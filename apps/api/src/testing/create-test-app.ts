@@ -35,6 +35,7 @@ import {
   type AssistantRouteLists,
 } from '../modules/access/assistant-routes.js';
 import { ASSISTANT_MODEL, type AssistantModel } from '../modules/assistant/model.js';
+import { ASSISTANT_WAIT, type AssistantWait } from '../modules/assistant/model-caller.js';
 // From database-server.ts, which needs no vitest: the second API process of the speed run's load
 // (testing/speed/server.ts, task 10.1c) builds this app in plain Node.
 import { withDatabaseName } from './database-server.js';
@@ -91,6 +92,11 @@ export interface TestAppOptions {
   telegramFetch?: TelegramFetch;
   /** Task 11.12: the assistant's model, usually a `FakeModel`. Without it: Gemini, not set up. */
   assistantModel?: AssistantModel;
+  /**
+   * Task 11.15: the wait between two calls of the model. Without it a test's wait returns at
+   * once: no test sleeps (`CLAUDE.md`, Time is injected).
+   */
+  assistantWait?: AssistantWait;
   /** Task 11.12: the assistant's lists the guard reads, for a test of a role with no list yet. */
   assistantRouteLists?: AssistantRouteLists;
   /**
@@ -174,6 +180,9 @@ export async function createTestApp(options: TestAppOptions = {}): Promise<NestE
   if (options.permissionTable !== undefined) {
     builder.overrideProvider(PERMISSION_TABLE).useValue(options.permissionTable);
   }
+  builder
+    .overrideProvider(ASSISTANT_WAIT)
+    .useValue(options.assistantWait ?? (() => Promise.resolve()));
   if (options.assistantModel !== undefined) {
     builder.overrideProvider(ASSISTANT_MODEL).useValue(options.assistantModel);
   }

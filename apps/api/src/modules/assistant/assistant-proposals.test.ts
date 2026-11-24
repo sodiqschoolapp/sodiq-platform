@@ -563,6 +563,7 @@ describe('the assistant: proposals and Confirm', () => {
         tokens_in: 0,
         tokens_out: 0,
         cost_micros: '5000000',
+        processed_in: 'europe-west3',
         created_at: new Date('2026-11-20T09:59:00+05:00'),
       })
       .execute();

@@ -718,6 +718,7 @@ const MESSAGE: Record<ErrorCode, string> = {
   assistant_daily_limit: 'The daily limit of questions to the assistant is reached.',
   assistant_cap_reached: "The school's monthly spending cap of the assistant is reached.",
   assistant_model_unavailable: 'The language model of the assistant cannot be reached.',
+  assistant_model_busy: 'The language model of the assistant is busy. Try again in a minute.',
   assistant_role_not_held: 'The role is not held now in this branch, or has no assistant.',
   assistant_conversation_other_role: 'The conversation was started in another role.',
   assistant_not_archived: 'The conversation is not archived.',

@@ -33,13 +33,15 @@ import {
 } from './conversations.store.js';
 import { AssistantDispatcher, type ReadOutcome } from './dispatcher.js';
 import { filterRead, filterWords } from './field-filter.js';
+import type { ModelPrice } from '../../config/config.js';
 import {
   ASSISTANT_MODEL,
-  ModelUnavailable,
   type AssistantModel,
+  type ModelPlace,
   type ModelReply,
   type ModelTurn,
 } from './model.js';
+import { ModelCallFailed, ModelCaller, type Attempt, type CallBudget } from './model-caller.js';
 import { journalOf, ownRecordsOnly, refusedUnlessOwnJournal } from './own-journal.js';
 import { proposalsOf } from './proposal-views.js';
 import { draftStep, type StoredStep } from './proposals.js';
@@ -89,13 +91,13 @@ export function costMicros(
   return (total + 999_999n) / 1_000_000n;
 }
 
-/** Prices of the model, in micro-dollars per million tokens. */
+/**
+ * Prices of the model, in micro-dollars per million tokens, by the place a call was processed
+ * (task 11.15: "billed at that place's price").
+ */
 export const ASSISTANT_PRICES = Symbol('ASSISTANT_PRICES');
 
-export interface AssistantPrices {
-  priceInMicros: number;
-  priceOutMicros: number;
-}
+export type AssistantPrices = Readonly<Record<ModelPlace, ModelPrice>>;
 
 interface Asker {
   access: Access;
@@ -119,6 +121,7 @@ export class AssistantEngine {
     @Inject(ASSISTANT_PRICES) private readonly prices: AssistantPrices,
     @Inject(PERMISSION_TABLE) private readonly table: PermissionTable,
     private readonly routes: AssistantRoutes,
+    private readonly caller: ModelCaller,
   ) {}
 
   /** Whether the person holds the role now in the branch of the request, and it has the panel. */
@@ -160,7 +163,7 @@ export class AssistantEngine {
           throw new ApiException('not_found', 404);
         }
       }
-      await this.refuseWhenClosed(transaction, access.accountId, role, now);
+      const fallbackOn = await this.refuseWhenClosed(transaction, access.accountId, role, now);
       const history =
         existing === undefined ? [] : await this.history(transaction, existing.id, now);
       const conversation =
@@ -184,6 +187,8 @@ export class AssistantEngine {
       return {
         conversation,
         questionId,
+        // Task 11.15 (plan decision 6): the fallback switch as it is at the start of the question.
+        budget: this.caller.begin(fallbackOn),
         history,
         branchName: branch.name,
         today: today.rows[0]?.today ?? '',
@@ -331,13 +336,16 @@ export class AssistantEngine {
     });
   }
 
-  /** `02`, Limits, and the switch: refused before anything is stored or counted (decision 10). */
+  /**
+   * `02`, Limits, and the switch: refused before anything is stored or counted (decision 10).
+   * Answers whether the worldwide fallback is on (task 11.15).
+   */
   private async refuseWhenClosed(
     transaction: Transaction,
     accountId: string,
     role: AssistantRole,
     now: Date,
-  ): Promise<void> {
+  ): Promise<boolean> {
     const switches = await this.settings.switches(transaction);
     if (!switches.schoolOn || !switches.rolesOn.includes(role)) {
       throw new ApiException('assistant_off', 409);
@@ -357,6 +365,7 @@ export class AssistantEngine {
     if (this.model.name === null) {
       throw new ApiException('assistant_model_unavailable', 503);
     }
+    return switches.fallbackOn;
   }
 
   private async create(
@@ -400,6 +409,11 @@ export class AssistantEngine {
     for (const message of all) {
       const content = message.content;
       if (content.kind === 'question') {
+        // Task 11.15, build plan item (4): a question with no answer after it failed; it stays
+        // out, so the turns sent alternate and one failure never breaks the conversation.
+        if (turns.at(-1)?.turn.role === 'person') {
+          turns.pop();
+        }
         lastQuestion = message.id;
         turns.push({
           seq: message.seq,
@@ -422,49 +436,52 @@ export class AssistantEngine {
         });
       }
     }
+    if (turns.at(-1)?.turn.role === 'person') {
+      turns.pop();
+    }
     return turns.slice(-HISTORY_MESSAGES).map(({ turn }) => turn);
   }
 
   /**
-   * One call of the model, stored with its tokens and cost at once, in a transaction of its own
-   * (a call that fails after it was billed is counted too). A failed call keeps the question
-   * with a notice and answers 503.
+   * One turn of the model (task 11.15: the region, its retries and the fallback, `ModelCaller`).
+   * Each call is stored with its place, tokens and cost at once, in a transaction of its own: a
+   * call that answered, and one that failed, billed or not (plan decision 3). A turn with no
+   * answer keeps the question with a notice, "busy" or "cannot reach", and answers 503.
    */
   private async call(
     start: {
       conversation: { id: string; branchId: string; accountId: string };
       questionId: string;
+      budget: CallBudget;
     },
     request: Parameters<AssistantModel['generate']>[0],
   ): Promise<ModelReply> {
-    let reply: ModelReply;
-    try {
-      reply = await this.model.generate(request);
-    } catch (error) {
-      const billed = error instanceof ModelUnavailable ? error.billed : undefined;
+    const record = async (attempt: Attempt): Promise<void> => {
       await this.transactions.run([start.conversation.branchId], async (transaction) => {
         const now = await transactionMoment(transaction);
-        if (billed !== undefined) {
-          await this.recordCall(transaction, start, billed, now);
-        }
-        await appendMessage(
-          transaction,
-          start.conversation,
-          { kind: 'notice', code: 'assistant_model_unavailable' },
-          now,
-        );
+        const tokens =
+          'reply' in attempt
+            ? attempt.reply
+            : (attempt.billed ?? { tokensIn: 0, tokensOut: 0, model: this.model.name ?? '' });
+        await this.recordCall(transaction, start, attempt, tokens, now);
       });
-      throw new ApiException('assistant_model_unavailable', 503);
+    };
+    try {
+      return await this.caller.call(start.budget, request, record);
+    } catch (error) {
+      const code =
+        error instanceof ModelCallFailed && error.busy
+          ? 'assistant_model_busy'
+          : 'assistant_model_unavailable';
+      await this.store(start, { kind: 'notice', code });
+      throw new ApiException(code, 503);
     }
-    await this.transactions.run([start.conversation.branchId], async (transaction) => {
-      await this.recordCall(transaction, start, reply, await transactionMoment(transaction));
-    });
-    return reply;
   }
 
   private async recordCall(
     transaction: Transaction,
     start: { conversation: { branchId: string }; questionId: string },
+    attempt: { place: ModelPlace; location: string },
     tokens: { tokensIn: number; tokensOut: number; model: string },
     now: Date,
   ): Promise<void> {
@@ -476,7 +493,8 @@ export class AssistantEngine {
         model: tokens.model.slice(0, 200) || 'unknown',
         tokens_in: tokens.tokensIn,
         tokens_out: tokens.tokensOut,
-        cost_micros: costMicros(tokens, this.prices).toString(),
+        cost_micros: costMicros(tokens, this.prices[attempt.place]).toString(),
+        processed_in: attempt.location,
         created_at: now,
       })
       .execute();
@@ -710,6 +728,7 @@ export function systemInstruction(input: {
     'Today and past dates can never become a day off: for the rest of today propose a bulk cancel from the next lesson slot that has not begun, ask about the lesson in progress, and ask for each lesson that already has data whether to keep it as held or cancel it.',
     'The school never holds an extra lesson or a make-up lesson: say so, and name what exists, a one-day move of a lesson to another slot or day of the same quarter, or a special working date that follows a weekday’s timetable.',
     'You cannot enter or change journal data (attendance, marks, totals, comments, not held), correct a journal, grant exemptions, close a quarter, publish or withdraw a timetable version, start or close a year, delete, fill a vacancy, change accounts, passwords, roles, appointments or permissions, or export. For these, say that the person does it on the page, and link the page with suggest_page.',
+    'Write plain text, never Markdown headings, tables, links, code or HTML. For a list, start each item on its own line with "- ". You may mark a few words as **bold**.',
     'Some personal fields (phones, addresses, document numbers, financial and medical data) are removed before you see the data and appear as [removed]; never ask for them.',
   ].join('\n');
 }

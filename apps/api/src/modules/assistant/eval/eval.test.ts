@@ -23,6 +23,7 @@ import { GeminiModel } from '../gemini-model.js';
 import type { AssistantModel, ModelRequest } from '../model.js';
 import { GENERATED_TOOLS } from '../tools.generated.js';
 import { EVAL_CASES, type EvalCase } from './cases.js';
+import { verdictLines, verdictOf } from './verdict.js';
 
 // Task 11.12, the test set (build plan: "CI runs it against the fake model; `pnpm assistant:eval`
 // runs it against the real model and prints accuracy and cost per request, and only the owner
@@ -51,7 +52,7 @@ describe(
     let model: AssistantModel;
     const fake = new FakeModel();
     const outcomes: Outcome[] = [];
-    let prices = { priceInMicros: 2_000_000, priceOutMicros: 12_000_000 };
+    let prices = { priceInMicros: 1_650_000, priceOutMicros: 9_900_000 };
 
     /** The demo's ids for a tool's parameters, by name; dates of the first school week. */
     function argsOf(route: string): Record<string, unknown> {
@@ -182,7 +183,7 @@ describe(
           );
         }
         model = new GeminiModel(config);
-        prices = { priceInMicros: config.priceInMicros, priceOutMicros: config.priceOutMicros };
+        prices = config.prices.region;
       } else {
         model = fake;
       }
@@ -204,7 +205,13 @@ describe(
       });
       await database.migrator
         .updateTable('assistant_settings')
-        .set({ school_on: true, roles_on: ['super_admin', 'teacher'], daily_limit: 500 })
+        // Task 11.15, build plan item (8): the test set asks Frankfurt only (plan decision 10).
+        .set({
+          school_on: true,
+          roles_on: ['super_admin', 'teacher'],
+          daily_limit: 500,
+          fallback_on: false,
+        })
         .execute();
     }, 1_200_000);
 
@@ -223,6 +230,15 @@ describe(
             const of = outcomes.filter((one) => one.case.language === language);
             return `  ${language}: ${String(of.filter((one) => one.passed).length)} of ${String(of.length)}`;
           }),
+          ...verdictLines(
+            verdictOf(
+              outcomes.map((one) => ({
+                language: one.case.language,
+                kind: one.case.intent.kind,
+                passed: one.passed,
+              })),
+            ),
+          ),
           ...outcomes
             .filter((one) => !one.passed)
             .map((one) => `  not as expected: ${one.case.id}: ${one.why}`),

@@ -1034,6 +1034,8 @@ export const en = {
       'The school’s monthly spending cap of the assistant is reached. Every page works as usual; the Super Admin can raise the cap.',
     assistant_model_unavailable:
       'The assistant cannot reach its language model now. Try again later; every page works as usual.',
+    assistant_model_busy:
+      'The assistant is busy now. Try again in a minute; every page works as usual.',
     assistant_role_not_held: 'The assistant is not open to this role in this branch.',
     assistant_conversation_other_role:
       'This conversation was started in another role. Start a new conversation.',
@@ -1282,6 +1284,8 @@ export const en = {
         'The school’s monthly spending cap of the assistant is reached. Every page works as usual; the Super Admin can raise the cap.',
       assistant_model_unavailable:
         'The assistant cannot reach its language model now. Try again later; every page works as usual.',
+      assistant_model_busy:
+        'The assistant is busy now. Try again in a minute; every page works as usual.',
     },
     open: 'Assistant',
     title: 'Assistant',
@@ -1523,6 +1527,9 @@ export const en = {
       roles: 'Roles switched on',
       dailyLimit: 'Questions per person per day',
       monthlyCap: 'Monthly spending cap, US dollars',
+      fallbackOn: 'Worldwide fallback when Frankfurt is busy',
+      fallbackNote:
+        'When Frankfurt is busy or does not answer, a question is sent through Google’s worldwide endpoint, processed in a country Google chooses. Questions of this month that used it: {{number}}.',
       spent: 'Spent this month: {{amount}} (model {{model}}).',
       noModel:
         'No language model is set up on the server: the assistant says so, and every page works as usual.',

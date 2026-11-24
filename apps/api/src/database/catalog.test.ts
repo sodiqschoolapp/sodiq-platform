@@ -237,6 +237,8 @@ function auditSchoolPartitions(): Record<string, string> {
  * Look first).
  */
 const SECURITY_DEFINER_FUNCTIONS: Record<string, string> = {
+  'assistant_fallback_questions_between(timestamp with time zone,timestamp with time zone)':
+    "The number of questions of the whole school between two moments with a call of the assistant's model through the worldwide endpoint, a count asked by the Settings, whose request sees no branch (02, Assistant, Where the model runs; task 11.15, plan of pull request #379).",
   'assistant_questions_between(uuid,timestamp with time zone,timestamp with time zone)':
     'The number of questions an account asked the assistant between two moments in every branch, a count asked by the daily limit per person, whose request sees one branch (02, Assistant, Limits; task 11.12, plan of pull request #374).',
   'assistant_spend_between(timestamp with time zone,timestamp with time zone)':

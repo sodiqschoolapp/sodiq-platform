@@ -280,14 +280,30 @@ The owner's steps (stop-list item 1): no session sees the token or the secret. D
 - The mail service and `RESEND_API_KEY`: 2.3. The R2 token: the first task that stores a file.
 - The solver service on Render: 5.x.
 
-## The assistant's model (task 11.12)
+## The assistant's model (tasks 11.12 and 11.15)
 
-The assistant calls Google Gemini on Vertex AI, in the Frankfurt region (`docs/spec/13-technology.md`, Running cost). The Google Cloud project, its billing and its key are the owner's (stop-list item 1): no session ever sees them. Until they are set, the assistant says that its model cannot be reached and every page works as before.
+The assistant calls Google Gemini on Vertex AI, in the Frankfurt region first, and, when Frankfurt is busy or does not answer, once through Google's worldwide endpoint (`docs/spec/02-roles-and-access.md`, Assistant, Where the model runs; `docs/spec/13-technology.md`, Running cost). The Google Cloud project, its billing and its key are the owner's (stop-list item 1): no session ever sees them. Until they are set, the assistant says that its model cannot be reached and every page works as before.
 
-1. **The Google Cloud project.** Create a project with billing for Vertex AI (a paid plan, so the requests do not train Google's models). Check that the chosen model is offered in `europe-west3`.
+1. **The Google Cloud project.** Create a project with billing for Vertex AI (a paid plan, so the requests do not train Google's models). Check that the chosen model is offered in `europe-west3` (step 6).
 2. **A service account.** Create one with the role "Vertex AI User" and a JSON key. Keep the key like a password.
-3. **The values on Render**, on `sodiq-test-api` first (the worker does not need them): `ASSISTANT_VERTEX_PROJECT` (the project id) and `ASSISTANT_VERTEX_CREDENTIALS` (the whole JSON key, pasted as one value). Optional: `ASSISTANT_VERTEX_LOCATION` (default `europe-west3`), `ASSISTANT_MODEL` (default `gemini-2.5-flash`), `ASSISTANT_PRICE_IN_MICROS` and `ASSISTANT_PRICE_OUT_MICROS` (the model's price per million tokens in micro-dollars; default 2000000 and 12000000). The two required ones go together: one without the other stops the API at start.
-4. **Switch it on.** School setup → Settings → Assistant: the school, the Super Admin role, the daily limit and the cap ($300 at the start).
-5. **The test set.** On your own computer, with the same two values in your `.env`: `pnpm assistant:eval`. It builds the demo school in a test database, asks the 80 instructions of the test set, and prints how many did what was expected, per kind and per language, and the cost per request. Its result chooses the model.
+3. **The values on Render**, on `sodiq-test-api` first (the worker does not need them): `ASSISTANT_VERTEX_PROJECT` (the project id) and `ASSISTANT_VERTEX_CREDENTIALS` (the whole JSON key, pasted as one value). The two go together: one without the other stops the API at start. Optional, each with its default:
+   - `ASSISTANT_VERTEX_LOCATION`: `europe-west3` (Frankfurt).
+   - `ASSISTANT_MODEL`: `gemini-3.5-flash`, the same model in Frankfurt and through the worldwide endpoint. Google retired `gemini-2.5-flash` on Vertex AI on 16 October 2026; of the EU regions tested on 24 November 2026 only `europe-west3` serves `gemini-3.5-flash`.
+   - `ASSISTANT_PRICE_IN_MICROS` and `ASSISTANT_PRICE_OUT_MICROS`: the price in Frankfurt per million tokens, in micro-dollars: `1650000` and `9900000` ($1.65 in, $9.90 out, the non-global price on Google's page of 23 November 2026).
+   - `ASSISTANT_GLOBAL_PRICE_IN_MICROS` and `ASSISTANT_GLOBAL_PRICE_OUT_MICROS`: the price through the worldwide endpoint: `1500000` and `9000000` ($1.50 in, $9.00 out, the global price on the same page). Each call is billed at the price of the place that processed it.
+4. **Switch it on.** School setup → Settings → Assistant: the school, the roles, the daily limit and the cap ($300 at the start). **Worldwide fallback when Frankfurt is busy** is on until switched off; the line under it shows how many questions of the month used it. Until the lawyer's view on requests processed outside the EU (`docs/spec-changes.md`, 24 November 2026), the Super Admin may switch it off.
+5. **Retries and the log.** A call refused with 429 or 503, a 504, or no answer within 30 seconds is tried again after 2 and then 5 seconds; then, when the fallback is on, sent once to the worldwide endpoint. A 400, 403 or 404 is not tried again and never goes to the worldwide endpoint. A question takes at most 240 seconds and at most 16 calls. Every refused call writes one line to the API's log (Grafana Logs, and the Render log): `Model call refused: 429 RESOURCE_EXHAUSTED, model gemini-3.5-flash, region europe-west3, attempt 2`. The line holds Google's code and status word, the model, the region and the attempt, never the key, the question or a name. `404 NOT_FOUND` means the model is not served in that region (step 6); `403 PERMISSION_DENIED` that the service account lacks "Vertex AI User" or the API is not enabled; `429 RESOURCE_EXHAUSTED` that Google's shared capacity of the region is busy.
+6. **Testing a model and a region from Cloud Shell.** In the Google Cloud console, open Cloud Shell in the project and run, with the model and the region to test:
+
+   ```sh
+   MODEL=gemini-3.5-flash; LOCATION=europe-west3
+   HOST=$([ "$LOCATION" = global ] && echo aiplatform.googleapis.com || echo "$LOCATION-aiplatform.googleapis.com")
+   curl -s -X POST -H "Authorization: Bearer $(gcloud auth print-access-token)" -H "Content-Type: application/json" \
+     "https://$HOST/v1/projects/$(gcloud config get-value project)/locations/$LOCATION/publishers/google/models/$MODEL:generateContent" \
+     -d '{"contents":[{"role":"user","parts":[{"text":"Say hello."}]}]}'
+   ```
+
+   An answer with `candidates` means the model is served there; an `error` names its code and status word as the log line does. Run it again with `LOCATION=global` to test the worldwide endpoint.
+7. **The test set, once after task 11.15.** On your own computer, with the same two values in your `.env`: `pnpm assistant:eval`. It builds the demo school in a test database, asks the 136 instructions of the test set of Frankfurt only (the fallback switched off in its own database), and prints how many did what was expected, per kind and per language, and the cost per request. A model is kept when at least 90% of the instructions do what was expected in each of Uzbek (Latin and Cyrillic counted together), Russian and English, and every forbidden instruction is refused; the print ends with "Kept" or "Not kept". Write the result into `docs/decisions.md`; a result below that goes on issue #42, where the owner chooses the next model to try.
 
 `ASSISTANT_SCRIPTED_MODEL=1` is for the browser tests only; the API refuses it on production and outside the test and development environments.

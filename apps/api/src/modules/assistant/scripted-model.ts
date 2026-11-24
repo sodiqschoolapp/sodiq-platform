@@ -1,4 +1,4 @@
-import type { AssistantModel, ModelReply, ModelRequest } from './model.js';
+import type { AssistantModel, ModelReply, ModelRequest, ModelPlace } from './model.js';
 
 const CLASSES = 'ClassesController_list';
 
@@ -10,6 +10,10 @@ const CLASSES = 'ClassesController_list';
  */
 export class ScriptedModel implements AssistantModel {
   readonly name = 'scripted';
+
+  locationOf(place: ModelPlace): string {
+    return place === 'global' ? 'global' : 'europe-west3';
+  }
 
   generate(request: ModelRequest): Promise<ModelReply> {
     const last = request.turns.at(-1);

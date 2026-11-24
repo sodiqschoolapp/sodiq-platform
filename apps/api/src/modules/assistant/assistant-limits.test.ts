@@ -14,6 +14,8 @@ import { costMicros } from './assistant.engine.js';
 // plan: "both audited as settings". Names are invented.
 
 const PRICES = { priceInMicros: 2_000_000, priceOutMicros: 12_000_000 };
+/** Task 11.15: the default price of the region (Frankfurt), at which every fake call is billed. */
+const REGION_PRICES = { priceInMicros: 1_650_000, priceOutMicros: 9_900_000 };
 
 describe('the assistant: the switch, the daily limit and the monthly cap', () => {
   let scene: AssistantScene;
@@ -24,6 +26,7 @@ describe('the assistant: the switch, the daily limit and the monthly cap', () =>
     rolesOn: ['super_admin'],
     dailyLimit: 30,
     monthlyCapDollars: 300,
+    fallbackOn: true,
     ...change,
   });
 
@@ -241,17 +244,17 @@ describe('the assistant: the switch, the daily limit and the monthly cap', () =>
       .execute();
     // Two calls for the first question; for the second, its read's call and the billed failure.
     expect(rows.map((row) => row.cost_micros).map(String)).toEqual([
-      String(costMicros(FAKE_TOKENS, PRICES)),
-      String(costMicros(FAKE_TOKENS, PRICES)),
-      String(costMicros(FAKE_TOKENS, PRICES)),
-      String(costMicros({ tokensIn: 500, tokensOut: 0 }, PRICES)),
+      String(costMicros(FAKE_TOKENS, REGION_PRICES)),
+      String(costMicros(FAKE_TOKENS, REGION_PRICES)),
+      String(costMicros(FAKE_TOKENS, REGION_PRICES)),
+      String(costMicros({ tokensIn: 500, tokensOut: 0 }, REGION_PRICES)),
     ]);
     // The spend is the school's: a question asked in South is counted for North.
     expect((await ask(scene, scene.admin, scene.south, { text: 'From South.' })).status).toBe(200);
     // Reaching the cap: the month's spend from earlier calls of the school.
     await sql`
-      insert into assistant_model_calls (message_id, branch_id, model, tokens_in, tokens_out, cost_micros, created_at)
-      select m.id, m.branch_id, 'fake-model', 0, 0, 1000000, ${new Date('2026-11-01T00:00:00+05:00')}
+      insert into assistant_model_calls (message_id, branch_id, model, tokens_in, tokens_out, cost_micros, processed_in, created_at)
+      select m.id, m.branch_id, 'fake-model', 0, 0, 1000000, 'europe-west3', ${new Date('2026-11-01T00:00:00+05:00')}
       from assistant_messages m where m.kind = 'question' and m.branch_id = ${scene.south} limit 1
     `.execute(scene.database.migrator);
     expect(await status()).toEqual(

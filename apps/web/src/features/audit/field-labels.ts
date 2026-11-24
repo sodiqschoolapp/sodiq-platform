@@ -217,6 +217,7 @@ const LABELS: Record<string, Record<string, ParseKeys>> = {
     rolesOn: 'assistant.settings.roles',
     dailyLimit: 'assistant.settings.dailyLimit',
     monthlyCapDollars: 'assistant.settings.monthlyCap',
+    fallbackOn: 'assistant.settings.fallbackOn',
   },
   assistant_conversation: {
     restoredAt: 'assistant.conversationsPage.restoredAt',

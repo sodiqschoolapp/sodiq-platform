@@ -33,7 +33,7 @@ export type StoredContent =
       /** What the model was given: the filtered result, cut to its bound. */
       result: unknown;
     }
-  | { kind: 'notice'; code: 'assistant_model_unavailable' };
+  | { kind: 'notice'; code: 'assistant_model_unavailable' | 'assistant_model_busy' };
 
 export interface ConversationRow {
   id: string;

@@ -71,7 +71,7 @@ No other role sees the page.
 
 ## The assistant
 
-<!-- Sources: spec 02 (Assistant; Accounts and sign-in: build order), 13 (Security; Running cost), edge/people-roles-accounts (The assistant; Personal data and the audit log), 06 (Changes after publishing), edge/time-dates-calendar, 09, edge/lesson-plans; docs/spec-changes.md, 21 November 2026; tasks 11.12, 11.13 and 11.14 -->
+<!-- Sources: spec 02 (Assistant; Accounts and sign-in: build order), 13 (Security; Running cost), edge/people-roles-accounts (The assistant; Personal data and the audit log), 06 (Changes after publishing), edge/time-dates-calendar, 09, edge/lesson-plans; docs/spec-changes.md, 21 and 24 November 2026; tasks 11.12, 11.13, 11.14 and 11.15 -->
 
 **What it is.** The assistant lets a person ask in plain words, in Uzbek, Russian or English, and answers from what the platform holds: "which classes have no Tutor", "what does 5A have on Tuesday", "who is on the early-warning list". It reads at once. A change is only proposed: the person sees every step and presses **Confirm** (**Tasdiqlash**); nothing changes before. It uses Google's Gemini language model.
 
@@ -114,6 +114,8 @@ No other role sees the assistant. A Head Teacher, a Senior Head Teacher, a Tutor
 - The school has a monthly spending cap (300 US dollars at the start), counted per calendar month in Tashkent time. When it is reached the assistant stops until the next month or until the Super Admin raises it.
 - A conversation is never deleted. 90 days after its last question or its last restore it is archived: it leaves the person's list, and the Super Admin reads it and can restore it, for another 90 days.
 - Every change of the assistant's settings and every restore is written to the audit log.
+- **Where the model runs.** Each question goes first to the model in Frankfurt. When Frankfurt is busy or does not answer, the platform waits a few seconds and tries again, at most twice. Then the same request goes once through Google's worldwide endpoint, where Google chooses the country that processes it. The Super Admin can switch this off: Settings → Assistant → **Worldwide fallback when Frankfurt is busy** (**Frankfurt band boʻlganda jahon zaxira manzili**); it is on until switched off. The line under it shows how many questions of this month used the fallback. Every call of the model records where it was processed.
+- Answers are plain text: a few words may be **bold**, and lists show as lists.
 
 **What happens if…**
 
@@ -125,6 +127,9 @@ No other role sees the assistant. A Head Teacher, a Senior Head Teacher, a Tutor
 | The third of five steps is refused | Steps 1 and 2 stay done and are in the audit log; 3 shows its reason; 4 and 5 are not run. |
 | A lesson began while the proposal waited | The bulk cancel's check is run again at Confirm; it differs, so the step is **Outdated** and nothing is cancelled. |
 | The daily limit or the monthly cap is reached | The panel says so; the typed question stays in the field. Every page works as before. |
+| Frankfurt is busy, with many teachers asking at once | The platform waits and tries Frankfurt again, at most twice, then sends the question once through the worldwide endpoint (unless switched off). Only when that fails too does the panel say the assistant is busy. |
+| The Super Admin switches the worldwide fallback off | From the next question everything goes to Frankfurt only; a busy Frankfurt then ends in the "busy" message. Answers given earlier keep the record of where they were processed. |
+| A question failed, and the person asks again in the same conversation | The new question is answered as usual; the failed one stays in the conversation with its message and is left out of what the model reads. |
 | The language model cannot be reached, or the server has none set up | The panel says so. The question is kept in the conversation. |
 | The question asks for another branch's class | The assistant gets the same refusal a page would, and says the data is not open. |
 | A question is unclear, such as "cancel Friday" | The assistant asks which classes or slots are meant. |
@@ -141,3 +146,4 @@ No other role sees the assistant. A Head Teacher, a Senior Head Teacher, a Tutor
 - "You have asked as many questions today as the daily limit allows. Ask again tomorrow; every page works as usual."
 - "The school’s monthly spending cap of the assistant is reached. Every page works as usual; the Super Admin can raise the cap."
 - "The assistant cannot reach its language model now. Try again later; every page works as usual."
+- "The assistant is busy now. Try again in a minute; every page works as usual."
