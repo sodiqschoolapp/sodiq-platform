@@ -2,6 +2,19 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 24 November 2026: task 11.17, no lesson score and no daily distribution
+
+- **The journal** (grid, Excel and PDF, support view, legend) shows no lesson score ("Oʻrt / Ср. / Avg"); `packages/calc` lost `lessonScore` and its daily weights only, `Work` moved to `work.ts`, `CALC_VERSION` is 8 (`version.test.ts` pins it).
+- **Subjects** have no daily distribution: the form, panel, list and its Excel, the import template and reader (an old template is refused `import_not_template`), `PUT /api/setup/subjects/:id/daily-weights` (removed), the publish check, the setup checklist, the assistant's lists, the demo school and the Monitoring branch.
+- **Proof**: `testing/demo/quarter-results.test.ts` pins every quarter-1 result of the demo school (written on the code before the change, commit 61dd0d5); a quarter closed on version 7 compares on version 8 with no difference (`closing.test.ts`).
+
+Left out: nothing of the task. The rows of `subject_daily_weights` stay untouched and unread (no migration); dropping them is the owner's, if ever.
+
+The next sessions must know:
+
+- The audit action `subject_daily_weights.set` and its labels stay for the entries already in the log; nothing writes it.
+- `PIN_DEMO_RESULTS=write` writes the demo pin again; a change of the demo seed that moves a result shows in the diff of `quarter-results.expected.json`.
+
 ## 24 November 2026: task 11.16, the assistant's live answers and its page
 
 - **A question is taken at once** (`POST /api/assistant/questions` answers 202 with the conversation); the answer is written after, in the API process (`assistant/assistant-work.ts`), within an answer window of 270 s from the question's stored moment: every write takes the person's lock and checks the window (`assistant.engine.ts` `write`). A second question of the person in any branch while one is answered: 409 `assistant_question_running` (0181, `assistant_question_running`).
