@@ -90,7 +90,11 @@ describe('student records', () => {
       diagnosticScore: student.diagnosticScore,
       scholarship: student.financial.scholarship,
       consentSignedOn: student.financial.consentSignedOn,
-      contract: { number: contract.number, signedOn: contract.signedOn },
+      // The row of "no contract" has no date (0182).
+      contract:
+        contract.signedOn === null
+          ? null
+          : { number: contract.number, signedOn: contract.signedOn },
       ...overrides,
     };
   };
@@ -443,15 +447,6 @@ describe('student records', () => {
           documentNumber: holder.documentNumber,
         }),
       ],
-      [
-        'contract.number',
-        (holder: Record<string, unknown>) => ({
-          contract: {
-            number: String((holder.contract as { number: string }).number).toLowerCase(),
-            signedOn: '2026-08-21',
-          },
-        }),
-      ],
     ])('refuses a %s held in another branch without naming the holder', async (path, of) => {
       const held = body();
       expect((await t.postStudent(t.south, held)).status).toBe(201);
@@ -466,13 +461,12 @@ describe('student records', () => {
       expect(await snapshot()).toEqual(before);
     });
 
-    it('refuses a JSHSHIR, document or contract of this branch with the holder', async () => {
+    it('refuses a JSHSHIR or document of this branch with the holder', async () => {
       const held = body();
       const holder = studentDetailSchema.parse((await t.postStudent(t.north, held)).body);
       for (const [path, overrides] of [
         ['jshshir', { jshshir: held.jshshir }],
         ['documentNumber', { documentNumber: held.documentNumber }],
-        ['contract.number', { contract: held.contract }],
       ] as const) {
         const response = await t.postStudent(t.north, body(overrides));
         refusedWith(response, 409, 'student_value_taken');
@@ -552,7 +546,6 @@ describe('student records', () => {
     it.each([
       ['uid', 'south'],
       ['jshshir', 'south'],
-      ['contract.number', 'north'],
     ] as const)(
       'answers 409 to the save that waited for another with the same %s',
       async (path, other) => {
@@ -563,9 +556,6 @@ describe('student records', () => {
           writeStudent(transaction, branch, {
             uid: path === 'uid' ? String(input.uid).toLowerCase() : String(2600000 + count + 500),
             ...(path === 'jshshir' ? { jshshir: String(input.jshshir) } : {}),
-            ...(path === 'contract.number'
-              ? { contract: (input.contract as { number: string }).number }
-              : {}),
           }),
         );
         const save = t.postStudent(t.north, input).then((response) => response);
@@ -1172,6 +1162,75 @@ describe('student records', () => {
         .where('id', '=', student.id)
         .executeTakeFirstOrThrow();
       expect(key.name_key).toBe(studentNameKey(student.lastName, 'Otabek'));
+    });
+
+    it('takes a student with no contract, one with no number, and one number for two students (owner, 24 November 2026)', async () => {
+      const none = await create({ contract: null });
+      expect(none.financial?.contracts).toEqual([
+        { id: expect.any(String) as string, number: null, signedOn: null },
+      ]);
+      const dated = await create({ contract: { number: '  ', signedOn: '2026-08-21' } });
+      expect(dated.financial?.contracts).toEqual([
+        { id: expect.any(String) as string, number: null, signedOn: '2026-08-21' },
+      ]);
+      // The same number in this branch, in another case, and in another branch.
+      const first = await create({ contract: { number: 'SHARED-2026/1', signedOn: '2026-08-20' } });
+      const second = await create({
+        contract: { number: 'shared-2026/1', signedOn: '2026-08-22' },
+      });
+      const elsewhere = await create(
+        { contract: { number: 'SHARED-2026/1', signedOn: '2026-08-23' } },
+        t.south,
+      );
+      for (const student of [first, second, elsewhere]) {
+        expect(student.financial?.contracts).toHaveLength(1);
+      }
+      expect(second.financial?.contracts[0]?.number).toBe('shared-2026/1');
+      // A number without its date is refused by the schema, before any write.
+      const before = await snapshot();
+      refusedWith(
+        await t.postStudent(t.north, body({ contract: { number: 'NO-DATE-1', signedOn: '' } })),
+        400,
+        'validation_failed',
+      );
+      expect(await snapshot()).toEqual(before);
+    });
+
+    it('adds a contract by an edit, clears its number and takes it out, each in the audit log', async () => {
+      const student = await create({ startsOn: '2026-11-02', classId: null, contract: null });
+      const put = async (contract: unknown) => {
+        const current = studentDetailSchema.parse(
+          (await t.get(`/api/people/students/${student.id}`, t.north)).body,
+        );
+        const response = await t.put(
+          `/api/people/students/${student.id}`,
+          t.north,
+          editBody(current, { contract }),
+          t.vicePrincipal,
+        );
+        expect(response.status, JSON.stringify(response.body)).toBe(200);
+        return studentDetailSchema.parse(response.body).financial?.contracts;
+      };
+      expect(await put({ number: 'ADDED-1', signedOn: '2026-11-01' })).toEqual([
+        { id: expect.any(String) as string, number: 'ADDED-1', signedOn: '2026-11-01' },
+      ]);
+      expect(await put({ number: '', signedOn: '2026-11-01' })).toEqual([
+        { id: expect.any(String) as string, number: null, signedOn: '2026-11-01' },
+      ]);
+      expect(await put(null)).toEqual([
+        { id: expect.any(String) as string, number: null, signedOn: null },
+      ]);
+      const entries = await t.entries('student.edit', student.id);
+      expect(entries.map((entry) => [entry.old_value, entry.new_value])).toEqual(
+        expect.arrayContaining([
+          [{ contract: null }, { contract: { number: 'ADDED-1', signedOn: '2026-11-01' } }],
+          [
+            { contract: { number: 'ADDED-1', signedOn: '2026-11-01' } },
+            { contract: { number: null, signedOn: '2026-11-01' } },
+          ],
+          [{ contract: { number: null, signedOn: '2026-11-01' } }, { contract: null }],
+        ]),
+      );
     });
 
     it('writes nothing for an edit that changes nothing', async () => {

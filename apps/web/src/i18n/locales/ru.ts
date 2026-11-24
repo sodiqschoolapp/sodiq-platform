@@ -3274,6 +3274,8 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       contractSignedOn: 'Дата договора',
       contract: 'Договор',
       contractText: '№ {{number}} от {{date}}',
+      contractUnnumbered: 'Без номера, от {{date}}',
+      noContract: 'Нет договора',
       scholarship: 'Стипендия',
       scholarshipType: 'Стипендия',
       scholarshipTypes: {
@@ -3361,7 +3363,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       restoreTitle: 'Восстановить как активного',
       restoreFrom: 'Активен с',
       returnConfirmTitle: 'Вернуть этого ученика?',
-      returnConfirmText: 'Новый договор сохраняется навсегда, его номер больше не выдаётся.',
+      returnConfirmText: 'Возвращение и его договор, если он указан, сохраняются навсегда.',
       returnNoClass: 'На эту дату нет класса этой параллели в учебном году.',
       restoreNoClass: 'На эту дату нет класса в учебном году.',
       restoreClassNote: 'Ученик переходит в параллель этого класса.',
@@ -3555,6 +3557,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
         allKept: 'все',
         noValue: '—',
         contractText: '{{number}} от {{date}}',
+        contractUnnumbered: 'без номера, от {{date}}',
         relativeText: '{{name}} ({{relationship}})',
         alreadyLinked:
           '{{name}} ({{relationship}}): уже связан с остающейся записью; эта связь остаётся',

@@ -2104,8 +2104,8 @@ export interface StudentContracts {
   branch_id: string;
   created_at: Generated<Timestamp>;
   id: Generated<string>;
-  number: string;
-  signed_on: string;
+  number: string | null;
+  signed_on: string | null;
   student_id: string;
 }
 

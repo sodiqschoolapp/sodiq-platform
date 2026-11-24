@@ -443,6 +443,22 @@ describe('the merge of two student records', () => {
   });
 
   describe('a record created twice by mistake (edge: "\'leave\' or the merge is used")', () => {
+    // The owner, 24 November 2026 (0182): every row is listed, a contract
+    // without a number and the row of "no contract" too, since the newest row
+    // is the student's contract after the merge.
+    it('lists a contract without a number and the row of "no contract" in the preview', async () => {
+      const first = await pupil({
+        from: '2026-09-02',
+        fields: { contract: { number: '', signedOn: '2026-08-20' } },
+      });
+      const twice = await pupil({ from: '2026-09-10', fields: { contract: null } });
+      const seen = await previewOf(first.id, twice.uid);
+      expect(seen.values.contracts).toEqual([
+        { side: 'kept', number: null, signedOn: '2026-08-20' },
+        { side: 'merged', number: null, signedOn: null },
+      ]);
+    });
+
     it('leaves behind the duplicate that started later, its class row with it', async () => {
       const first = await pupil({ from: '2026-09-02' });
       const twice = await pupil({ from: '2026-09-10' });

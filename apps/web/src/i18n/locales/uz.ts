@@ -3156,6 +3156,8 @@ export const uz: Texts<'one' | 'other'> = {
       contractSignedOn: 'Shartnoma sanasi',
       contract: 'Shartnoma',
       contractText: '{{date}} dagi {{number}}-son',
+      contractUnnumbered: '{{date}} dagi, raqamsiz',
+      noContract: 'Shartnoma yoʻq',
       scholarship: 'Grant',
       scholarshipType: 'Grant',
       scholarshipTypes: {
@@ -3244,7 +3246,7 @@ export const uz: Texts<'one' | 'other'> = {
       restoreTitle: 'Faol holatga tiklash',
       restoreFrom: 'Faol boʻlgan sana',
       returnConfirmTitle: 'Bu oʻquvchini qaytarasizmi?',
-      returnConfirmText: 'Yangi shartnoma doim saqlanadi, uning raqami boshqa berilmaydi.',
+      returnConfirmText: 'Qaytish va uning shartnomasi, agar kiritilgan boʻlsa, doim saqlanadi.',
       returnNoClass: 'Bu sanada oʻquv yilida shu sinf darajasidagi sinf yoʻq.',
       restoreNoClass: 'Bu sanada oʻquv yilida sinf yoʻq.',
       restoreClassNote: 'Oʻquvchi shu sinfning sinf darajasiga oʻtadi.',
@@ -3427,6 +3429,7 @@ export const uz: Texts<'one' | 'other'> = {
         allKept: 'hammasi',
         noValue: '—',
         contractText: '{{number}}, {{date}}',
+        contractUnnumbered: 'raqamsiz, {{date}}',
         relativeText: '{{name}} ({{relationship}})',
         alreadyLinked:
           '{{name}} ({{relationship}}): qoladigan yozuvga allaqachon bogʻlangan; u bogʻlanish qoladi',

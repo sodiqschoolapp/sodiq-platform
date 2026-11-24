@@ -373,7 +373,7 @@ export const ERROR_CODES = [
   'second_step_off',
   /** The staff record has no account yet, so there is nothing to lock or reset (task 2.3c-1). */
   'account_missing',
-  /** A UID, JSHSHIR, document number or contract number is already given to another student, in any branch, inactive and graduated ones too (edge/students-classes-groups; task 2.4a). `details` names the field, and the holder when the reader may open it. */
+  /** A UID, JSHSHIR or document number is already given to another student (a contract number may repeat since 24 November 2026), in any branch, inactive and graduated ones too (edge/students-classes-groups; task 2.4a). `details` names the field, and the holder when the reader may open it. */
   'student_value_taken',
   /** The start date is in no academic year of the branch and no year begins after it (task 2.4a, decision 5). */
   'no_academic_year',

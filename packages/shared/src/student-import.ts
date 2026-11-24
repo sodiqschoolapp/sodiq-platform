@@ -222,7 +222,7 @@ export const STUDENT_IMPORT_PROBLEMS = [
   'class_unknown',
   /** A start date today or earlier needs a class (task 3.1b, decision 2). */
   'needs_class',
-  /** The same UID, JSHSHIR, document number or contract number on another row. */
+  /** The same UID, JSHSHIR or document number on another row (a contract number may repeat). */
   'duplicate_in_file',
   /** The same relative phone under another name on another row. */
   'phone_two_names_in_file',

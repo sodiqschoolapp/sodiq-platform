@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { App, createShell } from '@/app/shell';
 import { createI18n } from '@/i18n/i18n';
 import { en } from '@/i18n/locales/en';
+import { schoolDateText } from '@/lib/dates';
 import { ru } from '@/i18n/locales/ru';
 import { fakeApi, json, NORTH, noLive, renderApp, sessionOf, SOUTH } from '@/testing/render-app';
 import { ThemeStore } from '@/theme/theme';
@@ -262,6 +263,22 @@ describe('the personal data report page', () => {
   });
 
   // Task 6.1c, decision 10: the marks and attendance and the journal history.
+  // The owner, 24 November 2026: a contract may have no number.
+  it('shows a contract without a number with its date', async () => {
+    openReport(() =>
+      json({
+        ...REPORT,
+        student: { ...REPORT.student, contracts: [{ number: null, signedOn: '2026-08-20' }] },
+      }),
+    );
+    renderApp(PATH);
+    await screen.findByRole('heading', { name: 'Ismoilova Gulnoza', level: 2 });
+    const term = within(sheet()).getAllByText(en.people.students.contract, { selector: 'dt' })[0];
+    expect(term?.nextElementSibling?.textContent).toBe(
+      en.people.students.contractUnnumbered.replace('{{date}}', schoolDateText('2026-08-20', 'en')),
+    );
+  });
+
   it('shows the cells with who changed them, and the journal history with the lines left out', async () => {
     openReport();
     renderApp(PATH);

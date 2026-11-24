@@ -15,6 +15,18 @@ The next sessions must know:
 - The audit action `subject_daily_weights.set` and its labels stay for the entries already in the log; nothing writes it.
 - The demo seed is not reproducible: its teachers draw from one random source at the same time, and rows are ordered by new ids; a test of the demo compares within one run.
 
+## 24 November 2026: an optional student contract (outside the loop, the owner's request)
+
+- **Spec change** (`04`, Contract; Excel import): the contract is optional, a number may be left empty, and two students may share a number.
+- **Migration 0182**: the unique index on the number is dropped; number and date may be empty; a number needs its date. No row changes.
+- **API**: create, edit, return and import take no contract (`null`) and a contract with no number; a contract number is never "taken". The personal-data report and the merge preview skip the row of "no contract".
+- **Web**: the student form and the return form send no contract when both fields are empty; the Contract tab shows "No contract" and "Without a number, of <date>" (three languages).
+
+The next sessions must know:
+
+- A student's newest `student_contracts` row with no date is "no contract"; read it with `contractOf` (`students.service.ts`). Answer 22 is replaced (`docs/decisions.md`).
+- 0182 follows 0181 of task 11.16; the next migration takes 0183.
+
 ## 24 November 2026: task 11.16, the assistant's live answers and its page
 
 - **A question is taken at once** (`POST /api/assistant/questions` answers 202 with the conversation); the answer is written after, in the API process (`assistant/assistant-work.ts`), within an answer window of 270 s from the question's stored moment: every write takes the person's lock and checks the window (`assistant.engine.ts` `write`). A second question of the person in any branch while one is answered: 409 `assistant_question_running` (0181, `assistant_question_running`).

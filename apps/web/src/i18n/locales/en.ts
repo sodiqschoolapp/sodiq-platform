@@ -3118,6 +3118,8 @@ export const en = {
       contractSignedOn: 'Contract date',
       contract: 'Contract',
       contractText: 'No. {{number}} of {{date}}',
+      contractUnnumbered: 'Without a number, of {{date}}',
+      noContract: 'No contract',
       scholarship: 'Scholarship',
       scholarshipType: 'Scholarship',
       scholarshipTypes: {
@@ -3206,7 +3208,7 @@ export const en = {
       restoreTitle: 'Restore to active',
       restoreFrom: 'Active from',
       returnConfirmTitle: 'Bring this student back?',
-      returnConfirmText: 'The new contract is kept for good, and its number is never given again.',
+      returnConfirmText: 'The return and its contract, if one is entered, are kept for good.',
       returnNoClass: 'No class of this grade is in an academic year on that date.',
       restoreNoClass: 'No class is in an academic year on that date.',
       restoreClassNote: 'The student takes the grade of the class.',
@@ -3386,6 +3388,7 @@ export const en = {
         allKept: 'all of them',
         noValue: '—',
         contractText: '{{number}} of {{date}}',
+        contractUnnumbered: 'without a number, of {{date}}',
         relativeText: '{{name}} ({{relationship}})',
         alreadyLinked:
           '{{name}} ({{relationship}}): already linked to the record that stays; that link stays',
