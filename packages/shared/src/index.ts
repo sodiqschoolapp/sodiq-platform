@@ -648,6 +648,9 @@ export {
   studentContactSchema,
   studentContractSchema,
   studentCreateSchema,
+  studentCreateRequiredWhen,
+  studentRecordRequiredWhen,
+  scholarshipRequiredWhen,
   studentDetailSchema,
   studentFinancialSchema,
   studentGradeSchema,
@@ -2679,3 +2682,4 @@ export {
   type IntegrationKeyState,
 } from './integration-keys.js';
 export * from './assistant.js';
+export * from './required-when.js';

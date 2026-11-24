@@ -22,12 +22,61 @@ interface FieldTexts {
   error?: string | undefined;
   /** A lasting hint under the field. */
   note?: string | undefined;
+  /**
+   * The field must be filled: a red asterisk after the label and
+   * `aria-required` on the control (docs/spec/12-ux-standards.md, No lost work;
+   * task 11.18). In a record form `form.bind(name)` gives it from the schema;
+   * never the browser's own `required`, whose bubble would replace the form's
+   * plain-words message.
+   */
+  required?: boolean | undefined;
 }
 
 interface Described {
   id: string;
   'aria-invalid': boolean;
   'aria-describedby': string | undefined;
+  'aria-required'?: true;
+}
+
+/**
+ * The red asterisk of a required field, beside its label and outside it, so
+ * the label's words stay the control's name; hidden from screen readers, which
+ * hear `aria-required` (task 11.18, decisions 7 and 8).
+ */
+export function RequiredMark() {
+  return (
+    <span
+      aria-hidden="true"
+      data-required-mark=""
+      className="text-sm leading-none font-medium text-destructive"
+    >
+      *
+    </span>
+  );
+}
+
+/**
+ * A locked field (switched off, read only) shows no mark: the person cannot
+ * fill it (task 11.18, decision 6).
+ */
+const fillable = (
+  required: boolean | undefined,
+  disabled: boolean | undefined,
+  readOnly?: boolean | undefined,
+): boolean => required === true && disabled !== true && readOnly !== true;
+
+/** A label, or legend, with the mark after it when the field is required. */
+function Marked({ required, children }: { required: boolean | undefined; children: ReactNode }) {
+  if (required !== true) {
+    return children;
+  }
+  return (
+    <div className="flex items-center gap-1">
+      {children}
+      <RequiredMark />
+    </div>
+  );
 }
 
 /** The ids of the messages of a control and what `aria-describedby` says. */
@@ -77,6 +126,7 @@ function Labelled({
   label,
   error,
   note,
+  required,
   children,
 }: FieldTexts & { children: (control: Described) => ReactNode }) {
   const id = useId();
@@ -84,11 +134,14 @@ function Labelled({
 
   return (
     <div className="grid gap-1.5">
-      <Label htmlFor={id}>{label}</Label>
+      <Marked required={required}>
+        <Label htmlFor={id}>{label}</Label>
+      </Marked>
       {children({
         id,
         'aria-invalid': error !== undefined,
         'aria-describedby': describedBy,
+        ...(required === true ? { 'aria-required': true as const } : {}),
       })}
       <Messages noteId={noteId} errorId={errorId} note={note} error={error} />
     </div>
@@ -106,9 +159,22 @@ type FieldProps = FieldTexts &
  * lost work: forms check each field as it is typed and say what to fix). In a
  * record form it takes `form.bind(name)` of `useRecordForm`.
  */
-export function Field({ label, error, note, large = false, className, ...input }: FieldProps) {
+export function Field({
+  label,
+  error,
+  note,
+  required,
+  large = false,
+  className,
+  ...input
+}: FieldProps) {
   return (
-    <Labelled label={label} error={error} note={note}>
+    <Labelled
+      label={label}
+      error={error}
+      note={note}
+      required={fillable(required, input.disabled, input.readOnly)}
+    >
       {(control) => (
         <Input {...control} {...input} className={cn(large && 'h-12 max-sm:h-12', className)} />
       )}
@@ -202,9 +268,21 @@ type SelectFieldProps = FieldTexts &
   };
 
 /** A choice among a few values: a plain select, as the filters of a list. */
-export function SelectField({ label, error, note, options, ...select }: SelectFieldProps) {
+export function SelectField({
+  label,
+  error,
+  note,
+  required,
+  options,
+  ...select
+}: SelectFieldProps) {
   return (
-    <Labelled label={label} error={error} note={note}>
+    <Labelled
+      label={label}
+      error={error}
+      note={note}
+      required={fillable(required, select.disabled)}
+    >
       {(control) => (
         <Select {...control} {...select}>
           {options.map((option) => (
@@ -221,11 +299,41 @@ export function SelectField({ label, error, note, options, ...select }: SelectFi
 type TextAreaFieldProps = FieldTexts & Omit<ComponentProps<'textarea'>, 'id'>;
 
 /** A labelled field for several lines of text, with its message; as `Field` otherwise. */
-export function TextAreaField({ label, error, note, ...textarea }: TextAreaFieldProps) {
+export function TextAreaField({ label, error, note, required, ...textarea }: TextAreaFieldProps) {
   return (
-    <Labelled label={label} error={error} note={note}>
+    <Labelled
+      label={label}
+      error={error}
+      note={note}
+      required={fillable(required, textarea.disabled, textarea.readOnly)}
+    >
       {(control) => <Textarea {...control} {...textarea} />}
     </Labelled>
+  );
+}
+
+/**
+ * A group (`fieldset`) may not carry `aria-required`: a required one is
+ * described by the word "Required field" in the person's language, hidden on
+ * screen, and its name stays its legend (task 11.18, decision 7).
+ */
+function groupRequired(id: string, describedBy: string | undefined, required: boolean | undefined) {
+  if (required !== true) {
+    return { describedBy, word: null };
+  }
+  const wordId = `${id}-required`;
+  return {
+    describedBy: [wordId, describedBy].filter((part) => part !== undefined).join(' '),
+    word: <RequiredWord id={wordId} />,
+  };
+}
+
+function RequiredWord({ id }: { id: string }) {
+  const { t } = useTranslation();
+  return (
+    <span id={id} className="sr-only">
+      {t('form.requiredWord')}
+    </span>
   );
 }
 
@@ -249,6 +357,7 @@ export function CheckboxField({
   label,
   error,
   note,
+  required,
   name,
   value,
   onChange,
@@ -256,30 +365,34 @@ export function CheckboxField({
 }: FieldTexts & Bound) {
   const id = useId();
   const { noteId, errorId, describedBy } = described(id, note, error);
+  const marked = fillable(required, disabled);
   return (
     <div className="grid gap-1.5">
-      <label
-        htmlFor={id}
-        className={`${CHECKBOX_TARGET} text-sm leading-none font-medium select-none has-disabled:cursor-not-allowed has-disabled:opacity-50`}
-      >
-        <input
-          id={id}
-          name={name}
-          type="checkbox"
-          className={CHECKBOX}
-          checked={value === CHECKED}
-          disabled={disabled}
-          aria-invalid={error !== undefined}
-          aria-describedby={describedBy}
-          onChange={(event) => {
-            if (disabled === true) {
-              return;
-            }
-            onChange({ target: { value: event.target.checked ? CHECKED : '' } });
-          }}
-        />
-        {label}
-      </label>
+      <Marked required={marked}>
+        <label
+          htmlFor={id}
+          className={`${CHECKBOX_TARGET} text-sm leading-none font-medium select-none has-disabled:cursor-not-allowed has-disabled:opacity-50`}
+        >
+          <input
+            id={id}
+            name={name}
+            type="checkbox"
+            className={CHECKBOX}
+            checked={value === CHECKED}
+            disabled={disabled}
+            aria-invalid={error !== undefined}
+            aria-describedby={describedBy}
+            aria-required={marked ? true : undefined}
+            onChange={(event) => {
+              if (disabled === true) {
+                return;
+              }
+              onChange({ target: { value: event.target.checked ? CHECKED : '' } });
+            }}
+          />
+          {label}
+        </label>
+      </Marked>
       <Messages noteId={noteId} errorId={errorId} note={note} error={error} />
     </div>
   );
@@ -306,6 +419,7 @@ export function CheckboxGroupField({
   label,
   error,
   note,
+  required,
   name,
   value,
   onChange,
@@ -314,15 +428,26 @@ export function CheckboxGroupField({
 }: CheckboxGroupFieldProps) {
   const id = useId();
   const { noteId, errorId, describedBy } = described(id, note, error);
+  const marked = fillable(required, disabled);
+  const group = groupRequired(id, describedBy, marked);
   const ticked = new Set(listValues(value));
   return (
     <fieldset
       className="grid gap-1.5"
       aria-invalid={error !== undefined}
-      aria-describedby={describedBy}
+      aria-describedby={group.describedBy}
       disabled={disabled}
     >
-      <legend className="mb-1.5 text-sm font-medium">{label}</legend>
+      <legend className="mb-1.5 text-sm font-medium">
+        {label}
+        {marked && (
+          <>
+            {' '}
+            <RequiredMark />
+          </>
+        )}
+      </legend>
+      {group.word}
       <div className="flex flex-wrap gap-x-4 gap-y-2">
         {options.map((option) => (
           <label
@@ -389,6 +514,7 @@ export function OrderedListField({
   label,
   error,
   note,
+  required,
   name,
   value,
   onChange,
@@ -400,6 +526,8 @@ export function OrderedListField({
   const { t } = useTranslation();
   const id = useId();
   const { noteId, errorId, describedBy } = described(id, note, error);
+  const marked = fillable(required, disabled);
+  const group = groupRequired(id, describedBy, marked);
   const items = listValues(value);
   const offered =
     addable === undefined ? options : options.filter((option) => addable.includes(option.value));
@@ -425,10 +553,19 @@ export function OrderedListField({
     <fieldset
       className="grid gap-1.5"
       aria-invalid={error !== undefined}
-      aria-describedby={describedBy}
+      aria-describedby={group.describedBy}
       disabled={disabled}
     >
-      <legend className="mb-1.5 text-sm font-medium">{label}</legend>
+      <legend className="mb-1.5 text-sm font-medium">
+        {label}
+        {marked && (
+          <>
+            {' '}
+            <RequiredMark />
+          </>
+        )}
+      </legend>
+      {group.word}
       <ol className="grid gap-1">
         {items.map((item, index) => (
           // The place is the identity: the same value can stand twice.

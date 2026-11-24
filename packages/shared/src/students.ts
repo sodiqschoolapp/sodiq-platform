@@ -11,6 +11,7 @@ import { spellingKey, storedStudentName, validName } from './names.js';
 import { studentRelativesInputSchema } from './relatives.js';
 import { jshshirSchema, sexSchema, staffPhoneSchema } from './staff.js';
 import { journalEntriesChoiceSchema } from './journal-entries.js';
+import { leftEmpty, type RequiredWhen } from './required-when.js';
 
 /**
  * Student records (docs/spec/04-people.md, Student record, UID sets; task
@@ -259,6 +260,15 @@ export const scholarshipSchema = z
 
 export type Scholarship = z.infer<typeof scholarshipSchema>;
 
+/**
+ * What `scholarshipSchema` requires only in some states (task 11.18): full or
+ * partial for a scholarship, an amount for a partial one.
+ */
+export const scholarshipRequiredWhen: RequiredWhen = {
+  coverage: (values) => !leftEmpty(values.type) && values.type !== 'none',
+  amount: (values) => values.coverage === 'partial',
+};
+
 const studentFields = {
   firstName: studentNameSchema,
   lastName: studentNameSchema,
@@ -322,6 +332,31 @@ export const studentCreateSchema = z
   .refine(documentPair, DOCUMENT_PAIR);
 
 export type StudentCreate = z.infer<typeof studentCreateSchema>;
+
+/**
+ * What `studentRecordSchema` requires only in some states (task 11.18): a
+ * document type and its number, both or neither (`documentPair`).
+ */
+export const studentRecordRequiredWhen: RequiredWhen = {
+  documentType: (values) => !leftEmpty(values.documentNumber),
+  documentNumber: (values) => !leftEmpty(values.documentType),
+};
+
+/**
+ * What `studentCreateSchema` requires only in some states: the document pair,
+ * and the class when the start date is today or earlier in the branch's time
+ * zone (`student_needs_class`, `students.service.ts`); while the branch's today
+ * or the start date is not known, the class is marked, since the server may
+ * refuse it (review of the plan of 11.18, correction 1).
+ */
+export const studentCreateRequiredWhen: RequiredWhen = {
+  ...studentRecordRequiredWhen,
+  classId: (values, known) =>
+    known.today === undefined ||
+    typeof values.startsOn !== 'string' ||
+    values.startsOn === '' ||
+    values.startsOn <= known.today,
+};
 
 /**
  * The correction of a mistyped UID (edge: "A mistyped UID can be corrected by
