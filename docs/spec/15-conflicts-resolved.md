@@ -12,7 +12,7 @@ Where the sources disagree, the main file wins. Where the main file is silent, t
 | Languages | Main file: Uzbek, Russian, English. Texnik topshiriq: at least Uzbek and Russian. myss.uz: Uzbek. | All three, complete. |
 | Scope | Texnik topshiriq and the Ziyoly demo cover admissions, finance, HR, chat, tasks, gamification. Main file: academics first. | Three releases, academic core first. The rest is listed under Later modules. |
 | Mobile apps | Texnik topshiriq requires Android and iOS apps. Main file: web first. | Phone-friendly web from Release 1. Apps in Release 3. |
-| Grading weights | Main file: a daily and a quarterly distribution per subject. myss.uz: monthly weights. Ziyoly demo: one fixed formula. Ziyoly notes: weights per quarter. | Daily and quarterly distributions per subject, the quarterly one set for each quarter. |
+| Grading weights | Main file: a daily and a quarterly distribution per subject. myss.uz: monthly weights. Ziyoly demo: one fixed formula. Ziyoly notes: weights per quarter. | A quarterly distribution per subject, set for each quarter. The daily distribution was removed on 24 November 2026: there is no lesson score. |
 | Rating exam | myss.uz: a part of the monthly weights. Ziyoly notes and demo: at the end of the quarter. | One score per quarter, rating subjects only. |
 | Homework debt | myss.uz and the Ziyoly notes have a debt threshold, a journal column and an analytics page. Your message: not needed. | Removed everywhere. |
 | Payment debtors | myss.uz has a debtors page. | Removed. No finance in this system. |
