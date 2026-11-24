@@ -1,11 +1,14 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import {
+  ASSISTANT_ANSWER_WINDOW_MS,
   lessonCardSchema,
   MENU_ITEMS,
   permits,
   visibleMenu,
   type AssistantAnswer,
   type AssistantLessonLink,
+  type AssistantNotice,
+  type AssistantProgress,
   type AssistantQuestion,
   type AssistantRole,
   type Language,
@@ -43,6 +46,10 @@ import {
 } from './model.js';
 import { ModelCallFailed, ModelCaller, type Attempt, type CallBudget } from './model-caller.js';
 import { journalOf, ownRecordsOnly, refusedUnlessOwnJournal } from './own-journal.js';
+import { reportFault } from '../../reporting/reporting.js';
+import { notifyLive } from '../notifications/live/live-payload.js';
+import { AssistantWork } from './assistant-work.js';
+import { TextProgress } from './progress.js';
 import { proposalsOf } from './proposal-views.js';
 import { draftStep, type StoredStep } from './proposals.js';
 import {
@@ -105,6 +112,35 @@ interface Asker {
   language: Language;
 }
 
+/** What the work of a question knows of its start (task 11.16). */
+interface Started {
+  conversation: { id: string; branchId: string; accountId: string };
+  questionId: string;
+  /** The question's stored moment; its answer window is counted from it. */
+  askedAt: Date;
+  budget: CallBudget;
+  history: ModelTurn[];
+  branchName: string;
+  today: string;
+}
+
+/**
+ * The answer window of a question is past (task 11.16, plan decision 4; review of the plan,
+ * correction 1): the work writes and sends nothing more and ends; a new question may be asked.
+ */
+class WindowPassed extends Error {
+  constructor() {
+    super('The answer window of the question is past.');
+  }
+}
+
+/** Takes the lock of one person's questions, which the question route also takes first. */
+async function lockAccount(transaction: Transaction, accountId: string): Promise<void> {
+  await sql`select pg_advisory_xact_lock(hashtextextended(${`assistant_account:${accountId}`}, 0))`.execute(
+    transaction,
+  );
+}
+
 /**
  * The assistant's engine (task 11.12; `02`, Assistant): a question, the reads the model asks
  * for, each through the platform's own route as the person, and the answer. It changes nothing
@@ -113,6 +149,8 @@ interface Asker {
  */
 @Injectable()
 export class AssistantEngine {
+  private readonly logger = new Logger('Assistant');
+
   constructor(
     private readonly transactions: Transactions,
     private readonly settings: AssistantSettingsService,
@@ -122,6 +160,7 @@ export class AssistantEngine {
     @Inject(PERMISSION_TABLE) private readonly table: PermissionTable,
     private readonly routes: AssistantRoutes,
     private readonly caller: ModelCaller,
+    private readonly work: AssistantWork,
   ) {}
 
   /** Whether the person holds the role now in the branch of the request, and it has the panel. */
@@ -132,6 +171,11 @@ export class AssistantEngine {
     );
   }
 
+  /**
+   * A question (task 11.16; `02`, While it works): checked and stored, and answered at once with
+   * the conversation holding it; the answer is written after, by `answer`, whatever the browser
+   * does.
+   */
   async ask(asker: Asker, question: AssistantQuestion): Promise<AssistantAnswer> {
     const { access } = asker;
     const branchId = access.branchId;
@@ -176,6 +220,14 @@ export class AssistantEngine {
         { kind: 'question', text: question.text },
         now,
       );
+      // Task 11.16: the other tabs of the person read the conversation again, at the commit.
+      await notifyLive(transaction, {
+        kind: 'assistant',
+        accountId: conversation.accountId,
+        conversationId: conversation.id,
+        questionId,
+        event: { kind: 'question' },
+      });
       const branch = await transaction
         .selectFrom('branches')
         .select(['name', 'time_zone'])
@@ -184,18 +236,71 @@ export class AssistantEngine {
       const today = await sql<{ today: string }>`
         select to_char(${now}::timestamptz at time zone ${branch.time_zone}, 'YYYY-MM-DD') as today
       `.execute(transaction);
-      return {
+      const row = await conversationsQuery(transaction)
+        .where('c.id', '=', conversation.id)
+        .executeTakeFirstOrThrow();
+      const started: Started = {
         conversation,
         questionId,
-        // Task 11.15 (plan decision 6): the fallback switch as it is at the start of the question.
-        budget: this.caller.begin(fallbackOn),
+        askedAt: now,
+        // Task 11.15 (plan decision 6): the fallback switch as it is at the start of the question;
+        // task 11.16: its time limit counted from the question's stored moment.
+        budget: this.caller.begin(fallbackOn, now),
         history,
         branchName: branch.name,
         today: today.rows[0]?.today ?? '',
       };
+      return { started, answer: { conversation: await conversationOf(transaction, row, now) } };
     });
+    this.work.run(() => this.answer(asker, question, start.started));
+    return start.answer;
+  }
 
-    const pages = visibleMenu(role, BUILT_PAGES, this.table);
+  /**
+   * The work of one question after its request answered (task 11.16): the reads the model asks
+   * for, the answer and its proposal, or a notice; each written, and told to the person's tabs,
+   * only within the question's answer window. Never throws: a failure ends in a notice.
+   */
+  private async answer(asker: Asker, question: AssistantQuestion, start: Started): Promise<void> {
+    const progress = new TextProgress((event) => this.tell(start, event));
+    try {
+      await this.answering(asker, question, start, progress);
+    } catch (error) {
+      if (error instanceof WindowPassed) return;
+      let code: AssistantNotice;
+      if (error instanceof ModelCallFailed) {
+        code = error.busy ? 'assistant_model_busy' : 'assistant_model_unavailable';
+      } else {
+        code = 'assistant_answer_failed';
+        // The error's name only: its message can quote the question or a read.
+        this.logger.error(
+          `A question of the assistant could not be answered: ${error instanceof Error ? error.name : 'unknown error'}`,
+        );
+        reportFault(error, { part: 'assistant' });
+      }
+      await progress.flush().catch(() => undefined);
+      try {
+        await this.write(start, async (transaction, now) => {
+          await appendMessage(transaction, start.conversation, { kind: 'notice', code }, now);
+          await this.notify(transaction, start, { kind: 'done' });
+        });
+      } catch (stored) {
+        if (!(stored instanceof WindowPassed)) throw stored;
+      }
+    }
+  }
+
+  private async answering(
+    asker: Asker,
+    question: AssistantQuestion,
+    start: Started,
+    progress: TextProgress,
+  ): Promise<void> {
+    const { access } = asker;
+    const role = question.role;
+
+    // Task 11.16 (plan test 11): the Assistant page is never a page the assistant links.
+    const pages = visibleMenu(role, BUILT_PAGES, this.table).filter((item) => item !== 'assistant');
     const lines = this.routes.linesOf(role);
     const tools = toolsOf(lines, pages);
     // Task 11.13: the steps the model proposes in this question, stored as one proposal with
@@ -219,11 +324,13 @@ export class AssistantEngine {
     for (;;) {
       modelCalls += 1;
       const last = reads >= MAX_READS || modelCalls >= MAX_MODEL_CALLS;
-      const reply = await this.call(start, { system, turns, tools: last ? [] : tools });
+      const reply = await this.call(start, { system, turns, tools: last ? [] : tools }, progress);
       if (reply.calls.length === 0 || last) {
         text = reply.text;
         break;
       }
+      // A turn that reads instead of answering: any text it wrote is not the answer.
+      await progress.reset();
       turns.push({
         role: 'model',
         parts: reply.calls.map((call) => ({
@@ -306,8 +413,8 @@ export class AssistantEngine {
       turns.push(results);
     }
 
-    return this.transactions.run(access.branchIds, async (transaction) => {
-      const now = await transactionMoment(transaction);
+    await progress.flush();
+    await this.write(start, async (transaction, now) => {
       await appendMessage(
         transaction,
         start.conversation,
@@ -329,11 +436,49 @@ export class AssistantEngine {
           })
           .execute();
       }
-      const row = await conversationsQuery(transaction)
-        .where('c.id', '=', start.conversation.id)
-        .executeTakeFirstOrThrow();
-      return { conversation: await conversationOf(transaction, row, now) };
+      // At the commit of the answer: the tabs read the conversation with it.
+      await this.notify(transaction, start, { kind: 'done' });
     });
+  }
+
+  /**
+   * A write of a question's work (task 11.16; review of the plan, correction 1): in a transaction
+   * of its own that first takes the person's question lock, then checks the moment of the
+   * transaction, on the injected clock, against the question's answer window; past it nothing is
+   * written and the work ends (`WindowPassed`).
+   */
+  private async write<T>(
+    start: Pick<Started, 'conversation' | 'askedAt'>,
+    work: (transaction: Transaction, now: Date) => Promise<T>,
+  ): Promise<T> {
+    return this.transactions.run([start.conversation.branchId], async (transaction) => {
+      const now = await transactionMoment(transaction);
+      await lockAccount(transaction, start.conversation.accountId);
+      if (now.getTime() >= start.askedAt.getTime() + ASSISTANT_ANSWER_WINDOW_MS) {
+        throw new WindowPassed();
+      }
+      return work(transaction, now);
+    });
+  }
+
+  /** One event of the question for the person's tabs, at the commit of the transaction. */
+  private async notify(
+    transaction: Transaction,
+    start: Pick<Started, 'conversation' | 'questionId'>,
+    event: AssistantProgress['event'],
+  ): Promise<void> {
+    await notifyLive(transaction, {
+      kind: 'assistant',
+      accountId: start.conversation.accountId,
+      conversationId: start.conversation.id,
+      questionId: start.questionId,
+      event,
+    });
+  }
+
+  /** An event alone, within the window. */
+  private async tell(start: Started, event: AssistantProgress['event']): Promise<void> {
+    await this.write(start, (transaction) => this.notify(transaction, start, event));
   }
 
   /**
@@ -352,9 +497,17 @@ export class AssistantEngine {
     }
     // One question of a person at a time: two tabs cannot both pass the last one of the day
     // (plan review, should fix 7). The lock first, the count in a statement of its own.
-    await sql`select pg_advisory_xact_lock(hashtextextended(${`assistant_account:${accountId}`}, 0))`.execute(
-      transaction,
-    );
+    await lockAccount(transaction, accountId);
+    // Task 11.16: one question of a person at a time, in every branch (0181), until its answer,
+    // its notice or the end of its answer window.
+    const running = await sql<{ running: boolean }>`
+      select assistant_question_running(
+        ${accountId}, ${new Date(now.getTime() - ASSISTANT_ANSWER_WINDOW_MS)}
+      ) as running
+    `.execute(transaction);
+    if (running.rows[0]?.running === true) {
+      throw new ApiException('assistant_question_running', 409);
+    }
     if ((await this.settings.questionsToday(transaction, accountId, now)) >= switches.dailyLimit) {
       throw new ApiException('assistant_daily_limit', 409);
     }
@@ -449,14 +602,13 @@ export class AssistantEngine {
    * answer keeps the question with a notice, "busy" or "cannot reach", and answers 503.
    */
   private async call(
-    start: {
-      conversation: { id: string; branchId: string; accountId: string };
-      questionId: string;
-      budget: CallBudget;
-    },
+    start: Started,
     request: Parameters<AssistantModel['generate']>[0],
+    progress: TextProgress,
   ): Promise<ModelReply> {
     const record = async (attempt: Attempt): Promise<void> => {
+      // Task 11.16: the text of a call that failed is not the answer; the next call writes anew.
+      if (!('reply' in attempt)) await progress.reset();
       await this.transactions.run([start.conversation.branchId], async (transaction) => {
         const now = await transactionMoment(transaction);
         const tokens =
@@ -466,15 +618,8 @@ export class AssistantEngine {
         await this.recordCall(transaction, start, attempt, tokens, now);
       });
     };
-    try {
-      return await this.caller.call(start.budget, request, record);
-    } catch (error) {
-      // Only a failure of the model; a failure of our own (the database) is not the model's.
-      if (!(error instanceof ModelCallFailed)) throw error;
-      const code = error.busy ? 'assistant_model_busy' : 'assistant_model_unavailable';
-      await this.store(start, { kind: 'notice', code });
-      throw new ApiException(code, 503);
-    }
+    // A failure of the model (`ModelCallFailed`) ends in its notice, written by `answer`.
+    return this.caller.call(start.budget, request, record, progress.text);
   }
 
   private async recordCall(
@@ -576,24 +721,27 @@ export class AssistantEngine {
     });
   }
 
-  /** A message of the conversation in a transaction of its own. */
+  /**
+   * A read of the conversation in a transaction of its own, within the window, told to the
+   * person's tabs with its group and status, never its data (task 11.16).
+   */
   private async store(
-    start: { conversation: { id: string; branchId: string; accountId: string } },
-    content: StoredContent,
+    start: Started,
+    content: Extract<StoredContent, { kind: 'read' }>,
   ): Promise<void> {
-    await this.transactions.run([start.conversation.branchId], async (transaction) => {
-      await appendMessage(
-        transaction,
-        start.conversation,
-        content,
-        await transactionMoment(transaction),
-      );
+    await this.write(start, async (transaction, now) => {
+      await appendMessage(transaction, start.conversation, content, now);
+      await this.notify(transaction, start, {
+        kind: 'read',
+        group: content.group,
+        status: content.status,
+      });
     });
   }
 
   private async read(
     asker: Asker,
-    start: { conversation: { id: string; branchId: string; accountId: string } },
+    start: Started,
     as: { role: AssistantRole; lines: RoleLines },
     call: { name: string; args: Record<string, unknown> },
     overLimit: boolean,
@@ -645,14 +793,7 @@ export class AssistantEngine {
         stored = readContent(call, route, lines, outcome.status, given);
       }
     }
-    await this.transactions.run([start.conversation.branchId], async (transaction) => {
-      await appendMessage(
-        transaction,
-        start.conversation,
-        stored,
-        await transactionMoment(transaction),
-      );
-    });
+    await this.store(start, stored);
     return given;
   }
 }

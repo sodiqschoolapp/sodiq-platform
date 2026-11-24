@@ -1,4 +1,7 @@
 import {
+  ASSISTANT_MESSAGES,
+  assistantProgressSchema,
+  type AssistantProgress,
   NOTIFICATION_MESSAGES,
   NOTIFICATION_SOCKET_PATH,
   notificationEndedMessageSchema,
@@ -13,6 +16,7 @@ import type { QueryClient } from '@tanstack/react-query';
 import { io } from 'socket.io-client';
 import { SESSION_CHANGED_CODES, stepOf, type Session } from '@/features/auth/session';
 import { NOTIFICATIONS_KEY, updateList, withAllRead, withNew, withRead } from './notifications-api';
+import { applyProgress, catchUpAssistant } from '@/features/assistant/assistant-progress';
 
 /** What a live connection tells the tab. */
 export interface LiveHandlers {
@@ -21,6 +25,8 @@ export interface LiveHandlers {
   onNew(items: Notification[]): void;
   onRead(ids: string[], readAt: string): void;
   onReadAll(readAt: string): void;
+  /** Task 11.16: the progress of a question of the person (`02`, While it works). */
+  onAssistant(progress: AssistantProgress): void;
   /**
    * The server refused the handshake, or closed the connection, because the
    * session is over, owes a step, or the request did not come from the site.
@@ -125,6 +131,12 @@ export const connectWithSocketIo: LiveConnector = (handlers) => {
     }),
   );
   socket.on(
+    ASSISTANT_MESSAGES.progress,
+    reading(assistantProgressSchema, (progress) => {
+      handlers.onAssistant(progress);
+    }),
+  );
+  socket.on(
     NOTIFICATION_MESSAGES.ended,
     reading(notificationEndedMessageSchema, ({ code }) => {
       end(code);
@@ -198,6 +210,12 @@ export function liveFollower(
       const own = connect({
         onState: (state) => {
           queryClient.setQueryData<NotificationList>(NOTIFICATIONS_KEY, state);
+          // Task 11.16: at every (re)connection the open conversations are read again, so a tab
+          // that missed the progress of a question catches up.
+          void catchUpAssistant(queryClient);
+        },
+        onAssistant: (progress) => {
+          applyProgress(queryClient, progress);
         },
         onNew: (items) => {
           updateList(queryClient, (list) => withNew(list, items));

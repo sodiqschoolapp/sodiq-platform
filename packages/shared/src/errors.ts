@@ -1336,6 +1336,8 @@ export const ERROR_CODES = [
   'assistant_model_unavailable',
   /** Task 11.15: the language model is busy or did not answer in time, after its retries and the fallback (`02`, Where the model runs). */
   'assistant_model_busy',
+  /** Task 11.16: a question of the same person is still being answered (`02`, While it works; `edge/people-roles-accounts`, "… or in two tabs"). */
+  'assistant_question_running',
   /** Task 11.12: the role sent is not one the person holds now in this branch, or not one the assistant is given to. */
   'assistant_role_not_held',
   /** Task 11.12: the conversation was started in another role; a new conversation is asked in this one. */

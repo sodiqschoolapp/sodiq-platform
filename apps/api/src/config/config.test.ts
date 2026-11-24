@@ -206,6 +206,32 @@ describe('loadConfig', () => {
         }),
       ).toContain('ASSISTANT_SCRIPTED_MODEL must');
     });
+
+    // Task 11.16 (review of the plan, correction 2).
+    it('refuses the scripted model’s delay outside the test and development environments and on the production address', () => {
+      expect(loadConfig(VALID).assistant.scriptedDelayMs).toBe(0);
+      expect(
+        loadConfig({ ...VALID, ASSISTANT_SCRIPTED_DELAY_MS: '3000' }).assistant.scriptedDelayMs,
+      ).toBe(3000);
+      expect(
+        problemOf({
+          ...VALID,
+          ASSISTANT_SCRIPTED_DELAY_MS: '3000',
+          SENTRY_ENVIRONMENT: 'production',
+        }),
+      ).toContain('ASSISTANT_SCRIPTED_DELAY_MS must');
+      expect(
+        problemOf({
+          ...VALID,
+          ASSISTANT_SCRIPTED_DELAY_MS: '3000',
+          SENTRY_ENVIRONMENT: 'test',
+          WEB_ORIGIN: 'https://app.sodiqschool.uz',
+        }),
+      ).toContain('ASSISTANT_SCRIPTED_DELAY_MS must');
+      expect(problemOf({ ...VALID, ASSISTANT_SCRIPTED_DELAY_MS: '-1' })).toContain(
+        'ASSISTANT_SCRIPTED_DELAY_MS must',
+      );
+    });
   });
 
   // Task 10.5: the demo clock runs on the test environment only (`13`, Hosting).

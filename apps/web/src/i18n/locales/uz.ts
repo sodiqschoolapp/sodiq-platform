@@ -1054,6 +1054,8 @@ export const uz: Texts<'one' | 'other'> = {
       'Yordamchi hozir til modeliga ulana olmayapti. Keyinroq urinib koʻring; barcha sahifalar odatdagidek ishlaydi.',
     assistant_model_busy:
       'Yordamchi hozir band. Bir daqiqadan keyin qayta urinib koʻring; barcha sahifalar odatdagidek ishlaydi.',
+    assistant_question_running:
+      'Oldingi savolingizga hali javob yozilmoqda. Javobni kuting, soʻng keyingisini bering.',
     assistant_role_not_held: 'Yordamchi bu filialda ushbu rol uchun ochiq emas.',
     assistant_conversation_other_role: 'Bu suhbat boshqa rolda boshlangan. Yangi suhbat boshlang.',
     assistant_not_archived: 'Bu suhbat arxivlanmagan, tiklash uchun hech narsa yoʻq.',
@@ -1308,6 +1310,10 @@ export const uz: Texts<'one' | 'other'> = {
         'Yordamchi hozir til modeliga ulana olmayapti. Keyinroq urinib koʻring; barcha sahifalar odatdagidek ishlaydi.',
       assistant_model_busy:
         'Yordamchi hozir band. Bir daqiqadan keyin qayta urinib koʻring; barcha sahifalar odatdagidek ishlaydi.',
+      assistant_question_running:
+        'Oldingi savolingizga hali javob yozilmoqda. Javobni kuting, soʻng keyingisini bering.',
+      assistant_answer_failed:
+        'Yordamchi bu javobni yakunlay olmadi. Qayta soʻrang; barcha sahifalar odatdagidek ishlaydi.',
     },
     open: 'Yordamchi',
     title: 'Yordamchi',
@@ -1325,6 +1331,17 @@ export const uz: Texts<'one' | 'other'> = {
     readFailed: '{{what}}: sizga ochiq emas yoki topilmadi',
     readRefused: 'Yordamchiga ruxsat etilmagan oʻqish bajarilmadi.',
     openLessonJournal: '{{date}} jurnal ustunini ochish',
+    // Task 11.16: while it works, and the Assistant page.
+    working: 'Yordamchi ishlamoqda…',
+    reading: 'Oʻqimoqda: {{what}}',
+    noAnswer: 'Javob kelmadi. Qayta soʻrang.',
+    openPage: 'Yordamchi sahifasini ochish',
+    page: {
+      title: 'Yordamchi',
+      back: 'Suhbatlarga qaytish',
+      choose: 'Suhbatni tanlang yoki yangisini boshlash uchun savol bering.',
+      notForRole: 'Yordamchi siz tanlagan rol uchun ochiq emas.',
+    },
     groups: {
       setup: 'Maktab sozlamalari',
       calendar: 'Kalendar va davrlar',
@@ -4276,6 +4293,7 @@ export const uz: Texts<'one' | 'other'> = {
     plans: 'Dars rejalari',
     requests: 'Soʻrovlar',
     audit_log: 'Audit jurnali',
+    assistant: 'Yordamchi',
     short: {
       home: 'Asosiy',
       setup: 'Maktab',
@@ -4287,6 +4305,7 @@ export const uz: Texts<'one' | 'other'> = {
       plans: 'Rejalar',
       requests: 'Soʻrovlar',
       audit_log: 'Audit',
+      assistant: 'Yordamchi',
     },
   },
   switcher: {

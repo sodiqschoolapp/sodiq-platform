@@ -13,7 +13,7 @@ import { sql } from 'kysely';
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { ShippingLogger } from '../../monitoring/monitoring.service.js';
-import { assistantScene, type AssistantScene } from '../../testing/assistant-kit.js';
+import { settle, assistantScene, type AssistantScene } from '../../testing/assistant-kit.js';
 import { answer, calls } from '../../testing/assistant-model.js';
 import { errorCode } from '../../testing/sign-in-kit.js';
 import { AssistantCalls } from './assistant-calls.js';
@@ -222,8 +222,9 @@ describe('the permission guard for the assistant’s reads', () => {
         .set('Cookie', scene.admin)
         .set(BRANCH_HEADER, scene.north)
         .send({ role: 'super_admin', text: 'Read.' });
-      body = JSON.stringify(response.body);
-      expect(response.status).toBe(200);
+      expect(response.status).toBe(202);
+      // Task 11.16: the answer is written after the request; the body read once it is.
+      body = JSON.stringify((await settle(scene.app, response, scene.admin, scene.north)).body);
       await get('/api/classes', {
         ...calls_.headersFor('super_admin'),
         [ASSISTANT_CALL_HEADER]: 'x',

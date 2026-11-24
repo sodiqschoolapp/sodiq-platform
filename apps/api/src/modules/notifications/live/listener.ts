@@ -1,6 +1,6 @@
 import { setTimeout as delay } from 'node:timers/promises';
 import { Inject, Injectable, Logger, type BeforeApplicationShutdown } from '@nestjs/common';
-import { NOTIFICATION_MESSAGES, type Notification } from '@sodiq/shared';
+import { ASSISTANT_MESSAGES, NOTIFICATION_MESSAGES, type Notification } from '@sodiq/shared';
 import { Client } from 'pg';
 import { CONFIG } from '../../../config/config.module.js';
 import type { AppConfig } from '../../../config/config.js';
@@ -27,6 +27,12 @@ export class LiveListener implements BeforeApplicationShutdown {
   private client: Client | undefined;
   private connectionString: string | undefined;
   private stopped = false;
+  /**
+   * Task 11.16: the payloads are heard one after another, in the order of their commits, so the
+   * progress of a question reaches a tab in the order it was written (each push reads the
+   * sessions first, and concurrent pushes could overtake each other).
+   */
+  private heard: Promise<void> = Promise.resolve();
 
   constructor(
     @Inject(CONFIG) private readonly config: AppConfig,
@@ -51,7 +57,8 @@ export class LiveListener implements BeforeApplicationShutdown {
       application_name: 'sodiq-api-live',
     });
     client.on('notification', (message) => {
-      void this.hear(message.payload ?? '');
+      const text = message.payload ?? '';
+      this.heard = this.heard.then(() => this.hear(text));
     });
     client.on('error', (error) => {
       this.logger.error(`The live connection failed: ${nameOf(error)}`);
@@ -110,6 +117,14 @@ export class LiveListener implements BeforeApplicationShutdown {
         case 'read_all':
           await this.sockets.tell(heard.accountId, NOTIFICATION_MESSAGES.readAll, {
             readAt: heard.readAt,
+          });
+          break;
+        case 'assistant':
+          // Task 11.16: the asking account's own connections, each session checked by `tell`.
+          await this.sockets.tell(heard.accountId, ASSISTANT_MESSAGES.progress, {
+            conversationId: heard.conversationId,
+            questionId: heard.questionId,
+            event: heard.event,
           });
           break;
         case 'state': {

@@ -5,6 +5,7 @@ import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { loadConfig } from '../../../config/config.js';
 import { loadLocalEnvFile } from '../../../database/config.js';
+import { settle } from '../../../testing/assistant-kit.js';
 import {
   answer,
   calls,
@@ -278,17 +279,18 @@ describe(
             .select('cost_micros')
             .execute()
         ).length;
+        const cookie =
+          one.intent.role === 'teacher'
+            ? (askingTeacher()?.account.caller.cookies ?? '')
+            : school.superAdmin.caller.cookies;
+        const branch = school.branches[0]?.id ?? '';
         const response = await request(app.getHttpServer() as Parameters<typeof request>[0])
           .post('/api/assistant/questions')
-          .set(
-            'Cookie',
-            one.intent.role === 'teacher'
-              ? (askingTeacher()?.account.caller.cookies ?? '')
-              : school.superAdmin.caller.cookies,
-          )
-          .set(BRANCH_HEADER, school.branches[0]?.id ?? '')
+          .set('Cookie', cookie)
+          .set(BRANCH_HEADER, branch)
           .send({ role: one.intent.role ?? 'super_admin', text: one.text });
-        expect(response.status, JSON.stringify(response.body).slice(0, 400)).toBe(200);
+        expect(response.status, JSON.stringify(response.body).slice(0, 400)).toBe(202);
+        await settle(app, response, cookie, branch);
         const conversation = assistantAnswerSchema.parse(response.body).conversation;
         const reads = await database.migrator
           .selectFrom('assistant_messages')

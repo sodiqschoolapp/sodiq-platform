@@ -1,10 +1,12 @@
 import {
+  ASSISTANT_ANSWER_WINDOW_MS,
   ASSISTANT_ARCHIVE_DAYS,
   assistantMessageSchema,
   type AssistantConversation,
   type AssistantConversationSummary,
   type AssistantLessonLink,
   type AssistantMessage,
+  type AssistantNotice,
   type AssistantReadGroup,
   type AssistantRole,
   type MenuItem,
@@ -33,7 +35,7 @@ export type StoredContent =
       /** What the model was given: the filtered result, cut to its bound. */
       result: unknown;
     }
-  | { kind: 'notice'; code: 'assistant_model_unavailable' | 'assistant_model_busy' };
+  | { kind: 'notice'; code: AssistantNotice };
 
 export interface ConversationRow {
   id: string;
@@ -153,12 +155,40 @@ export async function conversationOf(
   now: Date,
 ): Promise<AssistantConversation> {
   const last = new Date(row.last_activity_at);
+  const messages = await messagesOf(transaction, row.id);
   return {
     ...summaryOf(row),
     archived: isArchived(last, now),
     archivesAt: archivesAt(last).toISOString(),
-    messages: (await messagesOf(transaction, row.id)).map(messageOf),
+    messages: messages.map(messageOf),
     proposals: await proposalsOf(transaction, row.id, now),
+    working: workingOf(messages, now),
+  };
+}
+
+/**
+ * The question being answered now (task 11.16): the last question with no answer and no notice
+ * after it, while its answer window lasts, read from its stored moment (`CLAUDE.md`, State from
+ * stored moments); the same rule as `assistant_question_running` of 0181.
+ */
+export function workingOf(
+  messages: readonly MessageRow[],
+  now: Date,
+): AssistantConversation['working'] {
+  let question: MessageRow | undefined;
+  for (const message of messages) {
+    if (message.content.kind === 'question') question = message;
+    else if (message.content.kind === 'answer' || message.content.kind === 'notice') {
+      question = undefined;
+    }
+  }
+  if (question === undefined) return null;
+  const until = new Date(question.createdAt.getTime() + ASSISTANT_ANSWER_WINDOW_MS);
+  if (until.getTime() <= now.getTime()) return null;
+  return {
+    questionId: question.id,
+    askedAt: question.createdAt.toISOString(),
+    until: until.toISOString(),
   };
 }
 

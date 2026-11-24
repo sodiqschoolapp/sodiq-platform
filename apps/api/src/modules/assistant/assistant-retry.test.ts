@@ -18,8 +18,13 @@ import {
   refusedWith,
   type FakeTurn,
 } from '../../testing/assistant-model.js';
-import { ask, assistantScene, read, type AssistantScene } from '../../testing/assistant-kit.js';
-import { errorCode } from '../../testing/sign-in-kit.js';
+import {
+  ask,
+  assistantScene,
+  noticeOf,
+  read,
+  type AssistantScene,
+} from '../../testing/assistant-kit.js';
 import { costMicros } from './assistant.engine.js';
 import { MAX_MODEL_ATTEMPTS, QUESTION_TIME_LIMIT_MS, RETRY_WAITS_MS } from './model-caller.js';
 
@@ -37,7 +42,7 @@ const GLOBAL_PRICES = { priceInMicros: 1_500_000, priceOutMicros: 9_000_000 };
 const busy429 = (): FakeTurn => refusedWith(429, 'RESOURCE_EXHAUSTED');
 
 function answered(response: { status: number; body: unknown }): AssistantAnswer {
-  expect(response.status, JSON.stringify(response.body).slice(0, 800)).toBe(200);
+  expect(response.status, JSON.stringify(response.body).slice(0, 800)).toBe(202);
   return assistantAnswerSchema.parse(response.body);
 }
 
@@ -125,7 +130,7 @@ describe('the assistant on the live model: retries, the worldwide fallback and t
     expect((await settings({ fallbackOn: false })).status).toBe(200);
     scene.model.script(busy429(), busy429(), busy429(), answer('Never asked.'));
     const response = await ask(scene, scene.admin, scene.north, { text: 'Busy?' });
-    expect([response.status, errorCode(response)]).toEqual([503, 'assistant_model_busy']);
+    expect([response.status, noticeOf(response)]).toEqual([202, 'assistant_model_busy']);
     expect(scene.model.places).toEqual(['region', 'region', 'region']);
     expect(scene.waits).toEqual([...RETRY_WAITS_MS]);
     expect((await callsOfLast()).map((row) => [row.processed_in, String(row.cost_micros)])).toEqual(
@@ -164,7 +169,7 @@ describe('the assistant on the live model: retries, the worldwide fallback and t
     async (code, status) => {
       scene.model.script(refusedWith(code, status), answer('Never asked.'));
       const response = await ask(scene, scene.admin, scene.north, { text: 'Refused?' });
-      expect([response.status, errorCode(response)]).toEqual([503, 'assistant_model_unavailable']);
+      expect([response.status, noticeOf(response)]).toEqual([202, 'assistant_model_unavailable']);
       expect(scene.model.places).toEqual(['region']);
       expect(scene.waits).toEqual([]);
       expect(await lastNotice()).toEqual({ kind: 'notice', code: 'assistant_model_unavailable' });
@@ -179,7 +184,7 @@ describe('the assistant on the live model: retries, the worldwide fallback and t
     async (_n, turn) => {
       scene.model.script(turn(), answer('Never asked.'));
       const response = await ask(scene, scene.admin, scene.north, { text: 'Down?' });
-      expect(errorCode(response)).toBe('assistant_model_unavailable');
+      expect(noticeOf(response)).toBe('assistant_model_unavailable');
       expect(scene.model.places).toEqual(['region']);
     },
   );
@@ -217,7 +222,7 @@ describe('the assistant on the live model: retries, the worldwide fallback and t
   it('ends "busy" when Frankfurt was busy and the worldwide endpoint is busy too: four calls, no fifth', async () => {
     scene.model.script(busy429(), busy429(), busy429(), busy429(), answer('Never asked.'));
     const response = await ask(scene, scene.admin, scene.north, { text: 'Busy everywhere?' });
-    expect(errorCode(response)).toBe('assistant_model_busy');
+    expect(noticeOf(response)).toBe('assistant_model_busy');
     expect(scene.model.places).toEqual(['region', 'region', 'region', 'global']);
   });
 
@@ -231,7 +236,7 @@ describe('the assistant on the live model: retries, the worldwide fallback and t
       try {
         scene.model.script(busy429(), busy429(), busy429(), turn(), answer('Never asked.'));
         const response = await ask(scene, scene.admin, scene.north, { text: 'And global?' });
-        expect(errorCode(response)).toBe('assistant_model_busy');
+        expect(noticeOf(response)).toBe('assistant_model_busy');
       } finally {
         lines.stop();
       }
@@ -242,7 +247,7 @@ describe('the assistant on the live model: retries, the worldwide fallback and t
   it('never sends a 404 from Frankfurt to the worldwide endpoint, with the fallback on (Done when)', async () => {
     scene.model.script(refusedWith(404, 'NOT_FOUND'), answer('Never asked.'));
     const response = await ask(scene, scene.admin, scene.north, { text: 'Not found?' });
-    expect(errorCode(response)).toBe('assistant_model_unavailable');
+    expect(noticeOf(response)).toBe('assistant_model_unavailable');
     expect(scene.model.places).not.toContain('global');
   });
 
@@ -255,7 +260,7 @@ describe('the assistant on the live model: retries, the worldwide fallback and t
     scene.model.places.length = 0;
     scene.model.script(busy429(), busy429(), busy429(), answer('Never asked.'));
     const response = await ask(scene, scene.admin, scene.north, { text: 'Later.' });
-    expect(errorCode(response)).toBe('assistant_model_busy');
+    expect(noticeOf(response)).toBe('assistant_model_busy');
     expect(scene.model.places).toEqual(['region', 'region', 'region']);
     const all = await calls_();
     expect(all.filter((row) => row.message_id === earlier.at(-1)?.message_id)).toEqual(earlier);
@@ -292,7 +297,7 @@ describe('the assistant on the live model: retries, the worldwide fallback and t
       text: 'My lessons?',
       role: 'teacher',
     });
-    expect([response.status, errorCode(response)]).toEqual([503, 'assistant_model_busy']);
+    expect([response.status, noticeOf(response)]).toEqual([202, 'assistant_model_busy']);
     expect(scene.model.places).toEqual(['region', 'region', 'region', 'global']);
     const notice = await scene.database.migrator
       .selectFrom('assistant_messages')
@@ -325,7 +330,7 @@ describe('the assistant on the live model: retries, the worldwide fallback and t
       ),
     );
     const response = await ask(scene, scene.admin, scene.north, { text: 'Forever?' });
-    expect(errorCode(response)).toBe('assistant_model_busy');
+    expect(noticeOf(response)).toBe('assistant_model_busy');
     expect(scene.model.requests).toHaveLength(MAX_MODEL_ATTEMPTS);
   });
 
@@ -337,7 +342,7 @@ describe('the assistant on the live model: retries, the worldwide fallback and t
     };
     scene.model.script(late, answer('Never asked.'));
     const response = await ask(scene, scene.admin, scene.north, { text: 'Late?' });
-    expect(errorCode(response)).toBe('assistant_model_busy');
+    expect(noticeOf(response)).toBe('assistant_model_busy');
     expect(scene.model.places).toEqual(['region']);
     expect(QUESTION_TIME_LIMIT_MS).toBe(240_000);
   });
@@ -349,7 +354,7 @@ describe('the assistant on the live model: retries, the worldwide fallback and t
     };
     scene.model.script(slowRead, answer('Never asked.'));
     const response = await ask(scene, scene.admin, scene.north, { text: 'Slow read?' });
-    expect(errorCode(response)).toBe('assistant_model_busy');
+    expect(noticeOf(response)).toBe('assistant_model_busy');
     expect(scene.model.requests).toHaveLength(1);
     // The read already made stays in the conversation.
     const reads = await scene.database.migrator
@@ -390,7 +395,7 @@ describe('the assistant on the live model: retries, the worldwide fallback and t
       text: 'Failed question.',
       conversationId,
     });
-    expect(failed.status).toBe(503);
+    expect([failed.status, noticeOf(failed)]).toEqual([202, 'assistant_model_unavailable']);
     scene.model.requests.length = 0;
     scene.model.script(answer('Third answer.'));
     answered(

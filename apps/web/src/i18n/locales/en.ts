@@ -1036,6 +1036,8 @@ export const en = {
       'The assistant cannot reach its language model now. Try again later; every page works as usual.',
     assistant_model_busy:
       'The assistant is busy now. Try again in a minute; every page works as usual.',
+    assistant_question_running:
+      'A question of yours is still being answered. Wait for its answer, then ask the next one.',
     assistant_role_not_held: 'The assistant is not open to this role in this branch.',
     assistant_conversation_other_role:
       'This conversation was started in another role. Start a new conversation.',
@@ -1286,6 +1288,10 @@ export const en = {
         'The assistant cannot reach its language model now. Try again later; every page works as usual.',
       assistant_model_busy:
         'The assistant is busy now. Try again in a minute; every page works as usual.',
+      assistant_question_running:
+        'A question of yours is still being answered. Wait for its answer, then ask the next one.',
+      assistant_answer_failed:
+        'The assistant could not finish this answer. Ask again; every page works as usual.',
     },
     open: 'Assistant',
     title: 'Assistant',
@@ -1303,6 +1309,17 @@ export const en = {
     readFailed: '{{what}}: not open to you, or not found',
     readRefused: 'A read the assistant may not make was not made.',
     openLessonJournal: 'Open the journal column of {{date}}',
+    // Task 11.16: while it works, and the Assistant page.
+    working: 'The assistant is working…',
+    reading: 'Reading: {{what}}',
+    noAnswer: 'No answer came. Ask again.',
+    openPage: 'Open the Assistant page',
+    page: {
+      title: 'Assistant',
+      back: 'Back to the conversations',
+      choose: 'Choose a conversation, or ask a question to start a new one.',
+      notForRole: 'The assistant is not open to the role you have chosen.',
+    },
     groups: {
       setup: 'School setup',
       calendar: 'Calendar and periods',
@@ -4229,6 +4246,7 @@ export const en = {
     plans: 'Lesson plans',
     requests: 'Requests',
     audit_log: 'Audit log',
+    assistant: 'Assistant',
     /** The labels of the phone tab bar, which fit at 360 px (issue #105, H16). */
     short: {
       home: 'Home',
@@ -4241,6 +4259,7 @@ export const en = {
       plans: 'Plans',
       requests: 'Requests',
       audit_log: 'Audit',
+      assistant: 'Assistant',
     },
   },
   switcher: {

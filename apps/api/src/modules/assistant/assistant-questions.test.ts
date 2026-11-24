@@ -2,8 +2,13 @@ import { assistantAnswerSchema, classListSchema, type AssistantAnswer } from '@s
 import { sql } from 'kysely';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { answer, calls, fails, lastResults } from '../../testing/assistant-model.js';
-import { ask, assistantScene, read, type AssistantScene } from '../../testing/assistant-kit.js';
-import { errorCode } from '../../testing/sign-in-kit.js';
+import {
+  ask,
+  assistantScene,
+  read,
+  type AssistantScene,
+  noticeOf,
+} from '../../testing/assistant-kit.js';
 import type { ModelRequest } from './model.js';
 import { MAX_MODEL_CALLS, MAX_READS } from './assistant.engine.js';
 import { AssistantDispatcher } from './dispatcher.js';
@@ -17,7 +22,7 @@ const CLASSES = 'ClassesController_list';
 const CLASS = 'ClassesController_detail';
 
 function answered(response: { status: number; body: unknown }): AssistantAnswer {
-  expect(response.status, JSON.stringify(response.body).slice(0, 800)).toBe(200);
+  expect(response.status, JSON.stringify(response.body).slice(0, 800)).toBe(202);
   return assistantAnswerSchema.parse(response.body);
 }
 
@@ -202,11 +207,12 @@ describe('the assistant: questions, reads and answers', () => {
       .execute();
   });
 
-  it('keeps the question with a notice when the model cannot be reached, answers 503, and every screen works (`02`, Limits)', async () => {
+  // Task 11.16 (plan decision 2, Look first): the request takes the question (202); the model's
+  // failure reaches the person as the notice stored after it.
+  it('keeps the question with a notice when the model cannot be reached, and every screen works (`02`, Limits)', async () => {
     scene.model.script(fails());
     const response = await ask(scene, scene.admin, scene.north, { text: 'Is the model there?' });
-    expect(response.status).toBe(503);
-    expect(errorCode(response)).toBe('assistant_model_unavailable');
+    expect([response.status, noticeOf(response)]).toEqual([202, 'assistant_model_unavailable']);
     const conversation = await scene.database.migrator
       .selectFrom('assistant_conversations')
       .select('id')

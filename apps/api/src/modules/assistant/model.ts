@@ -119,12 +119,19 @@ export class ModelUnavailable extends Error {
   }
 }
 
+/** Takes a piece of the text of a reply as the model writes it. */
+export type TextSink = (piece: string) => void;
+
 export interface AssistantModel {
   /** The model's name, or `null` when no model is set up (the panel says so). */
   readonly name: string | null;
   /** The Google location of a place, as stored and logged (`europe-west3`, `global`). */
   locationOf(place: ModelPlace): string;
-  generate(request: ModelRequest, place: ModelPlace): Promise<ModelReply>;
+  /**
+   * One call. `onText` (task 11.16, `02`: "the answer as it is written") is given each piece of
+   * the reply's text as it comes, thoughts left out; the reply still holds the whole text.
+   */
+  generate(request: ModelRequest, place: ModelPlace, onText?: TextSink): Promise<ModelReply>;
 }
 
 export const ASSISTANT_MODEL = Symbol('ASSISTANT_MODEL');
