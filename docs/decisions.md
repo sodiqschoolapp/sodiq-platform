@@ -79,6 +79,8 @@ Plan approved on pull request #381 with corrections 1 (one injected clock for th
 | Gemini's streaming call; `reset` when a call that wrote text fails or a turn that wrote text reads instead; the live listener hears its payloads one after another, so a tab gets them in commit order | `02`, While it works (decision 6; found by the test of the order) |
 | The questions route answers 202 with the conversation; the page is `/assistant` (the open conversation in the address); the menu item is last; the panel and the page share one chat | Decisions 7, 8, 9 |
 | A failure of the work that is not the model's ends in the notice `assistant_answer_failed`, its error's name logged and nothing of its message | `02`, Limits: the panel says so (found in the build) |
+| Before each call of the model the work checks that the asking session is still in force (`Sessions.peek`); a session over ends it with `assistant_answer_failed`; a write also stops when a later question of the conversation is stored, read after the person's lock | `02`: "with the person's session"; permission review should fix 1; code review must fix 1 |
+| A chosen role without the assistant on `/assistant` sees `problems.noAccessPart`; the assistant switched off for the role shows its "switched off" line | `.claude/rules/web.md`; `02`, Limits |
 
 ## 24 November 2026: the assistant on the live model (task 11.15)
 
