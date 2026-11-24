@@ -121,7 +121,7 @@ export async function ask(
   cookie: string,
   branch: string,
   body: { text: string; role?: AssistantRole; conversationId?: string },
-) {
+): Promise<Awaited<ReturnType<typeof send>>> {
   return settle(scene.app, await send(scene, cookie, branch, body), cookie, branch);
 }
 
@@ -138,7 +138,7 @@ export async function settle<T extends { status: number; body: unknown }>(
   await app.get(AssistantWork).whenIdle();
   if (response.status === 202) {
     const accepted = response.body as { conversation: { id: string } };
-    const again = await request(app.getHttpServer() as Parameters<typeof request>[0])
+    const again = await request(app.getHttpServer())
       .get(`/api/assistant/conversations/${accepted.conversation.id}`)
       .set('Cookie', cookie)
       .set(BRANCH_HEADER, branch);

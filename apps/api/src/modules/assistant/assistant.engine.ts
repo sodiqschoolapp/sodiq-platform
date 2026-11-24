@@ -296,7 +296,6 @@ export class AssistantEngine {
     start: Started,
     progress: TextProgress,
   ): Promise<void> {
-    const { access } = asker;
     const role = question.role;
 
     // Task 11.16 (plan test 11): the Assistant page is never a page the assistant links.

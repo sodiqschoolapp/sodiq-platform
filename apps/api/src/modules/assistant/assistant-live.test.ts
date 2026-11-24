@@ -1,5 +1,4 @@
 import type { AddressInfo } from 'node:net';
-import type { Server } from 'node:http';
 import { Logger } from '@nestjs/common';
 import {
   ASSISTANT_ANSWER_WINDOW_MS,
@@ -35,6 +34,7 @@ import { LiveListener } from '../notifications/live/listener.js';
 import { notifyLive, LIVE_CHUNK } from '../notifications/live/live-payload.js';
 import { AssistantWork } from './assistant-work.js';
 import { AssistantDispatcher } from './dispatcher.js';
+import { GENERATED_TOOLS } from './tools.generated.js';
 import { PIECE_MAX_BYTES, piecesOf } from './progress.js';
 import { Transactions } from '../../database/transactions.js';
 
@@ -60,7 +60,7 @@ describe('the assistant while it works: the question at once, the progress live,
   beforeAll(async () => {
     scene = await assistantScene();
     await scene.people.schoolClass(scene.north, scene.northYear, { name: 'Oxford L' });
-    const address = (scene.app.getHttpServer() as Server).address() as AddressInfo;
+    const address = scene.app.getHttpServer().address() as AddressInfo;
     url = `http://127.0.0.1:${String(address.port)}`;
     // As the API process: the channel is heard here and pushed to the sockets.
     await scene.app.get(LiveListener).start(scene.database.appUrl);
@@ -234,7 +234,7 @@ describe('the assistant while it works: the question at once, the progress live,
         ).rows[0]?.n ?? 0,
       );
     const start = (text: string) =>
-      new Promise<{ status: number; body: unknown }>((resolve, reject) => {
+      new Promise<Awaited<ReturnType<typeof send>>>((resolve, reject) => {
         send(scene, scene.admin, scene.north, { text }).then(resolve, reject);
       });
     const one = start('From the first tab.');
@@ -453,6 +453,85 @@ describe('the assistant while it works: the question at once, the progress live,
     }
     expect(lines.join('\n')).toContain('TypeError');
     expect(lines.join('\n')).not.toContain('Secret words');
+  });
+
+  it('reads "being answered" with 0181 in every branch, for the person only, ending at an answer, a notice or a proposal (review of the plan, correction 3)', async () => {
+    const running = async (account: string, since: Date) =>
+      (
+        await sql<{ running: boolean }>`
+          select assistant_question_running(${account}, ${since}) as running
+        `.execute(scene.database.migrator)
+      ).rows[0]?.running;
+    const before = new Date(scene.clock.now().getTime() - 1);
+    expect(await running(scene.adminAccount, before)).toBe(false);
+    // A question in South, held: being answered for the person, whatever branch asks.
+    const gate = held(answer('South answer.'));
+    scene.model.script(gate.turn);
+    accepted(await send(scene, scene.admin, scene.south, { text: 'In South.' }));
+    await gate.reached;
+    expect(await running(scene.adminAccount, before)).toBe(true);
+    // Not another account's, and not one asked at or before `since`.
+    const other = await scene.kit.completeSession('Lola', 'Rahimova');
+    expect(await running(other.account.id, before)).toBe(false);
+    expect(await running(scene.adminAccount, scene.clock.now())).toBe(false);
+    gate.open();
+    await scene.app.get(AssistantWork).whenIdle();
+    expect(await running(scene.adminAccount, before)).toBe(false);
+    // A question that ended in a proposal: its answer is stored with it, so it is not running.
+    const roomId = await scene.people.room(scene.north);
+    const roomRow = await scene.database.migrator
+      .selectFrom('rooms')
+      .select(['floor_id'])
+      .where('id', '=', roomId)
+      .executeTakeFirstOrThrow();
+    const roomEdit = `propose_${GENERATED_TOOLS['PUT /api/setup/rooms/:id']?.name ?? ''}`.slice(
+      0,
+      64,
+    );
+    scene.model.script(
+      calls({
+        name: roomEdit,
+        args: {
+          id: roomId,
+          body: {
+            name: 'Room 7',
+            floorId: roomRow.floor_id,
+            type: 'classroom',
+            capacity: 28,
+            status: 'in_use',
+            shared: false,
+            maxSimultaneousLessons: null,
+          },
+          summary: 'Rename to Room 7.',
+        },
+      }),
+      answer('Proposed.'),
+    );
+    await settle(
+      scene.app,
+      await send(scene, scene.admin, scene.north, { text: 'Add a room.' }),
+      scene.admin,
+      scene.north,
+    );
+    expect(
+      await scene.database.migrator.selectFrom('assistant_proposals').select('id').execute(),
+    ).toHaveLength(1);
+    const kinds = await scene.database.migrator
+      .selectFrom('assistant_messages')
+      .select('kind')
+      .orderBy('created_at', 'desc')
+      .orderBy('seq', 'desc')
+      .limit(1)
+      .execute();
+    expect(kinds.map((row) => row.kind)).toEqual(['answer']);
+    expect(await running(scene.adminAccount, before)).toBe(false);
+    // Only the application may call it.
+    const rights = await sql<{ app: boolean; anyone: boolean }>`
+      select
+        has_function_privilege('sodiq_app', 'assistant_question_running(uuid, timestamptz)', 'execute') as app,
+        has_function_privilege('public', 'assistant_question_running(uuid, timestamptz)', 'execute') as anyone
+    `.execute(scene.database.migrator);
+    expect(rights.rows[0]).toEqual({ app: true, anyone: false });
   });
 
   it('cuts a long text into payloads under PostgreSQL’s 8 000 bytes, in any script, never a character in two', async () => {

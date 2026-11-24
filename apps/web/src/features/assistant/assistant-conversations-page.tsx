@@ -17,7 +17,7 @@ import {
   anyConversationQuery,
   restoreConversation,
 } from './assistant-api';
-import { Messages } from './assistant-panel';
+import { Messages } from './assistant-chat';
 
 type State = 'active' | 'archived';
 

@@ -52,6 +52,7 @@ describe('loadConfig', () => {
         vertexLocation: 'europe-west3',
         model: 'gemini-3.5-flash',
         scripted: false,
+        scriptedDelayMs: 0,
         prices: {
           region: { priceInMicros: 1_650_000, priceOutMicros: 9_900_000 },
           global: { priceInMicros: 1_500_000, priceOutMicros: 9_000_000 },
@@ -125,6 +126,7 @@ describe('loadConfig', () => {
         vertexLocation: 'europe-west3',
         model: 'gemini-3.5-flash',
         scripted: false,
+        scriptedDelayMs: 0,
         prices: {
           region: { priceInMicros: 1_650_000, priceOutMicros: 9_900_000 },
           global: { priceInMicros: 1_500_000, priceOutMicros: 9_000_000 },
