@@ -17,7 +17,7 @@ import type { Access } from '../access/permission.guard.js';
 import { notFound } from '../setup/setup-refusals.js';
 import type { Audit } from './audit.service.js';
 
-/** One column of a list's file: one heading or more (the daily distribution has three), and the cells of a row. */
+/** One column of a list's file: one heading or more (a column may have several), and the cells of a row. */
 export interface ExportColumn<Row> {
   headings: (texts: ExportTexts) => readonly string[];
   cells: (row: Row, texts: ExportTexts, language: Language) => readonly Cell[];

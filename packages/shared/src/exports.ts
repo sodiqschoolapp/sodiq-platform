@@ -385,8 +385,6 @@ export interface ExportTexts {
   lessonsAtOnce: string;
   /** One grade as the lists name it, with `{{grade}}` for its number. */
   grade: string;
-  /** The parts of the daily distribution, one number column each. */
-  weightParts: { attendance: string; classwork: string; homework: string };
   switches: { groupSubject: string; languageRule: string; demanding: string };
 }
 
@@ -619,7 +617,6 @@ const en: ExportTexts = {
   no: 'No',
   lessonsAtOnce: 'Lessons at once',
   grade: 'Grade {{grade}}',
-  weightParts: { attendance: 'Attendance', classwork: 'Classwork', homework: 'Homework' },
   switches: {
     groupSubject: 'Group subject',
     languageRule: 'Language rule',
@@ -861,11 +858,6 @@ const ru: ExportTexts = {
   no: 'Нет',
   lessonsAtOnce: 'Уроков одновременно',
   grade: '{{grade}} класс',
-  weightParts: {
-    attendance: 'Посещаемость',
-    classwork: 'Классная работа',
-    homework: 'Домашняя работа',
-  },
   switches: {
     groupSubject: 'Предмет по группам',
     languageRule: 'Правило языка',
@@ -1102,7 +1094,6 @@ const uz: ExportTexts = {
   no: 'Yoʻq',
   lessonsAtOnce: 'Bir vaqtdagi darslar',
   grade: '{{grade}}-sinf',
-  weightParts: { attendance: 'Davomat', classwork: 'Sinf ishi', homework: 'Uy vazifasi' },
   switches: { groupSubject: 'Guruhli fan', languageRule: 'Til qoidasi', demanding: 'Murakkab fan' },
 };
 

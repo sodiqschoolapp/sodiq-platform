@@ -188,7 +188,7 @@ function workLabel(
   ].join(' ');
 }
 
-/** Whether the reader's grid shows the works and the lesson score of a lesson. */
+/** Whether the reader's grid shows the works of a lesson. */
 const showsWorks = (input: JournalFileInput): boolean =>
   input.grid.shape !== 'attendance' && !input.grid.journal.attendanceOnly;
 

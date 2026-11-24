@@ -185,8 +185,8 @@ export type ChecklistItemKey = z.infer<typeof checklistItemKeySchema>;
 
 /**
  * One item. `done` is `null` for an item that never blocks (the calendar,
- * answer 23); `count` is the calendar's number of entries, or for `subjects`
- * the active graded subjects without a daily distribution in the branch;
+ * answer 23); `count` is the calendar's number of entries (`null` for the
+ * other items; the subjects have no daily distribution to count since task 11.17);
  * `years` names the planned or current years whose quarters are not all dated.
  */
 export const checklistItemSchema = z.object({
