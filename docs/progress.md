@@ -2,6 +2,18 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 24 November 2026: task 11.15, the assistant on the live model
+
+- **Calls of the model** (`assistant/model-caller.ts`): Frankfurt first; 429, 503, 504 or no answer in 30 s tried again after 2 s and 5 s; then once through the worldwide endpoint (`global`) unless the Super Admin switched the fallback off (`assistant_settings.fallback_on`, 0180, on by default). A 4xx is never retried nor sent on; a 500 or a network failure is "cannot reach". At most 16 calls and 240 s a question; the wait is injected (`ASSISTANT_WAIT`).
+- **Every call stored** with its place (`assistant_model_calls.processed_in`) and billed at that place's price; one log line per refused call (code, status word, model, region). The panel tells "busy" (`assistant_model_busy`) from "cannot reach"; a failed question stays out of the next question's turns; answers show bold and list lines. Default model `gemini-3.5-flash`, new prices; the Settings show the fallback switch and the month's count.
+
+Left out: nothing of the task. The live answer and the Assistant page are 11.16.
+
+The next sessions must know:
+
+- A test's `assistantScene` records each wait in `scene.waits` and moves the clock; `FakeModel.places` holds the place of each call; `refusedWith(code, status)`, `noAnswer()`, `networkFailure()` script failures.
+- The owner runs `pnpm assistant:eval` once (`docs/deploy.md`, step 7); its result goes into `docs/decisions.md` or issue #42.
+
 ## 22 November 2026: task 11.14, the assistant for teachers
 
 - **The Teacher's list** (`assistant-routes.ts` `TEACHER_READS`, `assistant-change-routes.ts` `TEACHER_CHANGES`, copy in `testing/assistant-route-list.ts`): 20 reads of own work (timetable, journals with the platform's results, students taught, rating, early warning, plans, windows, requests) and 6 proposals (a plan item created or saved, a lesson or rating-exam unlock, a plan edit request, the send of a prepared one). `assistant` view for the Teacher (owner's approval, stop-list item 5).
