@@ -55,7 +55,6 @@ const STUDENT: JournalStudent = {
       works: [
         { score: 2, percent: 20, version: 1, onAbsent: false, marker: null, notGraded: false },
       ],
-      score: null,
     },
   ],
   quarter: null,

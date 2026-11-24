@@ -776,7 +776,8 @@ describe('the settings of a branch', () => {
         false,
       ]);
       expect(items.find((item) => item.key === 'calendar')?.count).toBe(0);
-      expect(items.find((item) => item.key === 'subjects')?.count).toBe(0);
+      // Task 11.17: no count of graded subjects without a daily distribution.
+      expect(items.find((item) => item.key === 'subjects')?.count).toBeNull();
     });
 
     it('turns each item done as its data is stored', async () => {

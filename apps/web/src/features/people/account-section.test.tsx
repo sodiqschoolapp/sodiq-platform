@@ -137,7 +137,6 @@ const subjectOf = (n: number, en: string, uz: string, ru: string, archived = fal
   languageRule: true,
   demanding: false,
   archivedAt: archived ? '2026-10-01T00:00:00.000Z' : null,
-  daily: null,
   quarterWeightsMissing: null,
   quarterCount: null,
 });

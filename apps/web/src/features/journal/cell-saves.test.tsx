@@ -66,7 +66,6 @@ const student = (n: number, lastName: string, mark: number | null): JournalStude
       typedBy: null,
       marker: null,
       works: [],
-      score: null,
     },
     {
       closed: false,
@@ -86,7 +85,6 @@ const student = (n: number, lastName: string, mark: number | null): JournalStude
           notGraded: false,
         },
       ],
-      score: null,
     },
   ],
   quarter: null,
@@ -148,7 +146,6 @@ const GRID: JournalGrid = {
   legend: {
     lateValue: 50,
     skippedValue: 0,
-    daily: null,
     quarterly: null,
     weightsChangedOn: null,
     countsFrom: null,

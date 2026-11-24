@@ -187,7 +187,6 @@ const SUPPORT: JournalSupport = {
         typedBy: null,
         marker: null,
         works: [],
-        score: null,
       },
       stored: { mark: 0, works: [] },
       hiddenBy: { kind: 'temporary', startDate: '2026-10-26', endDate: '2026-10-26' },
@@ -212,7 +211,6 @@ const SUPPORT: JournalSupport = {
   legend: {
     lateValue: 50,
     skippedValue: 0,
-    daily: { attendance: 20, classwork: 40, homework: 40 },
     quarterly: { attendance: 20, classwork: 40, homework: 40, ratingExam: null },
     weightsChangedOn: null,
     countsFrom: null,

@@ -134,11 +134,11 @@ Neither was done by hand (owner, 29 October 2026, issue #42). In their place: th
 
 ## The routes in numbers
 
-- Routes of the application: 556, each called by the role harness as the 15 roles, an account without a role, a Parent account (task 11.1) and nobody, in the own and in another branch.
-- Without sign-in: 5. For the own account: 24. The parent portal: 8. With a permission of the table: 518.
+- Routes of the application: 555, each called by the role harness as the 15 roles, an account without a role, a Parent account (task 11.1) and nobody, in the own and in another branch.
+- Without sign-in: 5. For the own account: 24. The parent portal: 8. With a permission of the table: 517.
 - Open to integration keys: 98 (tasks 10.10 and 10.11).
 - Routes with a limit inside the route: 164.
-- Routes that take an id: 429, with 876 ids (branch 760, school 79, own 16, none 21).
+- Routes that take an id: 428, with 875 ids (branch 760, school 78, own 16, none 21).
 - Areas of the permission table: 66.
 
 ## Routes without a role
@@ -1553,7 +1553,6 @@ For every id a route takes, in its path, its query or its body, the record it na
 | `PUT /api/setup/rooms/:id` | `body:floorId` | floor | branch | `src/modules/setup/other-branch-ids.test.ts > PUT /api/setup/rooms/:id answers 404 for the room and for the floor` |
 | `PUT /api/setup/subjects/:id` | `path:id` | subject | school | `src/modules/setup/subjects.test.ts > of an unknown subject is not found; nothing is written` |
 | `PUT /api/setup/subjects/:id` | `body:departmentId` | department | school | 03: divisions and departments are the school's; `branch: 'none'` |
-| `PUT /api/setup/subjects/:id/daily-weights` | `path:id` | subject | school | `src/modules/setup/subjects.test.ts > of an unknown subject is not found; nothing is written` |
 | `PUT /api/setup/subjects/:id/quarter-weights/:quarterId` | `path:id` | subject | school | `src/modules/results/grade-changes.test.ts > answers 404 to the writes of weights for another branch’s and an unknown quarter and year, and an unknown subject, with no notice and every row unchanged` |
 | `PUT /api/setup/subjects/:id/quarter-weights/:quarterId` | `path:quarterId` | quarter | branch | `src/modules/results/grade-changes.test.ts > answers 404 to the writes of weights for another branch’s and an unknown quarter and year, and an unknown subject, with no notice and every row unchanged`<br>`src/modules/setup/subjects.test.ts > of another branch's quarter or year, or an unknown one, are not found; nothing is written` |
 | `PUT /api/setup/travel-times` | `body:otherBranchId` | branch | school | 03, travel times: a pair of the school's branches; the Super Admin works in every branch, so another branch is the partner, not a refusal |

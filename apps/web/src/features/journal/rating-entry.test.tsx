@@ -78,7 +78,6 @@ const student = (n: number, lastName: string): JournalStudent => ({
       typedBy: null,
       marker: null,
       works: [],
-      score: null,
     },
   ],
   quarter: null,
@@ -142,7 +141,6 @@ const GRID: JournalGrid = {
   legend: {
     lateValue: 50,
     skippedValue: 0,
-    daily: { attendance: 20, classwork: 40, homework: 40 },
     quarterly: { attendance: 20, classwork: 20, homework: 20, ratingExam: 40 },
     weightsChangedOn: null,
     countsFrom: null,

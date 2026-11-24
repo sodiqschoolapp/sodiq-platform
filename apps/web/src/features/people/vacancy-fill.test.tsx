@@ -45,7 +45,6 @@ const MATHEMATICS: Subject = {
   languageRule: true,
   demanding: false,
   archivedAt: null,
-  daily: { attendance: 10, classwork: 50, homework: 40 },
   quarterWeightsMissing: null,
   quarterCount: null,
 };
