@@ -331,11 +331,10 @@ describe('a journal', () => {
     expect(cellOf(uid(101), 'attendance')?.textContent).toBe('75');
     expect(cellOf(uid(101), 'result')?.textContent).toBe('59');
     expect(cellOf(uid(101), 'grade')?.textContent).toBe('3');
-    // The number with its percent, and the lesson score.
+    // The number with its percent; no lesson score column (task 11.17).
     expect(cellOf(uid(101), `${uid(60)}:${uid(70)}`)?.textContent).toBe('1240%');
-    expect(cellOf(uid(101), `${uid(60)}:avg`)?.textContent).toBe('60');
-    // A lesson with no work is one narrow attendance column, without AVG.
-    expect(cellOf(uid(101), `${uid(61)}:avg`)).toBeNull();
+    expect(cellOf(uid(101), `${uid(60)}:avg`)).toBeNull();
+    expect(document.querySelector('[col-id$=":avg"]')).toBeNull();
     // The cancelled lesson's mark is struck through.
     expect(cellOf(uid(101), `${uid(62)}:a`)?.querySelector('.line-through')?.textContent).toBe('1');
     // "No result": blank, not 0.

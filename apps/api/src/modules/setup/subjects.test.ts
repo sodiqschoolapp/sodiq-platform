@@ -87,7 +87,6 @@ describe('subjects', () => {
       groupSubject: false,
       languageRule: true,
       demanding: false,
-      daily: DAILY,
       ...overrides,
     };
   }
@@ -109,7 +108,6 @@ describe('subjects', () => {
       groupSubject: subject.groupSubject,
       languageRule: subject.languageRule,
       demanding: subject.demanding,
-      daily: null,
       ...(switches ? { switchesFrom: 1 } : {}),
       ...overrides,
     };
@@ -160,6 +158,22 @@ describe('subjects', () => {
         `.execute(t.database.migrator)
       ).rows[0]?.n,
     );
+
+  /** The stored daily distributions of a subject (task 11.17: kept untouched and unread). */
+  const dailyRows = (subjectId: string) =>
+    t.database.migrator
+      .selectFrom('subject_daily_weights')
+      .selectAll()
+      .where('subject_id', '=', subjectId)
+      .orderBy('branch_id')
+      .execute();
+
+  /** A daily distribution stored before task 11.17, written as the old route wrote it. */
+  const storeOldDaily = (subjectId: string, branchId: string) =>
+    t.database.migrator
+      .insertInto('subject_daily_weights')
+      .values({ branch_id: branchId, subject_id: subjectId, ...DAILY })
+      .execute();
 
   /** Every row of the three tables of subjects: what a refused change leaves as it was. */
   const rows = async () => ({
@@ -226,7 +240,7 @@ describe('subjects', () => {
   }
 
   describe('a new subject', () => {
-    it('is created by the Super Admin with this branch daily distribution: one school-wide entry and one entry of the branch, both naming the assignment and the request', async () => {
+    it('is created by the Super Admin: one school-wide entry naming the assignment and the request, and no daily distribution (task 11.17)', async () => {
       const sent = body({ grades: [1, 11], colour: 'teal', demanding: true });
       const response = await t.post('/api/setup/subjects', t.north, sent);
 
@@ -243,10 +257,11 @@ describe('subjects', () => {
         languageRule: true,
         demanding: true,
         archivedAt: null,
-        daily: DAILY,
         quarterWeightsMissing: null,
         quarterCount: null,
       });
+      // The answer as it came: no daily distribution (the schema would strip one).
+      expect(response.body).not.toHaveProperty('daily');
       const requestId = response.headers['x-request-id'];
       const created = await schoolEntries('subject.create', subject.id);
       expect(created).toHaveLength(1);
@@ -256,15 +271,8 @@ describe('subjects', () => {
         record_type: 'subject',
       });
       expect(created[0]?.new_value).toMatchObject({ names: sent.names, grades: [1, 11] });
-      const weights = await t.entries('subject_daily_weights.set', subject.id);
-      expect(weights).toHaveLength(1);
-      expect(weights[0]).toMatchObject({
-        branch_id: t.north,
-        assignment_id: t.adminAssignment,
-        request_id: requestId,
-        old_value: { daily: null },
-        new_value: { daily: DAILY },
-      });
+      expect(await t.entries('subject_daily_weights.set', subject.id)).toEqual([]);
+      expect(await dailyRows(subject.id)).toEqual([]);
     });
 
     it('is created by the Academic Vice Principal of the branch', async () => {
@@ -300,58 +308,31 @@ describe('subjects', () => {
       expect(await auditCount()).toBe(audit);
     });
 
-    // The build plan's "done when": a graded subject cannot be saved with
-    // weights that do not total 100 (answer 6; `05`: "The form will not save
-    // otherwise").
-    it('is refused when graded without a daily distribution, or with one that totals 99 or 101; nothing is written', async () => {
-      const before = await rows();
-      const audit = await auditCount();
-
-      const missing = await t.post('/api/setup/subjects', t.north, body({ daily: null }));
-      expect(missing.status).toBe(400);
-      expect(errorCode(missing)).toBe('validation_failed');
-      expect(detailPaths(missing)).toEqual(['daily']);
-      for (const homework of [39, 41]) {
-        const wrong = await t.post(
-          '/api/setup/subjects',
-          t.north,
-          body({ daily: { ...DAILY, homework } }),
-        );
-        expect(wrong.status).toBe(400);
-        expect(detailPaths(wrong)).toEqual(['daily.total']);
-      }
-      const zero = await t.post(
-        '/api/setup/subjects',
-        t.north,
-        body({ daily: { attendance: 0, classwork: 60, homework: 40 } }),
-      );
-      expect(detailPaths(zero)).toContain('daily.attendance');
-
-      expect(await rows()).toEqual(before);
-      expect(await auditCount()).toBe(audit);
+    // Task 11.17 (`07`, Calculation rules, rule 3: there is no lesson score): a graded subject
+    // saves with no daily distribution; one still sent is dropped (plan decision 4) and nothing
+    // is written to the daily distributions.
+    it('saves a graded subject with no daily distribution and drops one sent', async () => {
+      const response = await t.post('/api/setup/subjects', t.north, body({ daily: DAILY }));
+      expect(response.status, JSON.stringify(response.body)).toBe(201);
+      expect(response.body).not.toHaveProperty('daily');
+      const subject = subjectSchema.parse(response.body);
+      expect(await dailyRows(subject.id)).toEqual([]);
+      expect(await t.entries('subject_daily_weights.set', subject.id)).toEqual([]);
     });
 
     // `edge/calculation`: attendance-only subjects have no weights, no result.
-    it('that is attendance only takes no weights and no rating exam', async () => {
+    it('that is attendance only takes no rating exam', async () => {
       const subject = await create({
         journalType: 'attendance_only',
         ratingExam: false,
-        daily: null,
         departmentId: tutors,
       });
-      expect(subject.daily).toBeNull();
-      expect(await t.entries('subject_daily_weights.set', subject.id)).toEqual([]);
+      expect(subject.quarterWeightsMissing).toBeNull();
 
-      const weights = await t.post(
-        '/api/setup/subjects',
-        t.north,
-        body({ journalType: 'attendance_only', ratingExam: false }),
-      );
-      expect(detailPaths(weights)).toEqual(['daily']);
       const rating = await t.post(
         '/api/setup/subjects',
         t.north,
-        body({ journalType: 'attendance_only', daily: null }),
+        body({ journalType: 'attendance_only' }),
       );
       expect(detailPaths(rating)).toEqual(['ratingExam']);
     });
@@ -409,13 +390,6 @@ describe('subjects', () => {
   });
 
   describe('the list', () => {
-    it('shows each branch its own daily distribution; another branch sees "Not set"', async () => {
-      const subject = await create();
-
-      expect((await inList(subject.id, t.north)).daily).toEqual(DAILY);
-      expect((await inList(subject.id, t.south)).daily).toBeNull();
-    });
-
     it('counts the quarters of the planned and current years without a fitting quarterly distribution', async () => {
       const branch = await t.newBranch();
       await insertYear(branch, '2025-09-01', 'closed');
@@ -461,7 +435,6 @@ describe('subjects', () => {
         names: renamed,
         grades: [5, 6],
         groupSubject: true,
-        daily: DAILY,
       });
       const edits = await schoolEntries('subject.edit', subject.id);
       expect(edits).toHaveLength(1);
@@ -481,51 +454,37 @@ describe('subjects', () => {
       expect(await schoolEntries('subject.edit', subject.id)).toHaveLength(1);
     });
 
-    it('in a branch without the daily distribution of a graded subject needs one, and writes it there only', async () => {
+    // Task 11.17: an edit asks for no daily distribution in any branch, drops one sent, and
+    // leaves the daily distributions stored before untouched.
+    it('edits a graded subject in any branch with no daily distribution and leaves the stored ones untouched', async () => {
       const subject = await create();
-      const before = await rows();
+      await storeOldDaily(subject.id, t.north);
+      const stored = await dailyRows(subject.id);
+      expect(stored).toHaveLength(1);
 
-      const refused = await put(`/api/setup/subjects/${subject.id}`, t.south, editBody(subject));
-      expect(refused.status).toBe(409);
-      expect(errorCode(refused)).toBe('daily_weights_required');
-      expect(await rows()).toEqual(before);
-
-      const south = { attendance: 20, classwork: 40, homework: 40 };
-      const response = await put(
-        `/api/setup/subjects/${subject.id}`,
-        t.south,
-        editBody(subject, { daily: south }),
-      );
-      expect(response.status).toBe(200);
-      expect(subjectSchema.parse(response.body).daily).toEqual(south);
-      expect((await inList(subject.id, t.north)).daily).toEqual(DAILY);
-      const entries = await t.entries('subject_daily_weights.set', subject.id);
-      expect(entries.map((entry) => entry.branch_id)).toEqual([t.north, t.south]);
-    });
-
-    // Decision 15: an edit never writes back weights the branch already has.
-    it('refuses a daily distribution where the branch already has one; nothing is written', async () => {
-      const subject = await create();
-      const before = await rows();
-
-      const response = await put(
-        `/api/setup/subjects/${subject.id}`,
-        t.north,
-        editBody(subject, { daily: { attendance: 20, classwork: 40, homework: 40 } }),
-      );
-
-      expect(response.status).toBe(409);
-      expect(errorCode(response)).toBe('daily_weights_set');
-      expect(await rows()).toEqual(before);
+      const renamed = { ...subject.names, en: `${subject.names.en} again` };
+      for (const branch of [t.south, t.north]) {
+        const response = await put(
+          `/api/setup/subjects/${subject.id}`,
+          branch,
+          editBody(subject, {
+            names: renamed,
+            daily: { attendance: 20, classwork: 40, homework: 40 },
+          }),
+        );
+        expect(response.status, JSON.stringify(response.body)).toBe(200);
+        expect(response.body).not.toHaveProperty('daily');
+      }
+      expect(await dailyRows(subject.id)).toEqual(stored);
+      expect(await t.entries('subject_daily_weights.set', subject.id)).toEqual([]);
     });
 
     // Decision 14: the journal type stays editable; the weight rows stay.
-    it('to attendance only keeps the weight rows and shows none; back to graded needs a new daily distribution here and shows another branch "Not set"', async () => {
+    it('to attendance only and back to graded keeps the stored weight rows and needs no daily distribution', async () => {
       const subject = await create();
-      const southDaily = { attendance: 20, classwork: 40, homework: 40 };
-      expect(
-        (await put(`/api/setup/subjects/${subject.id}/daily-weights`, t.south, southDaily)).status,
-      ).toBe(200);
+      await storeOldDaily(subject.id, t.north);
+      await storeOldDaily(subject.id, t.south);
+      const stored = await dailyRows(subject.id);
 
       const off = await put(
         `/api/setup/subjects/${subject.id}`,
@@ -535,41 +494,19 @@ describe('subjects', () => {
       expect(off.status).toBe(200);
       expect(subjectSchema.parse(off.body)).toMatchObject({
         journalType: 'attendance_only',
-        daily: null,
         quarterWeightsMissing: null,
         quarterCount: null,
       });
-      const kept = await t.database.migrator
-        .selectFrom('subject_daily_weights')
-        .select('branch_id')
-        .where('subject_id', '=', subject.id)
-        .orderBy('branch_id')
-        .execute();
-      expect(kept.map((row) => row.branch_id).sort()).toEqual([t.north, t.south].sort());
 
       const attendanceOnly = subjectSchema.parse(off.body);
-      const without = await put(
+      const on = await put(
         `/api/setup/subjects/${subject.id}`,
         t.north,
         editBody(attendanceOnly, { journalType: 'graded' }),
       );
-      expect(errorCode(without)).toBe('daily_weights_required');
-
-      const newDaily = { attendance: 30, classwork: 40, homework: 30 };
-      const on = await put(
-        `/api/setup/subjects/${subject.id}`,
-        t.north,
-        editBody(attendanceOnly, { journalType: 'graded', daily: newDaily }),
-      );
-      expect(on.status).toBe(200);
-      expect(subjectSchema.parse(on.body).daily).toEqual(newDaily);
-      expect((await inList(subject.id, t.south)).daily).toBeNull();
-      const last = (await t.entries('subject_daily_weights.set', subject.id)).at(-1);
-      expect(last).toMatchObject({
-        branch_id: t.north,
-        old_value: { daily: null },
-        new_value: { daily: newDaily },
-      });
+      expect(on.status, JSON.stringify(on.body)).toBe(200);
+      expect(subjectSchema.parse(on.body).journalType).toBe('graded');
+      expect(await dailyRows(subject.id)).toEqual(stored);
     });
 
     // `edge/people-roles-accounts`: a subject moved to another department is
@@ -706,77 +643,13 @@ describe('subjects', () => {
     });
   });
 
-  describe('the daily distribution', () => {
-    it('is changed on its own route with the values before and after in the entry of the branch', async () => {
-      const subject = await create();
-      const changed = { attendance: 20, classwork: 40, homework: 40 };
-
-      const response = await put(
-        `/api/setup/subjects/${subject.id}/daily-weights`,
-        t.north,
-        changed,
-        t.vicePrincipal,
-      );
-
-      expect(response.status).toBe(200);
-      expect(subjectSchema.parse(response.body).daily).toEqual(changed);
-      const last = (await t.entries('subject_daily_weights.set', subject.id)).at(-1);
-      expect(last).toMatchObject({
-        branch_id: t.north,
-        assignment_id: t.viceAssignment,
-        request_id: response.headers['x-request-id'],
-        old_value: { daily: DAILY },
-        new_value: { daily: changed },
-      });
-    });
-
-    it('keeps a rename made meanwhile from another branch (no lost update)', async () => {
-      const subject = await create();
-      const renamed = { ...subject.names, en: `${subject.names.en} new` };
-      await put(
-        `/api/setup/subjects/${subject.id}`,
-        t.north,
-        editBody(subject, { names: renamed }),
-      );
-
-      const response = await put(`/api/setup/subjects/${subject.id}/daily-weights`, t.south, DAILY);
-
-      expect(response.status).toBe(200);
-      expect(subjectSchema.parse(response.body).names).toEqual(renamed);
-    });
-
-    it('is refused at 99 and 101, for an attendance-only subject and for an archived one; nothing is written', async () => {
-      const subject = await create();
-      const attendanceOnly = await create({
-        journalType: 'attendance_only',
-        ratingExam: false,
-        daily: null,
-      });
-      const before = await rows();
-
-      for (const homework of [39, 41]) {
-        const wrong = await put(`/api/setup/subjects/${subject.id}/daily-weights`, t.north, {
-          ...DAILY,
-          homework,
-        });
-        expect(wrong.status).toBe(400);
-        expect(detailPaths(wrong)).toEqual(['total']);
-      }
-      const none = await put(
-        `/api/setup/subjects/${attendanceOnly.id}/daily-weights`,
-        t.north,
-        DAILY,
-      );
-      expect(errorCode(none)).toBe('attendance_only_no_weights');
-      expect(
-        (await put(`/api/setup/subjects/${UNKNOWN}/daily-weights`, t.north, DAILY)).status,
-      ).toBe(404);
-      expect(await rows()).toEqual(before);
-
-      await t.post(`/api/setup/subjects/${subject.id}/archive`, t.north);
-      const archived = await put(`/api/setup/subjects/${subject.id}/daily-weights`, t.north, DAILY);
-      expect(errorCode(archived)).toBe('subject_archived');
-    });
+  // Task 11.17: the route of the daily distribution is gone; the route lists prove it for every
+  // role, this the answer.
+  it('has no route for a daily distribution any more', async () => {
+    const subject = await create();
+    const response = await put(`/api/setup/subjects/${subject.id}/daily-weights`, t.north, DAILY);
+    expect(response.status).toBe(404);
+    expect(await dailyRows(subject.id)).toEqual([]);
   });
 
   describe('archive and restore', () => {
@@ -852,9 +725,6 @@ describe('subjects', () => {
       expect((await put(`/api/setup/subjects/${UNKNOWN}`, t.north, editBody(subject))).status).toBe(
         404,
       );
-      expect(
-        (await put(`/api/setup/subjects/${UNKNOWN}/daily-weights`, t.north, DAILY)).status,
-      ).toBe(404);
       expect(await rows()).toEqual(before);
       expect(await auditCount()).toBe(audit);
     });
@@ -911,7 +781,7 @@ describe('subjects', () => {
       const rated = await create({}, branch);
       const unrated = await create({ ratingExam: false }, branch);
       const attendanceOnly = await create(
-        { journalType: 'attendance_only', ratingExam: false, daily: null },
+        { journalType: 'attendance_only', ratingExam: false },
         branch,
       );
       const quarter = quarterIds[0] ?? '';
@@ -1100,14 +970,11 @@ describe('subjects', () => {
     });
 
     // The review of #52 and decision 19: turning the switch off and on again
-    // brings no quarterly distribution of before back into force; the daily
-    // distribution, which has no rating part, stays in every branch.
-    it('count no distribution of before when the rating switch is turned off and on again; the daily one stays', async () => {
+    // brings no quarterly distribution of before back into force.
+    it('count no distribution of before when the rating switch is turned off and on again', async () => {
       const branch = await t.newBranch();
       const { yearId, quarterIds } = await insertYear(branch, '2026-09-01');
       const subject = await create({}, branch);
-      const southDaily = { attendance: 20, classwork: 40, homework: 40 };
-      await put(`/api/setup/subjects/${subject.id}/daily-weights`, t.south, southDaily);
       const path = (index: number) =>
         `/api/setup/subjects/${subject.id}/quarter-weights/${quarterIds[index] ?? ''}`;
       expect((await put(path(1), branch, RATED)).status).toBe(200);
@@ -1135,7 +1002,6 @@ describe('subjects', () => {
 
       expect(on.status, JSON.stringify(on.body)).toBe(200);
       expect(subjectSchema.parse(on.body)).toMatchObject({
-        daily: DAILY,
         quarterWeightsMissing: 4,
         quarterCount: 4,
       });
@@ -1143,7 +1009,6 @@ describe('subjects', () => {
         ratingRound: { from: 2, to: 3 },
         switchesFrom: 1,
       });
-      expect((await inList(subject.id, t.south)).daily).toEqual(southDaily);
       const read = subjectQuarterWeightsSchema.parse(
         (await t.get(`/api/setup/subjects/${subject.id}/quarter-weights?yearId=${yearId}`, branch))
           .body,
@@ -1165,12 +1030,10 @@ describe('subjects', () => {
   // again starts a new round; no weight of an earlier round counts, in any
   // branch, for the list, the quarters, the copy and the checklist.
   describe('a new round of weights', () => {
-    it('leaves every distribution of the earlier round out, here and in another branch, until it is set again', async () => {
+    it('leaves every quarterly distribution of the earlier round out until it is set again', async () => {
       const branch = await t.newBranch();
       const { yearId, quarterIds } = await insertYear(branch, '2026-09-01');
       const subject = await create({}, branch);
-      const southDaily = { attendance: 20, classwork: 40, homework: 40 };
-      await put(`/api/setup/subjects/${subject.id}/daily-weights`, t.south, southDaily);
       await put(
         `/api/setup/subjects/${subject.id}/quarter-weights/${quarterIds[0] ?? ''}`,
         branch,
@@ -1185,17 +1048,15 @@ describe('subjects', () => {
           )
         ).body,
       );
-      const newDaily = { attendance: 30, classwork: 40, homework: 30 };
 
       const on = await put(
         `/api/setup/subjects/${subject.id}`,
         branch,
-        editBody(off, { journalType: 'graded', ratingExam: true, daily: newDaily }),
+        editBody(off, { journalType: 'graded', ratingExam: true }),
       );
 
       expect(on.status).toBe(200);
       expect(subjectSchema.parse(on.body)).toMatchObject({
-        daily: newDaily,
         quarterWeightsMissing: 4,
         quarterCount: 4,
       });
@@ -1205,8 +1066,6 @@ describe('subjects', () => {
         ratingRound: { from: 2, to: 3 },
         switchesFrom: 1,
       });
-      // Another branch: its daily distribution of round 1 no longer counts.
-      expect((await inList(subject.id, t.south)).daily).toBeNull();
       // This branch: quarter 1 of round 1 shows as not set, and is not copied.
       const read = subjectQuarterWeightsSchema.parse(
         (await t.get(`/api/setup/subjects/${subject.id}/quarter-weights?yearId=${yearId}`, branch))
@@ -1220,58 +1079,6 @@ describe('subjects', () => {
           }),
         ),
       ).toBe('quarter_one_not_set');
-
-      // The other branch sets it again: written in the new round, shown, audited from "none".
-      const again = await put(
-        `/api/setup/subjects/${subject.id}/daily-weights`,
-        t.south,
-        southDaily,
-      );
-      expect(subjectSchema.parse(again.body).daily).toEqual(southDaily);
-      const row = await t.database.migrator
-        .selectFrom('subject_daily_weights')
-        .select('weights_round')
-        .where('subject_id', '=', subject.id)
-        .where('branch_id', '=', t.south)
-        .executeTakeFirstOrThrow();
-      expect(row.weights_round).toBe(2);
-      expect((await t.entries('subject_daily_weights.set', subject.id)).at(-1)).toMatchObject({
-        branch_id: t.south,
-        old_value: { daily: null },
-      });
-    });
-
-    it('keeps the checklist item open for a daily distribution of an earlier round', async () => {
-      const branch = await t.newBranch();
-      for (const subject of await list(branch)) {
-        if (subject.archivedAt === null && subject.journalType === 'graded') {
-          await put(`/api/setup/subjects/${subject.id}/daily-weights`, branch, DAILY);
-        }
-      }
-      const itemOf = async () =>
-        setupChecklistSchema
-          .parse((await t.get('/api/setup/checklist', branch)).body)
-          .items.find((item) => item.key === 'subjects');
-      expect(await itemOf()).toMatchObject({ done: true });
-
-      const subject = await create({}, branch);
-      const off = subjectSchema.parse(
-        (
-          await put(
-            `/api/setup/subjects/${subject.id}`,
-            branch,
-            editBody(subject, { journalType: 'attendance_only', ratingExam: false }),
-          )
-        ).body,
-      );
-      // Back to graded from another branch: this branch's row is of round 1.
-      await put(
-        `/api/setup/subjects/${subject.id}`,
-        t.south,
-        editBody(off, { journalType: 'graded', daily: DAILY }),
-      );
-
-      expect(await itemOf()).toMatchObject({ done: false, count: 1 });
     });
   });
 
@@ -1310,7 +1117,7 @@ describe('subjects', () => {
       const { yearId, quarterIds } = await insertYear(branch, '2026-09-01');
       const subject = await create({}, branch);
       const attendanceOnly = await create(
-        { journalType: 'attendance_only', ratingExam: false, daily: null },
+        { journalType: 'attendance_only', ratingExam: false },
         branch,
       );
       const copy = (id: string) =>
@@ -1350,7 +1157,6 @@ describe('subjects', () => {
       const calls = [
         () => t.post('/api/setup/subjects', branch, body(), cookie),
         () => put(`/api/setup/subjects/${subject.id}`, branch, editBody(subject), cookie),
-        () => put(`/api/setup/subjects/${subject.id}/daily-weights`, branch, DAILY, cookie),
         () => t.post(`/api/setup/subjects/${subject.id}/archive`, branch, {}, cookie),
         () => t.post(`/api/setup/subjects/${subject.id}/restore`, branch, {}, cookie),
         () =>
@@ -1387,27 +1193,25 @@ describe('subjects', () => {
     expect(await auditCount()).toBe(audit);
   });
 
-  it('makes the checklist item "Subjects and weights" done once every active graded subject has its daily distribution in the branch', async () => {
-    const itemOf = async (branch: string) => {
-      const response = await t.get('/api/setup/checklist', branch);
-      expect(response.status).toBe(200);
-      return setupChecklistSchema
-        .parse(response.body)
-        .items.find((item) => item.key === 'subjects');
-    };
+  // Task 11.17: the item asks for no daily distribution; it is done once an active subject exists.
+  it('makes the checklist item "Subjects and weights" done in a branch with active graded subjects and no daily distribution', async () => {
     const branch = await t.newBranch();
-    const missing = (await list(branch)).filter(
-      (subject) =>
-        subject.archivedAt === null && subject.journalType === 'graded' && subject.daily === null,
-    ).length;
-    expect(await itemOf(branch)).toMatchObject({ done: false, count: missing });
-
-    for (const subject of await list(branch)) {
-      if (subject.archivedAt === null && subject.journalType === 'graded') {
-        await put(`/api/setup/subjects/${subject.id}/daily-weights`, branch, DAILY);
-      }
-    }
-    expect(await itemOf(branch)).toMatchObject({ done: true, count: 0 });
+    const active = (await list(branch)).filter(
+      (subject) => subject.archivedAt === null && subject.journalType === 'graded',
+    );
+    expect(active.length).toBeGreaterThan(0);
+    const stored = await t.database.migrator
+      .selectFrom('subject_daily_weights')
+      .select('subject_id')
+      .where('branch_id', '=', branch)
+      .execute();
+    expect(stored).toEqual([]);
+    const response = await t.get('/api/setup/checklist', branch);
+    expect(response.status).toBe(200);
+    const item = setupChecklistSchema
+      .parse(response.body)
+      .items.find((one) => one.key === 'subjects');
+    expect(item).toMatchObject({ done: true });
   });
 
   // The lock order of the service: every write locks the subject row first.

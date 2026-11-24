@@ -298,10 +298,6 @@ function columnsOf(input: JournalFileInput, texts: JournalExportTexts): Column[]
         },
       );
     });
-    columns.push({
-      heading: `${label} · ${c.lessonScore}`,
-      cell: (student) => cellOf(student)?.score ?? null,
-    });
   }
   return columns;
 }
@@ -361,15 +357,6 @@ export function legendLines(input: JournalFileInput, texts: JournalExportTexts):
   return [
     `${l.marks}: ${marks}`,
     ...(input.grid.journal.attendanceOnly ? [] : [l.bands]),
-    ...(legend.daily === null
-      ? []
-      : [
-          fillText(l.daily, {
-            attendance: String(legend.daily.attendance),
-            classwork: String(legend.daily.classwork),
-            homework: String(legend.daily.homework),
-          }),
-        ]),
     ...(legend.quarterly === null
       ? []
       : [

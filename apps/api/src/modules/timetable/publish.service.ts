@@ -45,7 +45,7 @@ import { Notifications } from '../notifications/notifications.service.js';
 import { branchOf } from '../classes/classes.service.js';
 import { refusingConstraints } from '../setup/setup-refusals.js';
 import { switchKey, switchesOf } from '../setup/subject-switches.js';
-import { dailyWeightsFit, quarterWeightsFit } from '../setup/subject-weights.js';
+import { quarterWeightsFit } from '../setup/subject-weights.js';
 import type { StoredLoadRow } from './load-facts.js';
 import {
   carryResultOf,
@@ -1878,9 +1878,8 @@ export class TimetablePublish {
   /**
    * `edge/academic-year`: "Publishing is blocked unless the year has four
    * dated quarters and every subject in the load has its journal type and, if
-   * it is graded, its daily distribution and its quarterly distribution for
-   * each quarter the version touches. Attendance-only subjects need no
-   * weights." The branch's distributions count as the subjects list counts
+   * it is graded, its quarterly distribution for each quarter the version
+   * touches. Attendance-only subjects need no weights." The branch's distributions count as the subjects list counts
    * them (decision 10).
    */
   private async settingsRefusals(
@@ -1899,18 +1898,12 @@ export class TimetablePublish {
     if (subjectIds.length === 0) {
       return refusals;
     }
-    const [subjects, daily, weights] = await Promise.all([
+    const [subjects, weights] = await Promise.all([
       transaction
         .selectFrom('subjects')
         .select(['id', 'journal_type', 'weights_round', 'rating_round', 'rating_exam'])
         .where('id', 'in', subjectIds)
         .orderBy('id')
-        .execute(),
-      transaction
-        .selectFrom('subject_daily_weights')
-        .select(['subject_id', 'weights_round'])
-        .where('branch_id', '=', version.branch_id)
-        .where('subject_id', 'in', subjectIds)
         .execute(),
       transaction
         .selectFrom('subject_quarter_weights')
@@ -1943,9 +1936,6 @@ export class TimetablePublish {
         (quarter) => switches.get(switchKey(subject.id, quarter.id))?.journal_type === 'graded',
       );
       if (graded.length === 0) continue;
-      if (!daily.some((one) => one.subject_id === subject.id && dailyWeightsFit(subject, one))) {
-        refusals.push({ code: 'subject_daily_weights', subjectId: subject.id });
-      }
       for (const quarter of graded) {
         const own = switches.get(switchKey(subject.id, quarter.id));
         const fits = weights.some(

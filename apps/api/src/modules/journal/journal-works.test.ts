@@ -673,8 +673,6 @@ describe('classwork and homework', () => {
         const cellOf = (id: string) => grid.students.find((one) => one.id === id)?.cells[at];
         expect(cellOf(s.ahmedov)?.works[0]).toMatchObject({ score: 5, onAbsent: false });
         expect(cellOf(s.boboyev)?.works[0]).toMatchObject({ score: 6, onAbsent: true });
-        // Counted: the lesson score of Ahmedov has a classwork part (no mark: 50 · 40 of 40).
-        expect(cellOf(s.ahmedov)?.score).toBe(50);
       });
     });
 

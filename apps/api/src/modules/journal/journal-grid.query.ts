@@ -6,7 +6,7 @@ import type { Transaction } from '../../database/transactions.js';
 import { loadCalendarSettings } from '../setup/calendar-state.js';
 import { dayOf, loadStore } from '../setup/day-template-state.js';
 import { switchKey, switchesOf } from '../setup/subject-switches.js';
-import { dailyWeightsFit, quarterWeightsFit } from '../setup/subject-weights.js';
+import { quarterWeightsFit } from '../setup/subject-weights.js';
 
 /**
  * The reads of the journal grid (task 6.2, pull request #210), each one
@@ -552,7 +552,6 @@ export async function classesOfStudents(
 
 /** The weights and values of the subject and quarter in the branch. */
 export interface GridWeights {
-  readonly daily: { attendance: number; classwork: number; homework: number } | null;
   readonly quarterly: {
     attendance: number;
     classwork: number;
@@ -589,8 +588,8 @@ export const leftOutShown =
     !(withoutRating && one.part === 'ratingExam' && one.reason === 'not_held');
 
 /**
- * The weights of the subject in the quarter: the daily and quarterly distributions of the branch,
- * each `null` while it is missing or does not fit the quarter's rounds. A journal of grades 0 and
+ * The weights of the subject in the quarter: the quarterly distribution of the branch (no daily
+ * distribution since task 11.17), `null` while it is missing or does not fit the quarter's rounds. A journal of grades 0 and
  * 1 of a rating subject uses the same quarterly distribution, its rating exam left out
  * (`ratingEntryForCalc`).
  */
@@ -600,13 +599,7 @@ export async function gridWeights(
   subjectId: string,
   quarterId: string,
 ): Promise<GridWeights> {
-  const [daily, quarterly, quarter, subject, switches] = await Promise.all([
-    transaction
-      .selectFrom('subject_daily_weights')
-      .select(['attendance', 'classwork', 'homework', 'weights_round'])
-      .where('branch_id', '=', branchId)
-      .where('subject_id', '=', subjectId)
-      .executeTakeFirst(),
+  const [quarterly, quarter, switches] = await Promise.all([
     transaction
       .selectFrom('subject_quarter_weights')
       .select([
@@ -626,11 +619,6 @@ export async function gridWeights(
       .select(['late_value', 'skipped_value'])
       .where('id', '=', quarterId)
       .executeTakeFirstOrThrow(),
-    transaction
-      .selectFrom('subjects')
-      .select(['weights_round', 'rating_round', 'rating_exam'])
-      .where('id', '=', subjectId)
-      .executeTakeFirstOrThrow(),
     switchesOf(transaction, [subjectId], [quarterId]),
   ]);
   // Task 9.1 (From 2.1 decision 14, From 8.2 correction 1): a row of an earlier round, or a
@@ -639,10 +627,6 @@ export async function gridWeights(
   const quarterlyFits =
     quarterly !== undefined && own !== undefined && quarterWeightsFit(own, quarterly);
   return {
-    daily:
-      daily !== undefined && dailyWeightsFit(subject, daily)
-        ? { attendance: daily.attendance, classwork: daily.classwork, homework: daily.homework }
-        : null,
     quarterly: !quarterlyFits
       ? null
       : {

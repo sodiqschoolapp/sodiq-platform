@@ -155,10 +155,6 @@ export const en = {
       'The department is archived. Choose an active department, or restore the department first.',
     department_has_subjects:
       'The department still has active subjects. Move them to another department or archive them first.',
-    daily_weights_required:
-      'A graded subject needs its daily distribution in this branch. Fill in attendance, classwork and homework.',
-    daily_weights_set:
-      'This branch already has a daily distribution for the subject. Change it in the subject panel.',
     attendance_only_no_weights:
       'An attendance-only subject has no weights. To give it weights, make it graded first.',
     subject_department_archived:
@@ -1474,7 +1470,6 @@ export const en = {
       AcademicYearsController_saveQuarters: 'Set the quarter dates',
       SubjectsController_create: 'Add a subject',
       SubjectsController_edit: 'Change a subject',
-      SubjectsController_setDaily: 'Set the daily weights of a subject',
       SubjectsController_archive: 'Archive a subject',
       SubjectsController_restore: 'Restore a subject',
       SubjectsController_setQuarterWeights: 'Set the quarter weights of a subject',
@@ -2182,7 +2177,6 @@ export const en = {
       languageRule: 'Language rule',
       demanding: 'Demanding',
       switches: 'Switches',
-      daily: 'Daily distribution',
       quarterly: 'Quarterly distribution',
       changeWeights: 'Change distribution',
       changeWeightsOf: 'Change distribution: {{name}}',
@@ -2310,8 +2304,6 @@ export const en = {
       calendarCount_other: '{{count}} entries',
       undatedYears: 'Not dated: {{years}}',
       wholeSchool: 'whole school',
-      subjectsMissing_one: '{{count}} graded subject without its daily distribution here',
-      subjectsMissing_other: '{{count}} graded subjects without their daily distribution here',
     },
     calendar: {
       emptyTitle: 'No days off yet',
@@ -6452,9 +6444,6 @@ export const en = {
         date_blocked: '{{date}}: {{rule}}',
         pattern_blocked_any: 'A lesson breaks a rule of the timetable.',
         year_quarters: 'The academic year does not have four dated quarters.',
-        subject_daily_weights: '{{subject}} has no daily distribution in this branch.',
-        subject_daily_weights_any:
-          'A subject of the load has no daily distribution in this branch.',
         subject_quarter_weights: '{{subject}} has no distribution for quarter {{quarter}}.',
         subject_quarter_weights_any:
           'A subject of the load has no distribution for quarter {{quarter}}.',
@@ -7259,8 +7248,6 @@ export const en = {
       noLessons: 'The journal has no lesson on this date.',
       quarterFigures:
         'Quarter: attendance {{attendance}} · classwork {{classwork}} · homework {{homework}} · rating exam {{ratingExam}} · result {{result}}',
-      daily:
-        'Lesson weights: attendance {{attendance}} · classwork {{classwork}} · homework {{homework}}',
       quarterly:
         'Quarter weights: attendance {{attendance}} · classwork {{classwork}} · homework {{homework}} · rating exam {{ratingExam}}',
       values: 'Late counts {{late}}, skipped counts {{skipped}}',
@@ -7306,7 +7293,6 @@ export const en = {
       },
       work: '{{title}}: {{score}} of {{total}}, {{percent}}%',
       mark: 'Mark {{mark}}',
-      lessonScore: 'lesson score {{score}}',
       stored: 'Stored: mark {{mark}}, numbers {{works}}',
       hiddenBy: 'hidden by a {{kind}} exemption {{from}} – {{until}}',
     },
@@ -7765,8 +7751,6 @@ export const en = {
       givenFrom: 'from {{date}}',
       givenOn: 'Given on {{date}}, checked at this lesson',
       notHeld: 'not held',
-      avg: 'Avg',
-      lessonScore: 'Lesson score',
       quarterFigures: 'Quarter {{number}}',
       monthFigures: 'Month',
       folded_one: 'Left or moved: {{count}} student',
@@ -7780,8 +7764,6 @@ export const en = {
       band: '{{from}}–{{to}}',
       weights: 'Weights',
       attendanceOnly: 'Attendance only: no weights, no result and no grade.',
-      daily:
-        'Lesson score: attendance {{attendance}} · classwork {{classwork}} · homework {{homework}}',
       quarterly:
         'Quarter result: attendance {{attendance}} · classwork {{classwork}} · homework {{homework}}',
       quarterlyNoRating:

@@ -4,13 +4,11 @@ import {
   SUBJECT_COLOURS,
   SUBJECT_IMPORT_ANSWERS,
   SUBJECT_IMPORT_COLUMNS,
-  SUBJECT_IMPORT_DAILY_COLUMNS,
   SUBJECT_IMPORT_MAX_ROWS,
   SUBJECT_IMPORT_QUARTERLY_COLUMNS,
   SUBJECT_IMPORT_SHEET,
   SUBJECT_IMPORT_WORDS,
-  dailyWeightsSchema,
-  newSubjectRecordSchema,
+  subjectRecordSchema,
   quarterWeightsSchema,
   staffImportNameKey,
   type Language,
@@ -34,7 +32,7 @@ import { cellText, FIRST_DATA_ROW } from '../people/student-import-read.js';
  * the way of the staff import: only the system's template, the lists in any
  * of the three languages or as codes, the department by any of its three
  * names, and every value through the schemas of the hand form
- * (`newSubjectRecordSchema`, `quarterWeightsSchema`), so that a value
+ * (`subjectRecordSchema`, `quarterWeightsSchema`), so that a value
  * refused by hand is refused here. Pure: the service hands in the departments.
  */
 
@@ -138,7 +136,7 @@ export interface ParsedSubjectRow {
   shown: { uz: string | null; ru: string | null; en: string | null };
 }
 
-/** The column a path of `newSubjectRecordSchema` is typed in. */
+/** The column a path of `subjectRecordSchema` is typed in. */
 export function subjectColumnOfPath(path: readonly PropertyKey[]): SubjectImportColumn | null {
   const [first, second] = path.map(String);
   switch (first) {
@@ -160,12 +158,6 @@ export function subjectColumnOfPath(path: readonly PropertyKey[]): SubjectImport
     case 'languageRule':
     case 'demanding':
       return first;
-    case 'daily':
-      return second === 'classwork'
-        ? 'dailyClasswork'
-        : second === 'homework'
-          ? 'dailyHomework'
-          : 'dailyAttendance';
     default:
       return null;
   }
@@ -201,8 +193,8 @@ const weightOf = (text: string): number | undefined =>
 
 /**
  * Reads one row into the record the hand form would send and the quarterly
- * distribution of a graded row. A graded row needs its daily and quarterly
- * cells, the quarterly rating exam cell exactly when the rating exam switch
+ * distribution of a graded row. A graded row needs its quarterly cells (no
+ * daily distribution since task 11.17), the quarterly rating exam cell exactly when the rating exam switch
  * is on (the shape `weights_shape_mismatch` requires by hand), and each
  * distribution totalling 100; an attendance-only row has no weights and no
  * rating exam.
@@ -281,7 +273,7 @@ export function parseSubjectImportRow(
 
   // The weights: whole numbers, through the hand schemas.
   const weights = new Map<SubjectImportColumn, number>();
-  for (const column of [...SUBJECT_IMPORT_DAILY_COLUMNS, ...SUBJECT_IMPORT_QUARTERLY_COLUMNS]) {
+  for (const column of SUBJECT_IMPORT_QUARTERLY_COLUMNS) {
     const text = cell(column);
     if (text === undefined) {
       continue;
@@ -303,22 +295,18 @@ export function parseSubjectImportRow(
     problem('ratingExam', 'rating_exam_attendance_only');
   }
 
-  let daily: SubjectRecord['daily'] = null;
   let quarterly: QuarterWeights | null = null;
   // A rating exam switch that cannot be read decides no shape of the quarterly distribution.
   const ratingKnown = !problems.some((one) => one.column === 'ratingExam');
   if (graded) {
-    const required = [
-      ...SUBJECT_IMPORT_DAILY_COLUMNS,
-      ...(ratingKnown
-        ? ([
-            'quarterAttendance',
-            'quarterClasswork',
-            'quarterHomework',
-            ...(switches.ratingExam ? (['quarterRatingExam'] as const) : []),
-          ] as const)
-        : []),
-    ] as const;
+    const required = ratingKnown
+      ? ([
+          'quarterAttendance',
+          'quarterClasswork',
+          'quarterHomework',
+          ...(switches.ratingExam ? (['quarterRatingExam'] as const) : []),
+        ] as const)
+      : [];
     for (const column of required) {
       if (cell(column) === undefined) {
         problem(column, 'required');
@@ -328,33 +316,18 @@ export function parseSubjectImportRow(
       problem('quarterRatingExam', 'rating_exam_weight_unwanted');
     }
     const value = (column: SubjectImportColumn) => weights.get(column) ?? 0;
-    const dailyRead = {
-      attendance: value('dailyAttendance'),
-      classwork: value('dailyClasswork'),
-      homework: value('dailyHomework'),
-    };
     const quarterRead = {
       attendance: value('quarterAttendance'),
       classwork: value('quarterClasswork'),
       homework: value('quarterHomework'),
       ratingExam: switches.ratingExam ? value('quarterRatingExam') : null,
     };
-    const dailyColumns = SUBJECT_IMPORT_DAILY_COLUMNS;
     const quarterColumns = SUBJECT_IMPORT_QUARTERLY_COLUMNS;
     const taken = (columns: readonly SubjectImportColumn[]) =>
       problems.some((one) => one.column !== null && columns.includes(one.column));
-    if (!taken(dailyColumns)) {
+    if (ratingKnown && !taken(quarterColumns)) {
       // The bounds of a part are the hand schema's; a part out of them, or a total
       // other than 100, is told on the distribution's first column.
-      const parsed = dailyWeightsSchema.safeParse(dailyRead);
-      if (parsed.success) {
-        daily = parsed.data;
-      } else {
-        const part = partOf(parsed.error.issues, 'daily');
-        problem(part ?? 'dailyAttendance', part === null ? 'weights_total' : 'weight_invalid');
-      }
-    }
-    if (ratingKnown && !taken(quarterColumns)) {
       const parsed = quarterWeightsSchema.safeParse(quarterRead);
       if (parsed.success) {
         quarterly = parsed.data;
@@ -372,24 +345,14 @@ export function parseSubjectImportRow(
     colour: colour ?? 'blue',
     journalType,
     ...switches,
-    daily,
   };
-  const parsed = newSubjectRecordSchema.safeParse(candidate);
+  const parsed = subjectRecordSchema.safeParse(candidate);
   if (!parsed.success) {
     const taken = new Set(problems.map((found) => found.column));
-    // The daily distribution of a row whose daily cells or journal type are told already.
-    const dailyTold = problems.some(
-      (found) =>
-        found.column !== null &&
-        (found.column === 'journalType' || SUBJECT_IMPORT_DAILY_COLUMNS.includes(found.column)),
-    );
     for (const issue of parsed.error.issues) {
       const column = subjectColumnOfPath(issue.path);
-      // A column already told, or the daily distribution of a row whose daily cells are told.
-      if (
-        (column !== null && taken.has(column)) ||
-        (column?.startsWith('daily') === true && dailyTold)
-      ) {
+      // A column already told.
+      if (column !== null && taken.has(column)) {
         continue;
       }
       taken.add(column);
@@ -416,7 +379,7 @@ export function parseSubjectImportRow(
  */
 function partOf(
   issues: readonly { path: readonly PropertyKey[] }[],
-  distribution: 'daily' | 'quarter',
+  distribution: 'quarter',
 ): SubjectImportColumn | null {
   const part = issues.map((issue) => String(issue.path[0])).find((key) => key !== 'total');
   if (part === undefined) {

@@ -240,7 +240,8 @@ describe('the journal grid', () => {
     const browser = await account();
     const s = await gradedScene();
     await as(browser, [{ role: 'principal', branchId: s.scene.branch }], async (get) => {
-      const grid = gridOf(await get(s.scene.branch, `/api/journal/journals/${s.journal}`));
+      const answered = await get(s.scene.branch, `/api/journal/journals/${s.journal}`);
+      const grid = gridOf(answered);
       expect(grid.shape).toBe('whole');
       expect(grid.quarter.number).toBe(1);
       expect(grid.referenceDate).toBe('2026-10-27');
@@ -277,16 +278,15 @@ describe('the journal grid', () => {
       ]);
       const [abdullayev, bakirova, zokirov, oktamov] = grid.students;
 
-      // The number and its percent; the lesson score from the daily 20 · 40 · 40.
+      // The number and its percent; no lesson score (task 11.17).
       expect(
         zokirov?.cells.map((cell) => [
           cell.closed,
           cell.mark,
           cell.works.map((one) => ({ score: one.score, percent: one.percent })),
-          cell.score,
         ]),
       ).toEqual([
-        [false, 1, [{ score: 12, percent: 40 }], 60],
+        [false, 1, [{ score: 12, percent: 40 }]],
         [
           false,
           2,
@@ -294,11 +294,21 @@ describe('the journal grid', () => {
             { score: 4, percent: 80 },
             { score: 5, percent: 50 },
           ],
-          62,
         ],
         // The cancelled lesson's mark stays, takes no score and enters no figure (From 6.1b-2).
-        [false, 1, [], null],
+        [false, 1, []],
       ]);
+      // Task 11.17: no cell carries a lesson score, and the legend no daily distribution, in the
+      // answer as it came (the schema would strip them).
+      const raw = answered.body as {
+        students: { cells: Record<string, unknown>[] }[];
+        legend: Record<string, unknown>;
+      };
+      const rawCells = raw.students.flatMap((one) => one.cells);
+      expect(rawCells.length).toBeGreaterThan(0);
+      for (const cell of rawCells) expect(cell).not.toHaveProperty('score');
+      expect(raw.legend).toHaveProperty('quarterly');
+      expect(raw.legend).not.toHaveProperty('daily');
       // Attendance 100 and 50 (75), classwork 40 and 80 (60), homework 50:
       // 20 × 75 + 40 × 60 + 40 × 50 = 59 over 100, grade 3, nothing left out.
       expect(zokirov?.quarter).toEqual({
@@ -605,9 +615,7 @@ describe('the journal grid', () => {
       expect(karimov?.quarter).toEqual(only);
       // The month holds the held, not cancelled lessons dated in it (review correction 5).
       expect(karimov?.months).toEqual({ '2026-10': only });
-      expect(karimov?.cells.map((cell) => cell.score)).toEqual([null, null, null]);
       expect(grid.bottom?.quarter).toEqual({ ...only, result: null });
-      expect(grid.legend.daily).toBeNull();
       expect(grid.legend.quarterly).toBeNull();
     });
   });
@@ -625,12 +633,12 @@ describe('the journal grid', () => {
         ).toBe(true);
         const zokirov = grid.students.find((one) => one.id === s.zokirov);
         expect(
-          zokirov?.cells.map((cell) => [cell.mark, cell.works, cell.score]),
+          zokirov?.cells.map((cell) => [cell.mark, cell.works]),
           role,
         ).toEqual([
-          [1, [], null],
-          [2, [], null],
-          [1, [], null],
+          [1, []],
+          [2, []],
+          [1, []],
         ]);
         expect(zokirov?.quarter, role).toEqual({
           attendance: 75,

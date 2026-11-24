@@ -113,8 +113,8 @@ export async function publishedScene(
     startTime?: string;
     secondSubject?: boolean;
     /**
-     * Task 6.2: a graded subject with the weights of the branch, daily 20 · 40 · 40
-     * and the same for each quarter, in place of the attendance-only one.
+     * Task 6.2: a graded subject with the weights of the branch, 20 · 40 · 40
+     * for each quarter, in place of the attendance-only one.
      */
     graded?: boolean;
     /**
@@ -172,10 +172,6 @@ export async function publishedScene(
     }));
   if (input.graded === true) {
     const weights = { attendance: 20, classwork: 40, homework: 40 };
-    await t.database.migrator
-      .insertInto('subject_daily_weights')
-      .values({ branch_id: branch, subject_id: subject, ...weights })
-      .execute();
     const quarters = await t.database.migrator
       .selectFrom('quarters')
       .select('id')

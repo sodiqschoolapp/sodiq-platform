@@ -70,7 +70,6 @@ describe('reading the subject template', () => {
       groupSubject: false,
       languageRule: true,
       demanding: true,
-      daily: { attendance: 10, classwork: 50, homework: 40 },
     });
     expect(row.quarterly).toEqual({
       attendance: 10,
@@ -192,19 +191,13 @@ describe('reading the subject template', () => {
     }
   });
 
-  it('asks a graded row for its daily and quarterly cells', async () => {
+  it('asks a graded row for its quarterly cells', async () => {
     const row = await parsed({
-      dailyAttendance: '',
-      dailyClasswork: '',
-      dailyHomework: '',
       quarterAttendance: '',
       quarterClasswork: '',
       quarterHomework: '',
     });
     expect(codes(row)).toEqual([
-      'dailyAttendance:required',
-      'dailyClasswork:required',
-      'dailyHomework:required',
       'quarterAttendance:required',
       'quarterClasswork:required',
       'quarterHomework:required',
@@ -228,21 +221,23 @@ describe('reading the subject template', () => {
   });
 
   it('refuses a part that is no whole number from 1 to 100, and a distribution that does not total 100', async () => {
-    expect(codes(await parsed({ dailyClasswork: 'fifty' }))).toEqual([
-      'dailyClasswork:weight_invalid',
+    expect(codes(await parsed({ quarterClasswork: 'fifty' }))).toEqual([
+      'quarterClasswork:weight_invalid',
     ]);
     expect(codes(await parsed({ quarterHomework: 12.5 }))).toEqual([
       'quarterHomework:weight_invalid',
     ]);
     // A part of 0 is refused as by hand (decision 8 of task 2.1), even when the total is 100.
-    expect(codes(await parsed({ dailyAttendance: 0, dailyClasswork: 60 }))).toEqual([
-      'dailyAttendance:weight_invalid',
+    expect(codes(await parsed({ quarterAttendance: 0, quarterClasswork: 40 }))).toEqual([
+      'quarterAttendance:weight_invalid',
     ]);
     // A part over 100 is told on its own column.
     expect(codes(await parsed({ quarterClasswork: 101 }))).toEqual([
       'quarterClasswork:weight_invalid',
     ]);
-    expect(codes(await parsed({ dailyHomework: 41 }))).toEqual(['dailyAttendance:weights_total']);
+    expect(codes(await parsed({ quarterHomework: 21 }))).toEqual([
+      'quarterAttendance:weights_total',
+    ]);
     expect(codes(await parsed({ quarterRatingExam: 39 }))).toEqual([
       'quarterAttendance:weights_total',
     ]);
@@ -252,9 +247,6 @@ describe('reading the subject template', () => {
     const clean = await parsed({
       journalType: 'Attendance only',
       ratingExam: 'No',
-      dailyAttendance: '',
-      dailyClasswork: '',
-      dailyHomework: '',
       quarterAttendance: '',
       quarterClasswork: '',
       quarterHomework: '',
@@ -264,26 +256,19 @@ describe('reading the subject template', () => {
     expect(clean.record).toMatchObject({
       journalType: 'attendance_only',
       ratingExam: false,
-      daily: null,
     });
     expect(clean.quarterly).toBeNull();
     const weighted = await parsed({
       journalType: 'Attendance only',
       ratingExam: 'No',
-      dailyClasswork: '',
-      dailyHomework: '',
-      quarterAttendance: '',
       quarterClasswork: '',
       quarterHomework: '',
       quarterRatingExam: '',
     });
-    expect(codes(weighted)).toEqual(['dailyAttendance:weights_attendance_only']);
+    expect(codes(weighted)).toEqual(['quarterAttendance:weights_attendance_only']);
     const rated = await parsed({
       journalType: 'Attendance only',
       ratingExam: 'Yes',
-      dailyAttendance: '',
-      dailyClasswork: '',
-      dailyHomework: '',
       quarterAttendance: '',
       quarterClasswork: '',
       quarterHomework: '',

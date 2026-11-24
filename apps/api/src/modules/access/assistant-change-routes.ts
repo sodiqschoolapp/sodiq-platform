@@ -514,12 +514,6 @@ export const SUPER_ADMIN_CHANGES: Readonly<
     description: 'Changes a subject.',
     basis: readById('GET /api/setup/subjects'),
   },
-  'PUT /api/setup/subjects/:id/daily-weights': {
-    kind: 'change',
-    group: 'setup',
-    description: 'Sets the daily weights of a subject (attendance, classwork, homework).',
-    basis: readById('GET /api/setup/subjects'),
-  },
   'POST /api/setup/subjects/:id/archive': {
     kind: 'change',
     group: 'setup',

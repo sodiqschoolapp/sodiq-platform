@@ -1258,15 +1258,6 @@ function Legend({ grid }: { grid: JournalGrid }) {
               <p>{t('journal.legend.attendanceOnly')}</p>
             ) : (
               <ul>
-                {legend.daily !== null && (
-                  <li>
-                    {t('journal.legend.daily', {
-                      attendance: legend.daily.attendance,
-                      classwork: legend.daily.classwork,
-                      homework: legend.daily.homework,
-                    })}
-                  </li>
-                )}
                 {legend.quarterly !== null && (
                   <li data-quarter-weights="true">
                     {legend.quarterly.ratingExam === null

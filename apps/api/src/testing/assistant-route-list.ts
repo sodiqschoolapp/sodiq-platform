@@ -126,7 +126,6 @@ const SUPER_ADMIN: Readonly<Record<string, string>> = {
   'PUT /api/setup/academic-years/:id/quarters': CHANGE,
   'POST /api/setup/subjects': CHANGE,
   'PUT /api/setup/subjects/:id': CHANGE,
-  'PUT /api/setup/subjects/:id/daily-weights': CHANGE,
   'POST /api/setup/subjects/:id/archive': CHANGE,
   'POST /api/setup/subjects/:id/restore': CHANGE,
   'POST /api/setup/subjects/:id/quarter-weights/:quarterId/preview': CHANGE,

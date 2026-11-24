@@ -94,12 +94,6 @@ export function publishTexts(
         const rule = ruleText(t, result.rule);
         return [day === null ? rule : `${day}: ${rule}`, numbers].filter(Boolean).join('. ');
       }
-      case 'subject_daily_weights': {
-        const name = subjectName(refusal.subjectId);
-        return name === null
-          ? t('timetable.publish.refusals.subject_daily_weights_any')
-          : t('timetable.publish.refusals.subject_daily_weights', { subject: name });
-      }
       case 'subject_quarter_weights': {
         const name = subjectName(refusal.subjectId);
         const quarter = refusal.quarter ?? 1;

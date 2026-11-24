@@ -56,13 +56,6 @@ function ItemText({ item }: { item: ChecklistItem }) {
       </span>
     );
   }
-  if (item.key === 'subjects' && (item.count ?? 0) > 0) {
-    return (
-      <span className="text-sm text-muted-foreground">
-        {t('setup.checklist.subjectsMissing', { count: item.count ?? 0 })}
-      </span>
-    );
-  }
   if (item.key === 'departments') {
     return (
       <span className="text-sm text-muted-foreground">{t('setup.checklist.wholeSchool')}</span>

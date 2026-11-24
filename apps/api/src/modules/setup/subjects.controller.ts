@@ -2,8 +2,6 @@ import { Controller, Get, HttpCode, Post, Put } from '@nestjs/common';
 import {
   copyQuarterWeightsRecordSchema,
   gradeChangesSchema,
-  dailyWeightsSchema,
-  newSubjectRecordSchema,
   quarterWeightsSchema,
   setupIdParamsSchema,
   subjectExportSchema,
@@ -25,7 +23,6 @@ import {
   subjectSchema,
   type CopyQuarterWeightsRecord,
   type GradeChanges,
-  type DailyWeights,
   type QuarterWeights,
   type SetupIdParams,
   type Subject,
@@ -74,7 +71,7 @@ export class SubjectsController {
     return this.subjects.list(access);
   }
 
-  /** The Excel file of the list with this branch's daily distribution (task 2.2c-1). */
+  /** The Excel file of the list (task 2.2c-1). */
   @Post('subjects/export')
   @Requires('subjects', 'export')
   @ReturnsFile()
@@ -91,7 +88,7 @@ export class SubjectsController {
   @Returns(subjectSchema, 201)
   create(
     @CurrentAccess() access: Access,
-    @ValidBody(newSubjectRecordSchema) record: SubjectRecord,
+    @ValidBody(subjectRecordSchema) record: SubjectRecord,
     @RequestId() requestId: string,
   ): Promise<Subject> {
     return this.subjects.create(access, record, requestId);
@@ -164,18 +161,6 @@ export class SubjectsController {
     @RequestId() requestId: string,
   ): Promise<Subject> {
     return this.subjects.edit(access, params.id, record, requestId);
-  }
-
-  @Put('subjects/:id/daily-weights')
-  @Requires('subjects', 'edit')
-  @Returns(subjectSchema)
-  setDaily(
-    @CurrentAccess() access: Access,
-    @ValidParams(setupIdParamsSchema) params: SetupIdParams,
-    @ValidBody(dailyWeightsSchema) weights: DailyWeights,
-    @RequestId() requestId: string,
-  ): Promise<Subject> {
-    return this.subjects.setDaily(access, params.id, weights, requestId);
   }
 
   @Post('subjects/:id/archive')

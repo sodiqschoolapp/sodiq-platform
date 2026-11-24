@@ -64,7 +64,6 @@ const SCREEN: Record<ExportList, Record<string, (texts: Texts) => string>> = {
     grades: (texts) => texts.setup.subjects.grades,
     journalType: (texts) => texts.setup.subjects.journalType,
     ratingExam: (texts) => texts.setup.subjects.ratingExam,
-    daily: (texts) => texts.setup.subjects.daily,
     quarterly: (texts) => texts.setup.subjects.quarterlyMissing,
     switches: (texts) => texts.setup.subjects.switches,
     status: (texts) => texts.setup.subjects.status,

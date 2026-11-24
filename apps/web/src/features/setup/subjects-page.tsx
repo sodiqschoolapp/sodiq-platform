@@ -37,8 +37,7 @@ interface Outcome {
 }
 
 /**
- * The subject list of the school (`05`, Subject; `12`, Lists), with this
- * branch's daily distribution, each opened in the side panel. The Super Admin
+ * The subject list of the school (`05`, Subject; `12`, Lists), each opened in the side panel. The Super Admin
  * and the Academic Vice Principal add, edit, archive and restore (owner's
  * answer 4); the Principal reads. A new subject needs an active department of
  * Academic: without one, "Add subject" is switched off and says so
@@ -154,17 +153,6 @@ export function SubjectsPage() {
         header: t('setup.subjects.ratingExam'),
         cell: (row) => yes(row.ratingExam),
         sortValue: (row) => (row.ratingExam ? 0 : 1),
-      },
-      {
-        key: 'daily',
-        header: t('setup.subjects.daily'),
-        cell: (row) =>
-          row.journalType !== 'graded'
-            ? t('setup.subjects.none')
-            : row.daily === null
-              ? t('setup.subjects.notSet')
-              : weightsText(row.daily, language),
-        sortValue: (row) => (row.daily === null ? '' : weightsText(row.daily, 'en')),
       },
       {
         key: 'quarterly',
@@ -364,7 +352,6 @@ export function SubjectsPage() {
                     <SubjectForm
                       subject={null}
                       departments={choices}
-                      hasDaily={false}
                       label={t('setup.subjects.newTitle')}
                       onSave={async (record) => {
                         saved((await create.mutateAsync(record)).id);

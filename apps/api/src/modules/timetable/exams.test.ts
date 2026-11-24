@@ -3760,8 +3760,6 @@ describe('exams in the timetable', () => {
         groupSubject: subject.groupSubject,
         languageRule: subject.languageRule,
         demanding: subject.demanding,
-        // The branch has no daily distribution yet: an edit of a graded subject sends it.
-        daily: subject.daily === null ? { attendance: 20, classwork: 40, homework: 40 } : null,
         switchesFrom: 2,
       });
       expect(edited.status, JSON.stringify(edited.body)).toBe(200);
@@ -3792,7 +3790,6 @@ describe('exams in the timetable', () => {
           groupSubject: subject.groupSubject,
           languageRule: subject.languageRule,
           demanding: subject.demanding,
-          daily: subject.daily === null ? { attendance: 20, classwork: 40, homework: 40 } : null,
           switchesFrom,
         });
       refusedWith(await edit(2), 409, 'subject_switch_exams');

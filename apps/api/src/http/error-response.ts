@@ -140,9 +140,6 @@ const MESSAGE: Record<ErrorCode, string> = {
   department_not_academic: 'A subject belongs to a department of the Academic division.',
   department_archived: 'The department is archived.',
   department_has_subjects: 'The department cannot be archived while an active subject is in it.',
-  daily_weights_required: 'A graded subject needs its daily distribution in this branch.',
-  daily_weights_set:
-    'The daily distribution is already set in this branch; change it on its own route.',
   attendance_only_no_weights: 'An attendance-only subject has no weights.',
   subject_department_archived:
     'The department of the subject is archived; the subject is not restored.',

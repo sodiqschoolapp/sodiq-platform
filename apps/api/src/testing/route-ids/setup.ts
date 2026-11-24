@@ -256,7 +256,6 @@ export const SETUP_IDS: RouteIds = {
     school('path:id', 'subject', SUBJECTS, [SUBJECT]),
     school('body:departmentId', 'department', SCHOOL_WIDE),
   ],
-  'PUT /api/setup/subjects/:id/daily-weights': [school('path:id', 'subject', SUBJECTS, [SUBJECT])],
   'POST /api/setup/subjects/:id/archive': [school('path:id', 'subject', SUBJECTS, [SUBJECT])],
   'POST /api/setup/subjects/:id/restore': [school('path:id', 'subject', SUBJECTS, [SUBJECT])],
   'GET /api/setup/subjects/:id/quarter-weights': [

@@ -250,11 +250,6 @@ export async function buildMonitoringBranch(
   );
 
   if (subject.journalType !== 'attendance') {
-    await api.put(
-      `/api/setup/subjects/${subject.id}/daily-weights`,
-      { attendance: 20, classwork: 40, homework: 40 },
-      at,
-    );
     const quarters = await api.get<{ quarters: { quarterId: string }[] }>(
       `/api/setup/subjects/${subject.id}/quarter-weights?yearId=${year.id}`,
       at,

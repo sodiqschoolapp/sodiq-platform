@@ -1037,7 +1037,6 @@ Answer `200`:
         };
         notGraded: boolean;
       }[];
-      score: integer | null;  // min 0, max 100
     }[];
     quarter: {
       attendance: integer | null;  // min 0, max 100
@@ -1133,11 +1132,6 @@ Answer `200`:
   legend: {
     lateValue: integer;
     skippedValue: integer;
-    daily: {
-      attendance: integer;
-      classwork: integer;
-      homework: integer;
-    } | null;
     quarterly: {
       attendance: integer;
       classwork: integer;

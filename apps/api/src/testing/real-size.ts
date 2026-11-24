@@ -339,23 +339,13 @@ export async function buildSchool(t: DayTemplatesKit, size: RunSize, seed = 512)
         .where('number', '=', index + 1)
         .execute();
     }
-    // The weights of every subject, daily and for each quarter, as a publish needs them.
+    // The weights of every subject for each quarter, as a publish needs them.
     const quarterIds = await migrator
       .selectFrom('quarters')
       .select('id')
       .where('academic_year_id', '=', year)
       .execute();
     const weights = { attendance: 20, classwork: 40, homework: 40 };
-    await migrator
-      .insertInto('subject_daily_weights')
-      .values(
-        [...subjects.values()].map((subject) => ({
-          branch_id: branch,
-          subject_id: subject,
-          ...weights,
-        })),
-      )
-      .execute();
     await migrator
       .insertInto('subject_quarter_weights')
       .values(

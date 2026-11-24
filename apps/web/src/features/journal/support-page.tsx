@@ -350,9 +350,6 @@ function SupportResult({ view }: { view: JournalSupport }) {
         </p>
         <p className="text-muted-foreground">
           {[
-            view.legend.daily === null
-              ? null
-              : t('journal.support.daily', { ...view.legend.daily }),
             view.legend.quarterly === null
               ? null
               : t('journal.support.quarterly', {
@@ -442,7 +439,6 @@ function LessonFigures({ lesson: one }: { lesson: Lesson }) {
         {[
           t('journal.support.mark', { mark }),
           ...works,
-          t('journal.support.lessonScore', { score: cell.score ?? '—' }),
         ].join(' · ')}
       </p>
       <p className="text-muted-foreground">

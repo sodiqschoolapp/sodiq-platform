@@ -1,4 +1,4 @@
-import { WEIGHTS_TOTAL, dailyWeightsSchema, quarterWeightsSchema } from '@sodiq/shared';
+import { WEIGHTS_TOTAL, quarterWeightsSchema } from '@sodiq/shared';
 import { useTranslation } from 'react-i18next';
 import { NumberField } from '@/components/field';
 import { wholeNumber } from '@/components/form/form-messages';
@@ -98,23 +98,21 @@ interface WeightsFormProps {
   parts: readonly WeightPart[];
   /** What is stored; `null` when nothing is. */
   weights: Weights | null;
-  /** A daily distribution has no rating exam key; a quarterly one has it, `null` when not shown. */
-  kind: 'daily' | 'quarter';
   label: string;
   onSave: (weights: Weights) => Promise<void>;
   /** Closes the form (opened in the side panel). */
   onCancel?: () => void;
 }
 
-/** One distribution saved on its own: the daily one of the branch, or one quarter's. */
-export function WeightsForm({ parts, weights, kind, label, onSave, onCancel }: WeightsFormProps) {
+/** One quarter's distribution saved on its own; its rating exam `null` when not shown. */
+export function WeightsForm({ parts, weights, label, onSave, onCancel }: WeightsFormProps) {
   const { t } = useTranslation();
   const initial = (part: WeightPart): string => {
     const value = weights?.[part];
     return typeof value === 'number' ? String(value) : '';
   };
   const form = useRecordForm<WeightField, Weights>({
-    schema: kind === 'daily' ? dailyWeightsSchema : quarterWeightsSchema,
+    schema: quarterWeightsSchema,
     initial: {
       attendance: initial('attendance'),
       classwork: initial('classwork'),
@@ -126,9 +124,7 @@ export function WeightsForm({ parts, weights, kind, label, onSave, onCancel }: W
       attendance: wholeNumber(typed.attendance),
       classwork: wholeNumber(typed.classwork),
       homework: wholeNumber(typed.homework),
-      ...(kind === 'quarter'
-        ? { ratingExam: parts.includes('ratingExam') ? wholeNumber(typed.ratingExam) : null }
-        : {}),
+      ratingExam: parts.includes('ratingExam') ? wholeNumber(typed.ratingExam) : null,
     }),
     message: (field) => (field === 'total' ? t('setup.subjects.totalWrong') : undefined),
     // A saved distribution shows "Saved." and a change from elsewhere (finding 18).

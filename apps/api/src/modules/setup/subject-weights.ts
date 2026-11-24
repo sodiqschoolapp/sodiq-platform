@@ -14,12 +14,6 @@ export interface SubjectRounds {
   readonly rating_exam: boolean;
 }
 
-/** A stored daily distribution that counts for the subject. */
-export const dailyWeightsFit = (
-  subject: SubjectRounds,
-  stored: { readonly weights_round: number },
-): boolean => stored.weights_round === subject.weights_round;
-
 /** A stored quarterly distribution that counts for the subject. */
 export const quarterWeightsFit = (
   subject: SubjectRounds,

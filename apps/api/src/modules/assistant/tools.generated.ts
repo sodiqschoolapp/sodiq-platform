@@ -7113,32 +7113,6 @@ export const GENERATED_TOOLS: Readonly<Record<string, GeneratedTool>> = {
         "demanding": {
           "type": "boolean"
         },
-        "daily": {
-          "nullable": true,
-          "type": "object",
-          "properties": {
-            "attendance": {
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 100
-            },
-            "classwork": {
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 100
-            },
-            "homework": {
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 100
-            }
-          },
-          "required": [
-            "attendance",
-            "classwork",
-            "homework"
-          ]
-        },
         "departmentStartsOn": {
           "nullable": true,
           "type": "string",
@@ -7161,8 +7135,7 @@ export const GENERATED_TOOLS: Readonly<Record<string, GeneratedTool>> = {
         "ratingExam",
         "groupSubject",
         "languageRule",
-        "demanding",
-        "daily"
+        "demanding"
       ]
     }
   },
@@ -9279,32 +9252,6 @@ export const GENERATED_TOOLS: Readonly<Record<string, GeneratedTool>> = {
         "demanding": {
           "type": "boolean"
         },
-        "daily": {
-          "nullable": true,
-          "type": "object",
-          "properties": {
-            "attendance": {
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 100
-            },
-            "classwork": {
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 100
-            },
-            "homework": {
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 100
-            }
-          },
-          "required": [
-            "attendance",
-            "classwork",
-            "homework"
-          ]
-        },
         "departmentStartsOn": {
           "nullable": true,
           "type": "string",
@@ -9327,50 +9274,7 @@ export const GENERATED_TOOLS: Readonly<Record<string, GeneratedTool>> = {
         "ratingExam",
         "groupSubject",
         "languageRule",
-        "demanding",
-        "daily"
-      ]
-    }
-  },
-  "PUT /api/setup/subjects/:id/daily-weights": {
-    "name": "SubjectsController_setDaily",
-    "method": "PUT",
-    "path": "/api/setup/subjects/:id/daily-weights",
-    "parameters": [
-      {
-        "name": "id",
-        "in": "path",
-        "required": true,
-        "schema": {
-          "type": "string",
-          "format": "uuid",
-          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-        }
-      }
-    ],
-    "body": {
-      "type": "object",
-      "properties": {
-        "attendance": {
-          "type": "integer",
-          "minimum": 1,
-          "maximum": 100
-        },
-        "classwork": {
-          "type": "integer",
-          "minimum": 1,
-          "maximum": 100
-        },
-        "homework": {
-          "type": "integer",
-          "minimum": 1,
-          "maximum": 100
-        }
-      },
-      "required": [
-        "attendance",
-        "classwork",
-        "homework"
+        "demanding"
       ]
     }
   },

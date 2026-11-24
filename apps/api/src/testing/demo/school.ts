@@ -186,8 +186,7 @@ export async function buildDemoSchool(input: {
   const branchIds = made.map((one) => one.id);
   const firstBranch = branchIds[0] ?? '';
 
-  // Subjects, school-wide, with the daily weights of the first branch; then
-  // the weights of every branch and quarter, as the publish needs them.
+  // Subjects, school-wide; then the weights of every branch and quarter, as the publish needs them.
   const subjects = new Map<string, string>();
   for (const subject of SUBJECTS) {
     const saved = await admin.in(firstBranch).post<Built>('/api/setup/subjects', {
@@ -200,7 +199,6 @@ export async function buildDemoSchool(input: {
       groupSubject: subject.en === 'English',
       languageRule: true,
       demanding: subject.en === 'Mathematics' || subject.en === 'Physics',
-      daily: { attendance: 20, classwork: 40, homework: 40 },
     });
     subjects.set(subject.en, saved.id);
   }
@@ -209,16 +207,9 @@ export async function buildDemoSchool(input: {
     if (id === undefined) throw new Error(`No subject ${name}.`);
     return id;
   };
-  for (const [index, branch] of made.entries()) {
+  for (const branch of made) {
     const there = admin.in(branch.id);
     for (const id of subjects.values()) {
-      if (index > 0) {
-        await there.put(`/api/setup/subjects/${id}/daily-weights`, {
-          attendance: 20,
-          classwork: 40,
-          homework: 40,
-        });
-      }
       for (const quarter of branch.quarterIds) {
         await there.put(`/api/setup/subjects/${id}/quarter-weights/${quarter}`, {
           attendance: 20,

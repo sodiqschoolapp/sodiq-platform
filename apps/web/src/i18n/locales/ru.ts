@@ -151,10 +151,6 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       'Кафедра в архиве. Выберите действующую кафедру или сначала восстановите эту.',
     department_has_subjects:
       'На кафедре ещё есть действующие предметы. Сначала перенесите их на другую кафедру или отправьте в архив.',
-    daily_weights_required:
-      'Оцениваемому предмету нужно ежедневное распределение в этом филиале. Заполните посещаемость, классную и домашнюю работу.',
-    daily_weights_set:
-      'В этом филиале у предмета уже есть ежедневное распределение. Измените его в панели предмета.',
     attendance_only_no_weights:
       'У предмета только с посещаемостью нет весов. Чтобы задать веса, сначала сделайте его оцениваемым.',
     subject_department_archived:
@@ -1480,7 +1476,6 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       AcademicYearsController_saveQuarters: 'Задать даты четвертей',
       SubjectsController_create: 'Добавить предмет',
       SubjectsController_edit: 'Изменить предмет',
-      SubjectsController_setDaily: 'Задать дневные веса предмета',
       SubjectsController_archive: 'Архивировать предмет',
       SubjectsController_restore: 'Восстановить предмет',
       SubjectsController_setQuarterWeights: 'Задать веса предмета за четверть',
@@ -2244,7 +2239,6 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       languageRule: 'Правило языка',
       demanding: 'Трудный предмет',
       switches: 'Признаки',
-      daily: 'Ежедневное распределение',
       quarterly: 'Распределение по четвертям',
       changeWeights: 'Изменить распределение',
       changeWeightsOf: 'Изменить распределение: {{name}}',
@@ -2398,10 +2392,6 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       calendarCount_other: '{{count}} записи',
       undatedYears: 'Без дат: {{years}}',
       wholeSchool: 'вся школа',
-      subjectsMissing_one: '{{count}} оцениваемый предмет без ежедневного распределения здесь',
-      subjectsMissing_few: '{{count}} оцениваемых предмета без ежедневного распределения здесь',
-      subjectsMissing_many: '{{count}} оцениваемых предметов без ежедневного распределения здесь',
-      subjectsMissing_other: '{{count}} оцениваемого предмета без ежедневного распределения здесь',
     },
     calendar: {
       emptyTitle: 'Выходных пока нет',
@@ -6815,9 +6805,6 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
         date_blocked: '{{date}}: {{rule}}',
         pattern_blocked_any: 'Урок нарушает правило расписания.',
         year_quarters: 'В учебном году нет четырёх четвертей с датами.',
-        subject_daily_weights:
-          'У предмета «{{subject}}» нет дневного распределения в этом филиале.',
-        subject_daily_weights_any: 'У предмета нагрузки нет дневного распределения в этом филиале.',
         subject_quarter_weights:
           'У предмета «{{subject}}» нет распределения на {{quarter}}-ю четверть.',
         subject_quarter_weights_any:
@@ -7670,8 +7657,6 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       noLessons: 'В этот день в журнале нет урока.',
       quarterFigures:
         'Четверть: посещаемость {{attendance}} · классная работа {{classwork}} · домашняя работа {{homework}} · рейтинговый экзамен {{ratingExam}} · итог {{result}}',
-      daily:
-        'Веса урока: посещаемость {{attendance}} · классная работа {{classwork}} · домашняя работа {{homework}}',
       quarterly:
         'Веса четверти: посещаемость {{attendance}} · классная работа {{classwork}} · домашняя работа {{homework}} · рейтинговый экзамен {{ratingExam}}',
       values: 'Опоздание считается {{late}}, пропуск урока {{skipped}}',
@@ -7717,7 +7702,6 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       },
       work: '{{title}}: {{score}} из {{total}}, {{percent}}%',
       mark: 'Отметка {{mark}}',
-      lessonScore: 'оценка урока {{score}}',
       stored: 'Сохранено: отметка {{mark}}, числа {{works}}',
       hiddenBy: 'скрыто освобождением ({{kind}}) {{from}} – {{until}}',
     },
@@ -8204,8 +8188,6 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       givenFrom: 'от {{date}}',
       givenOn: 'Задано {{date}}, проверяется на этом уроке',
       notHeld: 'не проводилась',
-      avg: 'Ср.',
-      lessonScore: 'Оценка за урок',
       quarterFigures: '{{number}} четверть',
       monthFigures: 'Месяц',
       folded_one: 'Выбыл или переведён: {{count}} ученик',
@@ -8221,8 +8203,6 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       band: '{{from}}–{{to}}',
       weights: 'Веса',
       attendanceOnly: 'Только посещаемость: без весов, итога и оценки.',
-      daily:
-        'Оценка за урок: посещаемость {{attendance}} · классная работа {{classwork}} · домашняя работа {{homework}}',
       quarterly:
         'Итог четверти: посещаемость {{attendance}} · классная работа {{classwork}} · домашняя работа {{homework}}',
       quarterlyNoRating:
