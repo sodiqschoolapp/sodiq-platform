@@ -1,5 +1,6 @@
 import {
   bulkCancelBodySchema,
+  bulkCancelCheckBodySchema,
   classDisplayName,
   timeText,
   type BulkCancelAnswer,
@@ -13,8 +14,9 @@ import { useMutation } from '@tanstack/react-query';
 import { useRef, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FailureAlert } from '@/components/failure-alert';
-import { TextAreaField } from '@/components/field';
-import { useRecordForm } from '@/components/form/use-record-form';
+import { RequiredGroup, TextAreaField } from '@/components/field';
+import { filledOnPage } from '@/components/form/page-checks';
+import { requiredOf, useRecordForm } from '@/components/form/use-record-form';
 import { Button } from '@/components/ui/button';
 import { CHECKBOX, CHECKBOX_TARGET, SUBSECTION_TITLE } from '@/components/ui/control';
 import {
@@ -46,6 +48,9 @@ type Asked = BulkCancelDataLesson & { forced: BulkCancelChoice | null };
  * (decision 4): each lesson with data it cancels takes "Keep as held" or
  * "Cancel", one choice for both halves of a double.
  */
+/** A choice the dialog waits for before the save (`ready`), task 11.18. */
+const CHOICE_PAGE = filledOnPage(['choice']);
+
 export function BulkCancelDialog({
   date,
   classes,
@@ -169,6 +174,24 @@ export function BulkCancelDialog({
     }));
   };
 
+  // Task 11.18: the classes and the lesson numbers the check needs (at least
+  // one of each), and the choices the save waits for (`ready`), marked from
+  // the check's schema and the dialog's own check.
+  const scopeTyped = { classIds: chosen.join(','), lessonNumbers: numbers.join(',') };
+  const scopeRequired = (field: 'classIds' | 'lessonNumbers') =>
+    requiredOf(bulkCancelCheckBodySchema, scopeTyped, field, {
+      read: (typed) => ({
+        date,
+        classIds: typed.classIds === '' ? [] : typed.classIds.split(','),
+        lessonNumbers: typed.lessonNumbers === '' ? [] : typed.lessonNumbers.split(',').map(Number),
+      }),
+    });
+  const choiceRequired = (choice: BulkCancelChoice | undefined, forced: BulkCancelChoice | null) =>
+    requiredOf(CHOICE_PAGE, { choice: choice ?? '' }, 'choice', {
+      // A choice the block's "cancel" forces is no choice of the person.
+      read: (typed) => (forced === null ? typed : { choice: forced }),
+    });
+
   const lessonText = (lesson: DayLesson) =>
     t('timetable.bulk.lesson', {
       start: timeText(lesson.start),
@@ -212,8 +235,13 @@ export function BulkCancelDialog({
             void send(event);
           }}
         >
-          <fieldset className="grid gap-1" data-bulk-classes="true">
-            <legend className="mb-1 text-sm font-semibold">{t('timetable.bulk.classes')}</legend>
+          <RequiredGroup
+            className="grid gap-1"
+            data-bulk-classes="true"
+            legendClassName="mb-1 text-sm font-semibold"
+            label={t('timetable.bulk.classes')}
+            required={scopeRequired('classIds')}
+          >
             <label className={CHECKBOX_TARGET}>
               <input
                 type="checkbox"
@@ -245,9 +273,14 @@ export function BulkCancelDialog({
                 </label>
               ))}
             </div>
-          </fieldset>
-          <fieldset className="grid gap-1" data-bulk-numbers="true">
-            <legend className="mb-1 text-sm font-semibold">{t('timetable.bulk.slots')}</legend>
+          </RequiredGroup>
+          <RequiredGroup
+            className="grid gap-1"
+            data-bulk-numbers="true"
+            legendClassName="mb-1 text-sm font-semibold"
+            label={t('timetable.bulk.slots')}
+            required={scopeRequired('lessonNumbers')}
+          >
             <div className="flex flex-wrap gap-3">
               {offered.map((number) => (
                 <label key={number} className={CHECKBOX_TARGET}>
@@ -269,7 +302,7 @@ export function BulkCancelDialog({
                 </label>
               ))}
             </div>
-          </fieldset>
+          </RequiredGroup>
           <div>
             <Button
               type="button"
@@ -301,17 +334,17 @@ export function BulkCancelDialog({
                 )}
               </section>
               {result.shared.map((one) => (
-                <fieldset
+                <RequiredGroup
                   key={one.blockId}
                   className="grid gap-1 rounded-md border p-3"
                   data-shared={one.blockId}
+                  legendClassName="px-1 text-sm font-semibold"
+                  label={t('timetable.bulk.shared', {
+                    chosen: one.chosenClasses.map((each) => each.name).join(', '),
+                    others: one.otherClasses.map((each) => each.name).join(', '),
+                  })}
+                  required={choiceRequired(choices[one.blockId], null)}
                 >
-                  <legend className="px-1 text-sm font-semibold">
-                    {t('timetable.bulk.shared', {
-                      chosen: one.chosenClasses.map((each) => each.name).join(', '),
-                      others: one.otherClasses.map((each) => each.name).join(', '),
-                    })}
-                  </legend>
                   <ul className="grid gap-1 text-sm">
                     {one.lessons.map((lesson) => (
                       <li key={lesson.id}>{lessonText(lesson)}</li>
@@ -332,7 +365,7 @@ export function BulkCancelDialog({
                       <span className="text-sm">{t(`timetable.bulk.choice_${choice}`)}</span>
                     </label>
                   ))}
-                </fieldset>
+                </RequiredGroup>
               ))}
               {asked.length > 0 && (
                 <section className="grid gap-2" data-bulk-data="true">
@@ -340,15 +373,19 @@ export function BulkCancelDialog({
                   {asked.map((one) => {
                     const lesson = lessonById.get(one.lessonId);
                     return (
-                      <fieldset
+                      <RequiredGroup
                         key={one.lessonId}
                         className="grid gap-1 rounded-md border p-3"
                         data-data-lesson={one.lessonId}
+                        legendClassName="px-1 text-sm"
+                        label={
+                          <>
+                            {lesson === undefined ? null : lessonText(lesson)} ·{' '}
+                            <HeldDataText held={one.heldData} />
+                          </>
+                        }
+                        required={choiceRequired(dataChoices[one.lessonId], one.forced)}
                       >
-                        <legend className="px-1 text-sm">
-                          {lesson === undefined ? null : lessonText(lesson)} ·{' '}
-                          <HeldDataText held={one.heldData} />
-                        </legend>
                         {(one.pairLessonIds.length > 0 || one.forced !== null) && (
                           <p className="text-sm">
                             {t(
@@ -374,7 +411,7 @@ export function BulkCancelDialog({
                             <span className="text-sm">{t(`timetable.bulk.data_${choice}`)}</span>
                           </label>
                         ))}
-                      </fieldset>
+                      </RequiredGroup>
                     );
                   })}
                 </section>

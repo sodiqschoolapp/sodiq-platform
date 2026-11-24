@@ -29,7 +29,8 @@ export function expectTiedTo(
       const ownRule = (checked: ReturnType<typeof schema.safeParse>) =>
         !checked.success &&
         checked.error.issues.some((issue) => issue.path[0] === field && issue.code !== 'custom');
-      const tries = ['', null].map((empty) => schema.safeParse({ ...sample, [field]: empty }));
+      const empties: unknown[] = Array.isArray(sample[field]) ? [[]] : ['', null, undefined];
+      const tries = empties.map((empty) => schema.safeParse({ ...sample, [field]: empty }));
       const checked = tries.find((one) => !ownRule(one));
       if (checked === undefined) {
         continue;

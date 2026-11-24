@@ -3,6 +3,7 @@ import {
   examBodySchema,
   examCheckBodySchema,
   examCreateBodySchema,
+  examRoomBodySchema,
   timeText,
   type DayLesson,
   type ErrorDetail,
@@ -13,14 +14,17 @@ import {
   type ExamInput,
   type ExamRating,
   type ExamSaveAnswer,
+  examRequiredWhen,
 } from '@sodiq/shared';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useRef, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ApiFailure } from '@/api/failure';
 import { FailureAlert } from '@/components/failure-alert';
-import { DateField, Field, SelectField, TextAreaField } from '@/components/field';
-import { useRecordForm } from '@/components/form/use-record-form';
+import { DateField, Field, RequiredGroup, SelectField, TextAreaField } from '@/components/field';
+import type { FormIssue, FormSchema } from '@/components/form/form-messages';
+import { filledOnPage } from '@/components/form/page-checks';
+import { requiredOf, useRecordForm } from '@/components/form/use-record-form';
 import { ErrorState, LoadingOutline } from '@/components/states';
 import { Button } from '@/components/ui/button';
 import { CHECKBOX, CHECKBOX_TARGET, SUBSECTION_TITLE } from '@/components/ui/control';
@@ -53,6 +57,57 @@ interface RoomRow {
   readonly groupIds: readonly string[];
   readonly invigilatorIds: readonly string[];
 }
+
+type RoomTyped = Readonly<Record<'roomId' | 'classIds' | 'groupIds' | 'invigilatorIds', string>>;
+
+const idsOf = (typed: string): string[] => (typed === '' ? [] : typed.split(','));
+
+/**
+ * A room of the exam as the save checks it (task 11.18): `examRoomBodySchema`
+ * (a room, at least one invigilator), and the exam's own refine "A room holds
+ * a class or a group" (`checkExam` of `packages/shared/src/exams.ts`), so the
+ * classes and the groups are marked while the other one is empty.
+ */
+const ROOM_PAGE: FormSchema<unknown> = {
+  safeParse: (input) => {
+    const parsed = examRoomBodySchema.safeParse(input);
+    const room =
+      typeof input === 'object' && input !== null ? (input as Record<string, unknown>) : {};
+    const none = (field: string) => !Array.isArray(room[field]) || room[field].length === 0;
+    const issues: FormIssue[] = [
+      ...(parsed.success ? [] : parsed.error.issues),
+      ...(none('classIds') && none('groupIds')
+        ? (['classIds', 'groupIds'] as const).map((field) => ({ code: 'too_small', path: [field] }))
+        : []),
+    ];
+    return issues.length === 0
+      ? { success: true, data: input }
+      : { success: false, error: { issues } };
+  },
+};
+
+const roomRequired = (row: RoomRow, field: keyof RoomTyped): boolean =>
+  requiredOf(
+    ROOM_PAGE,
+    {
+      roomId: row.roomId,
+      classIds: row.classIds.join(','),
+      groupIds: row.groupIds.join(','),
+      invigilatorIds: row.invigilatorIds.join(','),
+    },
+    field,
+    {
+      read: (typed: RoomTyped) => ({
+        roomId: typed.roomId,
+        classIds: idsOf(typed.classIds),
+        groupIds: idsOf(typed.groupIds),
+        invigilatorIds: idsOf(typed.invigilatorIds),
+      }),
+    },
+  );
+
+/** A choice of a shared block the save waits for (`chooseEach`), task 11.18. */
+const CHOICE_PAGE = filledOnPage(['choice']);
 
 const emptyRoom = (): RoomRow => ({
   key: crypto.randomUUID(),
@@ -176,6 +231,7 @@ export function ExamForm({
 
   const form = useRecordForm<Typed, ExamInput>({
     schema: exam === null ? examCreateBodySchema : examBodySchema,
+    requiredWhen: examRequiredWhen,
     initial: {
       date: exam?.date ?? date,
       firstLesson: exam?.firstLesson === null || exam === null ? '' : String(exam.firstLesson),
@@ -409,6 +465,7 @@ export function ExamForm({
                   name={`room-${row.key}`}
                   value={row.roomId}
                   error={undefined}
+                  required={roomRequired(row, 'roomId')}
                   options={[{ value: '', label: t('timetable.exams.roomChoose') }, ...roomOptions]}
                   onChange={(event) => {
                     const roomId = event.target.value;
@@ -419,6 +476,7 @@ export function ExamForm({
                 />
                 <UnitBoxes
                   legend={t('timetable.exams.classes')}
+                  required={roomRequired(row, 'classIds')}
                   units={activeClasses.map((one) => ({
                     id: one.id,
                     name: classDisplayName(one.grade, one.name),
@@ -438,6 +496,7 @@ export function ExamForm({
                 {typed.subjectId !== '' && subjectGroups.length > 0 && (
                   <UnitBoxes
                     legend={t('timetable.exams.groups')}
+                    required={roomRequired(row, 'groupIds')}
                     units={subjectGroups.map((one) => ({ id: one.id, name: one.name }))}
                     chosen={row.groupIds}
                     onToggle={(id, on) => {
@@ -461,6 +520,7 @@ export function ExamForm({
                 ) : (
                   <UnitBoxes
                     legend={t('timetable.exams.invigilators')}
+                    required={roomRequired(row, 'invigilatorIds')}
                     units={people.map((one) => ({
                       id: one.id,
                       name: `${one.lastName} ${one.firstName}`,
@@ -573,17 +633,21 @@ export function ExamForm({
                 {result.rating !== null && <RatingJournals rating={result.rating} />}
                 <PlanImpactList plans={result.plans} />
                 {result.choices.map((one) => (
-                  <fieldset
+                  <RequiredGroup
                     key={choiceKey(one.classId, one.blockId)}
                     className="grid gap-1 rounded-md border p-3"
                     data-shared={one.blockId}
+                    legendClassName="px-1 text-sm font-semibold"
+                    label={t('timetable.exams.shared', {
+                      sitting: one.className,
+                      others: one.otherClasses.join(', '),
+                    })}
+                    required={requiredOf(
+                      CHOICE_PAGE,
+                      { choice: choices[choiceKey(one.classId, one.blockId)] ?? '' },
+                      'choice',
+                    )}
                   >
-                    <legend className="px-1 text-sm font-semibold">
-                      {t('timetable.exams.shared', {
-                        sitting: one.className,
-                        others: one.otherClasses.join(', '),
-                      })}
-                    </legend>
                     <ul className="grid gap-1 text-sm">
                       {one.lessons.map((lesson) => (
                         <li key={lesson.id}>{lessonText(lesson)}</li>
@@ -605,7 +669,7 @@ export function ExamForm({
                         <span className="text-sm">{t(`timetable.exams.choice_${choice}`)}</span>
                       </label>
                     ))}
-                  </fieldset>
+                  </RequiredGroup>
                 ))}
                 {result.blocked === null ? (
                   <p className="text-sm" data-exam-unchosen="true">
@@ -716,20 +780,28 @@ export function ExamForm({
 /** A list of checkboxes for classes, groups or invigilators of one room. */
 function UnitBoxes({
   legend,
+  required,
   units,
   chosen,
   onToggle,
   data,
 }: {
   legend: string;
+  /** From the room's check (`roomRequired`). */
+  required: boolean;
   units: readonly { id: string; name: string }[];
   chosen: readonly string[];
   onToggle: (id: string, on: boolean) => void;
   data: string;
 }) {
   return (
-    <fieldset className="grid gap-1" data-units={data}>
-      <legend className="mb-1 text-sm font-semibold">{legend}</legend>
+    <RequiredGroup
+      className="grid gap-1"
+      data-units={data}
+      legendClassName="mb-1 text-sm font-semibold"
+      label={legend}
+      required={required}
+    >
       <div className="grid max-h-48 grid-cols-2 gap-1 overflow-y-auto sm:grid-cols-3">
         {units.map((one) => (
           <label key={one.id} className={CHECKBOX_TARGET}>
@@ -745,7 +817,7 @@ function UnitBoxes({
           </label>
         ))}
       </div>
-    </fieldset>
+    </RequiredGroup>
   );
 }
 

@@ -46,8 +46,8 @@ interface RecordFormOptions<Field extends string, Values> {
   known?: RequiredKnown;
 }
 
-interface RequiredOptions<Field extends string> {
-  read?: ((typed: Record<Field, string>) => unknown) | undefined;
+interface RequiredOptions<Typed> {
+  read?: ((typed: Typed) => unknown) | undefined;
   requiredWhen?: RequiredWhen | undefined;
   known?: RequiredKnown | undefined;
 }
@@ -63,11 +63,11 @@ const asValues = (value: unknown): RequiredValues =>
  * another field is wrong), or the schema's `requiredWhen` says so for what is
  * typed now. The same rule shows "Fill in this field." under it.
  */
-export function requiredOf<Field extends string>(
+export function requiredOf<Typed extends Readonly<Record<string, string>>>(
   schema: FormSchema<unknown>,
-  typed: Record<Field, string>,
-  field: Field,
-  { read, requiredWhen, known = {} }: RequiredOptions<Field> = {},
+  typed: Typed,
+  field: keyof Typed & string,
+  { read, requiredWhen, known = {} }: RequiredOptions<Typed> = {},
 ): boolean {
   try {
     const emptied = { ...typed, [field]: '' };
@@ -153,22 +153,15 @@ export function useRecordForm<Field extends string, Values>({
 
   // Once per what is typed, not per `bind()`: a form binds a field more than once.
   const knownToday = known?.today;
-  const required = useMemo(() => {
-    const cache = new Map<Field, boolean>();
-    return (field: Field): boolean => {
-      const held = cache.get(field);
-      if (held !== undefined) {
-        return held;
-      }
-      const result = requiredOf(schema, typed, field, {
-        read,
-        requiredWhen,
-        known: { today: knownToday },
-      });
-      cache.set(field, result);
-      return result;
-    };
-  }, [schema, read, typed, requiredWhen, knownToday]);
+  const requiredFields = useMemo(
+    () =>
+      new Set(
+        (Object.keys(typed) as Field[]).filter((field) =>
+          requiredOf(schema, typed, field, { read, requiredWhen, known: { today: knownToday } }),
+        ),
+      ),
+    [schema, read, typed, requiredWhen, knownToday],
+  );
 
   const errorOf = (field: Field): string | undefined => {
     const shows = checkedOnSave.includes(field)
@@ -249,7 +242,7 @@ export function useRecordForm<Field extends string, Values>({
         name: field,
         value: typed[field],
         error: errorOf(field),
-        required: required(field),
+        required: requiredFields.has(field),
         onChange: (event) => {
           const next = { ...typedNow.current, [field]: event.target.value };
           typedNow.current = next;

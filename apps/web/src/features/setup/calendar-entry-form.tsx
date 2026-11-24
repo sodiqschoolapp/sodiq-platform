@@ -7,6 +7,7 @@ import {
   LAST_GRADE,
   type CalendarEntry,
   type CalendarEntryRecord,
+  calendarEntryRequiredWhen,
 } from '@sodiq/shared';
 import { useTranslation } from 'react-i18next';
 import { DateField, Field, SelectField } from '@/components/field';
@@ -54,6 +55,7 @@ export function CalendarEntryForm({
   const { t, i18n } = useTranslation();
   const form = useRecordForm({
     schema: calendarEntryRecordSchema,
+    requiredWhen: calendarEntryRequiredWhen,
     initial: {
       kind: entry?.kind ?? 'day_off',
       name: entry?.name ?? '',

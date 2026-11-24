@@ -18,6 +18,9 @@ import {
   type SchoolGroup,
   type Subject,
   type TimetableVersion,
+  loadRowRecordRequiredWhen,
+  loadRowTeacherNeeded,
+  type RequiredWhen,
 } from '@sodiq/shared';
 import { isSplit as isSplitGroup } from '@sodiq/timetable-rules';
 import { useQuery } from '@tanstack/react-query';
@@ -110,8 +113,20 @@ export function LoadRowForm({
   /** Whether the group is a split: it draws from one class or a pair. */
   const isSplit = (groupId: string | null) => isSplitOf(groups.find((one) => one.id === groupId));
 
+  // The red asterisk (task 11.18): the unit of a new row, a class or a group;
+  // its teacher (`load_teacher_needed`), whose field a Tutor row never draws.
+  const requiredWhen: RequiredWhen =
+    row === null
+      ? {
+          unit: (values, known) =>
+            (loadRowRecordRequiredWhen.classId?.(values, known) ?? false) ||
+            (loadRowRecordRequiredWhen.groupId?.(values, known) ?? false),
+          teacherId: () => loadRowTeacherNeeded(true, false),
+        }
+      : {};
   const form = useRecordForm({
     schema,
+    requiredWhen,
     initial: {
       unit: row === null ? '' : `${row.unit.kind}:${row.unit.id}`,
       subjectId: row?.subject.id ?? '',

@@ -1,5 +1,8 @@
 import { classDisplayName, type CalendarExamBlocks, type CalendarLessons } from '@sodiq/shared';
 import { useTranslation } from 'react-i18next';
+import { RequiredGroup } from '@/components/field';
+import { filledOnPage } from '@/components/form/page-checks';
+import { requiredOf } from '@/components/form/use-record-form';
 import { CHECKBOX, CHECKBOX_TARGET, SUBSECTION_TITLE } from '@/components/ui/control';
 import { ruleText } from '@/features/timetable/rule-text';
 import { schoolDateText } from '@/lib/dates';
@@ -13,6 +16,9 @@ export const examBlockKeyOf = (examId: string, classId: string, start: number): 
   `${examId}|${classId}|${String(start)}`;
 
 /** The choices to send, in the shape of the API. */
+/** A choice for each shared block the save waits for, task 11.18. */
+const CHOICE_PAGE = filledOnPage(['choice']);
+
 export function examBlocksOf(choices: Readonly<Record<string, Choice>>): CalendarExamBlocks {
   return Object.entries(choices)
     .map(([key, choice]) => {
@@ -109,19 +115,22 @@ export function CalendarExamsPreview({
               const key = examBlockKeyOf(exam.id, block.classId, block.start);
               const unit = unitName(block.classId);
               return (
-                <fieldset key={key} className="mt-1 grid gap-1" data-block={key}>
-                  <legend>
-                    {t('setup.calendar.lessons.exams.block', {
-                      unit,
-                      // A class can have two shared blocks under one exam: each
-                      // is named by its time.
-                      lessons: `${slotTimeText(t, block.start)} ${block.lessons
-                        .map(
-                          (lesson) => `${unitName(lesson.unitId)} ${subjectName(lesson.subjectId)}`,
-                        )
-                        .join(', ')}`,
-                    })}
-                  </legend>
+                <RequiredGroup
+                  key={key}
+                  className="mt-1 grid gap-1"
+                  data-block={key}
+                  required={requiredOf(CHOICE_PAGE, { choice: choices[key] ?? '' }, 'choice')}
+                  label={t('setup.calendar.lessons.exams.block', {
+                    unit,
+                    // A class can have two shared blocks under one exam: each
+                    // is named by its time.
+                    lessons: `${slotTimeText(t, block.start)} ${block.lessons
+                      .map(
+                        (lesson) => `${unitName(lesson.unitId)} ${subjectName(lesson.subjectId)}`,
+                      )
+                      .join(', ')}`,
+                  })}
+                >
                   {(['cancel', 'keep'] as const).map((choice) => (
                     <label key={choice} className={CHECKBOX_TARGET}>
                       <input
@@ -137,7 +146,7 @@ export function CalendarExamsPreview({
                       <span>{t(`setup.calendar.lessons.exams.choice_${choice}`, { unit })}</span>
                     </label>
                   ))}
-                </fieldset>
+                </RequiredGroup>
               );
             })}
           </li>

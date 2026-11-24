@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { leftEmpty, type RequiredWhen } from './required-when.js';
 import { schoolDateSchema } from './academic-year.js';
 import { clockTimeSchema } from './digest.js';
 
@@ -304,6 +305,21 @@ export const announcementFormSchema = z
     }
   });
 export type AnnouncementForm = z.infer<typeof announcementFormSchema>;
+
+/**
+ * What `announcementFormSchema` requires only in some states (task 11.18): the
+ * grades or classes of that audience, staff or parents (one of the two), an
+ * event's dates, and a start time once there is an end time.
+ */
+export const announcementFormRequiredWhen: RequiredWhen = {
+  grades: (values) => values.audience === 'grades',
+  classIds: (values) => values.audience === 'classes',
+  forStaff: (values) => values.forParents !== true,
+  forParents: (values) => values.forStaff !== true,
+  firstDate: (values) => values.kind === 'event',
+  lastDate: (values) => values.kind === 'event',
+  startsAt: (values) => values.kind === 'event' && !leftEmpty(values.endsAt),
+};
 
 const eventOf = (form: AnnouncementForm): AnnouncementEvent | null =>
   form.kind === 'event' && form.firstDate !== null && form.lastDate !== null

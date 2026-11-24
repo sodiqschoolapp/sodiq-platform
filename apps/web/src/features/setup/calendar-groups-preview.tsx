@@ -1,11 +1,17 @@
 import { groupBlockKeyOf, type CalendarGroupBlocks, type CalendarLessons } from '@sodiq/shared';
 import { useTranslation } from 'react-i18next';
+import { RequiredGroup } from '@/components/field';
+import { filledOnPage } from '@/components/form/page-checks';
+import { requiredOf } from '@/components/form/use-record-form';
 import { CHECKBOX, CHECKBOX_TARGET, SUBSECTION_TITLE } from '@/components/ui/control';
 import { schoolDateText, weekdayName } from '@/lib/dates';
 import { rangeText } from './templates-api';
 
 type Choice = CalendarGroupBlocks[number]['choice'];
 type Line = CalendarLessons['groupBlocks'][number];
+
+/** A choice for each split group's block the save waits for, task 11.18. */
+const CHOICE_PAGE = filledOnPage(['choice']);
 
 /** The key of a split group's block in the choices: as the server names it. */
 export const groupLineKeyOf = (line: {
@@ -70,15 +76,17 @@ export function CalendarGroupsPreview({
           const chosen = choiceOf(line, choices);
           return (
             <li key={key}>
-              <fieldset className="grid gap-1" data-block={key}>
-                <legend>
-                  {t('setup.calendar.lessons.groups.block', {
-                    groups: line.groupIds.map(groupName).join(', '),
-                    weekday: weekdayName(language, line.weekday),
-                    time: rangeText(t, line.start, line.end),
-                    dates: line.dates.map((date) => schoolDateText(date, language)).join(', '),
-                  })}
-                </legend>
+              <RequiredGroup
+                className="grid gap-1"
+                data-block={key}
+                required={requiredOf(CHOICE_PAGE, { choice: chosen ?? '' }, 'choice')}
+                label={t('setup.calendar.lessons.groups.block', {
+                  groups: line.groupIds.map(groupName).join(', '),
+                  weekday: weekdayName(language, line.weekday),
+                  time: rangeText(t, line.start, line.end),
+                  dates: line.dates.map((date) => schoolDateText(date, language)).join(', '),
+                })}
+              >
                 {(['cancel', 'keep'] as const).map((choice) => (
                   <label key={choice} className={CHECKBOX_TARGET}>
                     <input
@@ -98,7 +106,7 @@ export function CalendarGroupsPreview({
                     </span>
                   </label>
                 ))}
-              </fieldset>
+              </RequiredGroup>
             </li>
           );
         })}

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { leftEmpty, type RequiredWhen } from './required-when.js';
 import { PHONE_FORMAT, storedPhone } from './phones.js';
 import { schoolDateSchema } from './academic-year.js';
 import { firstPasswordSlipSchema } from './accounts.js';
@@ -256,6 +257,11 @@ export const staffTeachingSchema = z
   });
 
 export type StaffTeaching = z.infer<typeof staffTeachingSchema>;
+
+/** What `staffTeachingSchema` requires only in some states (task 11.18): a language once there is a subject. */
+export const staffTeachingRequiredWhen: RequiredWhen = {
+  languages: (values) => !leftEmpty(values.subjects),
+};
 
 /** The branches of a person: the main one and any further ones (`04`). */
 export const staffBranchesSchema = z

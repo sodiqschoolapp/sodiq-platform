@@ -15,6 +15,7 @@ import {
   type StaffAccount,
   type StaffDetail,
   type SubjectsChange,
+  roleGiveRequiredWhen,
 } from '@sodiq/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRef, useState, type ComponentProps } from 'react';
@@ -567,6 +568,7 @@ function GiveRoleForm({
   const main = staff.branches.find((branch) => branch.main) ?? staff.branches[0];
   const form = useRecordForm<GiveField, RoleGive>({
     schema: asFormSchema<RoleGive>(roleGiveSchema, (path) => [...path]),
+    requiredWhen: roleGiveRequiredWhen,
     initial: { role: '', branchId: main?.branchId ?? '', from: today, subjectIds: '' },
     read: (typed) => ({
       role: typed.role,

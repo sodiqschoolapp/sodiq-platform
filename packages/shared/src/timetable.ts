@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { leftEmpty, type RequiredWhen } from './required-when.js';
 import { planImpactSchema } from './plans.js';
 import { academicYearStatusSchema, schoolDateSchema } from './academic-year.js';
 import { tableCellSchema } from './day-templates.js';
@@ -337,6 +338,21 @@ export const loadRowRecordSchema = loadRowFieldsSchema
   .refine(oneRoomChoice, ROOM_CHOICE);
 
 export type LoadRowRecord = z.infer<typeof loadRowRecordSchema>;
+
+/**
+ * What `loadRowRecordSchema` requires only in some states (task 11.18): a class
+ * or a group, one of the two. The teacher of a new row that is not a Tutor
+ * row is the server's rule (`load_teacher_needed`, `timetable.service.ts`):
+ * `loadRowTeacherNeeded`.
+ */
+export const loadRowRecordRequiredWhen: RequiredWhen = {
+  classId: (values) => leftEmpty(values.groupId),
+  groupId: (values) => leftEmpty(values.classId),
+};
+
+/** `load_teacher_needed`: a new row needs its teacher unless it is a Tutor row, whose teacher the server writes. */
+export const loadRowTeacherNeeded = (newRow: boolean, tutorRow: boolean): boolean =>
+  newRow && !tutorRow;
 
 /**
  * The edit of a row: the unit and the subject are fixed. A change of lessons

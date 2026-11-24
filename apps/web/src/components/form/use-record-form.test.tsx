@@ -353,7 +353,7 @@ describe('the required mark of a bound field', () => {
       initial: typed(),
       read,
       requiredWhen,
-      save: async () => undefined,
+      save: () => Promise.resolve(),
     });
     return (
       <RecordForm form={form} label="Person">

@@ -19,6 +19,7 @@ import {
   type StaffStatusChange,
   type StaffTeaching,
   type Subject,
+  staffTeachingRequiredWhen,
 } from '@sodiq/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
@@ -738,6 +739,7 @@ function TeachingForm({
   }
   const form = useRecordForm<Fields, StaffTeaching>({
     schema: asFormSchema<StaffTeaching>(staffTeachingSchema, subjectsFieldOf),
+    requiredWhen: staffTeachingRequiredWhen,
     // Keyed by the person and the department: its own save keeps "Saved." (finding 18).
     followInitial: true,
     initial: initial,

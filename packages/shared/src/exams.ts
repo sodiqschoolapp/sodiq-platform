@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { leftEmpty, type RequiredWhen } from './required-when.js';
 import { planImpactSchema } from './plans.js';
 import { schoolDateSchema } from './academic-year.js';
 import { DAY_CHANGE_REASON_MAX, dayLessonSchema } from './day-changes.js';
@@ -211,6 +212,15 @@ export type ExamCheckBody = z.input<typeof examCheckBodySchema>;
 export type ExamCheckInput = z.output<typeof examCheckBodySchema>;
 
 export type ExamBody = z.input<typeof examBodySchema>;
+
+/**
+ * What the exam bodies require only in some states (task 11.18): the subject of
+ * the quarter's rating exam, and the reason of lessons kept cancelled.
+ */
+export const examRequiredWhen: RequiredWhen = {
+  subjectId: (values) => values.ratingExam === true,
+  keepReason: (values) => !leftEmpty(values.keepCancelled),
+};
 export type ExamCreateBody = z.input<typeof examCreateBodySchema>;
 export type ExamInput = z.output<typeof examBodySchema>;
 

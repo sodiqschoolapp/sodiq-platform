@@ -8,6 +8,9 @@ import {
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FailureAlert } from '@/components/failure-alert';
+import { RequiredGroup } from '@/components/field';
+import { filledOnPage } from '@/components/form/page-checks';
+import { requiredOf } from '@/components/form/use-record-form';
 import { Button } from '@/components/ui/button';
 import { CHECKBOX, CHECKBOX_TARGET } from '@/components/ui/control';
 import {
@@ -19,6 +22,9 @@ import {
 } from '@/components/ui/dialog';
 
 /** The warnings of a checklist as the close takes them: each kind and journal once. */
+/** The quarter to start the dialog waits for (`missing`: `startQuarter`), task 11.18. */
+const START_PAGE = filledOnPage(['startQuarter']);
+
 export function warningsSeen(
   checklist: Pick<ClosingChecklist, 'items'>,
 ): ClosingCloseInput['warnings'] {
@@ -116,8 +122,16 @@ export function CloseQuarterDialog({
             </label>
           )}
           {checklist.startQuarter && (
-            <fieldset className="grid gap-2">
-              <legend className="font-semibold">{t('results.closing.close.startQuarter')}</legend>
+            <RequiredGroup
+              className="grid gap-2"
+              legendClassName="font-semibold"
+              label={t('results.closing.close.startQuarter')}
+              required={requiredOf(
+                START_PAGE,
+                { startQuarter: startQuarter ?? '' },
+                'startQuarter',
+              )}
+            >
               {CLOSING_START_QUARTER.map((choice) => (
                 <label key={choice} className={CHECKBOX_TARGET}>
                   <input
@@ -131,7 +145,7 @@ export function CloseQuarterDialog({
                   <span>{t(`results.closing.close.startQuarters.${choice}`)}</span>
                 </label>
               ))}
-            </fieldset>
+            </RequiredGroup>
           )}
           {tried && missing.length > 0 && (
             <span role="alert" className="text-destructive">

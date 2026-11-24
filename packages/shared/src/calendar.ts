@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { leftEmpty, type RequiredWhen } from './required-when.js';
 import { planImpactSchema } from './plans.js';
 import { schoolDateSchema } from './academic-year.js';
 import { FIRST_GRADE, LAST_GRADE } from './day-templates.js';
@@ -114,6 +115,16 @@ function refineEntry(
 export const calendarEntryRecordSchema = calendarEntryFields.superRefine(refineEntry);
 
 export type CalendarEntryRecord = z.infer<typeof calendarEntryRecordSchema>;
+
+/**
+ * What `calendarEntryRecordSchema` requires only in some states (task 11.18):
+ * the template of a special day, and both grades or neither.
+ */
+export const calendarEntryRequiredWhen: RequiredWhen = {
+  dayTemplateId: (values) => values.kind === 'special_day',
+  gradeFrom: (values) => !leftEmpty(values.gradeTo),
+  gradeTo: (values) => !leftEmpty(values.gradeFrom),
+};
 
 /**
  * The choices of the lessons kept on the shortened days of the dates a

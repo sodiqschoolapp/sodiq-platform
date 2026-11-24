@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { leftEmpty, type RequiredWhen } from './required-when.js';
 import { schoolDateSchema } from './academic-year.js';
 import { instructionLanguageSchema } from './settings.js';
 import { DAILY_LESSONS_MAX, WEEKLY_LESSONS_MAX } from './staff.js';
@@ -56,6 +57,11 @@ export const vacancyRecordSchema = z
   });
 
 export type VacancyRecord = z.infer<typeof vacancyRecordSchema>;
+
+/** What `vacancyRecordSchema` requires only in some states (task 11.18): a language once there is a subject. */
+export const vacancyRecordRequiredWhen: RequiredWhen = {
+  languages: (values) => !leftEmpty(values.subjects),
+};
 
 /** A row of the status history. */
 export const vacancyStatusRowSchema = z.object({

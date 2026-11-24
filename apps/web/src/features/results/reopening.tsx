@@ -15,7 +15,7 @@ import { useTranslation } from 'react-i18next';
 import { FailureAlert } from '@/components/failure-alert';
 import { ErrorState, LoadingOutline } from '@/components/states';
 import { Button } from '@/components/ui/button';
-import { CHECKBOX, CHECKBOX_TARGET, FIELD, SECTION_TITLE } from '@/components/ui/control';
+import { CHECKBOX, CHECKBOX_TARGET, SECTION_TITLE } from '@/components/ui/control';
 import {
   Dialog,
   DialogContent,
@@ -23,7 +23,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Textarea } from '@/components/ui/textarea';
+import { NumberField, SelectField, TextAreaField } from '@/components/field';
+import { requiredOf } from '@/components/form/use-record-form';
 import { useView } from '@/features/access/use-view';
 import { nameOf } from '@/features/setup/setup-api';
 import { momentText } from '@/lib/dates';
@@ -153,6 +154,15 @@ export function ReopenDialog({
     days: /^\d+$/.test(days) ? Number(days) : 0,
   };
   const checked = closingReopenInputSchema.safeParse(input);
+  // The red asterisk (task 11.18), from the schema of the reopening.
+  const reopenRequired = (field: 'journalId' | 'days' | 'reason') =>
+    requiredOf(closingReopenInputSchema, { journalId, days, reason }, field, {
+      read: (values) => ({
+        journalId: values.journalId === '' ? null : values.journalId,
+        reason: values.reason,
+        days: /^\d+$/.test(values.days) ? Number(values.days) : undefined,
+      }),
+    });
   const reopen = useMutation({
     mutationFn: async (body: ClosingReopenInput) => {
       if (checklist.quarterId === null) return;
@@ -186,53 +196,47 @@ export function ReopenDialog({
           }}
         >
           <p>{t('results.reopening.text')}</p>
-          <label className="grid gap-1">
-            <span>{t('results.reopening.what')}</span>
-            <select
-              className={FIELD}
-              value={journalId}
-              onChange={(event) => setJournalId(event.target.value)}
-            >
-              <option value="">{t('results.reopening.wholeBranch')}</option>
-              {checklist.closedJournals
+          <SelectField
+            label={t('results.reopening.what')}
+            value={journalId}
+            required={reopenRequired('journalId')}
+            options={[
+              { value: '', label: t('results.reopening.wholeBranch') },
+              ...checklist.closedJournals
                 .filter((journal) => !reopened.has(journal.id))
-                .map((journal) => (
-                  <option key={journal.id} value={journal.id}>
-                    {t('results.reopening.journalOption', {
-                      unit: journal.unitName,
-                      subject: nameOf(journal.subjectNames, i18n.language),
-                    })}
-                  </option>
-                ))}
-            </select>
-          </label>
-          <label className="grid gap-1">
-            <span>{t('results.reopening.days')}</span>
-            <input
-              className={FIELD}
-              inputMode="numeric"
-              value={days}
-              aria-invalid={
-                tried &&
-                !checked.success &&
-                checked.error.issues.some((one) => one.path[0] === 'days')
-              }
-              onChange={(event) => setDays(event.target.value)}
-            />
-          </label>
-          <label className="grid gap-1">
-            <span>{t('results.reopening.reason')}</span>
-            <Textarea
-              value={reason}
-              maxLength={500}
-              aria-invalid={
-                tried &&
-                !checked.success &&
-                checked.error.issues.some((one) => one.path[0] === 'reason')
-              }
-              onChange={(event) => setReason(event.target.value)}
-            />
-          </label>
+                .map((journal) => ({
+                  value: journal.id,
+                  label: t('results.reopening.journalOption', {
+                    unit: journal.unitName,
+                    subject: nameOf(journal.subjectNames, i18n.language),
+                  }),
+                })),
+            ]}
+            onChange={(event) => setJournalId(event.target.value)}
+          />
+          <NumberField
+            label={t('results.reopening.days')}
+            value={days}
+            required={reopenRequired('days')}
+            aria-invalid={
+              tried &&
+              !checked.success &&
+              checked.error.issues.some((one) => one.path[0] === 'days')
+            }
+            onChange={(event) => setDays(event.target.value)}
+          />
+          <TextAreaField
+            label={t('results.reopening.reason')}
+            value={reason}
+            required={reopenRequired('reason')}
+            maxLength={500}
+            aria-invalid={
+              tried &&
+              !checked.success &&
+              checked.error.issues.some((one) => one.path[0] === 'reason')
+            }
+            onChange={(event) => setReason(event.target.value)}
+          />
           {tried && !checked.success && (
             <span role="alert" className="text-destructive">
               {t('results.reopening.missing')}
@@ -587,15 +591,16 @@ function ApplyDialog({
           }}
         >
           <p>{t('results.recalculation.applyText')}</p>
-          <label className="grid gap-1">
-            <span>{t('results.reopening.reason')}</span>
-            <Textarea
-              value={reason}
-              maxLength={500}
-              aria-invalid={tried && !checked.success}
-              onChange={(event) => setReason(event.target.value)}
-            />
-          </label>
+          <TextAreaField
+            label={t('results.reopening.reason')}
+            value={reason}
+            required={requiredOf(closingRecalculationApplyInputSchema, { reason }, 'reason', {
+              read: (values) => ({ reason: values.reason, students }),
+            })}
+            maxLength={500}
+            aria-invalid={tried && !checked.success}
+            onChange={(event) => setReason(event.target.value)}
+          />
           {tried && !checked.success && (
             <span role="alert" className="text-destructive">
               {t('results.reopening.missing')}

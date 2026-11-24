@@ -222,6 +222,16 @@ const NOT_FORM_FIELDS: Readonly<Record<string, { count: number; reason: string }
     count: 2,
     reason: 'Filters of the digest log.',
   },
+  'features/results/close-quarter-dialog.tsx': {
+    count: 2,
+    reason:
+      'The "acknowledge the warnings" and "lock now" ticks are confirmations asked before the close, not fields to fill.',
+  },
+  'features/results/reopening.tsx': {
+    count: 2,
+    reason:
+      'The "acknowledge the warnings" and "lock now" ticks of the close-again dialog are confirmations, not fields to fill.',
+  },
   'features/results/attendance-report-page.tsx': {
     count: 7,
     reason: 'Filters of the attendance report.',

@@ -36,7 +36,7 @@ import {
 } from '@/components/field';
 import { wholeNumber } from '@/components/form/form-messages';
 import { RecordForm } from '@/components/form/record-form';
-import { useRecordForm } from '@/components/form/use-record-form';
+import { useRecordForm, type FieldBinding } from '@/components/form/use-record-form';
 import { ErrorState } from '@/components/states';
 import { Button } from '@/components/ui/button';
 import { useView } from '@/features/access/use-view';
@@ -811,12 +811,7 @@ export function StudentForm({
   );
 }
 
-type Bind = (field: StudentField) => {
-  name: string;
-  value: string;
-  error: string | undefined;
-  onChange: (event: { target: { value: string } }) => void;
-};
+type Bind = (field: StudentField) => FieldBinding;
 
 /**
  * The relative of a new student (`04`, Close relatives: "A student cannot be

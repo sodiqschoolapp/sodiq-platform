@@ -13,6 +13,8 @@
 export interface RequiredKnown {
   /** The branch's today (`YYYY-MM-DD`), once read; `undefined` while it is not. */
   readonly today?: string | undefined;
+  /** The record the form changes is already stored (a rating entry over a stored one). */
+  readonly stored?: boolean | undefined;
 }
 
 /** The values the schema checks, as the form's `read` hands them over. */
@@ -23,6 +25,9 @@ export type RequiredWhen = Readonly<
   Record<string, (values: RequiredValues, known: RequiredKnown) => boolean>
 >;
 
-/** A value the schema reads as "left empty". */
+/** A value the schema reads as "left empty": nothing, no text, or no choice of a list. */
 export const leftEmpty = (value: unknown): boolean =>
-  value === undefined || value === null || value === '';
+  value === undefined ||
+  value === null ||
+  value === '' ||
+  (Array.isArray(value) && value.length === 0);

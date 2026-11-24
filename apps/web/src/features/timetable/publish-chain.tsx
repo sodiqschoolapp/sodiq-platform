@@ -5,6 +5,9 @@ import type {
   PublishImpactAnswer,
 } from '@sodiq/shared';
 import { useTranslation } from 'react-i18next';
+import { RequiredGroup, RequiredMark } from '@/components/field';
+import { filledOnPage } from '@/components/form/page-checks';
+import { requiredOf } from '@/components/form/use-record-form';
 import {
   CHECKBOX,
   CHECKBOX_TARGET,
@@ -12,6 +15,9 @@ import {
   SUBSECTION_TITLE,
 } from '@/components/ui/control';
 import { schoolDateText, weekdayName } from '@/lib/dates';
+
+/** The answer the publish waits for (the route refuses a publish without it), task 11.18. */
+const CHAIN_PAGE = filledOnPage(['chain']);
 
 /**
  * The question of a publish before a later published version, in step 8
@@ -86,6 +92,11 @@ export function PublishChainQuestion({
     }
   };
 
+  // Asked only while the answer is the person's to give (not fixed, may edit).
+  const chainRequired = requiredOf(CHAIN_PAGE, { chain: chosen ?? '' }, 'chain', {
+    read: (typed) => (canEdit && !fixed ? typed : { chain: 'given' }),
+  });
+
   const carriedImpact = (versionId: string) =>
     impact?.carried.find((one) => one.versionId === versionId);
 
@@ -93,6 +104,12 @@ export function PublishChainQuestion({
     <section aria-labelledby="publish-chain" className="grid gap-3" data-chain="true">
       <h3 id="publish-chain" className={SECTION_TITLE}>
         {t('timetable.publish.chain.title')}
+        {chainRequired && (
+          <>
+            {' '}
+            <RequiredMark />
+          </>
+        )}
       </h3>
       <p className="text-sm">
         {fixed ? t('timetable.publish.chain.fixedCarry') : t('timetable.publish.chain.intro')}
@@ -108,8 +125,13 @@ export function PublishChainQuestion({
         ))}
       </ul>
       {!fixed && (
-        <fieldset className="grid gap-2" disabled={!canEdit}>
-          <legend className="sr-only">{t('timetable.publish.chain.title')}</legend>
+        <RequiredGroup
+          className="grid gap-2"
+          disabled={!canEdit}
+          legendClassName="sr-only"
+          label={t('timetable.publish.chain.title')}
+          required={chainRequired}
+        >
           {(['run_until', 'replace', 'carry'] as const).map((chain) => {
             const off = chain === 'carry' && !answer.carryOffered;
             return (
@@ -138,7 +160,7 @@ export function PublishChainQuestion({
               </div>
             );
           })}
-        </fieldset>
+        </RequiredGroup>
       )}
       {answer.changes.length > 0 && (
         <div className="grid gap-1">
