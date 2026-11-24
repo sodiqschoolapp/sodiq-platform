@@ -1,7 +1,7 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import type { AttendanceMark } from './attendance.js';
-import type { Work } from './daily.js';
+import type { Work } from './work.js';
 import { Fraction } from './fraction.js';
 import { CalcInputError } from './input.js';
 import {

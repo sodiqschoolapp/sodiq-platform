@@ -37,7 +37,6 @@ describe('packages/calc source', () => {
         'fraction.ts',
         'work.ts',
         'attendance.ts',
-        'daily.ts',
         'grade.ts',
         'quarter.ts',
         'year.ts',

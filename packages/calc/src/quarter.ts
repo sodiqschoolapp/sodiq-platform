@@ -31,7 +31,7 @@ import {
   type AttendanceMark,
   type AttendanceValues,
 } from './attendance.js';
-import type { Work } from './daily.js';
+import type { Work } from './work.js';
 import { Fraction } from './fraction.js';
 import { gradeOf, type Grade } from './grade.js';
 import { CalcInputError, wholeNumberIn } from './input.js';

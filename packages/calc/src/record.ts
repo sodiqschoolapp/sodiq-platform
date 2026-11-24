@@ -44,7 +44,7 @@ import type {
   QuarterPart,
   RatingExamEntry,
 } from './quarter.js';
-import type { Work } from './daily.js';
+import type { Work } from './work.js';
 import { CALC_VERSION } from './version.js';
 
 export type StoredValue =

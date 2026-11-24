@@ -117,7 +117,7 @@ const CALCULATION: readonly Row[] = [
   {
     case: 'A result lands exactly on a boundary. Weights 10 · 50 · 40, attendance 100, classworks 10, 10 and 25 out of 30, homework 29 out of 80: the exact result is 49.5, grade 3. Ordinary computer arithmetic can give 49.4999 and grade 2.',
     rule: '49d1711be3b64309',
-    tests: [['daily.test.ts'], ['quarter.test.ts']],
+    tests: [['quarter.test.ts']],
     tasks: [],
   },
   {
@@ -160,7 +160,7 @@ const CALCULATION: readonly Row[] = [
     case: 'A lesson has three classworks: 100%, 50% and 60%. The only other classwork of the quarter is 90%.',
     // Rule re-pinned by the spec change of 24 November 2026 (no lesson score).
     rule: '81ea82d9ace019b2',
-    tests: [['daily.test.ts'], ['quarter.test.ts']],
+    tests: [['quarter.test.ts']],
     tasks: [],
   },
   {
