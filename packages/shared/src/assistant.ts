@@ -79,6 +79,8 @@ export const ASSISTANT_REFUSALS = [
   'assistant_daily_limit',
   'assistant_cap_reached',
   'assistant_model_unavailable',
+  /** Task 11.15: the model is busy or did not answer in time, after its retries and fallback. */
+  'assistant_model_busy',
 ] as const;
 
 export type AssistantRefusal = (typeof ASSISTANT_REFUSALS)[number];
@@ -335,6 +337,8 @@ export const assistantSettingsRecordSchema = z.strictObject({
     .refine((roles) => new Set(roles).size === roles.length, { message: 'Each role once.' }),
   dailyLimit: z.int().min(ASSISTANT_DAILY_LIMIT_MIN).max(ASSISTANT_DAILY_LIMIT_MAX),
   monthlyCapDollars: z.int().min(ASSISTANT_CAP_MIN_DOLLARS).max(ASSISTANT_CAP_MAX_DOLLARS),
+  /** Task 11.15: the worldwide fallback (`02`, Where the model runs: "on until switched off"). */
+  fallbackOn: z.boolean(),
 });
 
 export type AssistantSettingsRecord = z.infer<typeof assistantSettingsRecordSchema>;
@@ -344,6 +348,8 @@ export const assistantSettingsSchema = assistantSettingsRecordSchema.extend({
   roles: z.array(assistantRoleSchema),
   /** This calendar month's spend in Asia/Tashkent, in whole cents rounded down (display only). */
   spentThisMonthCents: z.int().nonnegative(),
+  /** Task 11.15: this calendar month's questions with a call through the worldwide endpoint. */
+  fallbackQuestionsThisMonth: z.int().nonnegative(),
   /** Whether the server has a model to call, and which. */
   modelConfigured: z.boolean(),
   model: z.string().nullable(),

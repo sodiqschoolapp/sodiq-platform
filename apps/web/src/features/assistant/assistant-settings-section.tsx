@@ -45,7 +45,7 @@ export function AssistantSettingsSection(): React.JSX.Element | null {
   );
 }
 
-type Field = 'schoolOn' | 'dailyLimit' | 'monthlyCapDollars' | `role_${string}`;
+type Field = 'schoolOn' | 'dailyLimit' | 'monthlyCapDollars' | 'fallbackOn' | `role_${string}`;
 
 function AssistantSettingsForm({ settings }: { settings: AssistantSettings }): React.JSX.Element {
   const { t, i18n } = useTranslation();
@@ -54,6 +54,7 @@ function AssistantSettingsForm({ settings }: { settings: AssistantSettings }): R
     schoolOn: settings.schoolOn ? CHECKED : '',
     dailyLimit: String(settings.dailyLimit),
     monthlyCapDollars: String(settings.monthlyCapDollars),
+    fallbackOn: settings.fallbackOn ? CHECKED : '',
   };
   for (const role of settings.roles) {
     initial[`role_${role}`] = settings.rolesOn.includes(role) ? CHECKED : '';
@@ -70,6 +71,7 @@ function AssistantSettingsForm({ settings }: { settings: AssistantSettings }): R
       ],
       dailyLimit: wholeNumber(typed.dailyLimit),
       monthlyCapDollars: wholeNumber(typed.monthlyCapDollars),
+      fallbackOn: typed.fallbackOn === CHECKED,
     }),
     save: async (record) => {
       const saved = await saveAssistantSettings(record);
@@ -100,6 +102,14 @@ function AssistantSettingsForm({ settings }: { settings: AssistantSettings }): R
         <NumberField
           label={t('assistant.settings.monthlyCap')}
           {...form.bind('monthlyCapDollars')}
+        />
+        {/* Task 11.15 (`02`, Where the model runs): on until switched off. */}
+        <CheckboxField
+          label={t('assistant.settings.fallbackOn')}
+          note={t('assistant.settings.fallbackNote', {
+            number: settings.fallbackQuestionsThisMonth,
+          })}
+          {...form.bind('fallbackOn')}
         />
       </RecordForm>
     </div>

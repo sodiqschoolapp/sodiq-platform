@@ -194,21 +194,30 @@ const environmentSchema = z.object({
     z
       .string()
       .regex(/^[a-z0-9][a-z0-9.-]{1,98}[a-z0-9]$/)
-      .default('gemini-2.5-flash'),
+      .default('gemini-3.5-flash'),
   ),
   // The browser tests only: a scripted model that reads the classes and lists those with no
   // Tutor (`ScriptedModel`), never a call outside the server. Refused outside the environments
   // of the demo clock and on the production address, as DEMO_CLOCK is.
   ASSISTANT_SCRIPTED_MODEL: z.preprocess(emptyAsUnset, z.enum(['0', '1']).optional()),
-  // Micro-dollars per million tokens (plan decision 11; `13`, Running cost: "About $2 per
-  // million tokens in and $10 to $12 out for a middle model").
+  // Micro-dollars per million tokens (plan decision 11 of 11.12). Task 11.15: the defaults are
+  // the prices of gemini-3.5-flash on Google's page of 23 November 2026, the region's (non-global)
+  // price for Frankfurt and the global price for the worldwide endpoint.
   ASSISTANT_PRICE_IN_MICROS: z.preprocess(
     emptyAsUnset,
-    z.coerce.number().int().min(0).max(1_000_000_000).default(2_000_000),
+    z.coerce.number().int().min(0).max(1_000_000_000).default(1_650_000),
   ),
   ASSISTANT_PRICE_OUT_MICROS: z.preprocess(
     emptyAsUnset,
-    z.coerce.number().int().min(0).max(1_000_000_000).default(12_000_000),
+    z.coerce.number().int().min(0).max(1_000_000_000).default(9_900_000),
+  ),
+  ASSISTANT_GLOBAL_PRICE_IN_MICROS: z.preprocess(
+    emptyAsUnset,
+    z.coerce.number().int().min(0).max(1_000_000_000).default(1_500_000),
+  ),
+  ASSISTANT_GLOBAL_PRICE_OUT_MICROS: z.preprocess(
+    emptyAsUnset,
+    z.coerce.number().int().min(0).max(1_000_000_000).default(9_000_000),
   ),
 });
 
@@ -301,13 +310,17 @@ const PROBLEM: Record<VariableName, string> = {
   ASSISTANT_VERTEX_CREDENTIALS:
     'ASSISTANT_VERTEX_CREDENTIALS must be the JSON key of a service account, and is set with ASSISTANT_VERTEX_PROJECT, or unset',
   ASSISTANT_MODEL:
-    'ASSISTANT_MODEL must be the name of a Gemini model, for example gemini-2.5-flash',
+    'ASSISTANT_MODEL must be the name of a Gemini model, for example gemini-3.5-flash',
   ASSISTANT_SCRIPTED_MODEL:
     'ASSISTANT_SCRIPTED_MODEL must be 0 or 1, and 1 only for the browser tests (SENTRY_ENVIRONMENT test or development, never the production address)',
   ASSISTANT_PRICE_IN_MICROS:
     'ASSISTANT_PRICE_IN_MICROS must be a whole number of micro-dollars per million tokens in',
   ASSISTANT_PRICE_OUT_MICROS:
     'ASSISTANT_PRICE_OUT_MICROS must be a whole number of micro-dollars per million tokens out',
+  ASSISTANT_GLOBAL_PRICE_IN_MICROS:
+    'ASSISTANT_GLOBAL_PRICE_IN_MICROS must be a whole number of micro-dollars per million tokens in through the worldwide endpoint',
+  ASSISTANT_GLOBAL_PRICE_OUT_MICROS:
+    'ASSISTANT_GLOBAL_PRICE_OUT_MICROS must be a whole number of micro-dollars per million tokens out through the worldwide endpoint',
 };
 
 export interface AppConfig {
@@ -359,10 +372,17 @@ export interface AssistantConfig {
         credentials: string;
       }
     | undefined;
+  /** The region of Vertex AI (`ASSISTANT_VERTEX_LOCATION`), also while no project is set. */
+  vertexLocation: string;
   model: string;
   /** The browser tests only: the scripted model in place of Gemini. */
   scripted: boolean;
-  /** Micro-dollars per million tokens. */
+  /** Task 11.15: the prices of the region and of the worldwide endpoint. */
+  prices: { region: ModelPrice; global: ModelPrice };
+}
+
+/** Micro-dollars per million tokens. */
+export interface ModelPrice {
   priceInMicros: number;
   priceOutMicros: number;
 }
@@ -577,10 +597,19 @@ export function loadConfig(environment: Record<string, string | undefined>): App
               credentials: data.ASSISTANT_VERTEX_CREDENTIALS,
             }
           : undefined,
+      vertexLocation: data.ASSISTANT_VERTEX_LOCATION,
       model: data.ASSISTANT_MODEL,
       scripted: data.ASSISTANT_SCRIPTED_MODEL === '1',
-      priceInMicros: data.ASSISTANT_PRICE_IN_MICROS,
-      priceOutMicros: data.ASSISTANT_PRICE_OUT_MICROS,
+      prices: {
+        region: {
+          priceInMicros: data.ASSISTANT_PRICE_IN_MICROS,
+          priceOutMicros: data.ASSISTANT_PRICE_OUT_MICROS,
+        },
+        global: {
+          priceInMicros: data.ASSISTANT_GLOBAL_PRICE_IN_MICROS,
+          priceOutMicros: data.ASSISTANT_GLOBAL_PRICE_OUT_MICROS,
+        },
+      },
     },
   };
 }

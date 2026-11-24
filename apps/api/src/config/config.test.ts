@@ -49,10 +49,13 @@ describe('loadConfig', () => {
       telegram: undefined,
       assistant: {
         vertex: undefined,
-        model: 'gemini-2.5-flash',
+        vertexLocation: 'europe-west3',
+        model: 'gemini-3.5-flash',
         scripted: false,
-        priceInMicros: 2_000_000,
-        priceOutMicros: 12_000_000,
+        prices: {
+          region: { priceInMicros: 1_650_000, priceOutMicros: 9_900_000 },
+          global: { priceInMicros: 1_500_000, priceOutMicros: 9_000_000 },
+        },
       },
     });
   });
@@ -115,12 +118,17 @@ describe('loadConfig', () => {
   // Task 11.12: the assistant's model (plan decision 5: Vertex AI, the Frankfurt region).
   describe('the model of the assistant', () => {
     it('has no model by default, in europe-west3, with the prices of 13 (Running cost)', () => {
+      // Task 11.15: gemini-3.5-flash, at its prices on Google's page of 23 November 2026, the
+      // region's (non-global) for Frankfurt and the global price for the worldwide endpoint.
       expect(loadConfig(VALID).assistant).toEqual({
         vertex: undefined,
-        model: 'gemini-2.5-flash',
+        vertexLocation: 'europe-west3',
+        model: 'gemini-3.5-flash',
         scripted: false,
-        priceInMicros: 2_000_000,
-        priceOutMicros: 12_000_000,
+        prices: {
+          region: { priceInMicros: 1_650_000, priceOutMicros: 9_900_000 },
+          global: { priceInMicros: 1_500_000, priceOutMicros: 9_000_000 },
+        },
       });
     });
 
@@ -141,6 +149,37 @@ describe('loadConfig', () => {
       expect(problemOf({ ...VALID, ASSISTANT_VERTEX_CREDENTIALS: '{}' })).toContain(
         'ASSISTANT_VERTEX_PROJECT must',
       );
+    });
+
+    // Task 11.15: the price of each place, read from its own variables.
+    it('reads the prices of the region and of the worldwide endpoint from their own variables', () => {
+      expect(
+        loadConfig({
+          ...VALID,
+          ASSISTANT_PRICE_IN_MICROS: '1',
+          ASSISTANT_PRICE_OUT_MICROS: '2',
+          ASSISTANT_GLOBAL_PRICE_IN_MICROS: '3',
+          ASSISTANT_GLOBAL_PRICE_OUT_MICROS: '4',
+          ASSISTANT_VERTEX_LOCATION: 'europe-west4',
+        }).assistant,
+      ).toEqual(
+        expect.objectContaining({
+          vertexLocation: 'europe-west4',
+          prices: {
+            region: { priceInMicros: 1, priceOutMicros: 2 },
+            global: { priceInMicros: 3, priceOutMicros: 4 },
+          },
+        }),
+      );
+    });
+
+    it.each([
+      ['ASSISTANT_GLOBAL_PRICE_IN_MICROS', '1.5'],
+      ['ASSISTANT_GLOBAL_PRICE_IN_MICROS', '-1'],
+      ['ASSISTANT_GLOBAL_PRICE_OUT_MICROS', 'nine'],
+      ['ASSISTANT_GLOBAL_PRICE_OUT_MICROS', '1000000001'],
+    ])('refuses %s = %s at the start, with its message', (name, value) => {
+      expect(problemOf({ ...VALID, [name]: value })).toContain(`${name} must`);
     });
 
     it('refuses credentials that are not a JSON key at the start, with its message', () => {

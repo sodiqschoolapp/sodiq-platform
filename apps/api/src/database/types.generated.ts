@@ -182,6 +182,7 @@ export interface AssistantModelCalls {
   id: Generated<string>;
   message_id: string;
   model: string;
+  processed_in: string | null;
   tokens_in: number;
   tokens_out: number;
 }
@@ -219,6 +220,7 @@ export interface AssistantProposalSteps {
 
 export interface AssistantSettings {
   daily_limit: Generated<number>;
+  fallback_on: Generated<boolean>;
   id: Generated<boolean>;
   monthly_cap_dollars: Generated<number>;
   roles_on: Generated<string[]>;

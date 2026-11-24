@@ -31,6 +31,7 @@ import {
   assistantConversationsQuery,
   assistantStatusQuery,
 } from './assistant-api';
+import { AnswerText } from './answer-text';
 
 /** The refusals the panel says in a line of its own (`02`, Limits). */
 const REFUSALS = [
@@ -38,6 +39,8 @@ const REFUSALS = [
   'assistant_daily_limit',
   'assistant_cap_reached',
   'assistant_model_unavailable',
+  // Task 11.15: busy or no answer in time, apart from "cannot reach its model".
+  'assistant_model_busy',
 ] as const;
 
 type Refusal = (typeof REFUSALS)[number];
@@ -440,7 +443,7 @@ function MessageView({ message }: { message: AssistantMessage }) {
     case 'answer':
       return (
         <div className="grid gap-2">
-          <p className="break-words whitespace-pre-wrap">{message.text}</p>
+          <AnswerText text={message.text} />
           {message.pages.length > 0 && (
             <ul className="flex flex-wrap gap-x-4 gap-y-1">
               {message.pages.map((page) => {

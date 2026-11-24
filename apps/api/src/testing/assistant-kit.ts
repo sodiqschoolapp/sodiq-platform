@@ -20,6 +20,8 @@ export interface AssistantScene {
   people: ClassesKit;
   model: FakeModel;
   clock: FixedClock;
+  /** Task 11.15: each wait between two calls of the model; a wait moves the clock, never sleeps. */
+  waits: number[];
   north: string;
   south: string;
   northYear: string;
@@ -47,10 +49,16 @@ export async function assistantScene(
   const south = await insertBranch(database.migrator, 'South');
   const clock = new FixedClock(ASSISTANT_NOW);
   const model = new FakeModel();
+  const waits: number[] = [];
   const app = await createTestApp({
     database: database.app,
     clock,
     assistantModel: model,
+    assistantWait: (milliseconds) => {
+      waits.push(milliseconds);
+      clock.advance(milliseconds);
+      return Promise.resolve();
+    },
     listen: true,
     ...(options.routeLists === undefined ? {} : { assistantRouteLists: options.routeLists }),
     ...(options.permissionTable === undefined ? {} : { permissionTable: options.permissionTable }),
@@ -74,6 +82,7 @@ export async function assistantScene(
     people,
     model,
     clock,
+    waits,
     north,
     south,
     northYear,

@@ -287,7 +287,7 @@ describe('the assistant at a power cut: no day off today, a bulk cancel from the
           },
           summary: 'Cancel lesson 3 of 7 Oxford today.',
         },
-      })(request);
+      })(request, 'region');
     },
     answer('Today cannot become a day off. I propose to cancel lesson 3; lesson 2 has begun.'),
   ];
@@ -513,7 +513,7 @@ describe('the assistant at a power cut: no day off today, a bulk cancel from the
               },
               summary: 'Cancel lessons 2 and 3 of 7 Oxford next Monday.',
             },
-          })(request);
+          })(request, 'region');
         },
         answer('Proposed.'),
       );
@@ -607,7 +607,7 @@ describe('the assistant at a power cut: no day off today, a bulk cancel from the
               },
               summary: 'Cancel English of 7 Oxford.',
             },
-          })(request);
+          })(request, 'region');
         },
         answer('Proposed.'),
       );

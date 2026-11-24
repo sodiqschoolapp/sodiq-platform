@@ -65,6 +65,21 @@ The owner's answers to the decided-ahead questions for Phase 10, given in chat o
 19. Production deploys only after 18:00 or at the weekend, Tashkent time.
 20. The test environment stays after go-live; every change is tried there first.
 
+## 24 November 2026: the assistant on the live model (task 11.15)
+
+Plan approved on pull request #379 with corrections 1 (one plan in the body), 2 (prices keyed by the place), 3 (the month of the count is the cap's month) and 4 (decision 4a among the Look first items). Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first.** A 504 `DEADLINE_EXCEEDED` is "no answer in time": retried, sent to the fallback, shown as "busy"; a 500 and a network failure are "cannot reach its model", never retried and never sent to `global` | `02`: "When Frankfurt is busy or does not answer"; the build plan's "any other failure" keeps the 500 (decision 1) |
+| **Look first.** Every call of a question goes first to Frankfurt, also after an earlier turn went to `global` | `02`: "Each request goes first to the model in Frankfurt" (decision 2) |
+| **Look first.** Every attempt is a row of `assistant_model_calls` with its place, 0 tokens and cost 0 when nothing is billed | "three 429 in a row … every call counted"; the spend sums costs only (decision 3) |
+| **Look first.** Once Frankfurt's attempts ended busy, the question ends "busy" whatever the fallback answers | `edge/people-roles-accounts`, "Frankfurt is busy at 09:00": "Only when that fails too does the panel say the model is busy" (decision 4a) |
+| The stored place is the Google location sent to (`europe-west3`, `global`); rows stored before keep null under a `not valid` check | `02`: each answer records where it was processed; stop-list item 3 (decision 4) |
+| A turn that would pass the 240 s limit is not sent and the question ends "busy"; waits 2 s then 5 s; at most 16 calls a question | Build plan item (2) (decisions 4b, 5) |
+| The fallback switch is read once at the start of a question; the place is held on each call row and not shown in the panel | `edge`, "From the next question"; `02` asks for the record and the count (decisions 6, 7) |
+| Only `- `, `* `, `1. ` lines and `**…**` of an answer are drawn, from text nodes; only Google's upper-case status word is logged; the eval's "Frankfurt only" is its own database's switch; in the eval's rule the Uzbek cases in Latin and Cyrillic count together | Decisions 8, 9, 10, 4c |
+
 ## 22 November 2026: the assistant for teachers (task 11.14)
 
 Plan approved on pull request #377 with corrections 1 (the base of an item save is per field, as the route decides; a save of another field meanwhile is merged) and 2 (a refusal test for a create and a save on another teacher's plan). Flagged on issue #42.

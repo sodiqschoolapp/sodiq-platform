@@ -209,13 +209,18 @@ describe('the assistant in the top bar', () => {
       'assistant_daily_limit',
       'assistant_cap_reached',
       'assistant_model_unavailable',
+      // Task 11.15: "busy, try again in a minute", apart from "cannot reach its model".
+      'assistant_model_busy',
     ] as const) {
       fakeApi({
         'GET /api/auth/session': () => json(admin()),
         'GET /api/assistant/status': () => json(ON),
         'GET /api/assistant/conversations': () => json({ conversations: [] }),
         'POST /api/assistant/questions': () =>
-          refusal(code, code === 'assistant_model_unavailable' ? 503 : 409),
+          refusal(
+            code,
+            code === 'assistant_model_unavailable' || code === 'assistant_model_busy' ? 503 : 409,
+          ),
       });
       renderApp('/', 'en');
       const panel = await openPanel();
@@ -229,6 +234,79 @@ describe('the assistant in the top bar', () => {
       );
       cleanup();
     }
+  });
+
+  it('shows bold words and list lines of an answer as such, and any HTML as its characters (task 11.15)', async () => {
+    const answered = conversation([
+      message(1, { kind: 'question', text: 'How many?' }),
+      message(2, {
+        kind: 'answer',
+        text: 'There are **36 students**:\n* Oxford A\n* Oxford B\n1. First\n2. Second\nAnd <b>raw</b> text.',
+        pages: [],
+        lessons: [],
+      }),
+    ]);
+    fakeApi({
+      'GET /api/auth/session': () => json(admin()),
+      'GET /api/assistant/status': () => json(ON),
+      'GET /api/assistant/conversations': () => json({ conversations: [] }),
+      'POST /api/assistant/questions': () => json({ conversation: answered }),
+      [`GET /api/assistant/conversations/${uid(1)}`]: () => json(answered),
+    });
+    renderApp('/', 'en');
+    const panel = await openPanel();
+    fireEvent.change(panel.getByLabelText(en.assistant.question), {
+      target: { value: 'How many?' },
+    });
+    fireEvent.click(panel.getByRole('button', { name: en.assistant.send }));
+    const strong = await panel.findByText('36 students');
+    expect(strong.tagName).toBe('STRONG');
+    const bullets = document.querySelector('aside ul.list-disc');
+    expect([...(bullets?.querySelectorAll('li') ?? [])].map((li) => li.textContent)).toEqual([
+      'Oxford A',
+      'Oxford B',
+    ]);
+    const numbers = document.querySelector('aside ol.list-decimal');
+    expect([...(numbers?.querySelectorAll('li') ?? [])].map((li) => li.textContent)).toEqual([
+      'First',
+      'Second',
+    ]);
+    expect(await panel.findByText('And <b>raw</b> text.')).toBeTruthy();
+    expect(document.querySelector('aside b')).toBeNull();
+    expect(document.body.innerHTML).not.toContain('**');
+  });
+
+  it('shows the busy text for a stored busy notice of a conversation opened again (task 11.15)', async () => {
+    const stored = conversation([
+      message(1, { kind: 'question', text: 'Earlier.' }),
+      message(2, { kind: 'notice', code: 'assistant_model_busy' }),
+      message(3, { kind: 'question', text: 'Before.' }),
+      message(4, { kind: 'notice', code: 'assistant_model_unavailable' }),
+    ]);
+    fakeApi({
+      'GET /api/auth/session': () => json(admin()),
+      'GET /api/assistant/status': () => json(ON),
+      'GET /api/assistant/conversations': () =>
+        json({
+          conversations: [
+            {
+              id: stored.id,
+              branchId: stored.branchId,
+              branchName: stored.branchName,
+              role: 'super_admin',
+              title: 'Earlier question',
+              createdAt: stored.createdAt,
+              lastActivityAt: stored.lastActivityAt,
+            },
+          ],
+        }),
+      [`GET /api/assistant/conversations/${uid(1)}`]: () => json(stored),
+    });
+    renderApp('/', 'en');
+    const panel = await openPanel();
+    fireEvent.click(await panel.findByRole('button', { name: /Earlier question/ }));
+    expect(await panel.findByText(en.assistant.refusals.assistant_model_busy)).toBeTruthy();
+    expect(panel.getByText(en.assistant.refusals.assistant_model_unavailable)).toBeTruthy();
   });
 
   it('opens a conversation of another branch read only, with no question field', async () => {
@@ -285,7 +363,9 @@ describe('the assistant’s settings and conversations of the Super Admin', () =
     roles: ['super_admin'],
     spentThisMonthCents: 1234,
     modelConfigured: true,
-    model: 'gemini-2.5-flash',
+    model: 'gemini-3.5-flash',
+    fallbackOn: true,
+    fallbackQuestionsThisMonth: 2,
   };
 
   it('switches the assistant on for the school and the Super Admin, with the limit and the cap', async () => {
@@ -330,7 +410,48 @@ describe('the assistant’s settings and conversations of the Super Admin', () =
         rolesOn: ['super_admin'],
         dailyLimit: 12,
         monthlyCapDollars: 300,
+        fallbackOn: true,
       });
+    });
+  });
+
+  it('shows the worldwide fallback on until switched off, with the questions of the month, and switches it off (task 11.15)', async () => {
+    const calls = fakeApi({
+      'GET /api/auth/session': () => json(admin()),
+      'GET /api/setup/settings': () =>
+        json({
+          editDays: 7,
+          lowResult: 50,
+          resultDrop: 15,
+          attendancePercent: 80,
+          absencesInRow: 3,
+          classDailyLessons: null,
+          planWindows: true,
+        }),
+      'GET /api/setup/attendance-values': () => json({ years: [] }),
+      'GET /api/setup/school-settings/digest': () =>
+        json({ sendAt: '19:00', quietFrom: '21:00', quietUntil: '08:00' }),
+      'GET /api/setup/school-settings/assistant': () => json(settings),
+      'PUT /api/setup/school-settings/assistant': (body) =>
+        json({ ...settings, ...(body as object) }),
+    });
+    renderApp('/setup/settings', 'en');
+    const section = within(
+      await screen.findByRole('region', { name: en.assistant.settings.title }),
+    );
+    const fallback = await section.findByLabelText<HTMLInputElement>(
+      en.assistant.settings.fallbackOn,
+    );
+    expect(fallback.checked).toBe(true);
+    expect(
+      section.getByText(en.assistant.settings.fallbackNote.replace('{{number}}', '2')),
+    ).toBeTruthy();
+    fireEvent.click(fallback);
+    fireEvent.click(section.getByRole('button', { name: en.form.save }));
+    await waitFor(() => {
+      expect(
+        calls.find((call) => call.route === 'PUT /api/setup/school-settings/assistant')?.body,
+      ).toEqual(expect.objectContaining({ fallbackOn: false }));
     });
   });
 

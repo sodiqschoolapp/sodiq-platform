@@ -14,6 +14,7 @@ import { AssistantProposals } from './assistant-proposals.service.js';
 import { AssistantDispatcher } from './dispatcher.js';
 import { GeminiModel } from './gemini-model.js';
 import { ASSISTANT_MODEL } from './model.js';
+import { ASSISTANT_WAIT, ModelCaller, REAL_WAIT } from './model-caller.js';
 import { ScriptedModel } from './scripted-model.js';
 
 /**
@@ -37,12 +38,11 @@ import { ScriptedModel } from './scripted-model.js';
     },
     {
       provide: ASSISTANT_PRICES,
-      useFactory: (config: AppConfig) => ({
-        priceInMicros: config.assistant.priceInMicros,
-        priceOutMicros: config.assistant.priceOutMicros,
-      }),
+      useFactory: (config: AppConfig) => config.assistant.prices,
       inject: [CONFIG],
     },
+    ModelCaller,
+    { provide: ASSISTANT_WAIT, useValue: REAL_WAIT },
   ],
 })
 export class AssistantModule {}
