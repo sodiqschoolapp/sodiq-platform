@@ -17,6 +17,7 @@ const CONFIG: AssistantConfig = {
   vertexLocation: 'europe-west3',
   model: 'gemini-3.5-flash',
   scripted: false,
+  scriptedDelayMs: 0,
   prices: {
     region: { priceInMicros: 1_650_000, priceOutMicros: 9_900_000 },
     global: { priceInMicros: 1_500_000, priceOutMicros: 9_000_000 },
@@ -31,7 +32,21 @@ function modelWith(generate: (location: string) => Promise<unknown>) {
     made.push(options);
     const location = options.location ?? '';
     return {
-      models: { generateContent: () => generate(location) },
+      // Task 11.16: the streaming call; an answer given as a list is streamed chunk by chunk, an
+      // error inside the list is thrown midway.
+      models: {
+        generateContentStream: async () => {
+          const answer = await generate(location);
+          const chunks = Array.isArray(answer) ? (answer as unknown[]) : [answer];
+          return (async function* () {
+            for (const chunk of chunks) {
+              if (chunk instanceof Error) throw chunk;
+              await Promise.resolve();
+              yield chunk;
+            }
+          })();
+        },
+      },
     } as unknown as GoogleGenAI;
   });
   return { model, made };
@@ -131,6 +146,57 @@ describe('the Gemini model', () => {
       kind: 'unreachable',
       code: null,
       status: 'NETWORK',
+    });
+  });
+
+  // Task 11.16 (`02`, While it works: "the answer as it is written").
+  it('gives each text piece to the sink as it comes, never a thought, and bills the last usage', async () => {
+    const { model } = modelWith(() =>
+      Promise.resolve([
+        { candidates: [{ content: { parts: [{ text: 'Thinking…', thought: true }] } }] },
+        { candidates: [{ content: { parts: [{ text: 'Two classes ' }] } }] },
+        {
+          candidates: [{ content: { parts: [{ text: 'have no Tutor.' }] } }],
+          usageMetadata: { promptTokenCount: 30, candidatesTokenCount: 5, thoughtsTokenCount: 4 },
+          modelVersion: 'gemini-3.5-flash-002',
+        },
+      ]),
+    );
+    const pieces: string[] = [];
+    const reply = await model.generate(REQUEST, 'region', (piece) => pieces.push(piece));
+    expect(pieces).toEqual(['Two classes ', 'have no Tutor.']);
+    expect(reply).toEqual({
+      text: 'Two classes have no Tutor.',
+      calls: [],
+      tokensIn: 30,
+      tokensOut: 9,
+      model: 'gemini-3.5-flash-002',
+    });
+  });
+
+  it('reads a stream that fails midway as a failure of the call, with the tokens it said', async () => {
+    const { model } = modelWith(() =>
+      Promise.resolve([
+        {
+          candidates: [{ content: { parts: [{ text: 'Half ' }] } }],
+          usageMetadata: { promptTokenCount: 12, candidatesTokenCount: 1 },
+        },
+        apiError(503, { error: { code: 503, status: 'UNAVAILABLE' } }),
+      ]),
+    );
+    const failed = await model
+      .generate(REQUEST, 'region', () => undefined)
+      .catch((error: unknown) => error);
+    expect(failed).toBeInstanceOf(ModelUnavailable);
+    expect((failed as ModelUnavailable).reason).toEqual({
+      kind: 'busy',
+      code: 503,
+      status: 'UNAVAILABLE',
+    });
+    expect((failed as ModelUnavailable).billed).toEqual({
+      tokensIn: 12,
+      tokensOut: 1,
+      model: 'gemini-3.5-flash',
     });
   });
 });

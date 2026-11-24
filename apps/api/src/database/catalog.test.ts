@@ -241,6 +241,8 @@ const SECURITY_DEFINER_FUNCTIONS: Record<string, string> = {
     "The number of questions of the whole school between two moments with a call of the assistant's model through the worldwide endpoint, a count asked by the Settings, whose request sees no branch (02, Assistant, Where the model runs; task 11.15, plan of pull request #379).",
   'assistant_questions_between(uuid,timestamp with time zone,timestamp with time zone)':
     'The number of questions an account asked the assistant between two moments in every branch, a count asked by the daily limit per person, whose request sees one branch (02, Assistant, Limits; task 11.12, plan of pull request #374).',
+  'assistant_question_running(uuid,timestamp with time zone)':
+    'Whether an account has a question of the assistant, in any branch, asked since a moment with no answer and no notice after it, a yes or no asked by a new question, whose request sees one branch (02, Assistant, While it works; edge/people-roles-accounts, "… or in two tabs"; task 11.16, plan of pull request #381).',
   'assistant_spend_between(timestamp with time zone,timestamp with time zone)':
     "The sum in micro-dollars of the assistant's model calls of the whole school between two moments, a sum asked by the monthly cap, whose request sees one branch (02, Assistant, Limits; task 11.12, plan of pull request #374).",
   'student_sex_rows_elsewhere(uuid,text)':

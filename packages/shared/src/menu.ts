@@ -16,12 +16,14 @@ export const MENU_ITEMS = [
   'plans',
   'requests',
   'audit_log',
+  // Task 11.16: the Assistant page (`02`, Assistant, Where).
+  'assistant',
 ] as const;
 
 export type MenuItem = (typeof MENU_ITEMS)[number];
 
 /** `12`: "a left menu that shows only what the role can use, with no more than about ten items". */
-export const MENU_MAX_ITEMS = 10;
+export const MENU_MAX_ITEMS = 11;
 
 const MANAGEMENT: readonly MenuItem[] = [
   'home',
@@ -55,9 +57,11 @@ const HEAD_TEACHER: readonly MenuItem[] = [
  * the Principal's items are all view only.
  */
 export const MENU: Readonly<Record<Role, readonly MenuItem[]>> = Object.freeze({
-  super_admin: [...MANAGEMENT, 'requests', 'audit_log'],
+  // Task 11.16: Assistant last in the rows of the three roles of the assistant (`02`, Where);
+  // the Super Admin's row is then eleven items, "about ten" (plan decision 1, Look first).
+  super_admin: [...MANAGEMENT, 'requests', 'audit_log', 'assistant'],
   principal: [...MANAGEMENT, 'audit_log'],
-  academic_vice_principal: [...MANAGEMENT, 'requests', 'audit_log'],
+  academic_vice_principal: [...MANAGEMENT, 'requests', 'audit_log', 'assistant'],
   spiritual_vice_principal: ['home', 'people', 'classes', 'timetable', 'journal', 'results'],
   head_tutor: ['home', 'people', 'classes', 'timetable', 'journal', 'results'],
   // Own classes (task 3.1c, decision 4 of pull request #90, Look first).
@@ -66,7 +70,7 @@ export const MENU: Readonly<Record<Role, readonly MenuItem[]>> = Object.freeze({
   class_teacher: ['home', 'people', 'classes', 'timetable', 'journal', 'results'],
   senior_head_teacher: HEAD_TEACHER,
   head_teacher: HEAD_TEACHER,
-  teacher: ['home', 'timetable', 'journal', 'plans', 'results'],
+  teacher: ['home', 'timetable', 'journal', 'plans', 'results', 'assistant'],
   student: ['home'],
   parent: ['home'],
   hr: ['home'],

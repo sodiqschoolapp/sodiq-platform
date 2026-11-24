@@ -195,7 +195,7 @@ describe('the fields that never go to the model, through every tool of the Super
       const response = await ask(scene, scene.admin, scene.north, {
         text: `Read batch ${String(start)}.`,
       });
-      expect(response.status, JSON.stringify(response.body).slice(0, 400)).toBe(200);
+      expect(response.status, JSON.stringify(response.body).slice(0, 400)).toBe(202);
     }
     const stored = await scene.database.migrator
       .selectFrom('assistant_messages')

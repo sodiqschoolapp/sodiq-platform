@@ -113,7 +113,7 @@ describe('Confirm and Decline: refusals, 404s and the mark of a step', () => {
       role,
       ...(conversationId === undefined ? {} : { conversationId }),
     });
-    expect(response.status, JSON.stringify(response.body).slice(0, 300)).toBe(200);
+    expect(response.status, JSON.stringify(response.body).slice(0, 300)).toBe(202);
     const conversation = (
       response.body as { conversation: { id: string; proposals: { id: string }[] } }
     ).conversation;

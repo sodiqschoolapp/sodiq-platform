@@ -38,5 +38,8 @@ process.env.TELEGRAM_BOT_TOKEN = E2E_TELEGRAM_BOT_TOKEN;
 // Task 11.12: the scripted model of the assistant, which never leaves the server (the browser
 // tests have no Google key, and no session sees one).
 process.env.ASSISTANT_SCRIPTED_MODEL = '1';
+// Task 11.16: the scripted model waits before its answer, so the browser test sees the question,
+// the empty box and "Reading: …" while it works, a second question refused, and a page left.
+process.env.ASSISTANT_SCRIPTED_DELAY_MS = '4000';
 await import('../../main.js');
 await import('../../worker.js');

@@ -266,6 +266,11 @@ const PAGE_READS: Record<
     reads: () => ['/api/journal/unlocks?view=deciding', '/api/plans/requests?view=deciding'],
   },
   audit_log: { role: 'academic_vice_principal', reads: () => ['/api/audit/entries'] },
+  // Task 11.16: the Assistant page, its status and the person's conversations.
+  assistant: {
+    role: 'teacher',
+    reads: () => ['/api/assistant/status?role=teacher', '/api/assistant/conversations'],
+  },
 };
 
 /** The kit of the build phase; `t` is the kit of the phase running now. */

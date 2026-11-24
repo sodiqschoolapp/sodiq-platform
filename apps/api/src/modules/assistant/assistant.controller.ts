@@ -84,9 +84,12 @@ export class AssistantController {
     return this.conversations.ownOne(access, session.assignments, params.id);
   }
 
-  /** A question; the answer holds the conversation with its new messages. */
+  /**
+   * A question. Task 11.16 (`02`, While it works): 202 at once with the conversation holding the
+   * question; the answer is written after, and the person's tabs hear of it live.
+   */
   @Post('questions')
-  @HttpCode(200)
+  @HttpCode(202)
   @Requires('assistant', 'view')
   @Returns(assistantAnswerSchema)
   ask(

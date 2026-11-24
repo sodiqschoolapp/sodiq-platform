@@ -117,11 +117,17 @@ describe('the menu and the home page of each role', () => {
       'GET /api/people/students/no-class': () => json({ count: 0 }),
       'GET /api/people/relatives/no-valid-phone': () => json({ count: 0 }),
       'GET /api/timetable/home': () => json(NO_LESSONS),
+      // Task 11.16: the Assistant page shows while the assistant is on for the chosen role.
+      'GET /api/assistant/status': () =>
+        json({ available: true, refusal: null, questionsLeftToday: 30 }),
     });
 
     renderApp('/');
 
     await heading(en.home.title);
+    if (MENU[role].includes('assistant')) {
+      await side().findByRole('link', { name: en.menu.assistant });
+    }
     const links = side().getAllByRole('link');
     // The row of the table. "Timetable" of the six roles that see no draft
     // opens the timetable views (task 5.9a, decision 2): the area `timetable`

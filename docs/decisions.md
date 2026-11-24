@@ -78,7 +78,24 @@ The owner's request of 24 November 2026, in chat, built on its own branch beside
 | A return adds its contract unless the newest row already is that contract (the same number ignoring case, or no number and the same date, or "no contract"); older rows are never compared | Keeps "a return cancelled and made again names the same paper contract" without the unique index, and the contract of each return is the current one (spec review of this change) |
 | **Look first.** A merge carries every row as before, so the newest row (the merged record's when it is newer) is the contract afterwards, also a row of "no contract"; the preview lists every row, "No contract" included, so the Super Admin sees it, and the contract can be edited after the merge | The rule "the newest row is the contract" is the one the edit, the export and the profile read; the preview shows the outcome (spec review of this change, finding 4) |
 | The personal-data report leaves the row of "no contract" out; the Contract tab and the merge preview show it as "No contract" | A row with no data is not data held; the tab and the preview show what the student's contract is |
-| The migration takes number 0182 and is merged after task 11.16 (pull request #381, which holds 0181) | The runner refuses a lower number after a higher one is applied (`migrate.ts`, `pendingFiles`) |
+| The migration takes number 0182, after 0181 of task 11.16 (pull request #381, merged first) | The runner refuses a lower number after a higher one is applied (`migrate.ts`, `pendingFiles`) |
+
+## 24 November 2026: the assistant's live answers and its page (task 11.16)
+
+Plan approved on pull request #381 with corrections 1 (one injected clock for the window: the question's stored moment, every write's check, `working.until` and the call budget), 2 (the scripted delay through the injected wait, with a config test), 3 (a proposal case in the test of 0181) and 4 (a session signed out midway hears nothing more). Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first.** `MENU_MAX_ITEMS` is 11: the Super Admin's row was ten items and Assistant joins it | `02`, Where: "in the menu of the three roles"; `12`: "about ten" (decision 1) |
+| **Look first.** The tests that expected 503 from the questions route after a model failure expect 202 and the stored notice; no model set up stays 503 before anything is stored | `02`, While it works: the question shows at once, so the model's failure cannot be the request's answer (decision 2) |
+| **Look first.** The answer is written in the API process after the request (`AssistantWork`), not as a job; the shutdown waits up to 25 s; a question cut off shows "No answer came" once its window is past | The reads go through the API's own routes with the person's session, which the worker does not serve (decision 3) |
+| **Look first.** The answer's words go through `pg_notify` to the asking account's tabs; a read's data never goes | `02`: "the answer as it is written"; the channel is the only way to a tab on the other API server (decision 5) |
+| "Being answered" is person-wide (0181, a SECURITY DEFINER yes or no), for 270 s after the question's stored moment on the injected clock; every write of the work takes the person's lock and checks the window first, so nothing is written past it | Build plan item (3); review of the plan, must fix 1 and 2 (decision 4) |
+| Gemini's streaming call; `reset` when a call that wrote text fails or a turn that wrote text reads instead; the live listener hears its payloads one after another, so a tab gets them in commit order | `02`, While it works (decision 6; found by the test of the order) |
+| The questions route answers 202 with the conversation; the page is `/assistant` (the open conversation in the address); the menu item is last; the panel and the page share one chat | Decisions 7, 8, 9 |
+| A failure of the work that is not the model's ends in the notice `assistant_answer_failed`, its error's name logged and nothing of its message | `02`, Limits: the panel says so (found in the build) |
+| Before each call of the model the work checks that the asking session is still in force (`Sessions.peek`); a session over ends it with `assistant_answer_failed`; a write also stops when a later question of the conversation is stored, read after the person's lock | `02`: "with the person's session"; permission review should fix 1; code review must fix 1 |
+| A chosen role without the assistant on `/assistant` sees `problems.noAccessPart`; the assistant switched off for the role shows its "switched off" line | `.claude/rules/web.md`; `02`, Limits |
 
 ## 24 November 2026: the assistant on the live model (task 11.15)
 

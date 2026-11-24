@@ -33,6 +33,8 @@ const EXPECTED: Record<Role, MenuItem[]> = {
     'plans',
     'requests',
     'audit_log',
+    // Task 11.16 (plan decision 1, Look first): the Assistant page.
+    'assistant',
   ],
   principal: [
     'home',
@@ -56,6 +58,7 @@ const EXPECTED: Record<Role, MenuItem[]> = {
     'plans',
     'requests',
     'audit_log',
+    'assistant',
   ],
   spiritual_vice_principal: ['home', 'people', 'classes', 'timetable', 'journal', 'results'],
   head_tutor: ['home', 'people', 'classes', 'timetable', 'journal', 'results'],
@@ -83,7 +86,7 @@ const EXPECTED: Record<Role, MenuItem[]> = {
     'plans',
     'requests',
   ],
-  teacher: ['home', 'timetable', 'journal', 'plans', 'results'],
+  teacher: ['home', 'timetable', 'journal', 'plans', 'results', 'assistant'],
   student: ['home'],
   parent: ['home'],
   hr: ['home'],
@@ -101,7 +104,8 @@ describe('the menu per role', () => {
     }
   });
 
-  it('has no more than about ten items, each once, home first', () => {
+  it('has no more than about ten items (eleven since 11.16), each once, home first', () => {
+    expect(MENU_MAX_ITEMS).toBe(11);
     for (const role of ROLES) {
       const items = MENU[role];
       expect(items.length, role).toBeLessThanOrEqual(MENU_MAX_ITEMS);

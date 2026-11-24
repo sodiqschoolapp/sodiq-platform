@@ -12,7 +12,20 @@ Newest entry first. Each finished task adds an entry: what was built, what was l
 The next sessions must know:
 
 - A student's newest `student_contracts` row with no date is "no contract"; read it with `contractOf` (`students.service.ts`). Answer 22 is replaced (`docs/decisions.md`).
-- 0182 is merged after task 11.16 (0181); a later migration takes 0183.
+- 0182 follows 0181 of task 11.16; the next migration takes 0183.
+
+## 24 November 2026: task 11.16, the assistant's live answers and its page
+
+- **A question is taken at once** (`POST /api/assistant/questions` answers 202 with the conversation); the answer is written after, in the API process (`assistant/assistant-work.ts`), within an answer window of 270 s from the question's stored moment: every write takes the person's lock and checks the window (`assistant.engine.ts` `write`). A second question of the person in any branch while one is answered: 409 `assistant_question_running` (0181, `assistant_question_running`).
+- **Live progress** to the asking account's tabs through the notifications' socket (`assistant.progress`: question, read with its group, text pieces, reset, done); Gemini streams (`generateContentStream`). The listener now hears its payloads in order.
+- **The page Assistant** (`/assistant`, menu of the three roles while the assistant is on), one chat with the panel (`assistant-chat.tsx`); two steps on a phone; "No answer came" for a cut-off question.
+
+Left out: nothing of the task.
+
+The next sessions must know:
+
+- API tests ask through the kit's `ask` (waits for the work, reads the conversation again) or `send` + `settle`; `held(turn)` holds a fake model turn, `streamed` and `streamsThenFails` script text pieces; `noticeOf` reads the notice a question ended in.
+- The local `sodiq_dev` applied a first body of 0181 (`>=`); the merged file compares `>`. Fresh databases and CI get the merged one; re-applying it locally waits for the owner (`.claude/rules/database.md`).
 
 ## 24 November 2026: task 11.15, the assistant on the live model
 

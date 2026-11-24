@@ -1,55 +1,22 @@
 import {
-  ASSISTANT_QUESTION_MAX_LENGTH,
   isAssistantRole,
   PERMISSIONS,
   permits,
-  type AssistantConversation,
-  type AssistantMessage,
   type AssistantRole,
   type AssistantStatus,
 } from '@sodiq/shared';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
-import { ApiFailure } from '@/api/failure';
-import { FailureAlert } from '@/components/failure-alert';
-import { AddCommentIcon, ChatIcon, CloseIcon, SendIcon } from '@/components/icons';
+import { AddCommentIcon, ChatIcon, CloseIcon, FullscreenIcon } from '@/components/icons';
 import { ErrorState, LoadingOutline } from '@/components/states';
-import { Button } from '@/components/ui/button';
-import { FIELD, SECTION_TITLE } from '@/components/ui/control';
-import { BUILT_PAGES } from '@/features/access/menu-pages';
-import { schoolDateText } from '@/lib/dates';
+import { Button, buttonVariants } from '@/components/ui/button';
+import { SECTION_TITLE } from '@/components/ui/control';
 import { useMayView, useView } from '@/features/access/use-view';
-import { ProposalCard } from './proposal-card';
-import {
-  ASSISTANT_KEY,
-  askAssistant,
-  decideProposal,
-  assistantConversationQuery,
-  assistantConversationsQuery,
-  assistantStatusQuery,
-} from './assistant-api';
-import { AnswerText } from './answer-text';
-
-/** The refusals the panel says in a line of its own (`02`, Limits). */
-const REFUSALS = [
-  'assistant_off',
-  'assistant_daily_limit',
-  'assistant_cap_reached',
-  'assistant_model_unavailable',
-  // Task 11.15: busy or no answer in time, apart from "cannot reach its model".
-  'assistant_model_busy',
-] as const;
-
-type Refusal = (typeof REFUSALS)[number];
-
-/** The refusal of a limit or of the model that a failed question answered, or `null`. */
-function refusalOf(error: unknown): Refusal | null {
-  if (!(error instanceof ApiFailure)) return null;
-  return REFUSALS.find((code) => code === error.code) ?? null;
-}
+import { AssistantChat } from './assistant-chat';
+import { assistantConversationsQuery, assistantStatusQuery } from './assistant-api';
 
 /**
  * The assistant's button in the top bar (task 11.12; `02`, Assistant: "A button in the top bar
@@ -124,10 +91,13 @@ interface PanelProps {
   onRetryStatus: () => void;
   onClose: () => void;
   text: string;
-  onTextChange: (text: string) => void;
+  onTextChange: Dispatch<SetStateAction<string>>;
 }
 
-/** The chat panel: the own conversations, the open one, and the question. */
+/**
+ * The chat panel: the own conversations, the open one, and the question. Task 11.16: the chat is
+ * the one the Assistant page draws, and the header links to that page.
+ */
 export function AssistantPanel({
   role,
   status,
@@ -135,15 +105,12 @@ export function AssistantPanel({
   onRetryStatus,
   onClose,
   text,
-  onTextChange: setText,
+  onTextChange,
 }: PanelProps) {
   const { t } = useTranslation();
-  const { branchId } = useView();
-  const queryClient = useQueryClient();
   const heading = useRef<HTMLHeadingElement>(null);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const conversations = useQuery(assistantConversationsQuery(true));
-  const conversation = useQuery(assistantConversationQuery(conversationId));
 
   useEffect(() => {
     heading.current?.focus();
@@ -159,55 +126,6 @@ export function AssistantPanel({
     };
   }, [onClose]);
 
-  const ask = useMutation({
-    mutationFn: (question: string) =>
-      askAssistant({
-        role,
-        text: question,
-        ...(conversationId === null ? {} : { conversationId }),
-      }),
-    onSuccess: (answer) => {
-      // The typed question is cleared only once the server took it (`12`, No lost work).
-      setText('');
-      setConversationId(answer.conversation.id);
-      queryClient.setQueryData(
-        assistantConversationQuery(answer.conversation.id).queryKey,
-        answer.conversation,
-      );
-    },
-    onSettled: async () => {
-      await queryClient.invalidateQueries({ queryKey: [...ASSISTANT_KEY, 'status'] });
-      await queryClient.invalidateQueries({ queryKey: [...ASSISTANT_KEY, 'conversations'] });
-    },
-  });
-
-  // Task 11.13: Confirm or Decline; the answer is the conversation with each step's outcome.
-  const decide = useMutation({
-    mutationFn: (input: { id: string; which: 'confirm' | 'decline' }) =>
-      decideProposal({ ...input, role }),
-    onSuccess: (answer) => {
-      queryClient.setQueryData(assistantConversationQuery(answer.id).queryKey, answer);
-    },
-    onError: async () => {
-      // An expired, decided or superseded proposal: read the conversation again.
-      await queryClient.invalidateQueries({ queryKey: [...ASSISTANT_KEY, 'conversation'] });
-    },
-  });
-
-  const open = conversation.data;
-  // A conversation of another branch or role is read only: a question runs in this tab's
-  // branch and role (plan decision 9).
-  const readOnly = open !== undefined && (open.branchId !== branchId || open.role !== role);
-  const refusedBy = refusalOf(ask.error);
-  const refusal = refusedBy ?? status?.refusal ?? null;
-
-  const submit = (event: FormEvent): void => {
-    event.preventDefault();
-    const question = text.trim();
-    if (question === '' || ask.isPending) return;
-    ask.mutate(question);
-  };
-
   return (
     <aside
       aria-labelledby="assistant-title"
@@ -218,6 +136,15 @@ export function AssistantPanel({
         <h2 id="assistant-title" ref={heading} tabIndex={-1} className={`${SECTION_TITLE} mr-auto`}>
           {t('assistant.title')}
         </h2>
+        <Link
+          to="/assistant"
+          search={conversationId === null ? {} : { conversation: conversationId }}
+          className={`${buttonVariants({ variant: 'ghost', size: 'icon' })} max-sm:size-11`}
+          aria-label={t('assistant.openPage')}
+          onClick={onClose}
+        >
+          <FullscreenIcon aria-hidden />
+        </Link>
         <Button
           variant="ghost"
           size="icon"
@@ -225,7 +152,6 @@ export function AssistantPanel({
           aria-label={t('assistant.newConversation')}
           onClick={() => {
             setConversationId(null);
-            ask.reset();
           }}
         >
           <AddCommentIcon aria-hidden />
@@ -240,11 +166,20 @@ export function AssistantPanel({
           <CloseIcon aria-hidden />
         </Button>
       </header>
-      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-6 py-4 max-sm:px-4">
-        {statusError !== null && statusError !== undefined && (
-          <ErrorState error={statusError} onRetry={onRetryStatus} />
-        )}
-        {conversationId === null ? (
+      <AssistantChat
+        key={conversationId ?? 'new'}
+        role={role}
+        conversationId={conversationId}
+        onConversation={setConversationId}
+        status={status}
+        text={text}
+        onTextChange={onTextChange}
+        top={
+          statusError !== null && statusError !== undefined ? (
+            <ErrorState error={statusError} onRetry={onRetryStatus} />
+          ) : undefined
+        }
+        empty={
           <ConversationList
             loading={conversations.isPending}
             error={conversations.error}
@@ -252,78 +187,10 @@ export function AssistantPanel({
               void conversations.refetch();
             }}
             items={conversations.data?.conversations ?? []}
-            onOpen={(id) => {
-              setConversationId(id);
-              ask.reset();
-            }}
+            onOpen={setConversationId}
           />
-        ) : conversation.isError ? (
-          <ErrorState
-            error={conversation.error}
-            onRetry={() => {
-              void conversation.refetch();
-            }}
-          />
-        ) : open === undefined ? (
-          <LoadingOutline />
-        ) : (
-          <>
-            <Messages
-              conversation={open}
-              deciding={decide.isPending}
-              {...(readOnly
-                ? {}
-                : {
-                    onDecide: (id: string, which: 'confirm' | 'decline') => {
-                      decide.mutate({ id, which });
-                    },
-                  })}
-            />
-            {decide.error !== null && <FailureAlert error={decide.error} />}
-          </>
-        )}
-      </div>
-      <footer className="grid gap-2 border-t px-6 py-3 max-sm:px-4">
-        {refusal !== null && (
-          <p role="status" className="text-sm text-muted-foreground">
-            {t(`assistant.refusals.${refusal}`)}
-          </p>
-        )}
-        {readOnly ? (
-          <p className="text-sm text-muted-foreground">{t('assistant.readOnly')}</p>
-        ) : (
-          <form className="flex items-end gap-2" onSubmit={submit}>
-            <label className="sr-only" htmlFor="assistant-question">
-              {t('assistant.question')}
-            </label>
-            <textarea
-              id="assistant-question"
-              className={`${FIELD} h-auto min-h-10 resize-none py-2`}
-              rows={2}
-              maxLength={ASSISTANT_QUESTION_MAX_LENGTH}
-              value={text}
-              placeholder={t('assistant.placeholder')}
-              onChange={(event) => {
-                setText(event.target.value);
-              }}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter' && !event.shiftKey) submit(event);
-              }}
-            />
-            <Button
-              type="submit"
-              size="icon"
-              className="max-sm:size-11"
-              aria-label={ask.isPending ? t('assistant.sending') : t('assistant.send')}
-              pending={ask.isPending}
-              disabled={text.trim() === '' || (status !== undefined && !status.available)}
-            >
-              {!ask.isPending && <SendIcon aria-hidden />}
-            </Button>
-          </form>
-        )}
-        {ask.error !== null && refusedBy === null && <FailureAlert error={ask.error} />}
-      </footer>
+        }
+      />
     </aside>
   );
 }
@@ -369,128 +236,4 @@ function ConversationList({
   );
 }
 
-/**
- * The messages of a conversation, as plain text (plan decision 14): never HTML or Markdown.
- * Task 11.13: a proposal follows the answer to the question it came with; `onDecide` gives
- * its Confirm and Decline (left out where the conversation is only read).
- */
-export function Messages({
-  conversation,
-  onDecide,
-  deciding,
-}: {
-  conversation: AssistantConversation;
-  onDecide?: (proposalId: string, which: 'confirm' | 'decline') => void;
-  deciding?: boolean;
-}) {
-  const { t } = useTranslation();
-  // The question each answer follows, so that its proposal is drawn after it.
-  const askedBefore = new Map<string, string>();
-  for (const [index, message] of conversation.messages.entries()) {
-    if (message.kind === 'answer') {
-      const question = conversation.messages
-        .slice(0, index)
-        .findLast((earlier) => earlier.kind === 'question');
-      if (question !== undefined) askedBefore.set(message.id, question.id);
-    }
-  }
-  const items = conversation.messages.flatMap((message) => {
-    const asked = askedBefore.get(message.id);
-    const proposals =
-      asked === undefined
-        ? []
-        : conversation.proposals.filter((proposal) => proposal.questionId === asked);
-    return [
-      <li key={message.id}>
-        <MessageView message={message} />
-      </li>,
-      ...proposals.map((proposal) => (
-        <li key={proposal.id}>
-          <ProposalCard
-            proposal={proposal}
-            {...(onDecide === undefined
-              ? {}
-              : {
-                  onDecide: (which: 'confirm' | 'decline') => {
-                    onDecide(proposal.id, which);
-                  },
-                  deciding: deciding === true,
-                })}
-          />
-        </li>
-      )),
-    ];
-  });
-  return (
-    <ol aria-label={conversation.title} className="grid gap-3">
-      {items}
-      {conversation.messages.length === 0 && (
-        <li className="text-sm text-muted-foreground">{t('assistant.empty')}</li>
-      )}
-    </ol>
-  );
-}
-
-function MessageView({ message }: { message: AssistantMessage }) {
-  const { t, i18n } = useTranslation();
-  switch (message.kind) {
-    case 'question':
-      return (
-        <p className="ml-8 rounded-lg bg-accent px-3 py-2 break-words whitespace-pre-wrap">
-          {message.text}
-        </p>
-      );
-    case 'answer':
-      return (
-        <div className="grid gap-2">
-          <AnswerText text={message.text} />
-          {message.pages.length > 0 && (
-            <ul className="flex flex-wrap gap-x-4 gap-y-1">
-              {message.pages.map((page) => {
-                const built = BUILT_PAGES[page];
-                return built === undefined ? null : (
-                  <li key={page}>
-                    <Link to={built.to} className="text-link font-semibold hover:underline">
-                      {t(built.titleKey)}
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-          {message.lessons.length > 0 && (
-            <ul className="flex flex-wrap gap-x-4 gap-y-1">
-              {message.lessons.map((lesson) => (
-                <li key={`${lesson.journalId}:${lesson.date}`}>
-                  <Link
-                    to="/journal/$journalId"
-                    params={{ journalId: lesson.journalId }}
-                    search={{ quarter: lesson.quarterId, date: lesson.date }}
-                    className="text-link font-semibold hover:underline"
-                  >
-                    {t('assistant.openLessonJournal', {
-                      date: schoolDateText(lesson.date, i18n.language),
-                    })}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      );
-    case 'read':
-      return (
-        <p className="text-sm text-muted-foreground">
-          {message.group === null
-            ? t('assistant.readRefused')
-            : message.status >= 400 || message.status === 0
-              ? t('assistant.readFailed', { what: t(`assistant.groups.${message.group}`) })
-              : t('assistant.read', { what: t(`assistant.groups.${message.group}`) })}
-        </p>
-      );
-    case 'notice':
-      return (
-        <p className="text-sm text-muted-foreground">{t(`assistant.refusals.${message.code}`)}</p>
-      );
-  }
-}
+export { Messages } from './assistant-chat';

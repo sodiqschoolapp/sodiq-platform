@@ -38,6 +38,7 @@ const conversation = (
   archivesAt: '2027-02-18T05:00:00.000Z',
   messages,
   proposals: [],
+  working: null,
   ...fields,
 });
 

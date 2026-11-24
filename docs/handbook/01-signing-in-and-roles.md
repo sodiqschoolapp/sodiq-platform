@@ -71,7 +71,7 @@ No other role sees the page.
 
 ## The assistant
 
-<!-- Sources: spec 02 (Assistant; Accounts and sign-in: build order), 13 (Security; Running cost), edge/people-roles-accounts (The assistant; Personal data and the audit log), 06 (Changes after publishing), edge/time-dates-calendar, 09, edge/lesson-plans; docs/spec-changes.md, 21 and 24 November 2026; tasks 11.12, 11.13, 11.14 and 11.15 -->
+<!-- Sources: spec 02 (Assistant; Accounts and sign-in: build order), 13 (Security; Running cost), edge/people-roles-accounts (The assistant; Personal data and the audit log), 06 (Changes after publishing), edge/time-dates-calendar, 09, edge/lesson-plans; docs/spec-changes.md, 21 and 24 November 2026; tasks 11.12, 11.13, 11.14, 11.15 and 11.16 -->
 
 **What it is.** The assistant lets a person ask in plain words, in Uzbek, Russian or English, and answers from what the platform holds: "which classes have no Tutor", "what does 5A have on Tuesday", "who is on the early-warning list". It reads at once. A change is only proposed: the person sees every step and presses **Confirm** (**Tasdiqlash**); nothing changes before. It uses Google's Gemini language model.
 
@@ -93,12 +93,14 @@ No other role sees the assistant. A Head Teacher, a Senior Head Teacher, a Tutor
 
 1. School setup → **Settings** (**Sozlamalar**) → **Assistant** (**Yordamchi**). Tick **Assistant on for the school** (**Yordamchi maktab uchun yoqilgan**) and **On for the role Super Admin**, set **Questions per person per day** and **Monthly spending cap, US dollars**, and press **Save**. The assistant is off until this is done.
 2. The chat button (**Assistant**, **Yordamchi**) appears in the top bar. Press it: the panel opens beside the page. On a phone it fills the screen.
-3. Type the question and press **Send** (**Yuborish**), or Enter. The answer comes in the panel. Under the question the panel shows what was read, for example "Read: Classes and groups".
-4. When the answer needs a step the assistant does not take, it links the page where the person takes it.
-5. When the person asks for a change, the answer ends with a **Proposal** (**Taklif**): each step with the action's name, the record, the lessons it touches (class, date, time and subject), what is sent, and the assistant's own sentence. Press **Confirm** to run the steps, or **Decline** (**Rad etish**). A proposal is valid for 15 minutes.
-6. After Confirm each step shows **Done**, **Refused** with the reason, **Outdated** or **Not run**.
-7. **New conversation** (**Yangi suhbat**) starts a new one; the panel lists the person's earlier conversations of the branches and roles they hold now.
-8. School setup → **Assistant conversations** (**Yordamchi suhbatlari**) lists every conversation of the school, with the person, the role, the branch and the last activity. Open one to read it; an archived one has **Restore** (**Tiklash**).
+3. Type the question and press **Send** (**Yuborish**), or Enter. The question shows at once and the box is empty again. While the assistant works, the conversation shows what it is reading ("Reading: Classes and groups", **Oʻqimoqda: Sinflar va guruhlar**) and the answer as it is written, with the line **The assistant is working…** (**Yordamchi ishlamoqda…**). Then the answer stays, with what was read ("Read: Classes and groups").
+4. The person can close the panel or go to another page meanwhile: the work goes on, and the answer is in the conversation when it is opened again. A second question can be sent once the first is answered.
+5. When the answer needs a step the assistant does not take, it links the page where the person takes it.
+6. When the person asks for a change, the answer ends with a **Proposal** (**Taklif**): each step with the action's name, the record, the lessons it touches (class, date, time and subject), what is sent, and the assistant's own sentence. Press **Confirm** to run the steps, or **Decline** (**Rad etish**). A proposal is valid for 15 minutes.
+7. After Confirm each step shows **Done**, **Refused** with the reason, **Outdated** or **Not run**.
+8. **New conversation** (**Yangi suhbat**) starts a new one; the panel lists the person's earlier conversations of the branches and roles they hold now.
+9. The page **Assistant** (**Yordamchi**), in the menu of the three roles while the assistant is on for the role chosen, shows the same conversations: the list on the left with **New conversation**, the chat beside it. The panel's button **Open the Assistant page** (**Yordamchi sahifasini ochish**) opens it. On a phone the list and the chat are two steps; **Back to the conversations** (**Suhbatlarga qaytish**) returns to the list.
+10. School setup → **Assistant conversations** (**Yordamchi suhbatlari**) lists every conversation of the school, with the person, the role, the branch and the last activity. Open one to read it; an archived one has **Restore** (**Tiklash**).
 
 **Rules.**
 
@@ -126,7 +128,11 @@ No other role sees the assistant. A Head Teacher, a Senior Head Teacher, a Tutor
 | Another person changed the record before Confirm | That step shows **Outdated**, nothing of it is changed, and the steps after it are not run. |
 | The third of five steps is refused | Steps 1 and 2 stay done and are in the audit log; 3 shows its reason; 4 and 5 are not run. |
 | A lesson began while the proposal waited | The bulk cancel's check is run again at Confirm; it differs, so the step is **Outdated** and nothing is cancelled. |
-| The daily limit or the monthly cap is reached | The panel says so; the typed question stays in the field. Every page works as before. |
+| The daily limit or the monthly cap is reached | The panel and the Assistant page say so; the typed question stays in the field. Every page works as before. |
+| A second question is sent, in another tab or conversation, while the first is still being answered | It is refused with the line "A question of yours is still being answered…" (**Oldingi savolingizga hali javob yozilmoqda…**); the question stays in the box. It is never lost or asked twice. |
+| The same conversation is open in the panel and on the Assistant page, or in two tabs | Both show the same messages; a question sent in one shows in the other. |
+| The panel is closed or the page left while the assistant works | The work goes on; the answer, or the proposal, is in the conversation when it is opened again. |
+| No answer came (the server stopped while it worked) | After four and a half minutes the question shows **No answer came. Ask again.** (**Javob kelmadi. Qayta soʻrang.**). A new question can be sent. |
 | Frankfurt is busy, with many teachers asking at once | The platform waits and tries Frankfurt again, at most twice, then sends the question once through the worldwide endpoint (unless switched off). Only when that fails too does the panel say the assistant is busy. |
 | The Super Admin switches the worldwide fallback off | From the next question everything goes to Frankfurt only; a busy Frankfurt then ends in the "busy" message. Answers given earlier keep the record of where they were processed. |
 | A question failed, and the person asks again in the same conversation | The new question is answered as usual; the failed one stays in the conversation with its message and is left out of what the model reads. |
