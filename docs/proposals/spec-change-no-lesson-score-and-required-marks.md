@@ -16,7 +16,7 @@ Proposal of 24 November 2026, from the owner, in chat: "we don't need daily o'rt
 
 - **Calculation rule 3 keeps its number** ("3. There is no lesson score…"), so that references to rules 5 to 11, such as `07`, rule 11 in `CLAUDE.md`, stay right.
 - **The tests of the lesson score are removed with it.** This is allowed because the requirement changed (`CLAUDE.md`), never to make code pass; the reason is named in the task's report and on issue #42 (Look first).
-- **The subject import template loses its daily-distribution columns.** A file made from the old template is refused as "not the template", as any other file that does not match.
+- **The subject import template loses its daily-distribution columns.** A file made from the old template is refused as "not the template", as any other file that does not match, and the message says a new template can be downloaded.
 - **The red asterisk marks what must be filled.** The red is the danger colour of `docs/design-system.md`, and it also reads in dark mode. A screen reader says "required" in the person's language. Fields without a mark may be left empty, so no "optional" label is added.
 
 ---
@@ -64,6 +64,10 @@ New: "if it is graded, its quarterly distribution for each quarter the version t
 
 `docs/spec/16-open-questions.md`, question 4, old: "| Set in the settings of each subject. No system default. | Decided |"
 New: "| Set in the settings of each subject. No system default. Removed on 24 November 2026: there is no daily distribution and no lesson score. | Decided |"
+
+`docs/spec/15-conflicts-resolved.md`, row "Grading weights", resolution, old: "Daily and quarterly distributions per subject, the quarterly one set for each quarter."
+New: "A quarterly distribution per subject, set for each quarter. The daily distribution was removed on 24 November 2026: there is no lesson score."
+(Added from the review of pull request #380, correction 1.)
 
 ## 5. `docs/spec/12-ux-standards.md`, section "No lost work"
 
