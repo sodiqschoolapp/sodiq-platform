@@ -65,6 +65,21 @@ The owner's answers to the decided-ahead questions for Phase 10, given in chat o
 19. Production deploys only after 18:00 or at the weekend, Tashkent time.
 20. The test environment stays after go-live; every change is tried there first.
 
+## 24 November 2026: the assistant's live answers and its page (task 11.16)
+
+Plan approved on pull request #381 with corrections 1 (one injected clock for the window: the question's stored moment, every write's check, `working.until` and the call budget), 2 (the scripted delay through the injected wait, with a config test), 3 (a proposal case in the test of 0181) and 4 (a session signed out midway hears nothing more). Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first.** `MENU_MAX_ITEMS` is 11: the Super Admin's row was ten items and Assistant joins it | `02`, Where: "in the menu of the three roles"; `12`: "about ten" (decision 1) |
+| **Look first.** The tests that expected 503 from the questions route after a model failure expect 202 and the stored notice; no model set up stays 503 before anything is stored | `02`, While it works: the question shows at once, so the model's failure cannot be the request's answer (decision 2) |
+| **Look first.** The answer is written in the API process after the request (`AssistantWork`), not as a job; the shutdown waits up to 25 s; a question cut off shows "No answer came" once its window is past | The reads go through the API's own routes with the person's session, which the worker does not serve (decision 3) |
+| **Look first.** The answer's words go through `pg_notify` to the asking account's tabs; a read's data never goes | `02`: "the answer as it is written"; the channel is the only way to a tab on the other API server (decision 5) |
+| "Being answered" is person-wide (0181, a SECURITY DEFINER yes or no), for 270 s after the question's stored moment on the injected clock; every write of the work takes the person's lock and checks the window first, so nothing is written past it | Build plan item (3); review of the plan, must fix 1 and 2 (decision 4) |
+| Gemini's streaming call; `reset` when a call that wrote text fails or a turn that wrote text reads instead; the live listener hears its payloads one after another, so a tab gets them in commit order | `02`, While it works (decision 6; found by the test of the order) |
+| The questions route answers 202 with the conversation; the page is `/assistant` (the open conversation in the address); the menu item is last; the panel and the page share one chat | Decisions 7, 8, 9 |
+| A failure of the work that is not the model's ends in the notice `assistant_answer_failed`, its error's name logged and nothing of its message | `02`, Limits: the panel says so (found in the build) |
+
 ## 24 November 2026: the assistant on the live model (task 11.15)
 
 Plan approved on pull request #379 with corrections 1 (one plan in the body), 2 (prices keyed by the place), 3 (the month of the count is the cap's month) and 4 (decision 4a among the Look first items). Flagged on issue #42.

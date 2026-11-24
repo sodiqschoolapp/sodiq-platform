@@ -2,6 +2,19 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 24 November 2026: task 11.16, the assistant's live answers and its page
+
+- **A question is taken at once** (`POST /api/assistant/questions` answers 202 with the conversation); the answer is written after, in the API process (`assistant/assistant-work.ts`), within an answer window of 270 s from the question's stored moment: every write takes the person's lock and checks the window (`assistant.engine.ts` `write`). A second question of the person in any branch while one is answered: 409 `assistant_question_running` (0181, `assistant_question_running`).
+- **Live progress** to the asking account's tabs through the notifications' socket (`assistant.progress`: question, read with its group, text pieces, reset, done); Gemini streams (`generateContentStream`). The listener now hears its payloads in order.
+- **The page Assistant** (`/assistant`, menu of the three roles while the assistant is on), one chat with the panel (`assistant-chat.tsx`); two steps on a phone; "No answer came" for a cut-off question.
+
+Left out: nothing of the task.
+
+The next sessions must know:
+
+- API tests ask through the kit's `ask` (waits for the work, reads the conversation again) or `send` + `settle`; `held(turn)` holds a fake model turn, `streamed` and `streamsThenFails` script text pieces; `noticeOf` reads the notice a question ended in.
+- The local `sodiq_dev` applied a first body of 0181 (`>=`); the merged file compares `>`. Fresh databases and CI get the merged one; re-applying it locally waits for the owner (`.claude/rules/database.md`).
+
 ## 24 November 2026: task 11.15, the assistant on the live model
 
 - **Calls of the model** (`assistant/model-caller.ts`): Frankfurt first; 429, 503, 504 or no answer in 30 s tried again after 2 s and 5 s; then once through the worldwide endpoint (`global`) unless the Super Admin switched the fallback off (`assistant_settings.fallback_on`, 0180, on by default). A 4xx is never retried nor sent on; a 500 or a network failure is "cannot reach". At most 16 calls and 240 s a question; the wait is injected (`ASSISTANT_WAIT`).

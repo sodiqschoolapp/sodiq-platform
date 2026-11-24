@@ -45,10 +45,83 @@ export async function askTheAssistant(page: Page): Promise<void> {
   ).toBeVisible();
   await panel.getByRole('button', { name: en.assistant.close, exact: true }).click();
 
+  await whileItWorks(page);
+
   // Every conversation, for the Super Admin.
   await page.goto('/assistant-conversations');
   await expect(heading(page, en.assistant.conversationsPage.title)).toBeVisible();
   await expect(
     page.getByRole('row').filter({ hasText: 'Which classes have no Tutor?' }),
   ).toBeVisible();
+}
+
+/**
+ * Task 11.16 (build plan, Done when; `02`, While it works; `edge/people-roles-accounts`, "A person
+ * closes the panel while the assistant is still working" and "… or in two tabs"): the scripted
+ * model waits 4 s before its answer (`ASSISTANT_SCRIPTED_DELAY_MS`, `server.ts`). On the Assistant
+ * page, opened from the menu: the question and an empty box before the answer, "Reading: …" while
+ * the model waits, then the answer; a second tab of the same conversation sees a question sent in
+ * the first, and a second question sent there while one runs is refused; a page left mid-answer
+ * shows the stored answer once when it is opened again.
+ */
+async function whileItWorks(page: Page): Promise<void> {
+  const answer = 'Assistant A, Assistant B';
+  const reading = en.assistant.reading.replace('{{what}}', en.assistant.groups.classes);
+  await page.getByRole('link', { name: en.menu.assistant, exact: true }).first().click();
+  await expect(heading(page, en.assistant.page.title)).toBeVisible();
+  await expect(
+    page.getByRole('navigation', { name: en.assistant.conversations, exact: true }),
+  ).toBeVisible();
+  await page.getByRole('button', { name: en.assistant.newConversation, exact: true }).click();
+  const box = page.getByLabel(en.assistant.question, { exact: true });
+  await box.fill('Which classes have no Tutor, please?');
+  await page.getByRole('button', { name: en.assistant.send, exact: true }).click();
+  const chat = page.getByRole('region', { name: en.assistant.title, exact: true });
+  // At once: the question, an empty box, and what the assistant reads while the model waits.
+  await expect(chat.getByText('Which classes have no Tutor, please?', { exact: true })).toBeVisible();
+  await expect(box).toHaveValue('');
+  await expect(chat.getByText(reading, { exact: true })).toBeVisible();
+  await expect(chat.getByText(answer, { exact: true })).toHaveCount(0);
+  await expect(chat.getByText(answer, { exact: true })).toBeVisible({ timeout: 15_000 });
+  await expect(page).toHaveURL(/conversation=[0-9a-f-]{36}/);
+  const address = new URL(page.url());
+
+  // A second tab of the same conversation, in the same branch.
+  const other = await page.context().newPage();
+  await other.goto(`${address.pathname}${address.search}`);
+  await other
+    .getByRole('combobox', { name: en.switcher.branch, exact: true })
+    .selectOption({ label: 'Assistant browser test branch' });
+  await other.goto(`${address.pathname}${address.search}`);
+  const otherChat = other.getByRole('region', { name: en.assistant.title, exact: true });
+  await expect(otherChat.getByText(answer, { exact: true })).toBeVisible();
+
+  // A question sent in the first tab shows in the second.
+  await box.fill('And once more?');
+  await page.getByRole('button', { name: en.assistant.send, exact: true }).click();
+  await expect(otherChat.getByText('And once more?', { exact: true })).toBeVisible();
+  // While it is answered, a second question of the person is refused with its message.
+  await other.getByRole('button', { name: en.assistant.newConversation, exact: true }).click();
+  await other.getByLabel(en.assistant.question, { exact: true }).fill('A second question now?');
+  await other.getByRole('button', { name: en.assistant.send, exact: true }).click();
+  await expect(
+    other.getByText(en.assistant.refusals.assistant_question_running, { exact: true }),
+  ).toBeVisible();
+  await expect(other.getByLabel(en.assistant.question, { exact: true })).toHaveValue(
+    'A second question now?',
+  );
+  await expect(chat.getByText(answer, { exact: true })).toHaveCount(2, { timeout: 15_000 });
+  await other.close();
+
+  // A page left while the assistant works: the answer is stored, and shows once.
+  await box.fill('One more, then I leave.');
+  await page.getByRole('button', { name: en.assistant.send, exact: true }).click();
+  await expect(chat.getByText(reading, { exact: true })).toBeVisible();
+  await page.goto('/');
+  await expect(heading(page, en.home.title)).toBeVisible();
+  await page.waitForTimeout(5_000);
+  await page.goto(`${address.pathname}${address.search}`);
+  await expect(chat.getByText('One more, then I leave.', { exact: true })).toHaveCount(1);
+  await expect(chat.getByText(answer, { exact: true })).toHaveCount(3);
+  await expect(chat.getByText(en.assistant.working, { exact: true })).toHaveCount(0);
 }
