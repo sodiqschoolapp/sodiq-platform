@@ -8,6 +8,7 @@ import {
   SHARED_ROOM_LESSONS_MIN,
   type Room,
   type RoomRecord,
+  roomRecordRequiredWhen,
 } from '@sodiq/shared';
 import { useTranslation } from 'react-i18next';
 import { CHECKED, CheckboxField, Field, NumberField, SelectField } from '@/components/field';
@@ -41,6 +42,7 @@ export function RoomForm({ room, floors, label, onSave, onCancel }: RoomFormProp
   const onOffered = room !== null && floors.some((floor) => floor.floorId === room.floorId);
   const form = useRecordForm({
     schema: roomRecordSchema,
+    requiredWhen: roomRecordRequiredWhen,
     initial: {
       name: room?.name ?? '',
       buildingId: onOffered ? room.buildingId : '',

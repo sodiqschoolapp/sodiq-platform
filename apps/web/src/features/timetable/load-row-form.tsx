@@ -18,6 +18,9 @@ import {
   type SchoolGroup,
   type Subject,
   type TimetableVersion,
+  loadRowRecordRequiredWhen,
+  loadRowTeacherNeeded,
+  type RequiredWhen,
 } from '@sodiq/shared';
 import { isSplit as isSplitGroup } from '@sodiq/timetable-rules';
 import { useQuery } from '@tanstack/react-query';
@@ -28,6 +31,7 @@ import { CHECKED, CheckboxField, Field, NumberField, SelectField } from '@/compo
 import type { FormSchema } from '@/components/form/form-messages';
 import { wholeNumber } from '@/components/form/form-messages';
 import { RecordForm } from '@/components/form/record-form';
+import { asFormSchema } from '@/features/people/form-schema';
 import { useRecordForm } from '@/components/form/use-record-form';
 import { ErrorState } from '@/components/states';
 import { Button } from '@/components/ui/button';
@@ -76,6 +80,20 @@ const roomOf = (value: string) => {
   };
 };
 
+// The red asterisk (task 11.18) of a new row: the unit, a class or a group; its
+// teacher (`load_teacher_needed`), whose field a Tutor row never draws.
+const NEW_ROW_REQUIRED: RequiredWhen = {
+  unit: (values, known) =>
+    (loadRowRecordRequiredWhen.classId?.(values, known) ?? false) ||
+    (loadRowRecordRequiredWhen.groupId?.(values, known) ?? false),
+  teacherId: () => loadRowTeacherNeeded(true, false),
+};
+const NO_MORE: RequiredWhen = {};
+/** A new row as its form shows it: "a class or a group" is said at the one field that chooses it. */
+const NEW_ROW_FORM = asFormSchema<LoadRowRecord>(loadRowRecordSchema, (path) =>
+  path[0] === 'classId' || path[0] === 'groupId' ? ['unit'] : [...path],
+);
+
 /**
  * A row of the teaching load (`05`, Teaching load: "For each class or group
  * and subject: one teacher or one vacancy, lessons per week, the room or room
@@ -91,6 +109,7 @@ const roomOf = (value: string) => {
  * class and a subject whose group switch is on offer the class's groups of
  * the subject (decision 13: "the subject's group switch is only the default").
  */
+
 export function LoadRowForm({
   version,
   row,
@@ -106,12 +125,14 @@ export function LoadRowForm({
   const { branchId } = useView();
   const number = new Intl.NumberFormat(i18n.language);
   const schema: FormSchema<LoadRowRecord | LoadRowEdit> =
-    row === null ? loadRowRecordSchema : loadRowEditSchema;
+    row === null ? NEW_ROW_FORM : loadRowEditSchema;
   /** Whether the group is a split: it draws from one class or a pair. */
   const isSplit = (groupId: string | null) => isSplitOf(groups.find((one) => one.id === groupId));
 
+  const requiredWhen: RequiredWhen = row === null ? NEW_ROW_REQUIRED : NO_MORE;
   const form = useRecordForm({
     schema,
+    requiredWhen,
     initial: {
       unit: row === null ? '' : `${row.unit.kind}:${row.unit.id}`,
       subjectId: row?.subject.id ?? '',

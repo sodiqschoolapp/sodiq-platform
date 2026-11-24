@@ -1,10 +1,11 @@
-import { PLAN_MINIMUM_MAX, type PlanMinimums } from '@sodiq/shared';
+import { PLAN_MINIMUM_MAX, planMinimumSaveSchema, type PlanMinimums } from '@sodiq/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FailureAlert } from '@/components/failure-alert';
 import { NumberField } from '@/components/field';
 import { wholeNumber } from '@/components/form/form-messages';
+import { requiredOf } from '@/components/form/use-record-form';
 import { EmptyState, ErrorState, LoadingOutline } from '@/components/states';
 import { Button } from '@/components/ui/button';
 import { PANEL, SECTION_TITLE } from '@/components/ui/control';
@@ -80,6 +81,17 @@ function MinimumRow({ subject, canEdit }: { subject: Subject; canEdit: boolean }
     if (typeof value !== 'number') return t('form.wholeNumber');
     return value < 0 ? t('form.tooSmall', { min: 0 }) : t('form.tooBig', { max: PLAN_MINIMUM_MAX });
   };
+  // The red asterisk from the schema the save sends to (task 11.18).
+  const typed = { classworks, homeworks };
+  const requiredField = (field: keyof typeof typed) =>
+    requiredOf(planMinimumSaveSchema, typed, field, {
+      read: (values) => ({
+        subjectId: subject.subject.id,
+        classworks: wholeNumber(values.classworks),
+        homeworks: wholeNumber(values.homeworks),
+        version: subject.version,
+      }),
+    });
   const typedClassworks = minimumOf(classworks);
   const typedHomeworks = minimumOf(homeworks);
   if (!canEdit) {
@@ -102,6 +114,7 @@ function MinimumRow({ subject, canEdit }: { subject: Subject; canEdit: boolean }
         <div className="w-36">
           <NumberField
             label={t('plans.minimum.classworks')}
+            required={requiredField('classworks')}
             value={classworks}
             error={typedClassworks === undefined ? errorOf(classworks) : undefined}
             onChange={(event) => {
@@ -112,6 +125,7 @@ function MinimumRow({ subject, canEdit }: { subject: Subject; canEdit: boolean }
         <div className="w-36">
           <NumberField
             label={t('plans.minimum.homeworks')}
+            required={requiredField('homeworks')}
             value={homeworks}
             error={typedHomeworks === undefined ? errorOf(homeworks) : undefined}
             onChange={(event) => {

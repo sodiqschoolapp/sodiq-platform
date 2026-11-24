@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { RequiredWhen } from './required-when.js';
 import { schoolDateSchema } from './academic-year.js';
 import { weekdaySchema } from './setup.js';
 import { FIRST_GRADE, LAST_GRADE } from './grades.js';
@@ -194,6 +195,22 @@ export function refineAssignment(
 export const assignmentRecordSchema = assignmentFieldsSchema.superRefine(refineAssignment);
 
 export type AssignmentRecord = z.infer<typeof assignmentRecordSchema>;
+
+/**
+ * What `assignmentRecordSchema` requires only in some states (task 11.18): the
+ * weekday of a weekday level, the grades of a grade level.
+ */
+export const assignmentRequiredWhen: RequiredWhen = {
+  weekday: (values) =>
+    templateLevelSchema.safeParse(values.level).success &&
+    levelHasWeekday(templateLevelSchema.parse(values.level)),
+  gradeFrom: (values) =>
+    templateLevelSchema.safeParse(values.level).success &&
+    levelHasGrades(templateLevelSchema.parse(values.level)),
+  gradeTo: (values) =>
+    templateLevelSchema.safeParse(values.level).success &&
+    levelHasGrades(templateLevelSchema.parse(values.level)),
+};
 
 /** The end of a template set at a level, from a date. The default cannot be ended (decision 8). */
 export const assignmentEndSchema = z.object({ from: fromSchema });

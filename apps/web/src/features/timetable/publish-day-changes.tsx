@@ -13,7 +13,9 @@ import {
   type SubstitutionItemAnswer,
 } from '@sodiq/shared';
 import { useTranslation } from 'react-i18next';
-import { TextAreaField } from '@/components/field';
+import { RequiredGroup, RequiredMark, TextAreaField } from '@/components/field';
+import { filledOnPage } from '@/components/form/page-checks';
+import { requiredOf } from '@/components/form/use-record-form';
 import {
   CHECKBOX,
   CHECKBOX_TARGET,
@@ -129,6 +131,15 @@ export function dayDecisionsBodyOf(
 }
 
 /**
+ * What the publish waits for in this list (task 11.18): a choice for each item
+ * that needs a decision, and the reason of a cancel or an exam's choice that
+ * asks for one. The publish route refuses them missing (`dayDecisionsSchema`
+ * leaves the reason optional; the server's check of each item asks for it).
+ */
+const DECISION_PAGE = filledOnPage(['choice']);
+const REASON_PAGE = filledOnPage(['reason']);
+
+/**
  * The stored one-day changes of the dates a publish writes, in step 8 (task
  * 5.6a-5a, pull request #164; `edge/timetable`, Versions and drafts: "The
  * preview sorts them into kept, needs a decision and dropped. Publish waits
@@ -142,6 +153,7 @@ export function dayDecisionsBodyOf(
  * chosen that needs a decision offers the bulk cancel's own two choices,
  * kept by `dayDecisionKeyOf`.
  */
+
 export function PublishDayChanges({
   impact,
   choices,
@@ -177,6 +189,15 @@ export function PublishDayChanges({
   ) {
     return null;
   }
+  // Locked while the person may not edit: nothing is theirs to fill.
+  const decisionRequired = (choice: string | undefined) =>
+    requiredOf(DECISION_PAGE, { choice: choice ?? '' }, 'choice', {
+      read: (typed) => (canEdit ? typed : { choice: 'locked' }),
+    });
+  const reasonRequired = (reason: string | undefined) =>
+    requiredOf(REASON_PAGE, { reason: reason ?? '' }, 'reason', {
+      read: (typed) => (canEdit ? typed : { reason: 'locked' }),
+    });
   const examsKept = dayChanges.exams.filter((one) => one.category === 'kept');
   const examsDecide = dayChanges.exams.filter((one) => one.category === 'decide');
   const substitutionsOf = (category: SubstitutionItemAnswer['category']) =>
@@ -279,8 +300,11 @@ export function PublishDayChanges({
         data-kind="substitution"
         className="grid gap-2"
       >
-        <fieldset className="grid gap-1">
-          <legend>{substitutionText(item)}</legend>
+        <RequiredGroup
+          className="grid gap-1"
+          label={substitutionText(item)}
+          required={decisionRequired(choice)}
+        >
           {item.blocked.length > 0 && (
             <p data-blocked="true">
               {t('timetable.publish.dayChanges.substitutions.blocked', {
@@ -305,13 +329,14 @@ export function PublishDayChanges({
               <span>{t(`timetable.publish.dayChanges.substitutions.choice_${one}`)}</span>
             </label>
           ))}
-        </fieldset>
+        </RequiredGroup>
         {choice === 'cancel' && (
           <TextAreaField
             label={t('timetable.publish.dayChanges.substitutions.reason')}
             rows={2}
             maxLength={500}
             value={reasons[item.key] ?? ''}
+            required={reasonRequired(reasons[item.key])}
             disabled={!canEdit}
             onChange={(event) => {
               onReason?.(item.key, event.target.value);
@@ -414,7 +439,17 @@ export function PublishDayChanges({
     const choice = choices[item.key];
     return (
       <li key={`exam-${item.key}`} data-key={item.key} data-kind="exam" className="grid gap-2">
-        <p>{examText(item)}</p>
+        <p>
+          {examText(item)}
+          {/* The group's legend is for a screen reader only: the mark shows here. */}
+          {(needsWhole(item) || item.blocks.some((block) => block.choice === null)) &&
+            decisionRequired(choice) && (
+              <>
+                {' '}
+                <RequiredMark />
+              </>
+            )}
+        </p>
         {item.blocked.length > 0 && (
           <p data-blocked="true">
             {t('timetable.publish.dayChanges.exams.clashes', {
@@ -433,8 +468,12 @@ export function PublishDayChanges({
           </p>
         )}
         {needsWhole(item) || item.blocks.some((block) => block.choice === null) ? (
-          <fieldset className="grid gap-1">
-            <legend className="sr-only">{examText(item)}</legend>
+          <RequiredGroup
+            className="grid gap-1"
+            legendClassName="sr-only"
+            label={examText(item)}
+            required={decisionRequired(choice)}
+          >
             {examChoicesOf(item).map((one) => (
               <label key={one} className={CHECKBOX_TARGET}>
                 <input
@@ -451,7 +490,7 @@ export function PublishDayChanges({
                 <span>{t(`timetable.publish.dayChanges.exams.choice_${one}`)}</span>
               </label>
             ))}
-          </fieldset>
+          </RequiredGroup>
         ) : null}
         {examNeedsReason(item, choice) && (
           <TextAreaField
@@ -459,6 +498,7 @@ export function PublishDayChanges({
             rows={2}
             maxLength={500}
             value={reasons[item.key] ?? ''}
+            required={reasonRequired(reasons[item.key])}
             disabled={!canEdit}
             onChange={(event) => {
               onReason?.(item.key, event.target.value);
@@ -474,8 +514,12 @@ export function PublishDayChanges({
               blockDate: block.blockDate,
             });
             return (
-              <fieldset key={decisionKey} className="grid gap-1 ps-4">
-                <legend>{examBlockText(block)}</legend>
+              <RequiredGroup
+                key={decisionKey}
+                className="grid gap-1 ps-4"
+                label={examBlockText(block)}
+                required={decisionRequired(choices[decisionKey])}
+              >
                 {(block.keepOffered ? (['cancel', 'keep'] as const) : (['cancel'] as const)).map(
                   (one) => (
                     <label key={one} className={CHECKBOX_TARGET}>
@@ -494,7 +538,7 @@ export function PublishDayChanges({
                     </label>
                   ),
                 )}
-              </fieldset>
+              </RequiredGroup>
             );
           })}
       </li>
@@ -551,8 +595,11 @@ export function PublishDayChanges({
           <ul className="grid gap-3 text-sm" data-day-changes="decide">
             {dayChanges.decide.map((item) => (
               <li key={item.key} data-key={item.key} data-kind={item.kind}>
-                <fieldset className="grid gap-1">
-                  <legend>{itemText(item)}</legend>
+                <RequiredGroup
+                  className="grid gap-1"
+                  label={itemText(item)}
+                  required={decisionRequired(choices[item.key])}
+                >
                   {item.blocked.length > 0 && (
                     <p data-blocked="true">
                       {item.blocked.map((one) => ruleText(t, one.rule)).join('; ')}
@@ -574,7 +621,7 @@ export function PublishDayChanges({
                       <span>{t(`timetable.publish.dayChanges.choice_${choice}`)}</span>
                     </label>
                   ))}
-                </fieldset>
+                </RequiredGroup>
               </li>
             ))}
             {bulkDecide.map((item) => (
@@ -592,8 +639,12 @@ export function PublishDayChanges({
                     blockDate: block.blockDate,
                   });
                   return block.choice !== null ? null : (
-                    <fieldset key={decisionKey} className="grid gap-1 ps-4">
-                      <legend>{blockText(block)}</legend>
+                    <RequiredGroup
+                      key={decisionKey}
+                      className="grid gap-1 ps-4"
+                      label={blockText(block)}
+                      required={decisionRequired(choices[decisionKey])}
+                    >
                       {(['cancel', 'keep'] as const).map((choice) => (
                         <label key={choice} className={CHECKBOX_TARGET}>
                           <input
@@ -610,7 +661,7 @@ export function PublishDayChanges({
                           <span>{t(`timetable.publish.dayChanges.bulkChoice_${choice}`)}</span>
                         </label>
                       ))}
-                    </fieldset>
+                    </RequiredGroup>
                   );
                 })}
               </li>

@@ -4,6 +4,7 @@ import {
   announcementFormSchema,
   type Announcement,
   type AnnouncementForm as FormValues,
+  announcementFormRequiredWhen,
 } from '@sodiq/shared';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -47,6 +48,7 @@ export function AnnouncementForm({ row, mayWriteSchool, onSave, onCancel }: Anno
   const classes = useQuery({ ...classesQuery(branchId), enabled: branchId !== null && fresh });
   const form = useRecordForm({
     schema: announcementFormSchema,
+    requiredWhen: announcementFormRequiredWhen,
     initial: {
       kind: row?.kind ?? 'news',
       title: row?.title ?? '',

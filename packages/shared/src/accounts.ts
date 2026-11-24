@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { RequiredWhen } from './required-when.js';
 import { schoolDateSchema } from './academic-year.js';
 import { branchIdSchema } from './branches.js';
 import { roleSchema, type Role } from './roles.js';
@@ -201,6 +202,12 @@ export const roleGiveSchema = z
   });
 
 export type RoleGive = z.infer<typeof roleGiveSchema>;
+
+/** What `roleGiveSchema` requires only in some states (task 11.18): the subjects of a Head Teacher or a Senior Head Teacher. */
+export const roleGiveRequiredWhen: RequiredWhen = {
+  subjectIds: (values) =>
+    roleSchema.safeParse(values.role).success && isAppointment(roleSchema.parse(values.role)),
+};
 
 /** The end of a role from a date: today ends it now, a later date at 00:00 of that day. */
 export const roleEndSchema = z.object({ from: schoolDateSchema });

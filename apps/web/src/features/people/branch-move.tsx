@@ -37,6 +37,7 @@ import { nameOf } from '@/features/setup/setup-api';
 import { subjectsQuery } from '@/features/setup/subjects-api';
 import { schoolDateText } from '@/lib/dates';
 import { asFormSchema } from './form-schema';
+import { requiredOf } from '@/components/form/use-record-form';
 import { invalidateStudents, studentsKey } from './people-api';
 import { useJournalEntries } from './journal-entries';
 
@@ -338,6 +339,7 @@ function AcceptForm({
         label={t('people.students.branchMoves.class')}
         options={[{ value: '', label: t('people.students.choose') }, ...options]}
         value={classId}
+        required={requiredOf(ACCEPT_SCHEMA, { classId }, 'classId')}
         onChange={(event) => {
           setClassId(event.target.value);
         }}

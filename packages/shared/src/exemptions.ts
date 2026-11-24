@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { leftEmpty, type RequiredWhen } from './required-when.js';
 import { schoolDateSchema } from './academic-year.js';
 import { accountNamedSchema } from './reset-entries.js';
 
@@ -197,6 +198,14 @@ export const exemptionCreateSchema = z
   });
 
 export type ExemptionCreate = z.infer<typeof exemptionCreateSchema>;
+
+/**
+ * What `exemptionCreateSchema` requires only in some states (task 11.18): the
+ * last day of a temporary exemption, and of one for chosen slots (its first day).
+ */
+export const exemptionCreateRequiredWhen: RequiredWhen = {
+  endDate: (values) => values.kind === 'temporary' || !leftEmpty(values.slots),
+};
 
 /** An edit before the start (`edge/exemptions`, row 4: "Before the start date every field can be changed"). */
 export const exemptionEditSchema = z

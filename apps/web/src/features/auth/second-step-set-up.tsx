@@ -1,4 +1,5 @@
 import {
+  secondStepCodeSchema,
   secondStepRecoveryCodesSchema,
   secondStepSetUpSchema,
   type SecondStepSetUp as StartedSetUp,
@@ -11,6 +12,7 @@ import { useTranslation } from 'react-i18next';
 import { api } from '@/api/client';
 import { ApiFailure, answerOf } from '@/api/failure';
 import { Field } from '@/components/field';
+import { requiredOf } from '@/components/form/use-record-form';
 import { FailureAlert } from '@/components/failure-alert';
 import { Button, type buttonVariants } from '@/components/ui/button';
 import type { VariantProps } from 'class-variance-authority';
@@ -215,6 +217,7 @@ export function SecondStepSetUp({
             maxLength={40}
             value={code}
             error={checked && typed === '' ? t('setUp.codeMissing') : undefined}
+            required={requiredOf(secondStepCodeSchema, { code: typed }, 'code')}
             onChange={(event) => {
               setCode(event.target.value);
             }}

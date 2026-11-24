@@ -1796,6 +1796,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
     saving: 'Сохранение…',
     notSaved: 'Не сохранено: ничего не изменилось.',
     required: 'Заполните это поле.',
+    requiredWord: 'Обязательное поле',
     chooseOne: 'Выберите хотя бы один вариант.',
     chooseGrade: 'Выберите хотя бы один класс.',
     chooseSubject: 'Выберите хотя бы один предмет.',

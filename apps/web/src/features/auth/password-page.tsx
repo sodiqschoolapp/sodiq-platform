@@ -1,4 +1,11 @@
-import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH, type ChangePassword } from '@sodiq/shared';
+import {
+  changePasswordSchema,
+  PASSWORD_MAX_LENGTH,
+  PASSWORD_MIN_LENGTH,
+  type ChangePassword,
+} from '@sodiq/shared';
+import { requiredOf } from '@/components/form/use-record-form';
+import { REPEAT_PAGE } from './page-checks';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { useState, type FormEvent, type ReactNode } from 'react';
@@ -127,6 +134,9 @@ export function PasswordPage() {
     }
   }
 
+  // What the route's body takes, for the red asterisks (task 11.18).
+  const typedChange = { currentPassword: current, newPassword: next };
+
   const Frame = forced ? AuthPage : OwnPasswordFrame;
   // Large on the sign-in frame, the default inside the layout (pull request
   // #80, decision 13).
@@ -154,6 +164,7 @@ export function PasswordPage() {
           large={forced}
           value={current}
           error={currentError}
+          required={requiredOf(changePasswordSchema, typedChange, 'currentPassword')}
           onChange={(event) => {
             setCurrent(event.target.value);
           }}
@@ -166,6 +177,7 @@ export function PasswordPage() {
           autoComplete="new-password"
           value={next}
           error={nextError}
+          required={requiredOf(changePasswordSchema, typedChange, 'newPassword')}
           onChange={(event) => {
             setNext(event.target.value);
           }}
@@ -178,6 +190,7 @@ export function PasswordPage() {
           autoComplete="new-password"
           value={repeat}
           error={repeatError}
+          required={requiredOf(REPEAT_PAGE, { repeat }, 'repeat')}
           onChange={(event) => {
             setRepeat(event.target.value);
           }}

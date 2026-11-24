@@ -1763,6 +1763,7 @@ export const en = {
     saving: 'Saving…',
     notSaved: 'Not saved: nothing was changed.',
     required: 'Fill in this field.',
+    requiredWord: 'Required field',
     chooseOne: 'Choose at least one.',
     chooseGrade: 'Choose at least one grade.',
     chooseSubject: 'Choose at least one subject.',

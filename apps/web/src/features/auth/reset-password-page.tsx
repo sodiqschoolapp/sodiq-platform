@@ -1,4 +1,11 @@
-import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH, type PasswordResetConfirm } from '@sodiq/shared';
+import {
+  PASSWORD_MAX_LENGTH,
+  PASSWORD_MIN_LENGTH,
+  passwordResetConfirmSchema,
+  type PasswordResetConfirm,
+} from '@sodiq/shared';
+import { requiredOf } from '@/components/form/use-record-form';
+import { REPEAT_PAGE } from './page-checks';
 import { useMutation } from '@tanstack/react-query';
 import { Link, useLocation, useNavigate } from '@tanstack/react-router';
 import { useEffect, useState, type FormEvent } from 'react';
@@ -104,6 +111,11 @@ export function ResetPasswordPage() {
             autoFocus
             value={next}
             error={nextError}
+            required={requiredOf(
+              passwordResetConfirmSchema,
+              { token, newPassword: next },
+              'newPassword',
+            )}
             onChange={(event) => {
               setNext(event.target.value);
             }}
@@ -116,6 +128,7 @@ export function ResetPasswordPage() {
             autoComplete="new-password"
             value={repeat}
             error={repeatError}
+            required={requiredOf(REPEAT_PAGE, { repeat }, 'repeat')}
             onChange={(event) => {
               setRepeat(event.target.value);
             }}

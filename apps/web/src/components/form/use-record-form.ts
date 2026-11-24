@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import type { RequiredKnown, RequiredValues, RequiredWhen } from '@sodiq/shared';
 import { formMessage, type FormIssue, type FormSchema } from './form-messages';
 import { SaveCancelled } from './save-cancelled';
 
@@ -36,17 +37,66 @@ interface RecordFormOptions<Field extends string, Values> {
    * typed is never overwritten.
    */
   followInitial?: boolean;
+  /**
+   * The fields the schema requires only in some states, from `packages/shared`
+   * beside the schema (`studentCreateRequiredWhen`), with what the form knows
+   * from the server (`known`): the red asterisk follows them (task 11.18).
+   */
+  requiredWhen?: RequiredWhen;
+  known?: RequiredKnown;
+}
+
+interface RequiredOptions<Typed> {
+  read?: ((typed: Typed) => unknown) | undefined;
+  requiredWhen?: RequiredWhen | undefined;
+  known?: RequiredKnown | undefined;
+}
+
+const asValues = (value: unknown): RequiredValues =>
+  typeof value === 'object' && value !== null ? (value as RequiredValues) : {};
+
+/**
+ * Whether a field must be filled now, for its red asterisk (task 11.18;
+ * docs/spec/12-ux-standards.md, No lost work). The schema, given what is typed
+ * with this one field emptied, reports an issue of the field's own rule at it
+ * (any code but `custom`: those come from refines, which zod skips while
+ * another field is wrong), or the schema's `requiredWhen` says so for what is
+ * typed now. The same rule shows "Fill in this field." under it.
+ */
+export function requiredOf<Typed extends Readonly<Record<string, string>>>(
+  schema: FormSchema<unknown>,
+  typed: Typed,
+  field: keyof Typed & string,
+  { read, requiredWhen, known = {} }: RequiredOptions<Typed> = {},
+): boolean {
+  try {
+    const emptied = { ...typed, [field]: '' };
+    const probe = schema.safeParse(read === undefined ? emptied : read(emptied));
+    if (
+      !probe.success &&
+      probe.error.issues.some((issue) => issue.path[0] === field && issue.code !== 'custom')
+    ) {
+      return true;
+    }
+    const when = requiredWhen?.[field];
+    return when !== undefined && when(asValues(read === undefined ? typed : read(typed)), known);
+  } catch {
+    // A `read` that cannot read what is typed says nothing about the field.
+    return false;
+  }
 }
 
 export interface FieldBinding {
   name: string;
   value: string;
   error: string | undefined;
+  /** The field must be filled now: its red asterisk (`requiredOf`). */
+  required: boolean;
   onChange: (event: { target: { value: string } }) => void;
 }
 
 export interface RecordFormState<Field extends string> {
-  /** What a field component needs: `<Field label={...} {...form.bind('name')} />`. */
+  /** What a field component needs: `<Field label={...} {...form.bind('name')} />`, `required` included. */
   bind: (field: Field) => FieldBinding;
   /** Something is typed that the last save does not hold. */
   dirty: boolean;
@@ -71,6 +121,47 @@ export interface RecordFormState<Field extends string> {
  * every field does after Save was pressed. Decided by the owner (task 0.8b):
  * a record form is saved with its Save button.
  */
+/**
+ * The forms drawn while the tests run (task 11.18): `test-setup.ts` checks
+ * after each test that emptying a field of a form makes its schema speak of a
+ * field the form draws, never of another: a field typed under a name that is
+ * not its schema key would show neither its message nor its red asterisk.
+ * Empty and unused outside the tests.
+ */
+export const drawnForms: { fields: readonly string[]; unshown: () => readonly string[] }[] = [];
+
+/**
+ * For each field whose emptying adds no issue at the field itself: the issues
+ * it adds at a path the form does not draw.
+ */
+function unshownWhenEmptied<Field extends string>(
+  schema: FormSchema<unknown>,
+  typed: Record<Field, string>,
+  read: ((typed: Record<Field, string>) => unknown) | undefined,
+): readonly string[] {
+  const fields = Object.keys(typed);
+  const issuesOf = (values: Record<Field, string>): readonly FormIssue[] => {
+    try {
+      const checked = schema.safeParse(read === undefined ? values : read(values));
+      return checked.success ? [] : checked.error.issues;
+    } catch {
+      return [];
+    }
+  };
+  const keyOf = (issue: FormIssue) => `${issue.path.map(String).join('.')}|${issue.code}`;
+  const before = new Set(issuesOf(typed).map(keyOf));
+  return fields.flatMap((field) => {
+    const added = issuesOf({ ...typed, [field]: '' }).filter((issue) => !before.has(keyOf(issue)));
+    // The field says so itself: its message and its mark show.
+    if (added.some((issue) => issue.path[0] === field)) {
+      return [];
+    }
+    return added
+      .filter((issue) => typeof issue.path[0] !== 'string' || !fields.includes(issue.path[0]))
+      .map((issue) => `emptying ${field} gives ${keyOf(issue)}`);
+  });
+}
+
 export function useRecordForm<Field extends string, Values>({
   schema,
   initial,
@@ -79,6 +170,8 @@ export function useRecordForm<Field extends string, Values>({
   message,
   checkedOnSave = [],
   followInitial = false,
+  requiredWhen,
+  known,
 }: RecordFormOptions<Field, Values>): RecordFormState<Field> {
   const { t, i18n } = useTranslation();
   const [saved, setSaved] = useState(initial);
@@ -99,6 +192,23 @@ export function useRecordForm<Field extends string, Values>({
     [schema, read, typed],
   );
 
+  // Once per what is typed, not per `bind()`: a form binds a field more than once.
+  const knownToday = known?.today;
+  const knownStored = known?.stored;
+  const requiredFields = useMemo(
+    () =>
+      new Set(
+        (Object.keys(typed) as Field[]).filter((field) =>
+          requiredOf(schema, typed, field, {
+            read,
+            requiredWhen,
+            known: { today: knownToday, stored: knownStored },
+          }),
+        ),
+      ),
+    [schema, read, typed, requiredWhen, knownToday, knownStored],
+  );
+
   const errorOf = (field: Field): string | undefined => {
     const shows = checkedOnSave.includes(field)
       ? pressedDrawn.current.has(field)
@@ -114,6 +224,9 @@ export function useRecordForm<Field extends string, Values>({
   };
 
   const fields = Object.keys(initial) as Field[];
+  if (import.meta.env.MODE === 'test') {
+    drawnForms.push({ fields, unshown: () => unshownWhenEmptied(schema, typed, read) });
+  }
   const same = (one: Record<Field, string>, other: Record<Field, string>): boolean =>
     fields.every((field) => one[field] === other[field]);
 
@@ -178,6 +291,7 @@ export function useRecordForm<Field extends string, Values>({
         name: field,
         value: typed[field],
         error: errorOf(field),
+        required: requiredFields.has(field),
         onChange: (event) => {
           const next = { ...typedNow.current, [field]: event.target.value };
           typedNow.current = next;

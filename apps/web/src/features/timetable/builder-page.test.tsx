@@ -12,6 +12,7 @@ import { en } from '@/i18n/locales/en';
 import { fakeApi, json, NORTH, renderApp, sessionOf } from '@/testing/render-app';
 import { pinSlots } from './pins-section';
 import { comingQuarterStarts } from './version-form';
+import { wordsOf } from '@/testing/words';
 
 const uid = (n: number): string => `0199a000-0000-7000-8000-${String(n).padStart(12, '0')}`;
 
@@ -1300,7 +1301,7 @@ describe('pinSlots', () => {
         if (found === null) throw new Error('No one-day changes yet.');
         return found;
       });
-      expect(decide.querySelector('legend')?.textContent).toBe(
+      expect(wordsOf(decide.querySelector('legend'))).toBe(
         '7 Oxford, Mathematics. 19 October 2026 08:00–08:45. moved to 21 October 2026 08:55–09:40. Reason: Excursion to the museum',
       );
       expect(decide.querySelector('[data-blocked]')?.textContent).toBe(
@@ -1568,7 +1569,7 @@ describe('pinSlots', () => {
       expect(line?.querySelector('p')?.textContent).toBe(
         'Bulk cancel of 7 Oxford on 19 October 2026. 1 lesson under it. Reason: Excursion to the museum',
       );
-      expect(line?.querySelector('legend')?.textContent).toBe(
+      expect(wordsOf(line?.querySelector('legend'))).toBe(
         '7-M-1, Mathematics, 08:55–09:40. Shared with 7 Princeton',
       );
       expect(

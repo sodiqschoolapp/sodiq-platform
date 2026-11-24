@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react';
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { I18nextProvider } from 'react-i18next';
 import { describe, expect, it } from 'vitest';
 import { createI18n } from '@/i18n/i18n';
@@ -8,9 +8,14 @@ import { CHECKBOX_TARGET } from '@/components/ui/control';
 import {
   CheckboxField,
   CheckboxGroupField,
+  DateField,
+  Field,
   listValues,
+  NumberField,
   OrderedListField,
   PhoneField,
+  SelectField,
+  TextAreaField,
 } from './field';
 
 const LABEL = 'Slots in order';
@@ -191,5 +196,95 @@ describe('a phone field', () => {
     render(<Phone error="Another phone, please." />);
     fireEvent.change(field(), { target: { value: '+998 90 123 45 01' } });
     expect(screen.getByText('Another phone, please.')).toBeDefined();
+  });
+});
+
+// docs/spec/12-ux-standards.md, No lost work: "A field that must be filled is
+// marked with a red asterisk (*) after its label ... and a screen reader
+// announces it as required. A field without the mark may be left empty"
+// (task 11.18).
+describe('the mark of a required field', () => {
+  const noop = () => undefined;
+  const OPTIONS = [{ value: 'a', label: 'A' }];
+  const KINDS = [
+    ['Field', (required?: boolean) => <Field label="Name" required={required} />],
+    ['DateField', (required?: boolean) => <DateField label="Name" required={required} />],
+    ['NumberField', (required?: boolean) => <NumberField label="Name" required={required} />],
+    [
+      'PhoneField',
+      (required?: boolean) => (
+        <PhoneField label="Name" value="" onChange={noop} required={required} />
+      ),
+    ],
+    [
+      'SelectField',
+      (required?: boolean) => <SelectField label="Name" options={OPTIONS} required={required} />,
+    ],
+    ['TextAreaField', (required?: boolean) => <TextAreaField label="Name" required={required} />],
+    [
+      'CheckboxField',
+      (required?: boolean) => (
+        <CheckboxField label="Name" name="n" value="" onChange={noop} required={required} />
+      ),
+    ],
+  ] as const;
+
+  const draw = (node: ReactNode) =>
+    render(<I18nextProvider i18n={createI18n('en')}>{node}</I18nextProvider>);
+
+  for (const [kind, make] of KINDS) {
+    it(`${kind}: a red asterisk hidden from screen readers and aria-required, only with required`, () => {
+      const marked = draw(make(true));
+      const mark = marked.container.querySelector('[data-required-mark]');
+      expect(mark?.textContent).toBe('*');
+      expect(mark?.getAttribute('aria-hidden')).toBe('true');
+      expect(mark?.className).toContain('text-destructive');
+      // The name is the label's words alone: the mark stands outside the label.
+      const control = screen.getByLabelText('Name');
+      expect(control.getAttribute('aria-required')).toBe('true');
+      // Never the browser's own bubble: the form says what to fix in plain words.
+      expect(control.hasAttribute('required')).toBe(false);
+      marked.unmount();
+
+      const plain = draw(make(undefined));
+      expect(plain.container.querySelector('[data-required-mark]')).toBeNull();
+      expect(screen.getByLabelText('Name').hasAttribute('aria-required')).toBe(false);
+      plain.unmount();
+    });
+  }
+
+  it('a group: the mark beside its legend and the word in its description, its name unchanged', () => {
+    const group = (required?: boolean) => (
+      <>
+        <CheckboxGroupField
+          label="Days"
+          name="days"
+          value=""
+          onChange={noop}
+          options={OPTIONS}
+          required={required}
+        />
+        <OrderedListField
+          label="Slots"
+          name="slots"
+          value=""
+          onChange={noop}
+          options={OPTIONS}
+          required={required}
+        />
+      </>
+    );
+    const marked = draw(group(true));
+    expect(marked.container.querySelectorAll('[data-required-mark]')).toHaveLength(2);
+    for (const name of ['Days', 'Slots']) {
+      const element = screen.getByRole('group', { name });
+      const describedBy = (element.getAttribute('aria-describedby') ?? '').split(' ');
+      const words = describedBy.map((id) => document.getElementById(id)?.textContent);
+      expect(words).toContain(en.form.requiredWord);
+    }
+    marked.unmount();
+    const plain = draw(group(false));
+    expect(plain.container.querySelector('[data-required-mark]')).toBeNull();
+    expect(plain.container.textContent).not.toContain(en.form.requiredWord);
   });
 });

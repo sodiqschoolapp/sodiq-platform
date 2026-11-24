@@ -13,6 +13,7 @@ import {
   type ExemptionCreate,
   type ExemptionMoveOffer,
   type ExemptionPreview,
+  exemptionCreateRequiredWhen,
 } from '@sodiq/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useSearch } from '@tanstack/react-router';
@@ -27,9 +28,12 @@ import {
   SelectField,
   TextAreaField,
   listValues,
+  RequiredGroup,
+  RequiredMark,
 } from '@/components/field';
 import type { FormSchema } from '@/components/form/form-messages';
-import { useRecordForm } from '@/components/form/use-record-form';
+import { filledOnPage } from '@/components/form/page-checks';
+import { requiredOf, useRecordForm } from '@/components/form/use-record-form';
 import { ListPage } from '@/components/list/list-page';
 import { listSearch, type Column, type ListSearch } from '@/components/list/list-state';
 import { PageHeader } from '@/components/page-header';
@@ -599,9 +603,19 @@ function PreviewLines({
             )}
             {one.choose.map((lesson) => {
               const key = `${one.studentId}|${lesson.lessonId}`;
+              const required = requiredOf(
+                CHOICE_PAGE,
+                { choice: choices.get(key) ?? '' },
+                'choice',
+              );
               return (
-                <fieldset key={lesson.lessonId} className="flex flex-wrap items-center gap-3">
-                  <legend className="sr-only">{lessonText(lesson)}</legend>
+                <RequiredGroup
+                  key={lesson.lessonId}
+                  className="flex flex-wrap items-center gap-3"
+                  legendClassName="sr-only"
+                  label={lessonText(lesson)}
+                  required={required}
+                >
                   <span>
                     {lessonText(lesson)}
                     {' · '}
@@ -610,6 +624,12 @@ function PreviewLines({
                       : lesson.mark === 1
                         ? t('journal.exemptions.markPresent')
                         : t('journal.exemptions.numbers', { count: lesson.numbers })}
+                    {required && (
+                      <>
+                        {' '}
+                        <RequiredMark />
+                      </>
+                    )}
                   </span>
                   {(['keep', 'exempt'] as const).map((choice) => (
                     <label key={choice} className="flex items-center gap-1.5">
@@ -624,7 +644,7 @@ function PreviewLines({
                       {t(`journal.exemptions.choice.${choice}`)}
                     </label>
                   ))}
-                </fieldset>
+                </RequiredGroup>
               );
             })}
             {one.reopen.length > 0 && (
@@ -641,6 +661,9 @@ function PreviewLines({
     </>
   );
 }
+
+/** A choice for each lesson the save asks about (`missing`), task 11.18. */
+const CHOICE_PAGE = filledOnPage(['choice']);
 
 /** The choices kept by student and lesson, sent as the server takes them. */
 function useChoices() {
@@ -726,6 +749,7 @@ function ExemptionFormDialog({
   const lastSent = useRef<ExemptionCreate | null>(null);
   const form = useRecordForm<FormField, ExemptionCreate>({
     schema: exemptionCreateSchema,
+    requiredWhen: exemptionCreateRequiredWhen,
     initial: {
       classId: '',
       studentIds: '',

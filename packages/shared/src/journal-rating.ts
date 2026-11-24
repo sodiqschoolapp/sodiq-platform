@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { RequiredWhen } from './required-when.js';
 import { schoolDateSchema } from './academic-year.js';
 import { cellMarkerSchema, correctionSchema, editLockSchema } from './journal-correction.js';
 
@@ -77,6 +78,15 @@ export const ratingEntrySaveSchema = z.strictObject({
 });
 
 export type RatingEntrySave = z.input<typeof ratingEntrySaveSchema>;
+
+/**
+ * What a rating entry's save requires only in some states (task 11.18): its
+ * reason under a correction, or over a stored entry (`rating_exam_reason`,
+ * `rating.service.ts`; `known.stored`).
+ */
+export const ratingEntrySaveRequiredWhen: RequiredWhen = {
+  reason: (values, known) => values.correction === true || known.stored === true,
+};
 
 export const ratingEntrySchema = z.object({
   studentId: z.uuid(),

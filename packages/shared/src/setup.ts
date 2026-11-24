@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { RequiredWhen } from './required-when.js';
 import { phoneLeftEmpty, storedPhone } from './phones.js';
 import { schoolDateSchema } from './academic-year.js';
 import { branchIdSchema } from './branches.js';
@@ -207,6 +208,11 @@ export const roomRecordSchema = z
   });
 
 export type RoomRecord = z.infer<typeof roomRecordSchema>;
+
+/** What `roomRecordSchema` requires only in some states (task 11.18): how many lessons a shared room holds. */
+export const roomRecordRequiredWhen: RequiredWhen = {
+  maxSimultaneousLessons: (values) => values.shared === true,
+};
 
 export const floorSchema = z.object({
   id: z.uuid(),

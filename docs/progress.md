@@ -2,6 +2,20 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 24 November 2026: task 11.18, a red asterisk on every required field
+
+- **The mark**: every field a form's schema needs shows a red asterisk after its label (`RequiredMark`, `--destructive` in both themes, hidden from screen readers) and `aria-required`; a group (`CheckboxGroupField`, `OrderedListField`, the new `RequiredGroup` for hand-drawn radios and ticks) says "Required field" through `aria-describedby`. Never the native `required`.
+- **From the schema**: `useRecordForm`'s `bind(field).required` and `requiredOf` empty the field and ask the schema; what only a refine or the server needs is a `requiredWhen` map beside the schema in `packages/shared` (15 maps, each tied to its schema by `required-when*.test.ts`), with `known.today` from the current period, never the device's clock.
+- **Checks**: `tooling/required-marks.test.ts` walks every control of the web app (from the schema, or named with its reason as not a form field); `test-setup.ts` fails any test that draws a form where emptying a field speaks of a path the form does not draw; the browser test `e2e/required-marks.spec.ts` (sign-in, three languages, light and dark).
+
+Left out: nothing of the task.
+
+The next sessions must know:
+
+- A new form field takes `{...form.bind(name)}` or `required={requiredOf(...)}`; a hand-drawn group a save waits for is a `RequiredGroup`; a new control that is not a form field is named in `NOT_FORM_FIELDS` of the walk with its reason.
+- A schema with a refine or a server check that makes a field required only in some states gets a `requiredWhen` map beside it, a case in `required-when*.test.ts` and a line in `MAPS` of the walk.
+- A legend's words in a test are read with `wordsOf` (`src/testing/words.ts`): a required group's legend holds the hidden mark.
+
 ## 24 November 2026: task 11.17, no lesson score and no daily distribution
 
 - **The journal** (grid, Excel and PDF, support view, legend) shows no lesson score ("Oʻrt / Ср. / Avg"); `packages/calc` lost `lessonScore` and its daily weights only, `Work` moved to `work.ts`, `CALC_VERSION` is 8 (`version.test.ts` pins it).

@@ -1,5 +1,8 @@
 import {
   RATING_SCORE_MAX,
+  ratingDateSchema,
+  ratingEntrySaveSchema,
+  ratingEntrySaveRequiredWhen,
   type JournalGrid,
   type JournalStudent,
   type RatingEntryValue,
@@ -13,6 +16,7 @@ import { useConfirm } from '@/components/confirm-dialog';
 import { FailureAlert } from '@/components/failure-alert';
 import { DateField, NumberField, TextAreaField } from '@/components/field';
 import { wholeNumber } from '@/components/form/form-messages';
+import { requiredOf } from '@/components/form/use-record-form';
 import { ErrorState, EmptyState, LoadingOutline } from '@/components/states';
 import { Button } from '@/components/ui/button';
 import { SUBSECTION_TITLE } from '@/components/ui/control';
@@ -281,6 +285,22 @@ function EntryDialog({
   const entersOver = stored?.entry?.kind !== 'exempt' || correction !== undefined;
   const reasonText = reason.trim() === '' ? null : reason.trim();
   const ready = !needsReason || reasonText !== null;
+  // The red asterisk (task 11.18) from the schema of the save: a score is a
+  // whole number; the reason is required by the server over a stored entry
+  // (`rating_exam_reason`), which the schema leaves nullable: its map says so.
+  // Under a correction its reason is asked once, not here.
+  const entryRequired = (field: 'entry' | 'reason') =>
+    requiredOf(ratingEntrySaveSchema, { entry: score, reason }, field, {
+      read: (values) => ({
+        studentId: student.id,
+        entry: { kind: 'score', score: wholeNumber(values.entry) },
+        reason: values.reason.trim() === '' ? null : values.reason.trim(),
+        version: null,
+        correction: false,
+      }),
+      requiredWhen: ratingEntrySaveRequiredWhen,
+      known: { stored: needsReason },
+    });
   const history = useQuery(
     ratingHistoryQuery(branchId, exam.journalId, exam.quarterId, student.id),
   );
@@ -306,6 +326,7 @@ function EntryDialog({
             <NumberField
               label={t('journal.rating.score')}
               value={score}
+              required={entryRequired('entry')}
               error={
                 score === '' || valid
                   ? undefined
@@ -320,6 +341,7 @@ function EntryDialog({
             <TextAreaField
               label={t('journal.rating.reason')}
               value={reason}
+              required={entryRequired('reason')}
               onChange={(event) => {
                 setReason(event.target.value);
               }}
@@ -458,6 +480,10 @@ function ExamDialog({
           <DateField
             label={t('journal.rating.date')}
             value={date}
+            // Optional: an empty date clears it (task 11.18, from `ratingDateSchema`).
+            required={requiredOf(ratingDateSchema, { date }, 'date', {
+              read: (values) => ({ date: values.date === '' ? null : values.date, version: null }),
+            })}
             disabled={!exam.canSetDate}
             note={exam.fromExam ? t('journal.rating.fromExam') : undefined}
             onChange={(event) => {

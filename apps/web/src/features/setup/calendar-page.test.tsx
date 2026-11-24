@@ -14,6 +14,7 @@ import {
 } from '@/testing/panel';
 import { fakeApi, json, NORTH, renderApp, sessionOf } from '@/testing/render-app';
 import { savedRecordPanel } from '@/testing/new-record';
+import { wordsOf } from '@/testing/words';
 
 const PATH = '/setup/calendar';
 // Saturday 10 October 2026 in branch time.
@@ -1003,7 +1004,7 @@ describe('the calendar page', () => {
     const block = (groupId: string, start: number) =>
       dialog.querySelector<HTMLElement>(`[data-block="1|${String(start)}|${groupId}"]`);
     const pe = block(GROUP, 590);
-    expect(pe?.querySelector('legend')?.textContent).toBe(
+    expect(wordsOf(pe?.querySelector('legend'))).toBe(
       'PE 9-10 · Monday 09:50–10:35 · 19 October 2026, 26 October 2026',
     );
     const radios = (element: HTMLElement | null) =>

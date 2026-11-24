@@ -1791,6 +1791,7 @@ export const uz: Texts<'one' | 'other'> = {
     saving: 'Saqlanmoqda…',
     notSaved: 'Saqlanmadi: hech narsa oʻzgarmadi.',
     required: 'Bu maydonni toʻldiring.',
+    requiredWord: 'Majburiy maydon',
     chooseOne: 'Kamida bittasini tanlang.',
     chooseGrade: 'Kamida bitta sinfni tanlang.',
     chooseSubject: 'Kamida bitta fanni tanlang.',

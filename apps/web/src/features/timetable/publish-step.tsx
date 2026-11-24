@@ -1,5 +1,6 @@
 import {
   classDisplayName,
+  publishBodySchema,
   type CarryChangeAnswer,
   type DayChangeChoice,
   type LoadRow,
@@ -12,6 +13,7 @@ import { useTranslation } from 'react-i18next';
 import { useConfirm } from '@/components/confirm-dialog';
 import { FailureAlert } from '@/components/failure-alert';
 import { DateField } from '@/components/field';
+import { requiredOf } from '@/components/form/use-record-form';
 import { ErrorState, LoadingOutline } from '@/components/states';
 import { Button } from '@/components/ui/button';
 import { useView } from '@/features/access/use-view';
@@ -297,6 +299,7 @@ export function PublishStep({
           <DateField
             label={t('timetable.publish.startsOn')}
             name="publishStartsOn"
+            required={requiredOf(publishBodySchema, { startsOn }, 'startsOn')}
             value={startsOn}
             min={answer?.earliest}
             disabled={!canEdit}

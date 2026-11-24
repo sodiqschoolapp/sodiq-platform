@@ -7,6 +7,7 @@ import {
   type Subject,
   type VacancyDetail,
   type VacancyRecord,
+  vacancyRecordRequiredWhen,
 } from '@sodiq/shared';
 import { Link } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
@@ -85,6 +86,7 @@ export function VacancyForm({
   }
   const form = useRecordForm<Fields, VacancyRecord>({
     schema: asFormSchema<VacancyRecord>(vacancyRecordSchema, subjectsFieldOf),
+    requiredWhen: vacancyRecordRequiredWhen,
     initial: initial,
     read: (typed) => ({
       name: typed.name,

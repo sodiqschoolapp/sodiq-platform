@@ -160,6 +160,7 @@ Three sizes, four kinds, one shape. Every button is a fill with no border.
 ## Fields and switches
 
 - Fields and selects: 40 high (44 at phone width, 48 on sign-in), white fill, 1 px `--input` border, corner 8; focus is the 2 px ring. An error is a 2 px `--destructive` border and one line under the field in `--destructive`.
+- A field that must be filled has a red asterisk after its label (`RequiredMark` of `components/field.tsx`): `--destructive` in both themes, the label's weight and size, outside the `<label>` or inside the `<legend>` and hidden from screen readers, so the field's name stays its label. The control carries `aria-required="true"`; a group (`fieldset`), which may not, is described by the hidden words "Required field" in the person's language. The mark comes from the form's schema (`form.bind(name).required`, `requiredOf`), never typed by hand; a locked field (switched off, read only) has none, and no field says "optional" (`12`, No lost work; task 11.18).
 - A select draws a filled "expand more" icon on the right, never a text caret.
 - A segmented control (two to four choices) is a `--accent` track with 4 px padding; the chosen item is white with navy text, the others muted text, 32 high (44 at phone width, so the track is 52).
 - Checkboxes use navy in the light theme and the foreground colour in the dark theme.

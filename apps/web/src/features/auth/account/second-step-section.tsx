@@ -1,10 +1,11 @@
-import { secondStepOverviewSchema } from '@sodiq/shared';
+import { secondStepCodeSchema, secondStepOverviewSchema } from '@sodiq/shared';
 import { queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api } from '@/api/client';
 import { ApiFailure, answerOf } from '@/api/failure';
 import { Field } from '@/components/field';
+import { requiredOf } from '@/components/form/use-record-form';
 import { FailureAlert } from '@/components/failure-alert';
 import { ErrorState, LoadingOutline } from '@/components/states';
 import { Button } from '@/components/ui/button';
@@ -186,6 +187,7 @@ export function SecondStepSection() {
               maxLength={40}
               value={code}
               error={checked && typed === '' ? t('setUp.codeMissing') : undefined}
+              required={requiredOf(secondStepCodeSchema, { code: typed }, 'code')}
               onChange={(event) => {
                 setCode(event.target.value);
               }}

@@ -8,7 +8,9 @@ import { createI18n } from '@/i18n/i18n';
 import { en } from '@/i18n/locales/en';
 import type { FormSchema } from './form-messages';
 import { RecordForm } from './record-form';
-import { useRecordForm } from './use-record-form';
+import { drawnForms, requiredOf, useRecordForm } from './use-record-form';
+import { Field, SelectField } from '@/components/field';
+import type { RequiredWhen } from '@sodiq/shared';
 
 // What the forms of task 2.7b-2 need of the hook: a checkbox group that says
 // what is missing on Save only (issue #39, hand test of 13 October 2026,
@@ -234,5 +236,202 @@ describe('a form that follows what it shows', () => {
     fireEvent.click(screen.getByRole('button', { name: 'elsewhere' }));
     fireEvent.click(screen.getByRole('button', { name: 'reset' }));
     expect(note()).toBe('changed elsewhere');
+  });
+});
+
+// Task 11.18 (docs/spec/12-ux-standards.md, No lost work): "A field that must be
+// filled is marked with a red asterisk ... A field without the mark may be left
+// empty." The mark comes from the schema the form checks with.
+describe('the required mark of a bound field', () => {
+  interface Read {
+    name: string;
+    nickname: string | null;
+    sex: string;
+    kind: string | null;
+    number: string | null;
+  }
+  /**
+   * As zod 4 checks it: the rule of each field, then the refine "a kind and
+   * its number, both or neither", skipped while any field is wrong.
+   */
+  const schema: FormSchema<Read> = {
+    safeParse: (input) => {
+      const values = input as Read;
+      const issues = [
+        ...(values.name === ''
+          ? [{ code: 'too_small', origin: 'string', minimum: 1, path: ['name'] }]
+          : []),
+        ...(['male', 'female'].includes(values.sex)
+          ? []
+          : [{ code: 'invalid_value', path: ['sex'] }]),
+      ];
+      if (issues.length === 0 && (values.kind === null) !== (values.number === null)) {
+        issues.push({ code: 'custom', path: ['number'] });
+      }
+      return issues.length === 0
+        ? { success: true, data: values }
+        : { success: false, error: { issues } };
+    },
+  };
+  type Field = 'name' | 'nickname' | 'sex' | 'kind' | 'number';
+  const read = (typed: Record<Field, string>) => ({
+    name: typed.name,
+    nickname: typed.nickname === '' ? null : typed.nickname,
+    sex: typed.sex,
+    kind: typed.kind === '' ? null : typed.kind,
+    number: typed.number === '' ? null : typed.number,
+  });
+  const requiredWhen: RequiredWhen = {
+    number: (values) => values.kind !== null,
+    kind: (values) => values.number !== null,
+  };
+  const typed = (more: Partial<Record<Field, string>> = {}): Record<Field, string> => ({
+    name: '',
+    nickname: '',
+    sex: '',
+    kind: '',
+    number: '',
+    ...more,
+  });
+
+  it('marks a field the schema needs, and not one it may leave empty', () => {
+    expect(requiredOf(schema, typed(), 'name', { read })).toBe(true);
+    expect(requiredOf(schema, typed(), 'sex', { read })).toBe(true);
+    // Its empty value is read as null, which the schema takes.
+    expect(requiredOf(schema, typed(), 'nickname', { read })).toBe(false);
+    expect(requiredOf(schema, typed(), 'number', { read, requiredWhen })).toBe(false);
+  });
+
+  it('follows a requirement of a refine, also while an unrelated select is still empty', () => {
+    // zod skips the refine while `sex` is not chosen: the map still marks it.
+    const chosen = typed({ kind: 'passport' });
+    expect(requiredOf(schema, chosen, 'number', { read, requiredWhen })).toBe(true);
+    expect(requiredOf(schema, typed({ number: 'AB1' }), 'kind', { read, requiredWhen })).toBe(true);
+    expect(requiredOf(schema, typed(), 'kind', { read, requiredWhen })).toBe(false);
+    // Without the map the probe alone does not see it: why the map exists.
+    expect(requiredOf(schema, chosen, 'number', { read })).toBe(false);
+  });
+
+  it('gives the branch’s today to a requirement that depends on it', () => {
+    const when: RequiredWhen = {
+      classId: (values, known) =>
+        known.today === undefined ||
+        typeof values.startsOn !== 'string' ||
+        values.startsOn <= known.today,
+    };
+    const loose: FormSchema<unknown> = {
+      safeParse: (input) => ({ success: true, data: input }),
+    };
+    const values = { startsOn: '2026-12-01', classId: '' };
+    const readClass = (one: Record<'startsOn' | 'classId', string>) => ({
+      ...one,
+      classId: one.classId === '' ? null : one.classId,
+    });
+    const at = (today?: string) =>
+      requiredOf(loose, values, 'classId', {
+        read: readClass,
+        requiredWhen: when,
+        known: { today },
+      });
+    expect(at('2026-11-24')).toBe(false);
+    expect(at('2026-12-01')).toBe(true);
+    expect(at('2026-12-02')).toBe(true);
+    // Not known yet: marked, since the server may refuse it.
+    expect(at(undefined)).toBe(true);
+  });
+
+  it('says nothing when the form cannot read what is typed', () => {
+    const throwing = () => {
+      throw new Error('unreadable');
+    };
+    expect(requiredOf(schema, typed(), 'name', { read: throwing })).toBe(false);
+  });
+
+  function Marked({ locked }: { locked: boolean }) {
+    const form = useRecordForm<Field, Read>({
+      schema,
+      initial: typed(),
+      read,
+      requiredWhen,
+      save: () => Promise.resolve(),
+    });
+    return (
+      <RecordForm form={form} label="Person">
+        <Field label="Name" {...form.bind('name')} disabled={locked} />
+        <Field label="Nickname" {...form.bind('nickname')} />
+        <SelectField
+          label="Kind"
+          options={[
+            { value: '', label: '-' },
+            { value: 'passport', label: 'Passport' },
+          ]}
+          {...form.bind('kind')}
+        />
+        <Field label="Number" {...form.bind('number')} />
+      </RecordForm>
+    );
+  }
+
+  const marked = () =>
+    [...document.querySelectorAll('[aria-required="true"]')].map((element) =>
+      element.getAttribute('name'),
+    );
+
+  it('draws the mark on the bound fields, follows what is typed, and leaves a locked field unmarked', () => {
+    const view = render(
+      <Wrap>
+        <Marked locked={false} />
+      </Wrap>,
+    );
+    expect(marked()).toEqual(['name']);
+    fireEvent.change(screen.getByLabelText('Kind'), { target: { value: 'passport' } });
+    // A kind chosen needs its number; the kind itself may still go back to none.
+    expect(marked()).toEqual(['name', 'number']);
+    // The browser's own `required` never: the form says what to fix.
+    expect(document.querySelector('[required]')).toBeNull();
+    view.unmount();
+    render(
+      <Wrap>
+        <Marked locked />
+      </Wrap>,
+    );
+    expect(marked()).toEqual([]);
+  });
+});
+
+// Task 11.18: test-setup.ts fails a test that draws a form whose schema names
+// a field the form does not draw (a typed name that is not the schema's key):
+// that field's message and red asterisk could never show.
+describe('the forms drawn in a test', () => {
+  it('are kept with the issues that emptying a field adds where the form draws nothing', () => {
+    const named: FormSchema<{ unitId: string }> = {
+      safeParse: (input) => {
+        const values = input as { unit: string };
+        return values.unit === ''
+          ? { success: false, error: { issues: [{ code: 'too_small', path: ['unitId'] }] } }
+          : { success: true, data: { unitId: values.unit } };
+      },
+    };
+    function Misnamed() {
+      const form = useRecordForm<'unit', { unitId: string }>({
+        schema: named,
+        initial: { unit: 'a' },
+        save: () => Promise.resolve(),
+      });
+      return (
+        <RecordForm form={form} label="Row">
+          <Field label="Unit" {...form.bind('unit')} />
+        </RecordForm>
+      );
+    }
+    drawnForms.splice(0);
+    render(
+      <Wrap>
+        <Misnamed />
+      </Wrap>,
+    );
+    const kept = drawnForms.splice(0);
+    expect(kept.at(-1)?.fields).toEqual(['unit']);
+    expect(kept.at(-1)?.unshown()).toEqual(['emptying unit gives unitId|too_small']);
   });
 });

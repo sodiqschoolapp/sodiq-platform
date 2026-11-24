@@ -1,5 +1,6 @@
 import {
   COMMENT_MAX_LENGTH,
+  commentSaveSchema,
   type CommentHistoryQuery,
   type CommentTarget,
   type CommentVisibility,
@@ -10,6 +11,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FailureAlert } from '@/components/failure-alert';
+import { requiredOf } from '@/components/form/use-record-form';
 import { SelectField, TextAreaField } from '@/components/field';
 import { ErrorState, EmptyState, LoadingOutline } from '@/components/states';
 import { Button } from '@/components/ui/button';
@@ -230,6 +232,16 @@ function CommentSection({
     },
   });
   const canWrite = writable(grid, cell);
+  // The red asterisk (task 11.18): Save sends the typed comment, checked by `commentSaveSchema`.
+  const commentRequired = (field: 'body' | 'visibility') =>
+    requiredOf(commentSaveSchema, { body, visibility }, field, {
+      read: (values) => ({
+        on: targetOf(grid, cell),
+        body: values.body.trim(),
+        visibility: values.visibility,
+        version: comment?.version ?? null,
+      }),
+    });
   const trimmed = body.trim();
   const heading = t(`journal.comments.targets.${cell.target}`);
   return (
@@ -238,6 +250,7 @@ function CommentSection({
       <TextAreaField
         label={t('journal.comments.body')}
         value={body}
+        required={commentRequired('body')}
         disabled={!canWrite}
         maxLength={COMMENT_MAX_LENGTH}
         onChange={(event) => {
@@ -247,6 +260,7 @@ function CommentSection({
       <SelectField
         label={t('journal.comments.visibility')}
         value={visibility}
+        required={commentRequired('visibility')}
         disabled={!canWrite}
         options={[
           { value: 'staff', label: t('journal.comments.visibilities.staff') },

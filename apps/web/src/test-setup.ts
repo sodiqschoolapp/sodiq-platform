@@ -1,5 +1,6 @@
 import { cleanup, configure } from '@testing-library/react';
 import { afterAll, afterEach, vi } from 'vitest';
+import { drawnForms } from '@/components/form/use-record-form';
 
 // The default wait of 1 s is too short when every package is tested at once.
 configure({ asyncUtilTimeout: 5_000 });
@@ -18,6 +19,26 @@ if (inPage) {
 // passed. A file that drew a grid waits for such timers before its page is taken down.
 const AG_GRID_TIMERS_MS = 300;
 let gridDrawn = false;
+
+// Task 11.18: emptying a field of a form makes its schema speak of a field the
+// form draws, or that field's message and red asterisk could never show (a
+// typed name that is not the schema's key). Checked for every form any test
+// draws, as it stood when last drawn.
+afterEach(() => {
+  const forms = drawnForms.splice(0);
+  const last = new Map<string, (typeof forms)[number]>();
+  for (const form of forms) {
+    last.set(form.fields.join(','), form);
+  }
+  const unshown = [...last.values()].flatMap((form) =>
+    form.unshown().map((line) => `${line} (the form of ${form.fields.join(',')})`),
+  );
+  if (unshown.length > 0) {
+    throw new Error(
+      `A schema issue names no field of its form: ${[...new Set(unshown)].join('; ')}`,
+    );
+  }
+});
 
 afterEach(() => {
   if (inPage && document.querySelector('.ag-root-wrapper') !== null) {

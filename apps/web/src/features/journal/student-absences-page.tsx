@@ -436,6 +436,9 @@ function ReasonForm({
       note: typed.note,
     }),
     message: (field) => (field === 'category' ? t('journal.absences.noCategory') : undefined),
+    // The refine above makes the category required here; zod reports it as a
+    // custom issue, so the red asterisk is told (task 11.18, decision 2).
+    requiredWhen: { category: () => true },
     save: onSave,
   });
   return (

@@ -257,7 +257,8 @@ function CopyDialog({ plan, onClose }: { plan: Plan; onClose: () => void }) {
     '';
   const sources = (list.data?.plans ?? []).filter((one) => one.subject.id === plan.subject.id);
   const form = useRecordForm<'source' | 'part', PlanCopy>({
-    schema: planCopySchema,
+    // The branch of a copy from a plan (task 11.18): an issue of the union would name no field.
+    schema: planCopySchema.options[0],
     initial: { source: '', part: 'all' },
     read: (typed) => ({
       quarterId: plan.quarterId,

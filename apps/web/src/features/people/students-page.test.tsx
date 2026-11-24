@@ -680,6 +680,66 @@ describe('adding a student', () => {
     return form;
   }
 
+  // Task 11.18 (`12`, No lost work): "A field that must be filled is marked
+  // with a red asterisk ... A field without the mark may be left empty." The
+  // marks of the new student form are the fields `studentCreateSchema` needs,
+  // and the class follows the branch's today (`student_needs_class`).
+  it('marks the fields a new student needs, and the class once the start is on or before the branch’s today', async () => {
+    openList('academic_vice_principal', {
+      'GET /api/setup/current-period': () =>
+        json({
+          today: '2026-09-02',
+          year: null,
+          state: 'before_first',
+          quarter: null,
+          next: null,
+          demoNow: null,
+          timeZone: 'Asia/Tashkent',
+        }),
+    });
+    renderApp(PATH);
+    fireEvent.click(await screen.findByRole('button', { name: en.people.students.add }));
+    const form = within(
+      await screen.findByRole('complementary', { name: en.people.students.newTitle }),
+    ).getByRole('form', { name: en.people.students.newTitle });
+    const marked = () =>
+      [...form.querySelectorAll('[aria-required="true"]')].map(
+        (control) => control.getAttribute('name') ?? '',
+      );
+    const type = (label: string, value: string) => {
+      fireEvent.change(within(form).getByLabelText(label), { target: { value } });
+    };
+    type(en.people.students.grade, '7');
+    type(en.people.students.startsOn, '2026-09-03');
+    await waitFor(() => {
+      // The scholarship always holds a choice ("None"); the schema needs one (decision 4).
+      expect(marked()).toEqual([
+        'uid',
+        'lastName',
+        'firstName',
+        'sex',
+        'grade',
+        'startsOn',
+        'scholarshipType',
+      ]);
+    });
+    // Every mark is the red asterisk beside its label, never the browser's own `required`.
+    expect(form.querySelectorAll('[data-required-mark]')).toHaveLength(7);
+    expect(form.querySelector('[required]')).toBeNull();
+    // Today or earlier: the class is needed.
+    type(en.people.students.startsOn, '2026-09-02');
+    await waitFor(() => {
+      expect(marked()).toContain('classId');
+    });
+    // A document type chosen needs its number; a scholarship needs its coverage.
+    type(en.people.students.documentType, 'passport');
+    type(en.people.students.scholarshipType, 'merit');
+    await waitFor(() => {
+      expect(marked()).toEqual(expect.arrayContaining(['documentNumber', 'scholarshipCoverage']));
+    });
+    expect(marked()).not.toContain('documentType');
+  });
+
   // Task 9.4d: a student of grade 0 (05, Class: "Grade (0–11)").
   it('offers grade 0 to 11 and sends grade 0', async () => {
     const calls = openList('academic_vice_principal', {

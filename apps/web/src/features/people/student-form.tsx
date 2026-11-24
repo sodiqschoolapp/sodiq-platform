@@ -17,6 +17,9 @@ import {
   type RelativePhoneMatchResult,
   type StudentRecord,
   GRADES,
+  scholarshipRequiredWhen,
+  studentCreateRequiredWhen,
+  type RequiredWhen,
 } from '@sodiq/shared';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
@@ -33,14 +36,14 @@ import {
 } from '@/components/field';
 import { wholeNumber } from '@/components/form/form-messages';
 import { RecordForm } from '@/components/form/record-form';
-import { useRecordForm } from '@/components/form/use-record-form';
+import { useRecordForm, type FieldBinding } from '@/components/form/use-record-form';
 import { ErrorState } from '@/components/states';
 import { Button } from '@/components/ui/button';
 import { useView } from '@/features/access/use-view';
 import { classesQuery, classSeatsQuery } from '@/features/classes/classes-api';
 import { schoolDateText } from '@/lib/dates';
 import { GroupSeatRefusal, useClassFullText } from '@/features/classes/class-members';
-import { yearsQuery } from '@/features/setup/setup-api';
+import { currentPeriodQuery, yearsQuery } from '@/features/setup/setup-api';
 import { asFormSchema } from './form-schema';
 import {
   extraPhoneIssueField,
@@ -239,6 +242,28 @@ const EDIT_SCHEMA = asFormSchema<StudentRecord>(studentRecordSchema, fieldOf);
 
 const orNull = (typed: string): string | null => (typed === '' ? null : typed);
 
+const scholarshipOf = (
+  values: Readonly<Record<string, unknown>>,
+): Readonly<Record<string, unknown>> =>
+  typeof values.scholarship === 'object' && values.scholarship !== null
+    ? (values.scholarship as Readonly<Record<string, unknown>>)
+    : {};
+
+/**
+ * What the student's schema requires only in some states, by the fields of
+ * this form (task 11.18): the document pair, the class of a student who starts
+ * today or earlier, and the scholarship's coverage and amount.
+ */
+const REQUIRED_WHEN: RequiredWhen = {
+  documentType: studentCreateRequiredWhen.documentType ?? (() => false),
+  documentNumber: studentCreateRequiredWhen.documentNumber ?? (() => false),
+  classId: studentCreateRequiredWhen.classId ?? (() => false),
+  scholarshipCoverage: (values, known) =>
+    scholarshipRequiredWhen.coverage?.(scholarshipOf(values), known) ?? false,
+  scholarshipAmount: (values, known) =>
+    scholarshipRequiredWhen.amount?.(scholarshipOf(values), known) ?? false,
+};
+
 /**
  * Whether the relative part of a new student was left as it opened: no name, no
  * relationship, no phone past the country code, no "no phone" tick, no
@@ -309,6 +334,11 @@ export function StudentForm({
   // The classes a new student can join (task 3.1b): active, in an open year.
   const classes = useQuery({ ...classesQuery(branchId), enabled: branchId !== null && creating });
   const years = useQuery({ ...yearsQuery(branchId), enabled: branchId !== null && creating });
+  // The branch's today, for the mark of the class (`student_needs_class`); never the device's clock.
+  const period = useQuery({
+    ...currentPeriodQuery(branchId),
+    enabled: branchId !== null && creating,
+  });
   /** The typed phone of the relative in its stored form, or null. */
   const storedPhone = (typed: string): string | null => {
     const parsed = relativePhoneSchema.safeParse(typed);
@@ -317,6 +347,8 @@ export function StudentForm({
   const contract = student?.financial?.contracts[0];
   const form = useRecordForm<StudentField, StudentCreate | StudentRecord>({
     schema: creating ? CREATE_SCHEMA : EDIT_SCHEMA,
+    requiredWhen: REQUIRED_WHEN,
+    known: { today: period.data?.today },
     initial: {
       uid: student?.uid ?? '',
       firstName: student?.firstName ?? '',
@@ -779,12 +811,7 @@ export function StudentForm({
   );
 }
 
-type Bind = (field: StudentField) => {
-  name: string;
-  value: string;
-  error: string | undefined;
-  onChange: (event: { target: { value: string } }) => void;
-};
+type Bind = (field: StudentField) => FieldBinding;
 
 /**
  * The relative of a new student (`04`, Close relatives: "A student cannot be

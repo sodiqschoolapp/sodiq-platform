@@ -1,3 +1,4 @@
+import { passwordSignInSchema } from '@sodiq/shared';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Navigate, useNavigate, useSearch } from '@tanstack/react-router';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
@@ -6,6 +7,7 @@ import { api } from '@/api/client';
 import { ApiFailure, answerOf } from '@/api/failure';
 import { FailureAlert } from '@/components/failure-alert';
 import { Field } from '@/components/field';
+import { requiredOf } from '@/components/form/use-record-form';
 import { LoadingOutline } from '@/components/states';
 import { Button } from '@/components/ui/button';
 import { AuthPage } from '@/features/auth/auth-page';
@@ -109,6 +111,7 @@ export function TelegramStartPage(): React.JSX.Element {
             autoFocus
             maxLength={100}
             value={login}
+            required={requiredOf(passwordSignInSchema, { login, password }, 'login')}
             error={loginError}
             onChange={(event) => {
               setLogin(event.target.value);
@@ -121,6 +124,7 @@ export function TelegramStartPage(): React.JSX.Element {
             type="password"
             autoComplete="current-password"
             value={password}
+            required={requiredOf(passwordSignInSchema, { login, password }, 'password')}
             error={passwordError}
             onChange={(event) => {
               setPassword(event.target.value);

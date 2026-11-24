@@ -4,7 +4,9 @@ import { useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api } from '@/api/client';
 import { answerOf } from '@/api/failure';
+import { secondStepCodeSchema } from '@sodiq/shared';
 import { Field } from '@/components/field';
+import { requiredOf } from '@/components/form/use-record-form';
 import { Button } from '@/components/ui/button';
 import { AuthPage } from './auth-page';
 import { FailureAlert } from '@/components/failure-alert';
@@ -59,6 +61,7 @@ export function CodePage() {
           autoFocus
           maxLength={40}
           value={code}
+          required={requiredOf(secondStepCodeSchema, { code: typed }, 'code')}
           error={checked && typed === '' ? t('code.missing') : undefined}
           onChange={(event) => {
             setCode(event.target.value);

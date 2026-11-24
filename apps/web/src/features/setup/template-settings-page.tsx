@@ -14,6 +14,7 @@ import {
   type AssignmentSave,
   type DayTemplateSummary,
   type TemplateLevelName,
+  assignmentRequiredWhen,
 } from '@sodiq/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useSearch } from '@tanstack/react-router';
@@ -63,6 +64,7 @@ function SetForm({ templates, tomorrow, onSave }: SetFormProps) {
   const active = templates.filter((template) => template.archivedAt === null);
   const form = useRecordForm({
     schema: assignmentRecordSchema,
+    requiredWhen: assignmentRequiredWhen,
     initial: {
       level: 'default',
       weekday: '1',

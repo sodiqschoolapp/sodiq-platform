@@ -1,4 +1,6 @@
 import {
+  actingTeacherBodySchema,
+  actingTeacherEndSchema,
   listName,
   type ActingTeacher,
   type ActingTeacherBody,
@@ -12,6 +14,7 @@ import { useTranslation } from 'react-i18next';
 import { useConfirm } from '@/components/confirm-dialog';
 import { FailureAlert } from '@/components/failure-alert';
 import { DateField, SelectField } from '@/components/field';
+import { requiredOf } from '@/components/form/use-record-form';
 import { ErrorState, LoadingOutline } from '@/components/states';
 import { Button } from '@/components/ui/button';
 import { CHECKBOX, CHECKBOX_TARGET, SECTION_TITLE } from '@/components/ui/control';
@@ -35,6 +38,14 @@ import {
 import { JournalSubstituteDialog } from '@/features/timetable/journal-substitute-dialog';
 import { invalidateTimetable } from '@/features/timetable/timetable-api';
 import { fillRowName } from './vacancy-fill-dialog';
+
+/** An empty "until" is left out of the body of a naming (task 11.18, the red asterisks). */
+const ACTING_READ = {
+  read: (typed: Record<string, string>) => ({
+    ...typed,
+    until: typed.until === '' ? undefined : typed.until,
+  }),
+};
 
 /**
  * The acting teachers of a vacancy's journals on its record (task 5.7a-3c;
@@ -292,6 +303,10 @@ function NameDialog({
       : null;
   const check = useQuery(actingCheckQuery(branchId, body));
   const bodyKey = JSON.stringify(body);
+  // What the route's body takes, for the red asterisks (task 11.18): an empty
+  // "until" is left out of the body, as `body` leaves it out.
+  const typedBody = { vacancyId: vacancy.id, journalId, personId, from, until };
+
   const confirmed = confirmedFor === bodyKey;
 
   const save = useMutation({
@@ -380,6 +395,7 @@ function NameDialog({
             label={t('people.vacancies.acting.journal')}
             name="actingJournal"
             value={journalId}
+            required={requiredOf(actingTeacherBodySchema, typedBody, 'journalId', ACTING_READ)}
             options={[
               { value: '', label: t('people.vacancies.acting.chooseJournal') },
               ...journals.map((one) => ({ value: one.id, label: one.name })),
@@ -400,6 +416,7 @@ function NameDialog({
               label={t('people.vacancies.acting.person')}
               name="actingPerson"
               value={personId}
+              required={requiredOf(actingTeacherBodySchema, typedBody, 'personId', ACTING_READ)}
               disabled={staff.data === undefined}
               options={[
                 { value: '', label: t('people.vacancies.acting.choosePerson') },
@@ -415,6 +432,7 @@ function NameDialog({
               label={t('people.vacancies.acting.from')}
               name="actingFrom"
               value={from}
+              required={requiredOf(actingTeacherBodySchema, typedBody, 'from', ACTING_READ)}
               min={vacancy.today}
               error={
                 from < vacancy.today
@@ -431,6 +449,7 @@ function NameDialog({
               label={t('people.vacancies.acting.untilField')}
               name="actingUntil"
               value={until}
+              required={requiredOf(actingTeacherBodySchema, typedBody, 'until', ACTING_READ)}
               error={until !== '' && !untilOk ? t('people.vacancies.acting.untilAfter') : undefined}
               onChange={(event) => {
                 setUntil(event.target.value);
@@ -508,6 +527,7 @@ function EndDialog({
             label={t('people.vacancies.acting.endOn')}
             name="actingEnd"
             value={until}
+            required={requiredOf(actingTeacherEndSchema, { until }, 'until')}
             min={today}
             error={
               until === ''

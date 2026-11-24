@@ -1,4 +1,4 @@
-import type { SignIn } from '@sodiq/shared';
+import { passwordSignInSchema, type SignIn } from '@sodiq/shared';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useSearch } from '@tanstack/react-router';
 import { useId, useState, type FormEvent } from 'react';
@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { api } from '@/api/client';
 import { answerOf } from '@/api/failure';
 import { Field } from '@/components/field';
+import { requiredOf } from '@/components/form/use-record-form';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { CHECKBOX, CHECKBOX_TARGET } from '@/components/ui/control';
@@ -90,6 +91,7 @@ export function SignInPage() {
           maxLength={100}
           value={login}
           error={loginError}
+          required={requiredOf(passwordSignInSchema, { login, password }, 'login')}
           onChange={(event) => {
             setLogin(event.target.value);
           }}
@@ -102,6 +104,7 @@ export function SignInPage() {
           autoComplete="current-password"
           value={password}
           error={passwordError}
+          required={requiredOf(passwordSignInSchema, { login, password }, 'password')}
           onChange={(event) => {
             setPassword(event.target.value);
           }}
