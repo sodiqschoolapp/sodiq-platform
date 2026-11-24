@@ -1318,7 +1318,6 @@ export const en = {
       title: 'Assistant',
       back: 'Back to the conversations',
       choose: 'Choose a conversation, or ask a question to start a new one.',
-      notForRole: 'The assistant is not open to the role you have chosen.',
     },
     groups: {
       setup: 'School setup',

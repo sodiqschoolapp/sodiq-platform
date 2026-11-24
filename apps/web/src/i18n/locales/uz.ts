@@ -1340,7 +1340,6 @@ export const uz: Texts<'one' | 'other'> = {
       title: 'Yordamchi',
       back: 'Suhbatlarga qaytish',
       choose: 'Suhbatni tanlang yoki yangisini boshlash uchun savol bering.',
-      notForRole: 'Yordamchi siz tanlagan rol uchun ochiq emas.',
     },
     groups: {
       setup: 'Maktab sozlamalari',

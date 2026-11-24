@@ -51,6 +51,19 @@ const working = (until = new Date(Date.now() + 60 * 60 * 1000).toISOString()) =>
   askedAt: ASKED_AT,
   until,
 });
+const LIST = {
+  conversations: [
+    {
+      id: uid(1),
+      branchId: NORTH.id,
+      branchName: NORTH.name,
+      role: 'super_admin',
+      title: 'Which classes have no Tutor?',
+      createdAt: ASKED_AT,
+      lastActivityAt: ASKED_AT,
+    },
+  ],
+};
 const ANSWERED = conversation([
   QUESTION,
   message(2, { kind: 'read', group: 'classes', status: 200 }),
@@ -116,6 +129,60 @@ describe('the assistant while it works', () => {
       expect(panel.getAllByText('Which classes have no Tutor?')).toHaveLength(1);
     });
     expect(panel.getByText(en.assistant.working)).toBeTruthy();
+  });
+
+  it('shows the stored answer when done came before the server’s 202 was handled (code review, must fix 2)', async () => {
+    const live = fakeLive();
+    let take: (response: Response) => void = () => undefined;
+    const followUp = message(4, { kind: 'question', text: 'And 7B?' });
+    let stored: AssistantConversation = ANSWERED;
+    const calls = fakeApi({
+      'GET /api/auth/session': () => json(admin()),
+      'GET /api/assistant/status': () => json(ON),
+      'GET /api/assistant/conversations': () => json(LIST),
+      'POST /api/assistant/questions': () =>
+        new Promise<Response>((resolve) => {
+          take = resolve;
+        }),
+      [`GET /api/assistant/conversations/${uid(1)}`]: () => json(stored),
+    });
+    renderApp('/', 'en', undefined, live.connect);
+    const panel = await openPanel();
+    fireEvent.click(await panel.findByRole('button', { name: /Which classes have no Tutor\?/ }));
+    expect(await panel.findByText('Oxford B, Oxford C')).toBeTruthy();
+    fireEvent.change(panel.getByLabelText(en.assistant.question), {
+      target: { value: 'And 7B?' },
+    });
+    fireEvent.click(panel.getByRole('button', { name: en.assistant.send }));
+    expect(await panel.findByText(en.assistant.working)).toBeTruthy();
+    // The model answered at once: the answer is stored, and done is told and read again before
+    // the 202 arrives.
+    stored = conversation([
+      ...ANSWERED.messages,
+      followUp,
+      message(5, { kind: 'answer', text: 'None in 7B.', pages: [], lessons: [] }),
+    ]);
+    const reads = () =>
+      calls.filter((call) => call.route === `GET /api/assistant/conversations/${uid(1)}`).length;
+    const before = reads();
+    live.tell({ kind: 'done' });
+    await waitFor(() => {
+      expect(reads()).toBeGreaterThan(before);
+    });
+    take(
+      json(
+        {
+          conversation: conversation([...ANSWERED.messages, followUp], {
+            working: { ...working(), questionId: followUp.id },
+          }),
+        },
+        202,
+      ),
+    );
+    expect(await panel.findByText('None in 7B.')).toBeTruthy();
+    await waitFor(() => {
+      expect(panel.queryByText(en.assistant.working)).toBeNull();
+    });
   });
 
   it('puts the question back into the box when a second question is refused while one runs', async () => {
@@ -282,20 +349,6 @@ describe('the assistant while it works', () => {
 });
 
 describe('the Assistant page', () => {
-  const LIST = {
-    conversations: [
-      {
-        id: uid(1),
-        branchId: NORTH.id,
-        branchName: NORTH.name,
-        role: 'super_admin',
-        title: 'Which classes have no Tutor?',
-        createdAt: ASKED_AT,
-        lastActivityAt: ASKED_AT,
-      },
-    ],
-  };
-
   it('lists the person’s conversations beside the chat, opens one from the address and continues it', async () => {
     const calls = fakeApi({
       'GET /api/auth/session': () => json(admin()),
@@ -398,6 +451,32 @@ describe('the Assistant page', () => {
     expect(chat.queryByText(en.assistant.noAnswer)).toBeNull();
   });
 
+  it('says the part is not for the role when the chosen role has no assistant, though the person holds one (`.claude/rules/web.md`)', async () => {
+    window.sessionStorage.setItem(ROLE_STORAGE_KEY, 'principal');
+    onTestFinished(() => {
+      window.sessionStorage.removeItem(ROLE_STORAGE_KEY);
+    });
+    const calls = fakeApi({
+      'GET /api/auth/session': () =>
+        json(
+          sessionOf({
+            assignments: [
+              { role: 'super_admin', branchId: null },
+              { role: 'principal', branchId: NORTH.id },
+            ],
+            branches: [NORTH],
+          }),
+        ),
+      'GET /api/assistant/status': () => json(ON),
+      'GET /api/assistant/conversations': () => json({ conversations: [] }),
+    });
+    renderApp('/assistant', 'en');
+    const main = within(await screen.findByRole('main'));
+    expect(await main.findByText(en.problems.noAccessPart)).toBeTruthy();
+    expect(main.queryByLabelText(en.assistant.question)).toBeNull();
+    expect(calls.some((call) => call.route === 'GET /api/assistant/conversations')).toBe(false);
+  });
+
   it('is linked from the panel', async () => {
     fakeApi({
       'GET /api/auth/session': () => json(admin()),
@@ -445,15 +524,16 @@ describe('the menu item Assistant', () => {
   });
 
   it('hides it while the assistant is off for the chosen role', async () => {
-    const calls = fakeApi({
+    fakeApi({
       'GET /api/auth/session': () => json(admin()),
       'GET /api/assistant/status': () =>
         json({ ...ON, available: false, refusal: 'assistant_off' }),
     });
-    renderApp('/', 'en');
-    await waitFor(() => {
-      expect(calls.some((call) => call.route === 'GET /api/assistant/status')).toBe(true);
-    });
+    renderApp('/assistant', 'en');
+    // The status's answer is applied: the page says the assistant is off (code review, should fix 5).
+    expect(
+      await within(await screen.findByRole('main')).findByText(en.assistant.refusals.assistant_off),
+    ).toBeTruthy();
     await screen.findAllByRole('link', { name: en.menu.home });
     expect(menuLink()).toBeNull();
   });

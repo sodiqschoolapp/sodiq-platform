@@ -78,7 +78,9 @@ async function whileItWorks(page: Page): Promise<void> {
   await page.getByRole('button', { name: en.assistant.send, exact: true }).click();
   const chat = page.getByRole('region', { name: en.assistant.title, exact: true });
   // At once: the question, an empty box, and what the assistant reads while the model waits.
-  await expect(chat.getByText('Which classes have no Tutor, please?', { exact: true })).toBeVisible();
+  await expect(
+    chat.getByText('Which classes have no Tutor, please?', { exact: true }),
+  ).toBeVisible();
   await expect(box).toHaveValue('');
   await expect(chat.getByText(reading, { exact: true })).toBeVisible();
   await expect(chat.getByText(answer, { exact: true })).toHaveCount(0);
@@ -119,9 +121,10 @@ async function whileItWorks(page: Page): Promise<void> {
   await expect(chat.getByText(reading, { exact: true })).toBeVisible();
   await page.goto('/');
   await expect(heading(page, en.home.title)).toBeVisible();
-  await page.waitForTimeout(5_000);
   await page.goto(`${address.pathname}${address.search}`);
   await expect(chat.getByText('One more, then I leave.', { exact: true })).toHaveCount(1);
-  await expect(chat.getByText(answer, { exact: true })).toHaveCount(3);
+  // The answer written while the page was away: once, whenever it is stored (code review, should
+  // fix 8: no fixed wait).
+  await expect(chat.getByText(answer, { exact: true })).toHaveCount(3, { timeout: 15_000 });
   await expect(chat.getByText(en.assistant.working, { exact: true })).toHaveCount(0);
 }

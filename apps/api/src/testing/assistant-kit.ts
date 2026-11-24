@@ -142,9 +142,10 @@ export async function settle<T extends { status: number; body: unknown }>(
       .get(`/api/assistant/conversations/${accepted.conversation.id}`)
       .set('Cookie', cookie)
       .set(BRANCH_HEADER, branch);
-    if (again.status === 200) {
-      response.body = { conversation: again.body as unknown };
+    if (again.status !== 200) {
+      throw new Error(`The conversation could not be read again: ${String(again.status)}.`);
     }
+    response.body = { conversation: again.body as unknown };
   }
   return response;
 }

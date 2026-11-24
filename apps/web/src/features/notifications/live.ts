@@ -27,6 +27,8 @@ export interface LiveHandlers {
   onReadAll(readAt: string): void;
   /** Task 11.16: the progress of a question of the person (`02`, While it works). */
   onAssistant(progress: AssistantProgress): void;
+  /** Task 11.16: the connection is made, or made again after it dropped. */
+  onConnected(): void;
   /**
    * The server refused the handshake, or closed the connection, because the
    * session is over, owes a step, or the request did not come from the site.
@@ -105,6 +107,7 @@ export const connectWithSocketIo: LiveConnector = (handlers) => {
   };
   socket.on('connect', () => {
     retryMs = RETRY_MS;
+    handlers.onConnected();
   });
   socket.on(
     NOTIFICATION_MESSAGES.state,
@@ -210,8 +213,11 @@ export function liveFollower(
       const own = connect({
         onState: (state) => {
           queryClient.setQueryData<NotificationList>(NOTIFICATIONS_KEY, state);
-          // Task 11.16: at every (re)connection the open conversations are read again, so a tab
-          // that missed the progress of a question catches up.
+        },
+        onConnected: () => {
+          // Task 11.16: at every (re)connection, and only then (a `state` also comes when a key
+          // marks notices read), the open conversations are read again, so a tab that missed the
+          // progress of a question catches up (code review, should fix 1).
           void catchUpAssistant(queryClient);
         },
         onAssistant: (progress) => {

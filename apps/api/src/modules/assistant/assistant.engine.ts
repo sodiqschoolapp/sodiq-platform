@@ -49,6 +49,7 @@ import { journalOf, ownRecordsOnly, refusedUnlessOwnJournal } from './own-journa
 import { reportFault } from '../../reporting/reporting.js';
 import { notifyLive } from '../notifications/live/live-payload.js';
 import { AssistantWork } from './assistant-work.js';
+import { Sessions } from '../auth/sessions.service.js';
 import { TextProgress } from './progress.js';
 import { proposalsOf } from './proposal-views.js';
 import { draftStep, type StoredStep } from './proposals.js';
@@ -128,6 +129,12 @@ interface Started {
  * The answer window of a question is past (task 11.16, plan decision 4; review of the plan,
  * correction 1): the work writes and sends nothing more and ends; a new question may be asked.
  */
+class SessionOver extends Error {
+  constructor() {
+    super('The session of the question is over.');
+  }
+}
+
 class WindowPassed extends Error {
   constructor() {
     super('The answer window of the question is past.');
@@ -161,7 +168,20 @@ export class AssistantEngine {
     private readonly routes: AssistantRoutes,
     private readonly caller: ModelCaller,
     private readonly work: AssistantWork,
+    private readonly sessions: Sessions,
   ) {}
+
+  /**
+   * Task 11.16 (permission review, should fix 1): the work outlives its request, so before each
+   * call of the model it checks that the asking session is still in force (`02`: "with the
+   * person's session"); a session over, or owing a step, ends the work and its spending. The
+   * reads meet the guards again in any case. The lookup does not count as use of the session.
+   */
+  private async refuseWhenSessionOver(pass: SessionPass): Promise<void> {
+    const token = pass.cookieHeader.slice(pass.cookieHeader.indexOf('=') + 1);
+    const [session] = await this.sessions.peek({ token });
+    if (session === undefined || session.owedStep !== null) throw new SessionOver();
+  }
 
   /** Whether the person holds the role now in the branch of the request, and it has the panel. */
   roleHeld(access: Access, role: AssistantRole): boolean {
@@ -270,6 +290,9 @@ export class AssistantEngine {
       let code: AssistantNotice;
       if (error instanceof ModelCallFailed) {
         code = error.busy ? 'assistant_model_busy' : 'assistant_model_unavailable';
+      } else if (error instanceof SessionOver) {
+        // Not a fault: the person signed out, or was signed out, while it worked.
+        code = 'assistant_answer_failed';
       } else {
         code = 'assistant_answer_failed';
         // The error's name only: its message can quote the question or a read.
@@ -323,6 +346,7 @@ export class AssistantEngine {
     for (;;) {
       modelCalls += 1;
       const last = reads >= MAX_READS || modelCalls >= MAX_MODEL_CALLS;
+      await this.refuseWhenSessionOver(asker.pass);
       const reply = await this.call(start, { system, turns, tools: last ? [] : tools }, progress);
       if (reply.calls.length === 0 || last) {
         text = reply.text;
@@ -447,7 +471,7 @@ export class AssistantEngine {
    * written and the work ends (`WindowPassed`).
    */
   private async write<T>(
-    start: Pick<Started, 'conversation' | 'askedAt'>,
+    start: Pick<Started, 'conversation' | 'askedAt' | 'questionId'>,
     work: (transaction: Transaction, now: Date) => Promise<T>,
   ): Promise<T> {
     return this.transactions.run([start.conversation.branchId], async (transaction) => {
@@ -456,6 +480,18 @@ export class AssistantEngine {
       if (now.getTime() >= start.askedAt.getTime() + ASSISTANT_ANSWER_WINDOW_MS) {
         throw new WindowPassed();
       }
+      // The moment of this transaction was taken before it waited on the lock: a question the
+      // person asked meanwhile, once the window passed, is read after the lock (code review, must
+      // fix 1). After it, this question's work writes nothing, so the turns stay alternating.
+      const later = await transaction
+        .selectFrom('assistant_messages as later')
+        .innerJoin('assistant_messages as asked', 'asked.conversation_id', 'later.conversation_id')
+        .select('later.id')
+        .where('asked.id', '=', start.questionId)
+        .where('later.kind', '=', 'question')
+        .whereRef('later.seq', '>', 'asked.seq')
+        .executeTakeFirst();
+      if (later !== undefined) throw new WindowPassed();
       return work(transaction, now);
     });
   }
@@ -606,8 +642,7 @@ export class AssistantEngine {
     progress: TextProgress,
   ): Promise<ModelReply> {
     const record = async (attempt: Attempt): Promise<void> => {
-      // Task 11.16: the text of a call that failed is not the answer; the next call writes anew.
-      if (!('reply' in attempt)) await progress.reset();
+      // Billed first, whatever happens to the progress after (code review, should fix 2).
       await this.transactions.run([start.conversation.branchId], async (transaction) => {
         const now = await transactionMoment(transaction);
         const tokens =
@@ -616,6 +651,8 @@ export class AssistantEngine {
             : (attempt.billed ?? { tokensIn: 0, tokensOut: 0, model: this.model.name ?? '' });
         await this.recordCall(transaction, start, attempt, tokens, now);
       });
+      // Task 11.16: the text of a call that failed is not the answer; the next call writes anew.
+      if (!('reply' in attempt)) await progress.reset();
     };
     // A failure of the model (`ModelCallFailed`) ends in its notice, written by `answer`.
     return this.caller.call(start.budget, request, record, progress.text);

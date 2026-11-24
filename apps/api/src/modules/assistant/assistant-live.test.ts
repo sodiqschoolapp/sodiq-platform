@@ -18,6 +18,7 @@ import {
   answer,
   calls,
   held,
+  lastResults,
   refusedWith,
   streamed,
   streamsThenFails,
@@ -66,7 +67,7 @@ describe('the assistant while it works: the question at once, the progress live,
     await scene.app.get(LiveListener).start(scene.database.appUrl);
     await scene.database.migrator
       .updateTable('assistant_settings')
-      .set({ daily_limit: 500 })
+      .set({ daily_limit: 500, roles_on: ['super_admin', 'academic_vice_principal'] })
       .execute();
   });
 
@@ -95,7 +96,10 @@ describe('the assistant while it works: the question at once, the progress live,
     open.push(socket);
     const heard: AssistantProgress[] = [];
     socket.on(ASSISTANT_MESSAGES.progress, (payload: unknown) => {
-      heard.push(assistantProgressSchema.parse(payload));
+      // Checked against the schema, kept as it came: a key the schema would drop (a read's data)
+      // stays in it, so the asserts below see it (code review, must fix 3).
+      assistantProgressSchema.parse(payload);
+      heard.push(payload as AssistantProgress);
     });
     await new Promise<void>((resolve, reject) => {
       socket.once(NOTIFICATION_MESSAGES.state, () => {
@@ -263,8 +267,13 @@ describe('the assistant while it works: the question at once, the progress live,
     scene.model.script(calls({ name: CLASSES }), late.turn);
     const first = accepted(await send(scene, scene.admin, scene.north, { text: 'Slow question.' }));
     await late.reached;
+    // What was written inside the window has reached the tab.
+    await until(asker.heard, (all) =>
+      all.some((one) => one.questionId === first.messages[0]?.id && one.event.kind === 'read'),
+    );
     // The window passes while the model writes its answer.
     scene.clock.advance(ASSISTANT_ANSWER_WINDOW_MS);
+    const heardBefore = asker.heard.length;
     expect((await conversation(first.id)).working).toBeNull();
     scene.model.script(answer('On time.'));
     const second = accepted(
@@ -290,8 +299,10 @@ describe('the assistant while it works: the question at once, the progress live,
     expect(stored.messages.at(-1)).toEqual(expect.objectContaining({ text: 'On time.' }));
     await new Promise((resolve) => setTimeout(resolve, SILENCE_MS));
     const firstQuestion = first.messages[0]?.id;
+    // Nothing more of the first question after its window: no text, no done (code review,
+    // should fix 3).
     expect(
-      asker.heard.filter((one) => one.questionId === firstQuestion && one.event.kind === 'done'),
+      asker.heard.slice(heardBefore).filter((one) => one.questionId === firstQuestion),
     ).toEqual([]);
     // The turns of the next question alternate: the unanswered question stays out.
     scene.model.requests.length = 0;
@@ -532,6 +543,128 @@ describe('the assistant while it works: the question at once, the progress live,
         has_function_privilege('public', 'assistant_question_running(uuid, timestamptz)', 'execute') as anyone
     `.execute(scene.database.migrator);
     expect(rights.rows[0]).toEqual({ app: true, anyone: false });
+  });
+
+  it('writes nothing more of a question once a later question of the conversation is stored, whatever the moment its write began with (code review, must fix 1)', async () => {
+    const asker = await tab(scene.admin);
+    const late = held(streamed('Late ', 'answer.'));
+    scene.model.script(late.turn);
+    const first = accepted(await send(scene, scene.admin, scene.north, { text: 'First of two.' }));
+    await late.reached;
+    await until(asker.heard, (all) =>
+      all.some((one) => one.questionId === first.messages[0]?.id && one.event.kind === 'question'),
+    );
+    // As a question route would that took the lock once the window passed, and stored its question
+    // before this work's write got the lock: a later question of the same conversation.
+    const asked = first.messages[0];
+    await scene.database.migrator
+      .insertInto('assistant_messages')
+      .values({
+        conversation_id: first.id,
+        branch_id: scene.north,
+        account_id: scene.adminAccount,
+        seq: (asked?.seq ?? 1) + 1,
+        kind: 'question',
+        content: sql`${JSON.stringify({ kind: 'question', text: 'Second of two.' })}::jsonb`,
+        created_at: scene.clock.now(),
+      })
+      .execute();
+    const heardBefore = asker.heard.length;
+    late.open();
+    await scene.app.get(AssistantWork).whenIdle();
+    expect((await conversation(first.id)).messages.map((message) => message.kind)).toEqual([
+      'question',
+      'question',
+    ]);
+    await new Promise((resolve) => setTimeout(resolve, SILENCE_MS));
+    expect(asker.heard.slice(heardBefore).filter((one) => one.questionId === asked?.id)).toEqual(
+      [],
+    );
+    // The stored row stands for a route's question, which would end in its answer or notice.
+    await scene.database.migrator
+      .insertInto('assistant_messages')
+      .values({
+        conversation_id: first.id,
+        branch_id: scene.north,
+        account_id: scene.adminAccount,
+        seq: (asked?.seq ?? 1) + 2,
+        kind: 'notice',
+        content: sql`${JSON.stringify({ kind: 'notice', code: 'assistant_model_busy' })}::jsonb`,
+        created_at: scene.clock.now(),
+      })
+      .execute();
+  });
+
+  // Permission review of the code: the work outlives its request, and its reads meet the guards.
+  it('stops the work when the asking session is signed out midway: the read is refused, the model is not called again, and the question ends in a notice', async () => {
+    const person = await scene.kit.completeSession('Kamola', 'Ergasheva');
+    await scene.kit.giveRole(person.account.id, {
+      role: 'academic_vice_principal',
+      branchId: scene.north,
+    });
+    const gate = held(calls({ name: CLASSES }));
+    scene.model.script(gate.turn, answer('Never asked.'));
+    const taken = accepted(
+      await send(scene, person.cookie, scene.north, {
+        text: 'Then I sign out.',
+        role: 'academic_vice_principal',
+      }),
+    );
+    await gate.reached;
+    expect((await scene.kit.post('/api/auth/sign-out', person.cookie)).status).toBe(204);
+    gate.open();
+    await scene.app.get(AssistantWork).whenIdle();
+    const stored = await scene.database.migrator
+      .selectFrom('assistant_messages')
+      .select('content')
+      .where('conversation_id', '=', taken.id)
+      .orderBy('seq')
+      .execute();
+    expect(stored.map((row) => row.content)).toEqual([
+      { kind: 'question', text: 'Then I sign out.' },
+      expect.objectContaining({ kind: 'read', status: 401 }),
+      { kind: 'notice', code: 'assistant_answer_failed' },
+    ]);
+    // One call of the model: none after the session ended.
+    expect(scene.model.requests).toHaveLength(1);
+    expect(
+      await scene.database.migrator
+        .selectFrom('assistant_proposals')
+        .select('id')
+        .where('conversation_id', '=', taken.id)
+        .execute(),
+    ).toEqual([]);
+  });
+
+  it('gives the model the refusal, never the data, of a read made after the person’s role ended midway', async () => {
+    const person = await scene.kit.completeSession('Jasur', 'Qodirov');
+    const role = await scene.kit.giveRole(person.account.id, {
+      role: 'academic_vice_principal',
+      branchId: scene.north,
+    });
+    const gate = held(calls({ name: CLASSES }));
+    scene.model.script(gate.turn, answer('The read was refused.'));
+    const taken = accepted(
+      await send(scene, person.cookie, scene.north, {
+        text: 'Then my role ends.',
+        role: 'academic_vice_principal',
+      }),
+    );
+    await gate.reached;
+    await scene.kit.endRole(role.id, scene.adminAccount, scene.north);
+    gate.open();
+    await scene.app.get(AssistantWork).whenIdle();
+    const given = lastResults(scene.model.requests[1] ?? { system: '', turns: [], tools: [] });
+    expect(given).toHaveLength(1);
+    expect(given[0]?.result).toEqual({ status: 403, error: expect.any(String) as string });
+    expect(JSON.stringify(given)).not.toContain('Oxford L');
+    const stored = await scene.database.migrator
+      .selectFrom('assistant_messages')
+      .select('content')
+      .where('conversation_id', '=', taken.id)
+      .where('kind', '=', 'read')
+      .execute();
+    expect(stored.map((row) => (row.content as { status: number }).status)).toEqual([403]);
   });
 
   it('cuts a long text into payloads under PostgreSQL’s 8 000 bytes, in any script, never a character in two', async () => {

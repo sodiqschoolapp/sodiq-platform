@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { CONFIG } from '../../config/config.module.js';
 import type { AppConfig } from '../../config/config.js';
 import { AccessModule } from '../access/access.module.js';
+import { AuthModule } from '../auth/auth.module.js';
 import {
   AssistantAdminController,
   AssistantController,
@@ -23,7 +24,7 @@ import { ScriptedModel } from './scripted-model.js';
  * conversations and the switches. Nothing else in the platform depends on it (`02`, Limits).
  */
 @Module({
-  imports: [AccessModule],
+  imports: [AccessModule, AuthModule],
   controllers: [AssistantController, AssistantAdminController, AssistantSettingsController],
   providers: [
     AssistantEngine,

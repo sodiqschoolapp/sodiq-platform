@@ -135,6 +135,12 @@ export function AssistantChat({
         assistantConversationQuery(answer.conversation.id).queryKey,
         answer.conversation,
       );
+      // The work began at the commit of the question: its `done` may have come before this answer
+      // (a new conversation's id was not known then), so the conversation is read again (code
+      // review, must fix 2).
+      void queryClient.invalidateQueries({
+        queryKey: assistantConversationQuery(answer.conversation.id).queryKey,
+      });
       onConversation(answer.conversation.id);
     },
     onError: (_error, question) => {

@@ -44,7 +44,7 @@ export function AssistantPage() {
       <>
         <PageHeader title={t('assistant.page.title')} />
         <p role="alert" className={PANEL}>
-          {t('assistant.page.notForRole')}
+          {t('problems.noAccessPart')}
         </p>
       </>
     );
