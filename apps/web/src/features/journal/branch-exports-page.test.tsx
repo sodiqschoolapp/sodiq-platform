@@ -442,6 +442,9 @@ describe('the support view', () => {
     expect(lesson?.textContent).toContain('Mark 4');
     expect(lesson?.textContent).toContain('Stored: mark 0');
     expect(lesson?.textContent).toContain('hidden by a Temporary exemption');
+    // Task 11.17: no lesson score in the lesson line, no line of daily weights.
+    expect(lesson?.textContent).not.toMatch(/lesson score/i);
+    expect(view.textContent).not.toContain('Lesson weights');
     expect(view.querySelector('[data-support-quarter="true"]')?.textContent).toContain(
       'result 75, grade 4 · provisional',
     );

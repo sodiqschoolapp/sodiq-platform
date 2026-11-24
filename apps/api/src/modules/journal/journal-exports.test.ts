@@ -312,6 +312,17 @@ describe('journal exports', () => {
         .execute();
       await give(principal, [{ role: 'principal', branchId: x.s.branch }]);
       await at(principal, MOMENT);
+      // Task 11.17: a daily distribution stored before the change is not read; no file names it.
+      await t.database.migrator
+        .insertInto('subject_daily_weights')
+        .values({
+          branch_id: x.s.branch,
+          subject_id: x.s.subject,
+          attendance: 20,
+          classwork: 40,
+          homework: 40,
+        })
+        .execute();
       const answer = await exportOf(principal, x.s.branch, x.journal, {
         format: 'xlsx',
         quarterId: x.q1,
@@ -434,6 +445,12 @@ describe('journal exports', () => {
       // Task 10.6: the title typed for a work added by hand is its column title in the file.
       expect(headings[cwColumn]).toContain('CW1 Dictation of 30');
       expect(headings[cwColumn + 1]).toMatch(/%$/);
+      // Task 11.17 (`07`, Calculation rules, rule 3): no lesson score column, no line of daily weights.
+      expect(headings.some((one) => one.endsWith('· Avg'))).toBe(false);
+      expect(headings.length).toBeGreaterThan(cwColumn + 1);
+      expect(
+        values.flat().some((one) => typeof one === 'string' && one.startsWith('Lesson: ')),
+      ).toBe(false);
       // The date row: real dates (edge/system-behaviour: "Excel exports contain real numbers and dates").
       const dateRow = sheet.rows[5];
       expect(dateRow?.values[1]).toBe('Date');
@@ -477,6 +494,17 @@ describe('journal exports', () => {
       const x = await scene();
       await give(vice, [{ role: 'academic_vice_principal', branchId: x.s.branch }]);
       await at(vice, MOMENT);
+      // Task 11.17: a daily distribution stored before the change is not read; no file names it.
+      await t.database.migrator
+        .insertInto('subject_daily_weights')
+        .values({
+          branch_id: x.s.branch,
+          subject_id: x.s.subject,
+          attendance: 20,
+          classwork: 40,
+          homework: 40,
+        })
+        .execute();
       const subject = await t.database.migrator
         .selectFrom('subjects')
         .select(['name_ru', 'name_en'])
@@ -496,6 +524,9 @@ describe('journal exports', () => {
       expect(String(answer.headers['content-type'])).toContain('application/pdf');
       const html = pdf.last;
       expect(html).toContain('Классный журнал');
+      // Task 11.17: no lesson score column ("Ср.") and no line of daily weights ("Урок: …").
+      expect(html).not.toContain('· Ср.');
+      expect(html).not.toContain('Урок: посещаемость');
       expect(html).toContain(subject.name_ru);
       expect(html).not.toContain(`· ${subject.name_en} ·`);
       expect(html).toContain(unit.name);
