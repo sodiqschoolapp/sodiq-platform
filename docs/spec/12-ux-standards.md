@@ -19,6 +19,7 @@ These rules apply to every page and every role.
 - The last action can be undone.
 - Records are archived, never deleted, wherever history depends on them. Actions that cannot be undone ask for confirmation and name what will be affected.
 - Forms check each field as it is typed and say in plain words what to fix.
+- A field that must be filled is marked with a red asterisk (*) after its label, on every form and in every language, and a screen reader announces it as required. A field without the mark may be left empty (owner, 24 November 2026).
 
 ## Language
 

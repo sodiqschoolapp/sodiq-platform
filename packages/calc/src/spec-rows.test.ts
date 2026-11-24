@@ -157,14 +157,9 @@ const CALCULATION: readonly Row[] = [
     tasks: ['9.2a'],
   },
   {
-    case: "The lesson score of a lesson where one student has no classwork number, or has numbers for only some of the lesson's classworks.",
-    rule: 'cfb7cb8f78766fac',
-    tests: [['daily.test.ts']],
-    tasks: [],
-  },
-  {
     case: 'A lesson has three classworks: 100%, 50% and 60%. The only other classwork of the quarter is 90%.',
-    rule: '95db9798c784c9ff',
+    // Rule re-pinned by the spec change of 24 November 2026 (no lesson score).
+    rule: '81ea82d9ace019b2',
     tests: [['daily.test.ts'], ['quarter.test.ts']],
     tasks: [],
   },
@@ -267,7 +262,8 @@ const CALCULATION: readonly Row[] = [
   },
   {
     case: "Ma'naviyat soati and the Homework slot.",
-    rule: '5ce304d5c63eb1c0',
+    // Rule re-pinned by the spec change of 24 November 2026 (no lesson score).
+    rule: '198666dd67bc8d0b',
     tests: [['quarter.test.ts']],
     tasks: [],
   },
