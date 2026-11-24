@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { useConfirm } from '@/components/confirm-dialog';
 import { FailureAlert } from '@/components/failure-alert';
 import { SelectField } from '@/components/field';
+import { asFormSchema } from '@/features/people/form-schema';
 import { useRecordForm } from '@/components/form/use-record-form';
 import { EmptyState, ErrorState, LoadingOutline } from '@/components/states';
 import { Button } from '@/components/ui/button';
@@ -35,6 +36,14 @@ import {
  * plan and what can be taken.
  */
 
+/**
+ * A copy of a master as its form shows it (task 11.18): the branch of the
+ * copy schema for a master, with its master shown at the field `masterId`.
+ */
+const MASTER_COPY_FORM = asFormSchema<PlanCopy>(planCopySchema.options[1], (path) =>
+  path[0] === 'source' ? ['masterId'] : [...path],
+);
+
 /** "Copy from a master" for the owner, with the masters that fit the plan. */
 export function CopyMasterDialog({ plan, onClose }: { plan: Plan; onClose: () => void }) {
   const { t } = useTranslation();
@@ -46,7 +55,7 @@ export function CopyMasterDialog({ plan, onClose }: { plan: Plan; onClose: () =>
   );
   const options = masters.data?.masters ?? [];
   const form = useRecordForm<'masterId', PlanCopy>({
-    schema: planCopySchema,
+    schema: MASTER_COPY_FORM,
     initial: { masterId: '' },
     read: (typed) => ({ quarterId: plan.quarterId, source: { masterId: typed.masterId } }),
     save: async (body) => {

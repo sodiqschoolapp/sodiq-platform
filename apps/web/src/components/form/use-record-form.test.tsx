@@ -8,7 +8,7 @@ import { createI18n } from '@/i18n/i18n';
 import { en } from '@/i18n/locales/en';
 import type { FormSchema } from './form-messages';
 import { RecordForm } from './record-form';
-import { requiredOf, useRecordForm } from './use-record-form';
+import { drawnForms, requiredOf, useRecordForm } from './use-record-form';
 import { Field, SelectField } from '@/components/field';
 import type { RequiredWhen } from '@sodiq/shared';
 
@@ -396,5 +396,42 @@ describe('the required mark of a bound field', () => {
       </Wrap>,
     );
     expect(marked()).toEqual([]);
+  });
+});
+
+// Task 11.18: test-setup.ts fails a test that draws a form whose schema names
+// a field the form does not draw (a typed name that is not the schema's key):
+// that field's message and red asterisk could never show.
+describe('the forms drawn in a test', () => {
+  it('are kept with the issues that emptying a field adds where the form draws nothing', () => {
+    const named: FormSchema<{ unitId: string }> = {
+      safeParse: (input) => {
+        const values = input as { unit: string };
+        return values.unit === ''
+          ? { success: false, error: { issues: [{ code: 'too_small', path: ['unitId'] }] } }
+          : { success: true, data: { unitId: values.unit } };
+      },
+    };
+    function Misnamed() {
+      const form = useRecordForm<'unit', { unitId: string }>({
+        schema: named,
+        initial: { unit: 'a' },
+        save: () => Promise.resolve(),
+      });
+      return (
+        <RecordForm form={form} label="Row">
+          <Field label="Unit" {...form.bind('unit')} />
+        </RecordForm>
+      );
+    }
+    drawnForms.splice(0);
+    render(
+      <Wrap>
+        <Misnamed />
+      </Wrap>,
+    );
+    const kept = drawnForms.splice(0);
+    expect(kept.at(-1)?.fields).toEqual(['unit']);
+    expect(kept.at(-1)?.unshown()).toEqual(['emptying unit gives unitId|too_small']);
   });
 });

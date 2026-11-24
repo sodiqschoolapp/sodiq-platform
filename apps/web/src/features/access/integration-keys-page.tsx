@@ -10,7 +10,7 @@ import { useNavigate, useSearch } from '@tanstack/react-router';
 import { useId, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useConfirm } from '@/components/confirm-dialog';
-import { DateField, Field, listValue, listValues, RequiredMark } from '@/components/field';
+import { DateField, Field, listValue, listValues, RequiredGroup } from '@/components/field';
 import { RecordForm } from '@/components/form/record-form';
 import { useRecordForm, type FieldBinding } from '@/components/form/use-record-form';
 import { ListPage } from '@/components/list/list-page';
@@ -222,25 +222,12 @@ function PeoplePicker({
       person.staffId.toLowerCase().includes(needle),
   );
   return (
-    <fieldset
+    <RequiredGroup
       className="grid gap-2"
-      aria-describedby={binding.required ? `${id}-required` : undefined}
+      legendClassName="mb-1.5 text-sm font-medium"
+      label={t('integrationKeys.people')}
+      required={binding.required}
     >
-      <legend className="mb-1.5 text-sm font-medium">
-        {t('integrationKeys.people')}
-        {binding.required && (
-          <>
-            {' '}
-            <RequiredMark />
-          </>
-        )}
-      </legend>
-      {/* A group may not carry aria-required: it is described as required (task 11.18). */}
-      {binding.required && (
-        <span id={`${id}-required`} className="sr-only">
-          {t('form.requiredWord')}
-        </span>
-      )}
       <Field
         label={t('integrationKeys.findPerson')}
         value={text}
@@ -292,7 +279,7 @@ function PeoplePicker({
           {binding.error}
         </p>
       )}
-    </fieldset>
+    </RequiredGroup>
   );
 }
 

@@ -6,6 +6,7 @@ import { assignmentRecordSchema, assignmentRequiredWhen } from './day-templates.
 import { examBodySchema, examCreateBodySchema, examRequiredWhen } from './exams.js';
 import { exemptionCreateRequiredWhen, exemptionCreateSchema } from './exemptions.js';
 import { ratingEntrySaveRequiredWhen } from './journal-rating.js';
+import { planRequestDecisionRequiredWhen, planRequestDecisionSchema } from './plans.js';
 import { expectTiedTo } from './required-when-kit.js';
 import { roomRecordRequiredWhen, roomRecordSchema } from './setup.js';
 import { staffTeachingRequiredWhen, staffTeachingSchema } from './staff.js';
@@ -201,7 +202,16 @@ describe('requiredWhen beside the schemas of the forms (task 11.18)', () => {
     };
     expectTiedTo(
       examCreateBodySchema,
-      [body, { ...body, ratingExam: true }, { ...body, subjectId: null }],
+      [
+        body,
+        { ...body, ratingExam: true },
+        { ...body, subjectId: null },
+        // A group sits only an exam of its subject.
+        {
+          ...body,
+          rooms: [{ roomId: ID(11), classIds: [], groupIds: [ID(15)], invigilatorIds: [ID(13)] }],
+        },
+      ],
       examRequiredWhen,
     );
     expectTiedTo(
@@ -217,5 +227,22 @@ describe('requiredWhen beside the schemas of the forms (task 11.18)', () => {
     expect(reason?.({ correction: false }, {})).toBe(false);
     expect(reason?.({ correction: false }, { stored: true })).toBe(true);
     expect(reason?.({ correction: true }, {})).toBe(true);
+  });
+
+  it('a decision of a plan request: a reason for a refusal and for the lessons unticked', () => {
+    expectTiedTo(
+      planRequestDecisionSchema,
+      [
+        { decision: 'refuse', reason: 'Not this week' },
+        { decision: 'approve', days: 2 },
+        { decision: 'approve', days: 2, untick: [{ lessonId: ID(20), reason: 'Held already' }] },
+      ],
+      planRequestDecisionRequiredWhen,
+    );
+    const says = (values: Record<string, unknown>) =>
+      planRequestDecisionRequiredWhen.reason?.(values, {});
+    expect(says({ decision: 'refuse' })).toBe(true);
+    expect(says({ decision: 'approve', days: 2 })).toBe(false);
+    expect(says({ decision: 'approve', untick: [{ lessonId: ID(20), reason: '' }] })).toBe(true);
   });
 });

@@ -21,10 +21,10 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 
-/** The warnings of a checklist as the close takes them: each kind and journal once. */
 /** The quarter to start the dialog waits for (`missing`: `startQuarter`), task 11.18. */
 const START_PAGE = filledOnPage(['startQuarter']);
 
+/** The warnings of a checklist as the close takes them: each kind and journal once. */
 export function warningsSeen(
   checklist: Pick<ClosingChecklist, 'items'>,
 ): ClosingCloseInput['warnings'] {

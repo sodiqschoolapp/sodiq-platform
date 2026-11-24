@@ -1,6 +1,7 @@
 import {
   PLAN_REQUEST_DAYS_MAX,
   planRequestCreateSchema,
+  planRequestDecisionRequiredWhen,
   planRequestDecisionSchema,
   planWindowExtendSchema,
   type Plan,
@@ -21,6 +22,7 @@ import {
   SelectField,
   TextAreaField,
 } from '@/components/field';
+import { asFormSchema } from '@/features/people/form-schema';
 import { useRecordForm } from '@/components/form/use-record-form';
 import { Button } from '@/components/ui/button';
 import { PANEL, SECTION_TITLE } from '@/components/ui/control';
@@ -51,6 +53,17 @@ import {
  * The window and requests). The server decides what is open and who decides;
  * the page shows what it answers.
  */
+
+/**
+ * The decision as its form shows it (task 11.18): the one reason the form
+ * types is the reason of every lesson unticked and of a later first lesson,
+ * so their issues show at it, with its red asterisk.
+ */
+const DECISION_FORM = asFormSchema<PlanRequestDecision>(planRequestDecisionSchema, (path) =>
+  (path[0] === 'untick' || path[0] === 'later') && path.at(-1) === 'reason'
+    ? ['reason']
+    : [...path],
+);
 
 /** Where the window stands for the plan's owner, and the plan's flag. */
 export function WindowLine({ plan }: { plan: Plan }) {
@@ -414,7 +427,8 @@ export function DecideDialog({
   const done = useRef(false);
   const keepKeys = lessons.map((_, index) => `keep${String(index)}`);
   const form = useRecordForm<string, PlanRequestDecision>({
-    schema: planRequestDecisionSchema,
+    schema: DECISION_FORM,
+    requiredWhen: planRequestDecisionRequiredWhen,
     initial: {
       decision: 'approve',
       days: '1',

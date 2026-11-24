@@ -15,10 +15,10 @@ type Choice = CalendarExamBlocks[number]['choice'];
 export const examBlockKeyOf = (examId: string, classId: string, start: number): string =>
   `${examId}|${classId}|${String(start)}`;
 
-/** The choices to send, in the shape of the API. */
 /** A choice for each shared block the save waits for, task 11.18. */
 const CHOICE_PAGE = filledOnPage(['choice']);
 
+/** The choices to send, in the shape of the API. */
 export function examBlocksOf(choices: Readonly<Record<string, Choice>>): CalendarExamBlocks {
   return Object.entries(choices)
     .map(([key, choice]) => {

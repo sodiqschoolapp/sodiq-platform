@@ -83,7 +83,7 @@ function MinimumRow({ subject, canEdit }: { subject: Subject; canEdit: boolean }
   };
   // The red asterisk from the schema the save sends to (task 11.18).
   const typed = { classworks, homeworks };
-  const required = (field: keyof typeof typed) =>
+  const requiredField = (field: keyof typeof typed) =>
     requiredOf(planMinimumSaveSchema, typed, field, {
       read: (values) => ({
         subjectId: subject.subject.id,
@@ -114,7 +114,7 @@ function MinimumRow({ subject, canEdit }: { subject: Subject; canEdit: boolean }
         <div className="w-36">
           <NumberField
             label={t('plans.minimum.classworks')}
-            required={required('classworks')}
+            required={requiredField('classworks')}
             value={classworks}
             error={typedClassworks === undefined ? errorOf(classworks) : undefined}
             onChange={(event) => {
@@ -125,7 +125,7 @@ function MinimumRow({ subject, canEdit }: { subject: Subject; canEdit: boolean }
         <div className="w-36">
           <NumberField
             label={t('plans.minimum.homeworks')}
-            required={required('homeworks')}
+            required={requiredField('homeworks')}
             value={homeworks}
             error={typedHomeworks === undefined ? errorOf(homeworks) : undefined}
             onChange={(event) => {

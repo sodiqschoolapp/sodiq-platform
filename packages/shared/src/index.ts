@@ -1886,6 +1886,7 @@ export {
   planPlaceSchema,
   planRequestCreateSchema,
   planRequestDecisionSchema,
+  planRequestDecisionRequiredWhen,
   planRequestParamsSchema,
   planRequestSchema,
   planRequestSendSchema,

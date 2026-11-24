@@ -3,6 +3,7 @@ import { schoolGradeSchema, schoolGradeTextSchema } from './grades.js';
 import { schoolDateSchema } from './academic-year.js';
 import { INSTRUCTION_LANGUAGES } from './settings.js';
 import { subjectColourSchema } from './subjects.js';
+import { leftEmpty, type RequiredWhen } from './required-when.js';
 
 /**
  * Lesson plans and their items (task 7.1a, pull request #212; `09`, What a
@@ -792,6 +793,18 @@ export const planRequestDecisionSchema = z.discriminatedUnion('decision', [
 ]);
 
 export type PlanRequestDecision = z.infer<typeof planRequestDecisionSchema>;
+
+/**
+ * What a decision requires only in some states (task 11.18): one reason, given
+ * for a refusal, for the lessons unticked and for a later first lesson; a form
+ * types it once as `reason`.
+ */
+export const planRequestDecisionRequiredWhen: RequiredWhen = {
+  reason: (values) =>
+    values.decision === 'refuse' ||
+    (Array.isArray(values.untick) && values.untick.length > 0) ||
+    !leftEmpty(values.later),
+};
 
 /** The request worked out at the window's end, stored by the owner's send. */
 export const planPreparedSendSchema = z.strictObject({

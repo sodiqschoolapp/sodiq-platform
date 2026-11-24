@@ -36,6 +36,9 @@ type Language = 'uz' | 'ru' | 'en';
 /** A lesson with data the save cancels, with the choice its shared block forces, if any (task 6.1b-2). */
 type Asked = BulkCancelDataLesson & { forced: BulkCancelChoice | null };
 
+/** A choice the dialog waits for before the save (`ready`), task 11.18. */
+const CHOICE_PAGE = filledOnPage(['choice']);
+
 /**
  * The bulk cancel of a date (task 5.6a-3, pull request #162; `06`, Changes
  * after publishing: "Bulk cancel. For an event: chosen classes, date and
@@ -48,8 +51,6 @@ type Asked = BulkCancelDataLesson & { forced: BulkCancelChoice | null };
  * (decision 4): each lesson with data it cancels takes "Keep as held" or
  * "Cancel", one choice for both halves of a double.
  */
-/** A choice the dialog waits for before the save (`ready`), task 11.18. */
-const CHOICE_PAGE = filledOnPage(['choice']);
 
 export function BulkCancelDialog({
   date,

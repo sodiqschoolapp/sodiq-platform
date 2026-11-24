@@ -79,6 +79,16 @@ const roomOf = (value: string) => {
   };
 };
 
+// The red asterisk (task 11.18) of a new row: the unit, a class or a group; its
+// teacher (`load_teacher_needed`), whose field a Tutor row never draws.
+const NEW_ROW_REQUIRED: RequiredWhen = {
+  unit: (values, known) =>
+    (loadRowRecordRequiredWhen.classId?.(values, known) ?? false) ||
+    (loadRowRecordRequiredWhen.groupId?.(values, known) ?? false),
+  teacherId: () => loadRowTeacherNeeded(true, false),
+};
+const NO_MORE: RequiredWhen = {};
+
 /**
  * A row of the teaching load (`05`, Teaching load: "For each class or group
  * and subject: one teacher or one vacancy, lessons per week, the room or room
@@ -94,6 +104,7 @@ const roomOf = (value: string) => {
  * class and a subject whose group switch is on offer the class's groups of
  * the subject (decision 13: "the subject's group switch is only the default").
  */
+
 export function LoadRowForm({
   version,
   row,
@@ -113,17 +124,7 @@ export function LoadRowForm({
   /** Whether the group is a split: it draws from one class or a pair. */
   const isSplit = (groupId: string | null) => isSplitOf(groups.find((one) => one.id === groupId));
 
-  // The red asterisk (task 11.18): the unit of a new row, a class or a group;
-  // its teacher (`load_teacher_needed`), whose field a Tutor row never draws.
-  const requiredWhen: RequiredWhen =
-    row === null
-      ? {
-          unit: (values, known) =>
-            (loadRowRecordRequiredWhen.classId?.(values, known) ?? false) ||
-            (loadRowRecordRequiredWhen.groupId?.(values, known) ?? false),
-          teacherId: () => loadRowTeacherNeeded(true, false),
-        }
-      : {};
+  const requiredWhen: RequiredWhen = row === null ? NEW_ROW_REQUIRED : NO_MORE;
   const form = useRecordForm({
     schema,
     requiredWhen,

@@ -215,10 +215,21 @@ export type ExamBody = z.input<typeof examBodySchema>;
 
 /**
  * What the exam bodies require only in some states (task 11.18): the subject of
- * the quarter's rating exam, and the reason of lessons kept cancelled.
+ * the quarter's rating exam or of an exam a group sits ("A group sits only an
+ * exam of its subject"), and the reason of lessons kept cancelled.
  */
 export const examRequiredWhen: RequiredWhen = {
-  subjectId: (values) => values.ratingExam === true,
+  subjectId: (values) =>
+    values.ratingExam === true ||
+    (Array.isArray(values.rooms) &&
+      values.rooms.some(
+        (room: unknown) =>
+          typeof room === 'object' &&
+          room !== null &&
+          'groupIds' in room &&
+          Array.isArray(room.groupIds) &&
+          room.groupIds.length > 0,
+      )),
   keepReason: (values) => !leftEmpty(values.keepCancelled),
 };
 export type ExamCreateBody = z.input<typeof examCreateBodySchema>;

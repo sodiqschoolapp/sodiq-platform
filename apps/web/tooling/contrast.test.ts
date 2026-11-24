@@ -112,6 +112,8 @@ function pairsOf(theme: ':root' | '.dark'): Pair[] {
     text('secondary-foreground', 'secondary', fill('secondary')),
     text('secondary-foreground', 'secondary-hover', fill('secondary-hover')),
     text('accent-foreground', 'accent (quiet button hovered)', fill('accent')),
+    // A field's message, and the red asterisk of a required field (`RequiredMark`, task 11.18),
+    // on a panel and on the canvas.
     text('destructive', 'card', card),
     text('destructive', 'background', background),
     // The warning icon of a failed save on the secondary button of unsent-changes.tsx.

@@ -121,6 +121,47 @@ export interface RecordFormState<Field extends string> {
  * every field does after Save was pressed. Decided by the owner (task 0.8b):
  * a record form is saved with its Save button.
  */
+/**
+ * The forms drawn while the tests run (task 11.18): `test-setup.ts` checks
+ * after each test that emptying a field of a form makes its schema speak of a
+ * field the form draws, never of another: a field typed under a name that is
+ * not its schema key would show neither its message nor its red asterisk.
+ * Empty and unused outside the tests.
+ */
+export const drawnForms: { fields: readonly string[]; unshown: () => readonly string[] }[] = [];
+
+/**
+ * For each field whose emptying adds no issue at the field itself: the issues
+ * it adds at a path the form does not draw.
+ */
+function unshownWhenEmptied<Field extends string>(
+  schema: FormSchema<unknown>,
+  typed: Record<Field, string>,
+  read: ((typed: Record<Field, string>) => unknown) | undefined,
+): readonly string[] {
+  const fields = Object.keys(typed);
+  const issuesOf = (values: Record<Field, string>): readonly FormIssue[] => {
+    try {
+      const checked = schema.safeParse(read === undefined ? values : read(values));
+      return checked.success ? [] : checked.error.issues;
+    } catch {
+      return [];
+    }
+  };
+  const keyOf = (issue: FormIssue) => `${issue.path.map(String).join('.')}|${issue.code}`;
+  const before = new Set(issuesOf(typed).map(keyOf));
+  return fields.flatMap((field) => {
+    const added = issuesOf({ ...typed, [field]: '' }).filter((issue) => !before.has(keyOf(issue)));
+    // The field says so itself: its message and its mark show.
+    if (added.some((issue) => issue.path[0] === field)) {
+      return [];
+    }
+    return added
+      .filter((issue) => typeof issue.path[0] !== 'string' || !fields.includes(issue.path[0]))
+      .map((issue) => `emptying ${field} gives ${keyOf(issue)}`);
+  });
+}
+
 export function useRecordForm<Field extends string, Values>({
   schema,
   initial,
@@ -153,14 +194,19 @@ export function useRecordForm<Field extends string, Values>({
 
   // Once per what is typed, not per `bind()`: a form binds a field more than once.
   const knownToday = known?.today;
+  const knownStored = known?.stored;
   const requiredFields = useMemo(
     () =>
       new Set(
         (Object.keys(typed) as Field[]).filter((field) =>
-          requiredOf(schema, typed, field, { read, requiredWhen, known: { today: knownToday } }),
+          requiredOf(schema, typed, field, {
+            read,
+            requiredWhen,
+            known: { today: knownToday, stored: knownStored },
+          }),
         ),
       ),
-    [schema, read, typed, requiredWhen, knownToday],
+    [schema, read, typed, requiredWhen, knownToday, knownStored],
   );
 
   const errorOf = (field: Field): string | undefined => {
@@ -178,6 +224,9 @@ export function useRecordForm<Field extends string, Values>({
   };
 
   const fields = Object.keys(initial) as Field[];
+  if (import.meta.env.MODE === 'test') {
+    drawnForms.push({ fields, unshown: () => unshownWhenEmptied(schema, typed, read) });
+  }
   const same = (one: Record<Field, string>, other: Record<Field, string>): boolean =>
     fields.every((field) => one[field] === other[field]);
 

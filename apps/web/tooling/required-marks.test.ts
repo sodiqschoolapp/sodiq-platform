@@ -73,9 +73,9 @@ const NOT_FORM_FIELDS: Readonly<Record<string, { count: number; reason: string }
       'The primitive text area that the field components draw; the mark is drawn by the field.',
   },
   'features/access/integration-keys-page.tsx': {
-    count: 2,
+    count: 1,
     reason:
-      "The search box of the people picker and its option checkboxes; the picker's group carries the mark from its binding.",
+      'The search box of the people picker: it finds people, the group of ticks below it is the field.',
   },
   'features/access/switchers.tsx': {
     count: 1,
@@ -522,6 +522,15 @@ function walk(file: string): Finding[] {
     if (ts.isBindingElement(node) && ts.isIdentifier(node.name)) {
       // `{ binding }: { binding: FieldBinding }`: the parameter's type names it.
       const parameter = node.parent.parent;
+      // `{ label, ...bound }: FieldBinding & { label: string }`: the rest is the binding.
+      if (
+        node.dotDotDotToken !== undefined &&
+        ts.isParameter(parameter) &&
+        parameter.type !== undefined &&
+        /^FieldBinding\b/.test(parameter.type.getText(source))
+      ) {
+        bindings.add(node.name.text);
+      }
       if (
         ts.isParameter(parameter) &&
         parameter.type !== undefined &&
@@ -624,17 +633,101 @@ const all = files(SRC)
   .filter((file) => !LEFT_OUT.has(path.relative(SRC, file).split(path.sep).join('/')))
   .flatMap(walk);
 
+/**
+ * The schemas with requirements that only a refine or the server states, and
+ * the `requiredWhen` maps of `packages/shared` beside them: a form that checks
+ * with such a schema passes its map, or the marks of those fields never show.
+ */
+const MAPS: Readonly<Record<string, readonly string[]>> = {
+  announcementFormSchema: ['announcementFormRequiredWhen'],
+  assignmentRecordSchema: ['assignmentRequiredWhen'],
+  calendarEntryRecordSchema: ['calendarEntryRequiredWhen'],
+  examBodySchema: ['examRequiredWhen'],
+  examCreateBodySchema: ['examRequiredWhen'],
+  exemptionCreateSchema: ['exemptionCreateRequiredWhen'],
+  loadRowRecordSchema: ['loadRowRecordRequiredWhen'],
+  planRequestDecisionSchema: ['planRequestDecisionRequiredWhen'],
+  ratingEntrySaveSchema: ['ratingEntrySaveRequiredWhen'],
+  roleGiveSchema: ['roleGiveRequiredWhen'],
+  roomRecordSchema: ['roomRecordRequiredWhen'],
+  scholarshipSchema: ['scholarshipRequiredWhen'],
+  staffTeachingSchema: ['staffTeachingRequiredWhen'],
+  studentCreateSchema: ['studentCreateRequiredWhen'],
+  studentRecordSchema: ['studentRecordRequiredWhen', 'studentCreateRequiredWhen'],
+  vacancyRecordSchema: ['vacancyRecordRequiredWhen'],
+};
+
 describe('the red asterisk of every form (task 11.18)', () => {
+  it('passes the requiredWhen map of every schema that has one to the forms that check with it', () => {
+    const forgotten = files(SRC).flatMap((file) => {
+      const text = readFileSync(file, 'utf8');
+      if (!/\buseRecordForm\b|\brequiredOf\(/.test(text)) {
+        return [];
+      }
+      return Object.entries(MAPS)
+        .filter(([schema]) => new RegExp(`\\b${schema}\\b`).test(text))
+        .filter(([, maps]) => !maps.some((map) => new RegExp(`\\b${map}\\b`).test(text)))
+        .map(([schema]) => `${path.relative(SRC, file)}: ${schema}`);
+    });
+    expect(forgotten).toEqual([]);
+  });
+
+  it('knows every requiredWhen map of packages/shared', () => {
+    const shared = path.resolve(SRC, '../../../packages/shared/src');
+    const declared = readdirSync(shared)
+      .filter((name) => name.endsWith('.ts') && !name.endsWith('.test.ts'))
+      .flatMap((name) =>
+        [
+          ...readFileSync(path.join(shared, name), 'utf8').matchAll(
+            /export const (\w+RequiredWhen)\b/g,
+          ),
+        ].map((match) => match[1]),
+      );
+    expect([...new Set(declared)].sort()).toEqual([...new Set(Object.values(MAPS).flat())].sort());
+  });
+
   it('writes no required by hand: the mark comes from the schema', () => {
     expect(all.filter((finding) => finding.problem !== 'unmarked')).toEqual([]);
   });
 
   it('refuses a required written as an object key or a default value', () => {
+    // Every `required:` or `required =` in a component, matched over the whole
+    // text (Prettier may break the value onto the next line), is a type, a
+    // value read from the schema, or the number of a text: anything else is a
+    // mark typed by hand.
+    const fromSchemaValue =
+      /^(?:boolean\b|requiredOf\(|[\w.()'"]+\.required\b|required\b|number\.format\()/;
     const written = files(SRC)
       .filter((file) => !LEFT_OUT.has(path.relative(SRC, file).split(path.sep).join('/')))
-      .filter((file) => /\brequired\s*(?::|=)\s*(?:true|false)\b/.test(readFileSync(file, 'utf8')))
-      .map((file) => path.relative(SRC, file));
+      .flatMap((file) =>
+        [...readFileSync(file, 'utf8').matchAll(/\brequired\??\s*(?::|=(?![={]))\s*([^,;}\n]*)/g)]
+          .filter((match) => !fromSchemaValue.test(match[1] ?? ''))
+          .map((match) => `${path.relative(SRC, file)}: ${match[0]}`),
+      );
     expect(written).toEqual([]);
+  });
+
+  it('refuses every way of writing a required by hand', () => {
+    const pattern = /\brequired\??\s*(?::|=(?![={]))\s*([^,;}\n]*)/g;
+    const fromSchemaValue =
+      /^(?:boolean\b|requiredOf\(|[\w.()'"]+\.required\b|required\b|number\.format\()/;
+    const handTyped = (code: string) =>
+      [...code.matchAll(pattern)].some((match) => !fromSchemaValue.test(match[1] ?? ''));
+    for (const code of [
+      'const a = { required: true };',
+      'const a = { required: someCondition };',
+      'function F({ required = true }) {}',
+      'const a = {\n  required:\n    x > 1,\n};',
+    ]) {
+      expect(handTyped(code.replace(/\n\s*/g, ' ')), code).toBe(true);
+    }
+    for (const code of [
+      'interface A { required?: boolean }',
+      'const a = { required: requiredOf(schema, typed, "x") };',
+      'const a = { required: form.bind("x").required };',
+    ]) {
+      expect(handTyped(code), code).toBe(false);
+    }
   });
 
   it('marks every field of a form from its schema, or names the control that is not one', () => {

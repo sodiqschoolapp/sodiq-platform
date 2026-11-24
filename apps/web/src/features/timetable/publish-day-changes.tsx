@@ -13,7 +13,7 @@ import {
   type SubstitutionItemAnswer,
 } from '@sodiq/shared';
 import { useTranslation } from 'react-i18next';
-import { RequiredGroup, TextAreaField } from '@/components/field';
+import { RequiredGroup, RequiredMark, TextAreaField } from '@/components/field';
 import { filledOnPage } from '@/components/form/page-checks';
 import { requiredOf } from '@/components/form/use-record-form';
 import {
@@ -131,6 +131,15 @@ export function dayDecisionsBodyOf(
 }
 
 /**
+ * What the publish waits for in this list (task 11.18): a choice for each item
+ * that needs a decision, and the reason of a cancel or an exam's choice that
+ * asks for one. The publish route refuses them missing (`dayDecisionsSchema`
+ * leaves the reason optional; the server's check of each item asks for it).
+ */
+const DECISION_PAGE = filledOnPage(['choice']);
+const REASON_PAGE = filledOnPage(['reason']);
+
+/**
  * The stored one-day changes of the dates a publish writes, in step 8 (task
  * 5.6a-5a, pull request #164; `edge/timetable`, Versions and drafts: "The
  * preview sorts them into kept, needs a decision and dropped. Publish waits
@@ -144,14 +153,6 @@ export function dayDecisionsBodyOf(
  * chosen that needs a decision offers the bulk cancel's own two choices,
  * kept by `dayDecisionKeyOf`.
  */
-/**
- * What the publish waits for in this list (task 11.18): a choice for each item
- * that needs a decision, and the reason of a cancel or an exam's choice that
- * asks for one. The publish route refuses them missing (`dayDecisionsSchema`
- * leaves the reason optional; the server's check of each item asks for it).
- */
-const DECISION_PAGE = filledOnPage(['choice']);
-const REASON_PAGE = filledOnPage(['reason']);
 
 export function PublishDayChanges({
   impact,
@@ -438,7 +439,17 @@ export function PublishDayChanges({
     const choice = choices[item.key];
     return (
       <li key={`exam-${item.key}`} data-key={item.key} data-kind="exam" className="grid gap-2">
-        <p>{examText(item)}</p>
+        <p>
+          {examText(item)}
+          {/* The group's legend is for a screen reader only: the mark shows here. */}
+          {(needsWhole(item) || item.blocks.some((block) => block.choice === null)) &&
+            decisionRequired(choice) && (
+              <>
+                {' '}
+                <RequiredMark />
+              </>
+            )}
+        </p>
         {item.blocked.length > 0 && (
           <p data-blocked="true">
             {t('timetable.publish.dayChanges.exams.clashes', {
