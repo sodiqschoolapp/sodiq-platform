@@ -1,6 +1,6 @@
 # No lesson score in the journal, and a red asterisk on every required field
 
-Proposal of 24 November 2026, from the owner, in chat: "we don't need daily o'rtacha score for journals. Academic director requested it to be removed because we don't need it", and "for every input based forms, for required inputs put * in red". Apply each section with `/spec-change`, one commit per section, in this order. Where a sentence is quoted as "old", replace it word for word; "remove" takes the whole row or line out. The build-plan edits (not spec) are at the end and go in the same pull request.
+Proposal of 24 November 2026, approved and applied the same day with the row of `15` added from its review, from the owner, in chat: "we don't need daily o'rtacha score for journals. Academic director requested it to be removed because we don't need it", and "for every input based forms, for required inputs put * in red". Apply each section with `/spec-change`, one commit per section, in this order. Where a sentence is quoted as "old", replace it word for word; "remove" takes the whole row or line out. The build-plan edits (not spec) are at the end and go in the same pull request.
 
 ## What is removed, and what is not
 

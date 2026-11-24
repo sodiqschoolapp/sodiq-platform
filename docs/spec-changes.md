@@ -2,6 +2,16 @@
 
 The spec in `docs/spec/` was taken from the full spec document on 3 October 2026 (revision 88). Every later change to a spec file is listed here, newest first, with the date, what changed, why, and the files touched. Changes are made only with the `/spec-change` skill and the owner's approval.
 
+## 24 November 2026: no lesson score in the journal, and a red asterisk on every required field
+
+- What changed:
+  1. **No lesson score.** The journal no longer has the column "Oʻrt / Ср. / Avg" after each lesson's works, and a subject no longer has a daily distribution (attendance, classwork, homework), which only that column used. Publishing no longer asks for a daily distribution. Calculation rule 3 of `07` now says there is no lesson score and keeps its number, so the rules after it keep theirs.
+  2. **Required fields.** Every field that must be filled is marked with a red asterisk after its label, on every form and in every language, and a screen reader announces it as required. A field without the mark may be left empty.
+- Why: the owner, 24 November 2026, in chat: the Academic Vice Principal asked to remove the per-lesson average, which the school does not use; and the owner asked that required inputs be marked with a red asterisk. Proposal `docs/proposals/spec-change-no-lesson-score-and-required-marks.md` (pull request #380), with the row of `15` added from its review.
+- Not changed: every result. The lesson score never entered a quarter figure (`edge/calculation`), so the quarter averages, quarter result, grade, year result, rating, early-warning list, reports and the parent portal stay as they are, and task 11.17 proves it on the demo school. The daily attendance percent of a class (`edge/journal`) is another rule and stays. The stored daily distributions stay in the database untouched and unread. What a form requires does not change; only the mark is added.
+- Owner's approval (stop-list item 4, 24 November 2026, in chat): `packages/calc` loses the lesson score and its daily weights, the type `Work` moves to a file of its own, and `CALC_VERSION` goes from 7 to 8. Closed quarters will offer a "recalculate and compare" that finds no change.
+- Files: `docs/spec/01-overview.md` (Decisions at a glance, Grading), `docs/spec/05-classes-groups-subjects.md` (Subject; Excel import of subjects; Grading weights on a subject), `docs/spec/07-journal.md` (Layout: Lessons, Lesson cells, short labels; Calculation rules, rule 3), `docs/spec/edge-cases/calculation.md`, `docs/spec/edge-cases/journal.md`, `docs/spec/edge-cases/academic-year.md`, `docs/spec/15-conflicts-resolved.md` (Grading weights), `docs/spec/16-open-questions.md` (question 4), `docs/spec/12-ux-standards.md` (No lost work).
+
 ## 24 November 2026: the assistant runs in Frankfurt first, has a page of its own and shows its work
 
 - What changed:
