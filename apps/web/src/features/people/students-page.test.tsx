@@ -1321,6 +1321,70 @@ describe('editing a student', () => {
   });
 });
 
+// The owner, 24 November 2026 (`04`, Contract; 0182): the contract is
+// optional, and its number may be left empty.
+describe('an optional contract', () => {
+  it('shows "No contract" and a contract without a number on the Contract tab', async () => {
+    openList('academic_vice_principal', {}, 'en', {
+      financial: {
+        contracts: [
+          { id: uid(32), number: null, signedOn: null },
+          { id: uid(31), number: null, signedOn: '2026-08-20' },
+        ],
+        scholarship: { type: 'none', coverage: null, amount: null },
+        previousSchool: null,
+        consentSignedOn: null,
+      },
+    });
+    renderApp(PATH);
+    fireEvent.click(await screen.findByText('Rahimov Oʻtkir', { selector: 'button' }));
+    const panel = await screen.findByRole('complementary', { name: 'Oʻtkir Rahimov' });
+    const tabs = await within(panel).findByRole('radiogroup');
+    fireEvent.click(within(tabs).getByRole('radio', { name: en.people.students.tabs.contract }));
+    expect(await within(panel).findByText(en.people.students.noContract)).toBeDefined();
+    expect(
+      within(panel).getByText(
+        en.people.students.contractUnnumbered.replace(
+          '{{date}}',
+          schoolDateText('2026-08-20', 'en'),
+        ),
+      ),
+    ).toBeDefined();
+  });
+
+  it('sends no contract when both of its fields are emptied, and a date alone without a number', async () => {
+    const sent: unknown[] = [];
+    openList('academic_vice_principal', {
+      [`PUT /api/people/students/${OTKIR.id}`]: (body) => {
+        sent.push((body as { contract: unknown }).contract);
+        return json(detailOf(OTKIR, { canEdit: true }));
+      },
+    });
+    renderApp(PATH);
+    fireEvent.click(await screen.findByText('Rahimov Oʻtkir', { selector: 'button' }));
+    const panel = await screen.findByRole('complementary', { name: 'Oʻtkir Rahimov' });
+    let form = await edit(panel, 'Oʻtkir Rahimov');
+    fireEvent.change(within(form).getByLabelText(en.people.students.contractNumber), {
+      target: { value: '' },
+    });
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+    await waitFor(() => {
+      expect(sent).toEqual([{ number: null, signedOn: '2026-08-20' }]);
+    });
+    form = await edit(panel, 'Oʻtkir Rahimov');
+    fireEvent.change(within(form).getByLabelText(en.people.students.contractNumber), {
+      target: { value: '' },
+    });
+    fireEvent.change(within(form).getByLabelText(en.people.students.contractSignedOn), {
+      target: { value: '' },
+    });
+    fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
+    await waitFor(() => {
+      expect(sent).toEqual([{ number: null, signedOn: '2026-08-20' }, null]);
+    });
+  });
+});
+
 // Task 2.4b-1, pull request #68: docs/spec/04-people.md, Movements;
 // docs/spec/edge-cases/students-classes-groups.md.
 describe('leaving, return and delete', () => {

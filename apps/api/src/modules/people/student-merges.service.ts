@@ -840,10 +840,13 @@ export class StudentMerges {
     });
     const sideOfStudent = (studentId: string): Side =>
       same(studentId, plan.kept.id) ? 'kept' : 'merged';
+    // Every row is carried and listed, the row of "no contract" (no number, no
+    // date; 0182) too: the newest row is the student's contract after the merge.
+    // A contract may have no number (owner, 24 November 2026).
     const contracts = (plan.whole.get('student_contracts') ?? []).map(({ studentId, row }) => ({
       side: sideOfStudent(studentId),
-      number: String(row.number),
-      signedOn: String(row.signed_on),
+      number: scalarText(row.number),
+      signedOn: scalarText(row.signed_on),
     }));
     const live = plan.links.filter((link) => link.live);
     const ids = [...new Set(live.map((link) => link.relativeId.toLowerCase()))].sort();

@@ -598,11 +598,7 @@ export function StudentPanel({ id, name, holderText }: StudentPanelProps) {
             <UndoForm key={`undo-${String(student.version)}`} {...change('undo')} />
           )}
           {editing === 'return' && allowed.return && (
-            <ReturnForm
-              key={`return-${String(student.version)}`}
-              {...change('return')}
-              holderText={holderText}
-            />
+            <ReturnForm key={`return-${String(student.version)}`} {...change('return')} />
           )}
           {editing === 'restore' && allowed.restore && (
             <RestoreForm key={`restore-${String(student.version)}`} {...change('restore')} />
@@ -951,10 +947,18 @@ function ContractTab({ student }: { student: StudentDetail }) {
             (contract) =>
               [
                 t('people.students.contract'),
-                t('people.students.contractText', {
-                  number: contract.number,
-                  date: schoolDateText(contract.signedOn, language),
-                }),
+                // No date is the row of "no contract"; a contract may have no
+                // number (owner, 24 November 2026).
+                contract.signedOn === null
+                  ? t('people.students.noContract')
+                  : contract.number === null
+                    ? t('people.students.contractUnnumbered', {
+                        date: schoolDateText(contract.signedOn, language),
+                      })
+                    : t('people.students.contractText', {
+                        number: contract.number,
+                        date: schoolDateText(contract.signedOn, language),
+                      }),
               ] as const,
           ),
           [t('people.students.scholarship'), scholarshipText],

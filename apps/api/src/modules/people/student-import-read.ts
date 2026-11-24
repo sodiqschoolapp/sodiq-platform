@@ -315,7 +315,8 @@ export function parseImportRow(row: StudentImportRow): ParsedRow {
   // Optional (owner, 7 November 2026; `04`, Excel import).
   const birthDate = date('birthDate', false);
   const startsOn = date('startsOn', true);
-  const contractSignedOn = date('contractSignedOn', true);
+  // The contract is optional; a number needs its date (owner, 24 November 2026; 0182).
+  const contractSignedOn = date('contractSignedOn', cell('contractNumber') !== undefined);
   const consentSignedOn = date('consentSignedOn', false);
   const grade = required('grade', whole('grade'));
   const documentType = listed('documentType', DOCUMENT_VALUES);
@@ -371,7 +372,6 @@ export function parseImportRow(row: StudentImportRow): ParsedRow {
     'uid',
     'lastName',
     'firstName',
-    'contractNumber',
   ] as const satisfies readonly StudentImportColumn[]) {
     if (cell(column) === undefined) {
       problem(column, 'required');
@@ -400,7 +400,10 @@ export function parseImportRow(row: StudentImportRow): ParsedRow {
       amount,
     },
     consentSignedOn,
-    contract: { number: cell('contractNumber') ?? '', signedOn: contractSignedOn ?? '2000-01-01' },
+    contract:
+      cell('contractNumber') === undefined && cell('contractSignedOn') === undefined
+        ? null
+        : { number: cell('contractNumber') ?? '', signedOn: contractSignedOn ?? '2000-01-01' },
     startsOn: startsOn ?? '2000-01-01',
     uid: cell('uid') ?? '',
     relatives: relatives.map((relative) => ({
@@ -483,8 +486,9 @@ const push = <K, V>(map: Map<K, V[]>, key: K, value: V) => {
 };
 
 /**
- * The checks across the rows of the file: the same UID, JSHSHIR, document
- * number or contract number on two rows (both rows, plan decision 5), the
+ * The checks across the rows of the file: the same UID, JSHSHIR or document
+ * number on two rows (both rows, plan decision 5; a contract number may repeat,
+ * owner, 24 November 2026), the
  * same relative phone under two names (both rows; `edge`, the relative phone
  * row). Answers the problems per row number, and the earlier rows with the
  * same name and date of birth (the warning to confirm, twins pass).
@@ -501,7 +505,6 @@ export function fileChecks(rows: readonly ParsedRow[]): {
     { column: 'uid', key: (input) => studentUidKey(input.uid) },
     { column: 'jshshir', key: (input) => input.jshshir },
     { column: 'documentNumber', key: (input) => input.documentNumber },
-    { column: 'contractNumber', key: (input) => input.contract.number.toUpperCase() },
   ];
   for (const { column, key } of keyed) {
     const byKey = new Map<string, number[]>();

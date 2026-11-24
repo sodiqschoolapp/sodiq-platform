@@ -233,7 +233,10 @@ export class PersonalData {
             coverage: student.scholarship_coverage,
             amount: student.scholarship_amount,
           }),
-          contracts: contracts.map((row) => ({ number: row.number, signedOn: row.signed_on })),
+          // A row of "no contract" (no number, no date; 0182) is no data held.
+          contracts: contracts.flatMap((row) =>
+            row.signed_on === null ? [] : [{ number: row.number, signedOn: row.signed_on }],
+          ),
           merged: merges.map((row) => {
             const record = row.merged_record as Record<string, unknown>;
             return {

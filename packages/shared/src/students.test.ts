@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  CONTRACT_NUMBER_MAX_LENGTH,
   scholarshipSchema,
   spellingKey,
   studentCreateSchema,
@@ -127,7 +128,35 @@ describe('the student record', () => {
     const parsed = studentRecordSchema.parse(record);
     expect(parsed.paternalName).toBeNull();
     expect(parsed.documentNumber).toBeNull();
-    expect(parsed.contract.number).toBe('SQ-2026/017');
+    expect(parsed.contract?.number).toBe('SQ-2026/017');
+  });
+
+  it('takes no contract, and a contract with its date and no number (owner, 24 November 2026)', () => {
+    expect(studentRecordSchema.parse({ ...record, contract: null }).contract).toBeNull();
+    expect(
+      studentRecordSchema.parse({ ...record, contract: { number: '  ', signedOn: '2026-08-20' } })
+        .contract,
+    ).toEqual({ number: null, signedOn: '2026-08-20' });
+    expect(
+      studentRecordSchema.parse({ ...record, contract: { number: null, signedOn: '2026-08-20' } })
+        .contract,
+    ).toEqual({ number: null, signedOn: '2026-08-20' });
+  });
+
+  it('refuses a contract without its date, and a number too long', () => {
+    expect(
+      studentRecordSchema.safeParse({ ...record, contract: { number: 'SQ-1', signedOn: '' } })
+        .success,
+    ).toBe(false);
+    expect(studentRecordSchema.safeParse({ ...record, contract: { number: 'SQ-1' } }).success).toBe(
+      false,
+    );
+    expect(
+      studentRecordSchema.safeParse({
+        ...record,
+        contract: { number: 'S'.repeat(CONTRACT_NUMBER_MAX_LENGTH + 1), signedOn: '2026-08-20' },
+      }).success,
+    ).toBe(false);
   });
 
   it('refuses a UID in the edit: the UID has a correction route of its own', () => {

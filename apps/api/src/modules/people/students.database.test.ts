@@ -40,7 +40,10 @@ interface StudentInput {
   jshshir?: string | null;
   documentType?: string | null;
   documentNumber?: string | null;
-  contract?: string;
+  /** The contract's number; `null` for none (owner, 24 November 2026). */
+  contract?: string | null;
+  /** The contract's date; `null` for none. */
+  signedOn?: string | null;
   status?: string;
 }
 
@@ -49,8 +52,10 @@ interface StudentInput {
 // without spaces, never used twice across the school, compared ignoring case,
 // whatever the holder's status, also once corrected away (edge/developer-
 // rules, Identifiers; 04, UID sets; decision 7 of pull request #67; 0138,
-// task 9.4c); JSHSHIR, the document number and the contract number
-// unique across the school (edge/students-classes-groups; answer 22); the
+// task 9.4c); JSHSHIR and the document number unique across the school
+// (edge/students-classes-groups); a contract that is optional, with a number
+// that may repeat but never stands without a date (0182; owner, 24 November
+// 2026); the
 // checks of what is typed; the branch filter; status rows that never overlap
 // and only shrink; the student account switched off until Release 2; the
 // move to another branch carried by the keys (decision 15). All names are
@@ -105,8 +110,8 @@ describe('student records in the database', () => {
       .values({
         student_id: id,
         branch_id: input.branch,
-        number: input.contract ?? `C-${String(count)}`,
-        signed_on: '2026-08-20',
+        number: input.contract === undefined ? `C-${String(count)}` : input.contract,
+        signed_on: input.signedOn === undefined ? '2026-08-20' : input.signedOn,
       })
       .execute();
     await transaction
@@ -475,14 +480,49 @@ describe('student records in the database', () => {
       ).rejects.toMatchObject({ code: UNIQUE_VIOLATION, constraint: 'students_document_idx' });
     });
 
-    it('refuses a contract number that differs in case only (answer 22)', async () => {
+    it('takes the same contract number for two students, in one branch and across branches (0182)', async () => {
       await createStudent({ branch: north, uid: '2607070', contract: 'SQ-2026/070' });
-      await expect(
-        createStudent({ branch: south, uid: '2607071', contract: 'sq-2026/070' }),
-      ).rejects.toMatchObject({
-        code: UNIQUE_VIOLATION,
-        constraint: 'student_contracts_number_idx',
+      await createStudent({ branch: north, uid: '2607073', contract: 'SQ-2026/070' });
+      await createStudent({ branch: south, uid: '2607071', contract: 'sq-2026/070' });
+      const held = await database.migrator
+        .selectFrom('student_contracts')
+        .select('student_id')
+        .where(sql<boolean>`upper(number) = 'SQ-2026/070'`)
+        .execute();
+      expect(held).toHaveLength(3);
+    });
+
+    it('takes a contract with no number, and a student with no contract (0182)', async () => {
+      const dated = await createStudent({ branch: north, uid: '2607074', contract: null });
+      const none = await createStudent({
+        branch: north,
+        uid: '2607075',
+        contract: null,
+        signedOn: null,
       });
+      const rows = await database.migrator
+        .selectFrom('student_contracts')
+        .select(['student_id', 'number', 'signed_on'])
+        .where('student_id', 'in', [dated, none])
+        .execute();
+      expect(rows).toEqual(
+        expect.arrayContaining([
+          { student_id: dated, number: null, signed_on: '2026-08-20' },
+          { student_id: none, number: null, signed_on: null },
+        ]),
+      );
+    });
+
+    it('refuses a contract number without its date (0182)', async () => {
+      await expect(
+        createStudent({ branch: north, uid: '2607076', contract: 'SQ-2026/076', signedOn: null }),
+      ).rejects.toMatchObject({
+        code: CHECK_VIOLATION,
+        constraint: 'student_contracts_number_dated',
+      });
+    });
+
+    it('refuses a contract number that is not trimmed', async () => {
       // Outer spaces are not stored at all (the shared schema drops them).
       await expect(
         createStudent({ branch: south, uid: '2607072', contract: ' SQ-2026/071' }),

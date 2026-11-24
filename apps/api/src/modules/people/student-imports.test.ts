@@ -784,21 +784,20 @@ describe('the student import', () => {
       expect((await confirmed(answer.importId)).outcome).toBe('not_clean');
     });
 
-    it('a row refused only at the save (a contract number taken meanwhile) rolls the whole confirm back', async () => {
+    it('a row refused only at the save (a JSHSHIR taken meanwhile) rolls the whole confirm back', async () => {
       const target = await newClass();
       const rows = [studentRow(target.name), studentRow(target.name)];
       const answer = await uploaded(rows);
       expect(answer.clean).toBe(true);
-      // Meanwhile a student is created by hand with the second row's contract number.
-      const meanwhile = await uploaded([
-        studentRow(target.name, { contractNumber: rows[1]?.contractNumber }),
-      ]);
+      // Meanwhile a student is saved with the second row's JSHSHIR (a contract
+      // number may repeat since 24 November 2026, so it no longer refuses).
+      const meanwhile = await uploaded([studentRow(target.name, { jshshir: rows[1]?.jshshir })]);
       expect((await confirmed(meanwhile.importId)).outcome).toBe('saved');
       const before = await rowsOf();
       const refused = await confirmed(answer.importId);
       expect(refused.outcome).toBe('not_clean');
       if (refused.outcome === 'not_clean') {
-        expect(codesAt(refused.preview, 4)).toEqual(['contractNumber:student_value_taken']);
+        expect(codesAt(refused.preview, 4)).toEqual(['jshshir:student_value_taken']);
       }
       expect((await rowsOf()).slice(0, 11)).toEqual(before.slice(0, 11));
       expect(await studentOf(rows[0]?.uid)).toBeUndefined();

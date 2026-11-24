@@ -349,6 +349,23 @@ describe('the personal data report', () => {
       found = studentReportSchema.parse(ok(await report('students', studentId)));
     });
 
+    // The owner, 24 November 2026 (0182): a contract without a number is listed
+    // with its date; the row of "no contract" is no data held and is left out.
+    it('lists a contract without a number and leaves the row of "no contract" out', async () => {
+      const id = await student(t.north);
+      await t.database.migrator
+        .updateTable('student_contracts')
+        .set({ number: null })
+        .where('student_id', '=', id)
+        .execute();
+      await t.database.migrator
+        .insertInto('student_contracts')
+        .values({ student_id: id, branch_id: t.north, number: null, signed_on: null })
+        .execute();
+      const read = studentReportSchema.parse(ok(await report('students', id)));
+      expect(read.student.contracts).toEqual([{ number: null, signedOn: '2026-08-20' }]);
+    });
+
     it('holds every group of the record plainly, with the produced moment from the clock', () => {
       expect(found.student).toMatchObject({
         id: studentId,

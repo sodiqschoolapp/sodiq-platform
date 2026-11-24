@@ -47,7 +47,7 @@ interface ExportRow {
   scholarship_amount: number | null;
   consent_signed_on: string | null;
   /** The newest contract (the latest id, decision 17 of pull request #68). */
-  contract: { number: string; signed_on: string } | undefined;
+  contract: { number: string | null; signed_on: string | null } | undefined;
   /** The live relatives of the student, the main contact first (task 2.5b-2). */
   relatives: ExportRelative[];
 }
@@ -130,7 +130,7 @@ export class StudentExports {
         ])
         .where('branch_id', '=', branchId)
         .execute();
-      const contracts = new Map<string, { number: string; signed_on: string }>();
+      const contracts = new Map<string, { number: string | null; signed_on: string | null }>();
       for (const contract of await transaction
         .selectFrom('student_contracts')
         .select(['student_id', 'number', 'signed_on'])

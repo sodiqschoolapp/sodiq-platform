@@ -164,8 +164,13 @@ export const studentMergePreviewSchema = z.object({
     contracts: z.array(
       z.object({
         side: z.enum(['kept', 'merged']),
-        number: z.string(),
-        signedOn: schoolDateSchema,
+        /** Empty when the contract has no number (owner, 24 November 2026). */
+        number: z.string().nullable(),
+        /**
+         * Empty on the row of "no contract" (0182): listed, since the newest row
+         * the merge keeps is the student's contract afterwards.
+         */
+        signedOn: schoolDateSchema.nullable(),
       }),
     ),
     relatives: z.array(

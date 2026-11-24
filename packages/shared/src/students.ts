@@ -216,16 +216,28 @@ export const documentNumberSchema = z
   )
   .nullable();
 
-/** A contract number: outer spaces dropped, inner runs made one (answer 22: unique without case). */
+/**
+ * A contract number: outer spaces dropped, inner runs made one; empty is none.
+ * Optional and not unique (owner, 24 November 2026; `04`, Contract; 0182).
+ */
 export const contractNumberSchema = z
   .string()
   .transform((typed) => typed.trim().replace(/\s+/g, ' '))
-  .pipe(z.string().min(1).max(CONTRACT_NUMBER_MAX_LENGTH));
+  .transform((text) => (text === '' ? null : text))
+  .pipe(z.string().max(CONTRACT_NUMBER_MAX_LENGTH).nullable())
+  .nullable();
 
-export const studentContractSchema = z.object({
-  number: contractNumberSchema,
-  signedOn: schoolDateSchema,
-});
+/**
+ * A student's contract: `null` for none, or its date with a number that may
+ * be left empty (owner, 24 November 2026; `04`, Contract). A number never
+ * stands without its date (`student_contracts_number_dated`, 0182).
+ */
+export const studentContractSchema = z
+  .object({
+    number: contractNumberSchema,
+    signedOn: schoolDateSchema,
+  })
+  .nullable();
 
 export type StudentContract = z.infer<typeof studentContractSchema>;
 
@@ -512,7 +524,15 @@ export type StudentIdentity = z.infer<typeof studentIdentitySchema>;
  */
 export const studentFinancialSchema = z.object({
   /** Every contract, newest first. */
-  contracts: z.array(z.object({ id: z.uuid(), number: z.string(), signedOn: schoolDateSchema })),
+  contracts: z.array(
+    z.object({
+      id: z.uuid(),
+      /** Empty when the contract has no number (owner, 24 November 2026). */
+      number: z.string().nullable(),
+      /** Empty on the row of "no contract" (0182). */
+      signedOn: schoolDateSchema.nullable(),
+    }),
+  ),
   scholarship: scholarshipSchema,
   previousSchool: z.string().nullable(),
   consentSignedOn: schoolDateSchema.nullable(),

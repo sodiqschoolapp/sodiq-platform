@@ -157,8 +157,19 @@ const FIELD_OF_DETAIL: Readonly<Record<string, StudentField>> = {
   uid: 'uid',
   jshshir: 'jshshir',
   documentNumber: 'documentNumber',
-  'contract.number': 'contractNumber',
 };
+
+/**
+ * The contract as typed: none when both fields are empty; otherwise its date
+ * (checked as required) and its number, which may be empty (owner,
+ * 24 November 2026; `04`, Contract).
+ */
+export function typedContract(
+  number: string,
+  signedOn: string,
+): { number: string; signedOn: string } | null {
+  return number.trim() === '' && signedOn.trim() === '' ? null : { number, signedOn };
+}
 
 /** A value refused as taken. */
 export interface Taken {
@@ -382,7 +393,7 @@ export function StudentForm({
               : null,
         },
         consentSignedOn: orNull(typed.consentSignedOn),
-        contract: { number: typed.contractNumber, signedOn: typed.contractSignedOn },
+        contract: typedContract(typed.contractNumber, typed.contractSignedOn),
       };
       if (!creating) {
         return record;

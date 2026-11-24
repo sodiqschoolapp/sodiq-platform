@@ -247,14 +247,24 @@ describe('one row', () => {
     });
     expect(parsed.input).toBeNull();
     expect(problemsOf(parsed).sort()).toEqual(
-      [
-        'birthDate:date_invalid',
-        'sex:value_unknown',
-        'phone:phone_invalid',
-        'uid:required',
-        'contractNumber:required',
-      ].sort(),
+      ['birthDate:date_invalid', 'sex:value_unknown', 'phone:phone_invalid', 'uid:required'].sort(),
     );
+  });
+
+  it('takes a row with no contract, and one with a date and no number; a number needs its date (owner, 24 November 2026)', async () => {
+    const none = await one({
+      ...studentRow('Oxford'),
+      contractNumber: undefined,
+      contractSignedOn: undefined,
+    });
+    expect(problemsOf(none)).toEqual([]);
+    expect(none.input?.contract).toBeNull();
+    const dated = await one({ ...studentRow('Oxford'), contractNumber: undefined });
+    expect(problemsOf(dated)).toEqual([]);
+    expect(dated.input?.contract).toEqual({ number: null, signedOn: '2026-08-20' });
+    const undated = await one({ ...studentRow('Oxford'), contractSignedOn: undefined });
+    expect(undated.input).toBeNull();
+    expect(problemsOf(undated)).toEqual(['contractSignedOn:required']);
   });
 
   it('refuses a relative phone that is not a phone, and a relative without a name or a relationship', async () => {
@@ -277,7 +287,7 @@ describe('one row', () => {
 describe('across the rows of the file', () => {
   const parsedOf = async (rows: TemplateRow[]) => (await rowsOf(rows)).map(parseImportRow);
 
-  it('the same UID (another case and spacing), JSHSHIR, document or contract number on two rows: both rows', async () => {
+  it('the same UID (another case and spacing), JSHSHIR or document number on two rows: both rows; a contract number may repeat', async () => {
     const first = studentRow('Oxford');
     const rows = [
       first,
@@ -290,12 +300,10 @@ describe('across the rows of the file', () => {
     const { problems } = fileChecks(await parsedOf(rows));
     const at = (row: number) =>
       (problems.get(row) ?? []).map((one) => `${String(one.column)}:${(one.rows ?? []).join(',')}`);
-    expect(at(3).sort()).toEqual(
-      ['contractNumber:6', 'documentNumber:7', 'jshshir:5', 'uid:4'].sort(),
-    );
+    expect(at(3).sort()).toEqual(['documentNumber:7', 'jshshir:5', 'uid:4'].sort());
     expect(at(4)).toEqual(['uid:3']);
     expect(at(5)).toEqual(['jshshir:3']);
-    expect(at(6)).toEqual(['contractNumber:3']);
+    expect(at(6)).toEqual([]);
     expect(at(7)).toEqual(['documentNumber:3']);
     expect(at(8)).toEqual([]);
   });
