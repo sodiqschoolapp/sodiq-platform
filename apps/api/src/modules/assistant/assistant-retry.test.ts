@@ -261,6 +261,62 @@ describe('the assistant on the live model: retries, the worldwide fallback and t
     expect(all.filter((row) => row.message_id === earlier.at(-1)?.message_id)).toEqual(earlier);
   });
 
+  it('audits a change of the fallback switch as a setting, old and new value', async () => {
+    const entries = () =>
+      scene.database.migrator
+        .selectFrom('audit_log_school')
+        .selectAll()
+        .where('action', '=', 'assistant_settings.change')
+        .orderBy('occurred_at')
+        .orderBy('id')
+        .execute();
+    const before = await entries();
+    expect((await settings({ fallbackOn: false })).status).toBe(200);
+    const after = await entries();
+    expect(after).toHaveLength(before.length + 1);
+    expect(after.at(-1)).toEqual(
+      expect.objectContaining({
+        actor_id: scene.adminAccount,
+        old_value: expect.objectContaining({ fallbackOn: true }) as unknown,
+        new_value: expect.objectContaining({ fallbackOn: false }) as unknown,
+      }),
+    );
+  });
+
+  it('ends a Teacher’s question "busy" in the Teacher’s own conversation, through the worldwide endpoint too', async () => {
+    expect((await settings({ rolesOn: ['super_admin', 'teacher'] })).status).toBe(200);
+    const teaching = await scene.kit.fullSession('Bekzod', 'Busyov');
+    await scene.kit.giveRole(teaching.account.id, { role: 'teacher', branchId: scene.north });
+    scene.model.script(busy429(), busy429(), busy429(), busy429(), answer('Never asked.'));
+    const response = await ask(scene, teaching.cookie, scene.north, {
+      text: 'My lessons?',
+      role: 'teacher',
+    });
+    expect([response.status, errorCode(response)]).toEqual([503, 'assistant_model_busy']);
+    expect(scene.model.places).toEqual(['region', 'region', 'region', 'global']);
+    const notice = await scene.database.migrator
+      .selectFrom('assistant_messages')
+      .innerJoin(
+        'assistant_conversations',
+        'assistant_conversations.id',
+        'assistant_messages.conversation_id',
+      )
+      .select([
+        'assistant_messages.content',
+        'assistant_conversations.account_id',
+        'assistant_conversations.role',
+      ])
+      .where('assistant_messages.kind', '=', 'notice')
+      .orderBy('assistant_messages.id', 'desc')
+      .limit(1)
+      .executeTakeFirstOrThrow();
+    expect(notice).toEqual({
+      content: { kind: 'notice', code: 'assistant_model_busy' },
+      account_id: teaching.account.id,
+      role: 'teacher',
+    });
+  });
+
   it('bounds the calls of a question, every retry and fallback counted (.claude/rules/api.md)', async () => {
     // Frankfurt always busy, the worldwide endpoint always asks to read again: four calls a turn.
     scene.model.script(
