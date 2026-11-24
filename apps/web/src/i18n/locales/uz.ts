@@ -4304,7 +4304,7 @@ export const uz: Texts<'one' | 'other'> = {
       plans: 'Rejalar',
       requests: 'Soʻrovlar',
       audit_log: 'Audit',
-      assistant: 'Yordamchi',
+      assistant: 'Yordam',
     },
   },
   switcher: {

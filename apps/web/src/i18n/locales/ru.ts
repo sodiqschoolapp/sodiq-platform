@@ -4477,7 +4477,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       plans: 'Планы',
       requests: 'Запросы',
       audit_log: 'Аудит',
-      assistant: 'Помощник',
+      assistant: 'Помощь',
     },
   },
   switcher: {
