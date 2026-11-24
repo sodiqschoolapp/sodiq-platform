@@ -3110,6 +3110,8 @@ export const en = {
       contractSignedOn: 'Contract date',
       contract: 'Contract',
       contractText: 'No. {{number}} of {{date}}',
+      contractUnnumbered: 'Without a number, of {{date}}',
+      noContract: 'No contract',
       scholarship: 'Scholarship',
       scholarshipType: 'Scholarship',
       scholarshipTypes: {
@@ -3378,6 +3380,7 @@ export const en = {
         allKept: 'all of them',
         noValue: '—',
         contractText: '{{number}} of {{date}}',
+        contractUnnumbered: 'without a number, of {{date}}',
         relativeText: '{{name}} ({{relationship}})',
         alreadyLinked:
           '{{name}} ({{relationship}}): already linked to the record that stays; that link stays',

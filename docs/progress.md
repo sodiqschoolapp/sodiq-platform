@@ -2,6 +2,18 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 24 November 2026: an optional student contract (outside the loop, the owner's request)
+
+- **Spec change** (`04`, Contract; Excel import): the contract is optional, a number may be left empty, and two students may share a number.
+- **Migration 0182**: the unique index on the number is dropped; number and date may be empty; a number needs its date. No row changes.
+- **API**: create, edit, return and import take no contract (`null`) and a contract with no number; a contract number is never "taken". The personal-data report and the merge preview skip the row of "no contract".
+- **Web**: the student form and the return form send no contract when both fields are empty; the Contract tab shows "No contract" and "Without a number, of <date>" (three languages).
+
+The next sessions must know:
+
+- A student's newest `student_contracts` row with no date is "no contract"; read it with `contractOf` (`students.service.ts`). Answer 22 is replaced (`docs/decisions.md`).
+- 0182 is merged after task 11.16 (0181); a later migration takes 0183.
+
 ## 24 November 2026: task 11.15, the assistant on the live model
 
 - **Calls of the model** (`assistant/model-caller.ts`): Frankfurt first; 429, 503, 504 or no answer in 30 s tried again after 2 s and 5 s; then once through the worldwide endpoint (`global`) unless the Super Admin switched the fallback off (`assistant_settings.fallback_on`, 0180, on by default). A 4xx is never retried nor sent on; a 500 or a network failure is "cannot reach". At most 16 calls and 240 s a question; the wait is injected (`ASSISTANT_WAIT`).

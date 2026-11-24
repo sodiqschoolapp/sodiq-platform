@@ -183,10 +183,12 @@ function StudentParts({ report, words }: { report: StudentReport; words: Words }
         rows={[
           ...s.contracts.map((contract): Row => [
             t('people.students.contract'),
-            t('people.students.contractText', {
-              number: contract.number,
-              date: words.date(contract.signedOn),
-            }),
+            contract.number === null
+              ? t('people.students.contractUnnumbered', { date: words.date(contract.signedOn) })
+              : t('people.students.contractText', {
+                  number: contract.number,
+                  date: words.date(contract.signedOn),
+                }),
           ]),
           [
             t('people.students.scholarshipType'),

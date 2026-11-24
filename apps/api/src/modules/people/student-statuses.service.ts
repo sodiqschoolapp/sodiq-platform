@@ -338,25 +338,27 @@ export class StudentStatuses {
               .where('id', '=', id)
               .execute();
             // A return cancelled and made again names the same paper contract: the
-            // student's own row stands, nothing is added twice.
-            const held = await transaction
+            // student's own row stands, nothing is added twice. A contract with a
+            // number is matched by its number; one without, by its date; no
+            // contract, by the row of "no contract" (owner, 24 November 2026; 0182).
+            const number = input.contract?.number ?? null;
+            const signedOn = input.contract?.signedOn ?? null;
+            let same = transaction
               .selectFrom('student_contracts')
               .select('id')
-              .where('student_id', '=', id)
-              .where(sql`upper(number)`, '=', input.contract.number.toUpperCase())
-              .executeTakeFirst();
+              .where('student_id', '=', id);
+            same =
+              number !== null
+                ? same.where(sql`upper(number)`, '=', number.toUpperCase())
+                : signedOn !== null
+                  ? same.where('number', 'is', null).where('signed_on', '=', signedOn)
+                  : same.where('number', 'is', null).where('signed_on', 'is', null);
+            const held = await same.executeTakeFirst();
             if (held === undefined) {
-              await this.students.inserting({ 'contract.number': input.contract.number }, () =>
-                transaction
-                  .insertInto('student_contracts')
-                  .values({
-                    student_id: id,
-                    branch_id: branchId,
-                    number: input.contract.number,
-                    signed_on: input.contract.signedOn,
-                  })
-                  .execute(),
-              );
+              await transaction
+                .insertInto('student_contracts')
+                .values({ student_id: id, branch_id: branchId, number, signed_on: signedOn })
+                .execute();
             }
             return this.placeBack(transaction, access, requestId, id, placedBy(placement), {
               from: input.from,

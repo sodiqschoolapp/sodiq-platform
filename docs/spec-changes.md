@@ -2,6 +2,15 @@
 
 The spec in `docs/spec/` was taken from the full spec document on 3 October 2026 (revision 88). Every later change to a spec file is listed here, newest first, with the date, what changed, why, and the files touched. Changes are made only with the `/spec-change` skill and the owner's approval.
 
+## 24 November 2026: a student's contract is optional, and its number may repeat
+
+- What changed:
+  1. **Optional.** A student may be saved without a contract. A contract entered has its date; its number may be left empty. The hand form, the return from the Inactive list and the Excel import all take a student with no contract, and one with a date and no number. A number without its date is refused.
+  2. **Not unique.** Two students may have the same contract number, in one branch or in two. Before, the number was unique across the school, archived students included (answer 22 of `docs/decisions.md`), and a taken number refused the save, the return and the import row.
+- Why: the owner, 24 November 2026, in chat: "contract numbers are mandatory, make it optional"; "contract numbers are not unique". The owner chose the whole contract optional (not only the number) and no warning for a repeated number.
+- Not changed: contracts stay a dated list, and a return still adds one (`edge/students-classes-groups`, "A student returns"); a return with no contract adds the row of "no contract". The readers of the contract (the Financial group) are unchanged. The UID, the JSHSHIR and the document number stay unique.
+- Files: `docs/spec/04-people.md` (Student record, Contract; Excel import). Code: migration `0182_student_contract_optional.sql` (the unique index `student_contracts_number_idx` dropped; number and date nullable; a number needs its date).
+
 ## 24 November 2026: no lesson score in the journal, and a red asterisk on every required field
 
 - What changed:

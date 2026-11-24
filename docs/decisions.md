@@ -65,6 +65,20 @@ The owner's answers to the decided-ahead questions for Phase 10, given in chat o
 19. Production deploys only after 18:00 or at the weekend, Tashkent time.
 20. The test environment stays after go-live; every change is tried there first.
 
+## 24 November 2026: an optional student contract with a number that may repeat (outside the loop)
+
+The owner's request of 24 November 2026, in chat, built on its own branch beside task 11.16 (`04`, Contract; `docs/spec-changes.md`). Answer 22 ("The contract number is unique across the whole school, archived students included") no longer holds.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first.** The unique index `student_contracts_number_idx` is dropped, and the tests that pinned it (the taken number on create, edit, return and import, the in-file duplicate, the same-moment race) are removed or turned into tests that the number is taken twice | The requirement changed (owner, 24 November 2026); a merged migration is not edited, 0182 drops it |
+| **Look first.** "No contract" is a row of `student_contracts` with no number and no date, not a missing row: every student keeps at least one row, the edit corrects the newest in place, a return adds one, and the delete guards of 0033 and 0054 count rows as before | No delete grant and no new path; the shape the edit, the return, the merge and the delete guard rely on stays (migration 0182) |
+| A number never stands without its date (`student_contracts_number_dated`); a date may stand without a number | The owner chose the whole contract optional, the number inside it optional; a number with no date has no use on the Contract tab |
+| The API takes `contract: null` for none and `{ number: null, signedOn }` for no number; the form and the return send `null` when both fields are empty | One shape for the hand form, the return and the import |
+| A return dedupes the contract it adds by its number, or by its date when it has none, or by the row of "no contract" | Keeps "a return cancelled and made again names the same paper contract" without the unique index |
+| The personal-data report and the merge preview leave the row of "no contract" out; the Contract tab shows it as "No contract" | The tab lists the dated rows with the newest first; a row with no data is not data held |
+| The migration takes number 0182 and is merged after task 11.16 (pull request #381, which holds 0181) | The runner refuses a lower number after a higher one is applied (`migrate.ts`, `pendingFiles`) |
+
 ## 24 November 2026: the assistant on the live model (task 11.15)
 
 Plan approved on pull request #379 with corrections 1 (one plan in the body), 2 (prices keyed by the place), 3 (the month of the count is the cap's month) and 4 (decision 4a among the Look first items). Flagged on issue #42.

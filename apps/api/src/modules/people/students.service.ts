@@ -11,6 +11,7 @@ import {
   type ScholarshipCoverage,
   type ScholarshipType,
   type Sex,
+  type StudentContract,
   type StudentCheck,
   type StudentCheckResult,
   type StudentClass,
@@ -91,16 +92,13 @@ export const uidKeyOf = (uid: string) => sql<string>`student_uid_key(${uid})`;
  * `student_uids` for good (decision 7), so its key refuses a UID too; a UID
  * is compared by its key, without spaces and ignoring case (0138, task 9.4c).
  */
-const TAKEN_FIELDS: Readonly<
-  Record<string, 'uid' | 'jshshir' | 'documentNumber' | 'contract.number'>
-> = {
+const TAKEN_FIELDS: Readonly<Record<string, 'uid' | 'jshshir' | 'documentNumber'>> = {
   students_uid_key_idx: 'uid',
   student_uids_uid_key_idx: 'uid',
   student_uids_student_uid_key_key: 'uid',
   student_uids_pkey: 'uid',
   students_jshshir_idx: 'jshshir',
   students_document_idx: 'documentNumber',
-  student_contracts_number_idx: 'contract.number',
 };
 
 /** A value refused as taken, with what the holder is looked up by. */
@@ -194,7 +192,7 @@ const columnsOf = (record: StudentRecord) => ({
 });
 
 /** The fields of a stored record as the edit and the audit entries compare them. */
-function fieldsOf(row: StudentRow, contract: { number: string; signed_on: string }): StudentRecord {
+function fieldsOf(row: StudentRow, contract: ContractRow): StudentRecord {
   return {
     firstName: row.first_name,
     lastName: row.last_name,
@@ -217,8 +215,24 @@ function fieldsOf(row: StudentRow, contract: { number: string; signed_on: string
       amount: row.scholarship_amount,
     },
     consentSignedOn: row.consent_signed_on,
-    contract: { number: contract.number, signedOn: contract.signed_on },
+    contract: contractOf(contract),
   };
+}
+
+/** The newest row of `student_contracts` of a student. */
+interface ContractRow {
+  id: string;
+  number: string | null;
+  signed_on: string | null;
+}
+
+/**
+ * The contract a row stands for: none on the row of "no contract" (no number,
+ * no date; 0182), else its date and its number, which may be empty (owner,
+ * 24 November 2026; `04`, Contract).
+ */
+function contractOf(row: { number: string | null; signed_on: string | null }): StudentContract {
+  return row.signed_on === null ? null : { number: row.number, signedOn: row.signed_on };
 }
 
 function branchOf(access: Access): string {
@@ -596,17 +610,17 @@ export class Students {
         })
         .execute(),
     );
-    await this.inserting({ 'contract.number': input.contract.number }, () =>
-      transaction
-        .insertInto('student_contracts')
-        .values({
-          student_id: id,
-          branch_id: branchId,
-          number: input.contract.number,
-          signed_on: input.contract.signedOn,
-        })
-        .execute(),
-    );
+    // A student without a contract still has its row, with no number and no
+    // date (0182): the edit corrects the newest row in place.
+    await transaction
+      .insertInto('student_contracts')
+      .values({
+        student_id: id,
+        branch_id: branchId,
+        number: input.contract?.number ?? null,
+        signed_on: input.contract?.signedOn ?? null,
+      })
+      .execute();
     await transaction
       .insertInto('student_statuses')
       .values({
@@ -764,17 +778,15 @@ export class Students {
                   .where('id', '=', id)
                   .execute(),
             );
-            if (
-              contract.number !== record.contract.number ||
-              contract.signed_on !== record.contract.signedOn
-            ) {
-              await this.inserting({ 'contract.number': record.contract.number }, () =>
-                transaction
-                  .updateTable('student_contracts')
-                  .set({ number: record.contract.number, signed_on: record.contract.signedOn })
-                  .where('id', '=', contract.id)
-                  .execute(),
-              );
+            const number = record.contract?.number ?? null;
+            const signedOn = record.contract?.signedOn ?? null;
+            if (contract.number !== number || contract.signed_on !== signedOn) {
+              // Clearing both makes the row the one of "no contract" (0182).
+              await transaction
+                .updateTable('student_contracts')
+                .set({ number, signed_on: signedOn })
+                .where('id', '=', contract.id)
+                .execute();
             }
             await this.audit.record(transaction, {
               branchId,
@@ -1036,14 +1048,6 @@ export class Students {
             .where('document_number', '=', value)
             .executeTakeFirst()
         )?.id;
-      case 'contract.number':
-        return (
-          await transaction
-            .selectFrom('student_contracts')
-            .select('student_id')
-            .where(sql<boolean>`upper(number) = upper(${value})`)
-            .executeTakeFirst()
-        )?.student_id;
     }
   }
 
@@ -1072,10 +1076,7 @@ export class Students {
     return row;
   }
 
-  private async lockNewestContract(
-    transaction: Transaction,
-    id: string,
-  ): Promise<{ id: string; number: string; signed_on: string }> {
+  private async lockNewestContract(transaction: Transaction, id: string): Promise<ContractRow> {
     return (
       transaction
         .selectFrom('student_contracts')

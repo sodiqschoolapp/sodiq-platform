@@ -124720,10 +124720,10 @@ export interface operations {
                     /** Format: date */
                     consentSignedOn: string | null;
                     contract: {
-                        number: string;
+                        number: string | null;
                         /** Format: date */
                         signedOn: string;
-                    };
+                    } | null;
                     /** Format: date */
                     startsOn: string;
                     uid: string;
@@ -124878,9 +124878,9 @@ export interface operations {
                             contracts: {
                                 /** Format: uuid */
                                 id: string;
-                                number: string;
+                                number: string | null;
                                 /** Format: date */
-                                signedOn: string;
+                                signedOn: string | null;
                             }[];
                             scholarship: {
                                 /** @enum {string} */
@@ -127769,9 +127769,9 @@ export interface operations {
                             contracts: {
                                 /** Format: uuid */
                                 id: string;
-                                number: string;
+                                number: string | null;
                                 /** Format: date */
-                                signedOn: string;
+                                signedOn: string | null;
                             }[];
                             scholarship: {
                                 /** @enum {string} */
@@ -128279,10 +128279,10 @@ export interface operations {
                     /** Format: date */
                     consentSignedOn: string | null;
                     contract: {
-                        number: string;
+                        number: string | null;
                         /** Format: date */
                         signedOn: string;
-                    };
+                    } | null;
                 };
             };
         };
@@ -128384,9 +128384,9 @@ export interface operations {
                             contracts: {
                                 /** Format: uuid */
                                 id: string;
-                                number: string;
+                                number: string | null;
                                 /** Format: date */
-                                signedOn: string;
+                                signedOn: string | null;
                             }[];
                             scholarship: {
                                 /** @enum {string} */
@@ -128961,9 +128961,9 @@ export interface operations {
                             contracts: {
                                 /** Format: uuid */
                                 id: string;
-                                number: string;
+                                number: string | null;
                                 /** Format: date */
-                                signedOn: string;
+                                signedOn: string | null;
                             }[];
                             scholarship: {
                                 /** @enum {string} */
@@ -129859,9 +129859,9 @@ export interface operations {
                             contracts: {
                                 /** Format: uuid */
                                 id: string;
-                                number: string;
+                                number: string | null;
                                 /** Format: date */
-                                signedOn: string;
+                                signedOn: string | null;
                             }[];
                             scholarship: {
                                 /** @enum {string} */
@@ -130435,9 +130435,9 @@ export interface operations {
                             contracts: {
                                 /** Format: uuid */
                                 id: string;
-                                number: string;
+                                number: string | null;
                                 /** Format: date */
-                                signedOn: string;
+                                signedOn: string | null;
                             }[];
                             scholarship: {
                                 /** @enum {string} */
@@ -131012,9 +131012,9 @@ export interface operations {
                             contracts: {
                                 /** Format: uuid */
                                 id: string;
-                                number: string;
+                                number: string | null;
                                 /** Format: date */
-                                signedOn: string;
+                                signedOn: string | null;
                             }[];
                             scholarship: {
                                 /** @enum {string} */
@@ -131492,10 +131492,10 @@ export interface operations {
                     /** Format: uuid */
                     classId: string;
                     contract: {
-                        number: string;
+                        number: string | null;
                         /** Format: date */
                         signedOn: string;
-                    };
+                    } | null;
                     reason: string | null;
                     confirmLanguage?: boolean;
                     version: number;
@@ -131608,9 +131608,9 @@ export interface operations {
                             contracts: {
                                 /** Format: uuid */
                                 id: string;
-                                number: string;
+                                number: string | null;
                                 /** Format: date */
-                                signedOn: string;
+                                signedOn: string | null;
                             }[];
                             scholarship: {
                                 /** @enum {string} */
@@ -132184,9 +132184,9 @@ export interface operations {
                             contracts: {
                                 /** Format: uuid */
                                 id: string;
-                                number: string;
+                                number: string | null;
                                 /** Format: date */
-                                signedOn: string;
+                                signedOn: string | null;
                             }[];
                             scholarship: {
                                 /** @enum {string} */
@@ -132765,9 +132765,9 @@ export interface operations {
                             contracts: {
                                 /** Format: uuid */
                                 id: string;
-                                number: string;
+                                number: string | null;
                                 /** Format: date */
-                                signedOn: string;
+                                signedOn: string | null;
                             }[];
                             scholarship: {
                                 /** @enum {string} */
@@ -133660,9 +133660,9 @@ export interface operations {
                             contracts: {
                                 /** Format: uuid */
                                 id: string;
-                                number: string;
+                                number: string | null;
                                 /** Format: date */
-                                signedOn: string;
+                                signedOn: string | null;
                             }[];
                             scholarship: {
                                 /** @enum {string} */
@@ -134249,9 +134249,9 @@ export interface operations {
                             contracts: {
                                 /** Format: uuid */
                                 id: string;
-                                number: string;
+                                number: string | null;
                                 /** Format: date */
-                                signedOn: string;
+                                signedOn: string | null;
                             }[];
                             scholarship: {
                                 /** @enum {string} */
@@ -134825,9 +134825,9 @@ export interface operations {
                             contracts: {
                                 /** Format: uuid */
                                 id: string;
-                                number: string;
+                                number: string | null;
                                 /** Format: date */
-                                signedOn: string;
+                                signedOn: string | null;
                             }[];
                             scholarship: {
                                 /** @enum {string} */
@@ -135402,9 +135402,9 @@ export interface operations {
                             contracts: {
                                 /** Format: uuid */
                                 id: string;
-                                number: string;
+                                number: string | null;
                                 /** Format: date */
-                                signedOn: string;
+                                signedOn: string | null;
                             }[];
                             scholarship: {
                                 /** @enum {string} */
@@ -135991,9 +135991,9 @@ export interface operations {
                             contracts: {
                                 /** Format: uuid */
                                 id: string;
-                                number: string;
+                                number: string | null;
                                 /** Format: date */
-                                signedOn: string;
+                                signedOn: string | null;
                             }[];
                             scholarship: {
                                 /** @enum {string} */
@@ -136578,9 +136578,9 @@ export interface operations {
                             contracts: {
                                 /** Format: uuid */
                                 id: string;
-                                number: string;
+                                number: string | null;
                                 /** Format: date */
-                                signedOn: string;
+                                signedOn: string | null;
                             }[];
                             scholarship: {
                                 /** @enum {string} */
@@ -137152,9 +137152,9 @@ export interface operations {
                             contracts: {
                                 /** Format: uuid */
                                 id: string;
-                                number: string;
+                                number: string | null;
                                 /** Format: date */
-                                signedOn: string;
+                                signedOn: string | null;
                             }[];
                             scholarship: {
                                 /** @enum {string} */
@@ -137728,9 +137728,9 @@ export interface operations {
                             contracts: {
                                 /** Format: uuid */
                                 id: string;
-                                number: string;
+                                number: string | null;
                                 /** Format: date */
-                                signedOn: string;
+                                signedOn: string | null;
                             }[];
                             scholarship: {
                                 /** @enum {string} */
@@ -138740,9 +138740,9 @@ export interface operations {
                             contracts: {
                                 /** Format: uuid */
                                 id: string;
-                                number: string;
+                                number: string | null;
                                 /** Format: date */
-                                signedOn: string;
+                                signedOn: string | null;
                             }[];
                             scholarship: {
                                 /** @enum {string} */
@@ -139314,9 +139314,9 @@ export interface operations {
                             contracts: {
                                 /** Format: uuid */
                                 id: string;
-                                number: string;
+                                number: string | null;
                                 /** Format: date */
-                                signedOn: string;
+                                signedOn: string | null;
                             }[];
                             scholarship: {
                                 /** @enum {string} */
@@ -140849,9 +140849,9 @@ export interface operations {
                             contracts: {
                                 /** Format: uuid */
                                 id: string;
-                                number: string;
+                                number: string | null;
                                 /** Format: date */
-                                signedOn: string;
+                                signedOn: string | null;
                             }[];
                             scholarship: {
                                 /** @enum {string} */
@@ -141777,7 +141777,7 @@ export interface operations {
                             contracts: {
                                 /** @enum {string} */
                                 side: "kept" | "merged";
-                                number: string;
+                                number: string | null;
                                 /** Format: date */
                                 signedOn: string;
                             }[];
@@ -142207,9 +142207,9 @@ export interface operations {
                                 contracts: {
                                     /** Format: uuid */
                                     id: string;
-                                    number: string;
+                                    number: string | null;
                                     /** Format: date */
-                                    signedOn: string;
+                                    signedOn: string | null;
                                 }[];
                                 scholarship: {
                                     /** @enum {string} */
@@ -147314,7 +147314,7 @@ export interface operations {
                                 amount: number | null;
                             };
                             contracts: {
-                                number: string;
+                                number: string | null;
                                 /** Format: date */
                                 signedOn: string;
                             }[];

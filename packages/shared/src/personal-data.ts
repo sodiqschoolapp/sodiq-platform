@@ -176,7 +176,10 @@ export const studentReportSchema = z.strictObject({
     diagnosticScore: z.int().nullable(),
     consentSignedOn: schoolDateSchema.nullable(),
     scholarship: scholarshipSchema,
-    contracts: z.array(z.strictObject({ number: z.string(), signedOn: schoolDateSchema })),
+    /** The contracts held; a row of "no contract" is not data and is not listed (0182). */
+    contracts: z.array(
+      z.strictObject({ number: z.string().nullable(), signedOn: schoolDateSchema }),
+    ),
     /**
      * The records merged into this one (task 3.3d, pull request #98): each
      * merged record's UIDs, the moment and reason of the merge, and the

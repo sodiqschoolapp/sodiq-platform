@@ -288,7 +288,12 @@ function DifferingValues({ preview }: { preview: StudentMergePreview }) {
     values.contracts
       .filter((one) => one.side === side)
       .map((one) =>
-        t('people.students.merge.contractText', { number: one.number, date: date(one.signedOn) }),
+        one.number === null
+          ? t('people.students.merge.contractUnnumbered', { date: date(one.signedOn) })
+          : t('people.students.merge.contractText', {
+              number: one.number,
+              date: date(one.signedOn),
+            }),
       );
   if (contractsOf('merged').length > 0) {
     row(

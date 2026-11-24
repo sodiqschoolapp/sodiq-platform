@@ -3148,6 +3148,8 @@ export const uz: Texts<'one' | 'other'> = {
       contractSignedOn: 'Shartnoma sanasi',
       contract: 'Shartnoma',
       contractText: '{{date}} dagi {{number}}-son',
+      contractUnnumbered: '{{date}} dagi, raqamsiz',
+      noContract: 'Shartnoma yoʻq',
       scholarship: 'Grant',
       scholarshipType: 'Grant',
       scholarshipTypes: {
@@ -3419,6 +3421,7 @@ export const uz: Texts<'one' | 'other'> = {
         allKept: 'hammasi',
         noValue: '—',
         contractText: '{{number}}, {{date}}',
+        contractUnnumbered: 'raqamsiz, {{date}}',
         relativeText: '{{name}} ({{relationship}})',
         alreadyLinked:
           '{{name}} ({{relationship}}): qoladigan yozuvga allaqachon bogʻlangan; u bogʻlanish qoladi',

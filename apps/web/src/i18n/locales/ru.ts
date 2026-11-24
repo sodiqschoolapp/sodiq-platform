@@ -3268,6 +3268,8 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       contractSignedOn: 'Дата договора',
       contract: 'Договор',
       contractText: '№ {{number}} от {{date}}',
+      contractUnnumbered: 'Без номера, от {{date}}',
+      noContract: 'Нет договора',
       scholarship: 'Стипендия',
       scholarshipType: 'Стипендия',
       scholarshipTypes: {
@@ -3549,6 +3551,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
         allKept: 'все',
         noValue: '—',
         contractText: '{{number}} от {{date}}',
+        contractUnnumbered: 'без номера, от {{date}}',
         relativeText: '{{name}} ({{relationship}})',
         alreadyLinked:
           '{{name}} ({{relationship}}): уже связан с остающейся записью; эта связь остаётся',

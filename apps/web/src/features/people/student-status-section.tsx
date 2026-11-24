@@ -29,7 +29,7 @@ import { SaveCancelled } from '@/components/form/save-cancelled';
 import { useRecordForm } from '@/components/form/use-record-form';
 import { asFormSchema } from './form-schema';
 import { statusCauseText } from './status-cause';
-import { takenOf, takenText } from './student-form';
+import { typedContract } from './student-form';
 import { useJournalEntries } from './journal-entries';
 import { schoolDateText } from '@/lib/dates';
 import { SECTION_TITLE } from '@/components/ui/control';
@@ -469,17 +469,11 @@ type ReturnField = 'from' | 'grade' | 'classId' | 'contractNumber' | 'contractSi
 /**
  * Coming back from the Inactive list: the first day back, the grade, the
  * class from that day (task 3.3b: `04`, Movements, "is placed in a class from
- * the return date"; the class left first) and a new contract. A class of
+ * the return date"; the class left first) and a new contract, which may be
+ * left empty (owner, 24 November 2026). A class of
  * another language than the class left is confirmed (decision 2).
  */
-export function ReturnForm({
-  student,
-  label,
-  onChanged,
-  onStale,
-  onCancel,
-  holderText,
-}: ChangeFormProps & { holderText: (id: string) => string | null }) {
+export function ReturnForm({ student, label, onChanged, onStale, onCancel }: ChangeFormProps) {
   const { t } = useTranslation();
   const confirm = useConfirm();
   const left = student.classLeft ?? null;
@@ -498,7 +492,7 @@ export function ReturnForm({
       // wholeNumber, never Number(): an empty grade is "required", not grade 0 (task 9.4d).
       grade: wholeNumber(typed.grade),
       classId: typed.classId,
-      contract: { number: typed.contractNumber, signedOn: typed.contractSignedOn },
+      contract: typedContract(typed.contractNumber, typed.contractSignedOn),
       reason: typed.reason.trim() === '' ? null : typed.reason,
       version: student.version,
     }),
@@ -557,8 +551,6 @@ export function ReturnForm({
       );
     },
   });
-  const taken = takenOf(form.failure);
-  const contractNumber = form.bind('contractNumber');
   const from = form.bind('from');
   const grade = form.bind('grade');
   const classId = form.bind('classId');
@@ -634,11 +626,7 @@ export function ReturnForm({
         <Field
           label={t('people.students.contractNumber')}
           autoComplete="off"
-          {...contractNumber}
-          error={
-            contractNumber.error ??
-            (taken?.field === 'contractNumber' ? t(...takenText(taken, holderText)) : undefined)
-          }
+          {...form.bind('contractNumber')}
         />
         <DateField
           label={t('people.students.contractSignedOn')}

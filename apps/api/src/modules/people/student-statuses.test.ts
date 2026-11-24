@@ -2,7 +2,6 @@ import {
   apiErrorSchema,
   studentDetailSchema,
   studentListSchema,
-  studentNameKey,
   type StudentDetail,
 } from '@sodiq/shared';
 import { sql } from 'kysely';
@@ -18,7 +17,7 @@ import {
 import { CellsKit, markInStore } from '../../testing/cells-kit.js';
 import { closeQuarter } from '../../testing/closing-kit.js';
 import { moveStudentBranch } from '../../testing/members-kit.js';
-import { linkRelative, relativesInput } from '../../testing/relatives-kit.js';
+import { relativesInput } from '../../testing/relatives-kit.js';
 import { errorCode } from '../../testing/sign-in-kit.js';
 
 const MOMENT = new Date(START);
@@ -288,42 +287,6 @@ describe('leaving, return and delete of a student', () => {
     await lockStudent(transaction, id);
     await transaction.deleteFrom('students').where('id', '=', id).execute();
   };
-
-  /** The writes of a create, with a contract number of its own. */
-  async function heldCreate(transaction: Transaction, uid: string, number: string): Promise<void> {
-    const found = await sql<{ id: string }>`select uuidv7() as id`.execute(transaction);
-    const id = found.rows[0]?.id ?? '';
-    const admin = await transaction
-      .selectFrom('accounts')
-      .select('id')
-      .orderBy('id')
-      .executeTakeFirstOrThrow();
-    await transaction
-      .insertInto('students')
-      .values({
-        id,
-        branch_id: t.north,
-        uid,
-        first_name: 'Ziyoda',
-        last_name: 'Holmatova',
-        name_key: studentNameKey('Holmatova', 'Ziyoda'),
-        sex: 'female',
-        birth_date: '2013-05-05',
-        grade: 7,
-        starts_on: '2026-09-02',
-        created_by: admin.id,
-      })
-      .execute();
-    await transaction
-      .insertInto('student_uids')
-      .values({ uid, student_id: id, branch_id: t.north, held_from: MOMENT })
-      .execute();
-    await transaction
-      .insertInto('student_contracts')
-      .values({ student_id: id, branch_id: t.north, number, signed_on: '2026-08-20' })
-      .execute();
-    await linkRelative(transaction, id, t.north, MOMENT);
-  }
 
   async function signedIn(first: string, last: string, role: string, branchId: string | null) {
     const browser = await t.kit.fullSession(first, last);
@@ -705,35 +668,51 @@ describe('leaving, return and delete of a student', () => {
       ).toEqual(['LV-RETURN/1A', student.financial?.contracts[0]?.number]);
     });
 
-    it('refuses the first inactive day, a date after today, an active student and a taken contract', async () => {
+    it('refuses the first inactive day, a date after today and an active student; takes a contract number another student holds', async () => {
       const student = await create();
       refusedWith(await giveBack(student, '2026-10-05', 'LV-R/2'), 409, 'student_not_inactive');
       const left = accepted(await leave(student, '2026-09-30'));
       refusedWith(await giveBack(left, '2026-10-01', 'LV-R/3'), 409, 'return_too_early');
       refusedWith(await giveBack(left, '2026-10-11', 'LV-R/4'), 409, 'status_date_future');
-      const other = await create();
-      const taken = await giveBack(
-        left,
-        '2026-10-05',
-        String(other.financial?.contracts[0]?.number),
-      );
-      refusedWith(taken, 409, 'student_value_taken');
-      expect(apiErrorSchema.parse(taken.body).error.details?.[0]).toMatchObject({
-        path: 'contract.number',
-        recordId: other.id,
-      });
-      const south = await create({}, t.south);
-      const elsewhere = await giveBack(
-        left,
-        '2026-10-05',
-        String(south.financial?.contracts[0]?.number),
-      );
-      refusedWith(elsewhere, 409, 'student_value_taken');
-      expect(apiErrorSchema.parse(elsewhere.body).error.details?.[0]).toMatchObject({
-        path: 'contract.number',
-        code: 'held_elsewhere',
-      });
       expect((await detail(student.id)).status).toBe('inactive');
+      // A contract number another student holds, in another branch too, is
+      // taken (owner, 24 November 2026; 0182).
+      const south = await create({}, t.south);
+      const number = String(south.financial?.contracts[0]?.number);
+      expect(
+        accepted(await giveBack(left, '2026-10-05', number)).financial?.contracts.map(
+          (one) => one.number,
+        ),
+      ).toEqual([number, student.financial?.contracts[0]?.number]);
+    });
+
+    it('takes a return with no contract (owner, 24 November 2026)', async () => {
+      const student = await create();
+      const left = accepted(await leave(student, '2026-09-30'));
+      const back = await t.post(
+        `/api/people/students/${student.id}/return`,
+        t.north,
+        {
+          from: '2026-10-05',
+          grade: 8,
+          classId: await t.classOf(t.north, 8, '2026-10-05'),
+          contract: null,
+          reason: null,
+          version: left.version,
+        },
+        t.admin,
+      );
+      const returned = accepted(back);
+      // The newest row is the one of "no contract"; the first contract stays listed.
+      expect(
+        returned.financial?.contracts.map(({ number, signedOn }) => ({ number, signedOn })),
+      ).toEqual([
+        { number: null, signedOn: null },
+        {
+          number: student.financial?.contracts[0]?.number,
+          signedOn: student.financial?.contracts[0]?.signedOn,
+        },
+      ]);
     });
   });
 
@@ -1369,52 +1348,9 @@ describe('leaving, return and delete of a student', () => {
       expect(released.map((row) => row.student_id)).toEqual([null, null]);
     });
 
-    it('refuses a return or a create that claims a contract number another write holds, both ways', async () => {
-      const left = accepted(await leave(await create(), '2026-09-30'));
-      const returnWaited = await race(
-        (transaction) => heldCreate(transaction, '2607801', 'LV-CLAIM/1'),
-        () => giveBack(left, '2026-10-05', 'LV-CLAIM/1'),
-      );
-      refusedWith(returnWaited, 409, 'student_value_taken');
-
-      const other = accepted(await leave(await create(), '2026-09-30'));
-      const createWaited = await race(
-        (transaction) => heldReturn(transaction, other.id, '2026-10-05', 'LV-CLAIM/2'),
-        () =>
-          t.postStudent(
-            t.north,
-            body({ contract: { number: 'LV-CLAIM/2', signedOn: '2026-08-20' } }),
-          ),
-      );
-      refusedWith(createWaited, 409, 'student_value_taken');
-
-      const editing = await create();
-      const third = accepted(await leave(await create(), '2026-09-30'));
-      const editWaited = await race(
-        (transaction) => heldReturn(transaction, third.id, '2026-10-05', 'LV-CLAIM/3'),
-        () =>
-          t.put(`/api/people/students/${editing.id}`, t.north, {
-            ...editOf(editing),
-            contract: { number: 'LV-CLAIM/3', signedOn: '2026-08-20' },
-          }),
-      );
-      refusedWith(editWaited, 409, 'student_value_taken');
-
-      const fourth = accepted(await leave(await create(), '2026-09-30'));
-      const editing2 = await create();
-      const returnWaitedForEdit = await race(
-        async (transaction) => {
-          await lockStudent(transaction, editing2.id);
-          await transaction
-            .updateTable('student_contracts')
-            .set({ number: 'LV-CLAIM/4' })
-            .where('student_id', '=', editing2.id)
-            .execute();
-        },
-        () => giveBack(fourth, '2026-10-05', 'LV-CLAIM/4'),
-      );
-      refusedWith(returnWaitedForEdit, 409, 'student_value_taken');
-    });
+    // The race of two writes for one contract number is gone with its unique
+    // index (0182; owner, 24 November 2026): a number may repeat, so nothing
+    // waits and nothing is refused. The takes are tested in "return".
 
     it('refuses a leaving that waited for the close of its academic year', async () => {
       const branch = await t.newBranch();
