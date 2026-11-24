@@ -3200,7 +3200,7 @@ export const en = {
       restoreTitle: 'Restore to active',
       restoreFrom: 'Active from',
       returnConfirmTitle: 'Bring this student back?',
-      returnConfirmText: 'The new contract is kept for good, and its number is never given again.',
+      returnConfirmText: 'The return and its contract, if one is entered, are kept for good.',
       returnNoClass: 'No class of this grade is in an academic year on that date.',
       restoreNoClass: 'No class is in an academic year on that date.',
       restoreClassNote: 'The student takes the grade of the class.',

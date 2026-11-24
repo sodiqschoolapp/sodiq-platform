@@ -458,6 +458,19 @@ describe('the student export, the consent list and the "No class" counter', () =
       }
     });
 
+    // The owner, 24 November 2026 (`04`, Contract; 0182): no contract gives two
+    // empty cells; a contract without a number, its date only.
+    it('writes empty contract cells for no contract, and the date alone for a contract without a number', async () => {
+      const none = await create({ contract: null });
+      const dated = await create({ contract: { number: '', signedOn: '2026-08-22' } });
+      const file = await fileOf(
+        await exportOf(send([none.id, dated.id], ['uid', 'contractNumber', 'contractSignedOn'])),
+      );
+      expect(file.sheet.rows[0]).toEqual([none.uid, null, null]);
+      expect(file.sheet.rows[1]?.slice(0, 2)).toEqual([dated.uid, null]);
+      expect(dateOfCell(file.sheet.rows[1]?.[2])).toBe('2026-08-22');
+    });
+
     // `edge`: "Exports are allowed, without identity documents"; decision 3:
     // no Contact or Identity for the Principal, on ticked rows too.
     it('leaves Contact and Identity out of the Principal’s file and names them', async () => {

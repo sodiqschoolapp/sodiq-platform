@@ -3357,7 +3357,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       restoreTitle: 'Восстановить как активного',
       restoreFrom: 'Активен с',
       returnConfirmTitle: 'Вернуть этого ученика?',
-      returnConfirmText: 'Новый договор сохраняется навсегда, его номер больше не выдаётся.',
+      returnConfirmText: 'Возвращение и его договор, если он указан, сохраняются навсегда.',
       returnNoClass: 'На эту дату нет класса этой параллели в учебном году.',
       restoreNoClass: 'На эту дату нет класса в учебном году.',
       restoreClassNote: 'Ученик переходит в параллель этого класса.',

@@ -676,7 +676,7 @@ describe('leaving, return and delete of a student', () => {
       refusedWith(await giveBack(left, '2026-10-11', 'LV-R/4'), 409, 'status_date_future');
       expect((await detail(student.id)).status).toBe('inactive');
       // A contract number another student holds, in another branch too, is
-      // taken (owner, 24 November 2026; 0182).
+      // accepted, never refused as "taken" (owner, 24 November 2026; 0182).
       const south = await create({}, t.south);
       const number = String(south.financial?.contracts[0]?.number);
       expect(
@@ -713,6 +713,57 @@ describe('leaving, return and delete of a student', () => {
           signedOn: student.financial?.contracts[0]?.signedOn,
         },
       ]);
+    });
+
+    // Each return's contract is the student's contract afterwards: a return
+    // compares with the newest row only, never with an older one (spec review
+    // of the owner's change of 24 November 2026).
+    it('makes the contract of each return the current one, also when an older row holds the same', async () => {
+      const returnWith = async (student: StudentDetail, from: string, contract: unknown) =>
+        accepted(
+          await t.post(
+            `/api/people/students/${student.id}/return`,
+            t.north,
+            {
+              from,
+              grade: 8,
+              classId: await t.classOf(t.north, 8, from),
+              contract,
+              reason: null,
+              version: student.version,
+            },
+            t.admin,
+          ),
+        );
+      const rowsOf = (student: StudentDetail) =>
+        student.financial?.contracts.map(({ number, signedOn }) => ({ number, signedOn }));
+      // No contract, back with one, back again with none: "no contract" again.
+      const none = await create({ contract: null });
+      let back = await returnWith(accepted(await leave(none, '2026-09-30')), '2026-10-05', {
+        number: 'LV-NEWEST/1',
+        signedOn: '2026-10-05',
+      });
+      back = await returnWith(accepted(await leave(back, '2026-10-06')), '2026-10-08', null);
+      expect(rowsOf(back)).toEqual([
+        { number: null, signedOn: null },
+        { number: 'LV-NEWEST/1', signedOn: '2026-10-05' },
+        { number: null, signedOn: null },
+      ]);
+      // A contract, back with none, back again with the first one: that one again.
+      const held = await create({ contract: { number: 'LV-NEWEST/2', signedOn: '2026-08-20' } });
+      back = await returnWith(accepted(await leave(held, '2026-09-30')), '2026-10-05', null);
+      back = await returnWith(accepted(await leave(back, '2026-10-06')), '2026-10-08', {
+        number: 'lv-newest/2',
+        signedOn: '2026-08-20',
+      });
+      expect(rowsOf(back)?.[0]).toEqual({ number: 'lv-newest/2', signedOn: '2026-08-20' });
+      // A date without a number: the same date on the newest row adds nothing.
+      const dated = await create({ contract: { number: '', signedOn: '2026-08-21' } });
+      back = await returnWith(accepted(await leave(dated, '2026-09-30')), '2026-10-05', {
+        number: '',
+        signedOn: '2026-08-21',
+      });
+      expect(rowsOf(back)).toEqual([{ number: null, signedOn: '2026-08-21' }]);
     });
   });
 

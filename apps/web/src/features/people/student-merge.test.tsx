@@ -298,6 +298,39 @@ describe('the merge of two student records', () => {
   });
 
   // Issue #105, H13: a record whose start date is ahead reads "From <date>".
+  // The owner, 24 November 2026 (0182): a contract without a number, and the
+  // row of "no contract" that becomes the newest after the merge.
+  it('names a contract without a number and "No contract" among the contracts kept', async () => {
+    open(detailOf(), {
+      [`GET /api/people/students/${STUDENT.id}/merge`]: () =>
+        json({
+          ...PREVIEW,
+          values: {
+            ...PREVIEW.values,
+            contracts: [
+              { side: 'kept', number: null, signedOn: '2026-08-20' },
+              { side: 'merged', number: null, signedOn: null },
+            ],
+          },
+        }),
+    });
+    renderApp(`${PATH}?open=${STUDENT.id}`);
+    const panel = await screen.findByRole('complementary', { name: 'Oʻtkir Rahimov' });
+    const form = await previewed(panel);
+    const differing = within(form).getByRole('heading', { name: texts.differing }).parentElement;
+    const lines = [...(differing?.querySelectorAll('li') ?? [])].map((one) => one.textContent);
+    expect(lines).toContain(
+      texts.differs
+        .replace('{{field}}', texts.valueFields.contracts)
+        .replace(
+          '{{kept}}',
+          texts.contractUnnumbered.replace('{{date}}', schoolDateText('2026-08-20', 'en')),
+        )
+        .replace('{{merged}}', en.people.students.noContract)
+        .replace('{{result}}', texts.allKept),
+    );
+  });
+
   it('shows "From <date>" for a record that starts later', async () => {
     open(detailOf(), {
       [`GET /api/people/students/${STUDENT.id}/merge`]: () =>

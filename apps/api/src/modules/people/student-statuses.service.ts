@@ -337,24 +337,28 @@ export class StudentStatuses {
               .set({ grade: input.grade })
               .where('id', '=', id)
               .execute();
-            // A return cancelled and made again names the same paper contract: the
-            // student's own row stands, nothing is added twice. A contract with a
-            // number is matched by its number; one without, by its date; no
-            // contract, by the row of "no contract" (owner, 24 November 2026; 0182).
+            // A return cancelled and made again names the same paper contract: when
+            // the newest row (the student's current contract) is the one this
+            // return names, nothing is added twice; otherwise the return adds its
+            // contract, also the row of "no contract", so the newest row is
+            // always what the last return named. A contract with a number is the
+            // same by its number, ignoring case; one without, by its date
+            // (owner, 24 November 2026; 0182).
             const number = input.contract?.number ?? null;
             const signedOn = input.contract?.signedOn ?? null;
-            let same = transaction
+            const newest = await transaction
               .selectFrom('student_contracts')
-              .select('id')
-              .where('student_id', '=', id);
-            same =
-              number !== null
-                ? same.where(sql`upper(number)`, '=', number.toUpperCase())
-                : signedOn !== null
-                  ? same.where('number', 'is', null).where('signed_on', '=', signedOn)
-                  : same.where('number', 'is', null).where('signed_on', 'is', null);
-            const held = await same.executeTakeFirst();
-            if (held === undefined) {
+              .select(['number', 'signed_on'])
+              .where('student_id', '=', id)
+              .orderBy('id', 'desc')
+              .limit(1)
+              .executeTakeFirst();
+            const same =
+              newest !== undefined &&
+              (number !== null
+                ? newest.number?.toUpperCase() === number.toUpperCase()
+                : newest.number === null && newest.signed_on === signedOn);
+            if (!same) {
               await transaction
                 .insertInto('student_contracts')
                 .values({ student_id: id, branch_id: branchId, number, signed_on: signedOn })
