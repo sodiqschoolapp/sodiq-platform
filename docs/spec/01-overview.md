@@ -15,7 +15,7 @@ Where the sources disagree, the file "lms.sodiqschool.uz / Spec / latest" wins. 
 | Languages | Uzbek, Russian, English. Every screen complete in all three. |
 | Scope | All branches in one system. Each user works inside their branch; Super Admin sees all. |
 | Roles | 16 user types: the 14 of the main file, the Senior Head Teacher and the Class teacher (Sinf rahbari) of grades 0–4. Principal is view only. |
-| Grading | 100-point scale. Each subject has a daily distribution (attendance, classwork, homework) and a quarterly distribution (attendance, classwork, homework, rating exam). |
+| Grading | 100-point scale. Each subject has a quarterly distribution (attendance, classwork, homework, rating exam). There is no lesson score (owner, 24 November 2026). |
 | Journal columns | Come from the timetable. A teacher never creates a lesson by hand. |
 | Removed | Homework debt (qarzdorlik) and the payment debtors list from myss.uz. Finance, admissions, chat, tasks, gamification and surveys are not in the first releases. |
 | Taken from Ziyoly | Look and page patterns, role home pages, global search, rooms by floor, the timetable builder with auto-generation, conflict panel and versions, lesson mode for phones. |
