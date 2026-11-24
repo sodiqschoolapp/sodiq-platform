@@ -49,6 +49,8 @@ All result calculations live in one module with no other dependencies. The journ
 
 - [ ] Hosting is outside Uzbekistan, in Frankfurt (decided by the school). The server, the jobs worker and the solver run on Render; the web app's built files are served by the server on the same address (decided in task 0.10: Render's static sites cannot carry the WebSocket of the live notifications); the database is on Neon; files are on Cloudflare R2. From Tashkent, Frankfurt answers in about 85 ms.
 
+- [ ] The assistant's language model runs in Frankfurt. When Frankfurt does not answer, a question may be processed through Google's worldwide endpoint, in a country Google chooses, unless the Super Admin switched that off (`02`, Assistant, Where the model runs).
+
 * [ ] Three environments: development, test (a copy of real structure with invented data) and production.
 
 - [ ] Two application servers behind a load balancer. The database is stored in several zones at once and its server restarts by itself, usually within a minute; there is no separate standby server.
@@ -76,7 +78,7 @@ Prices for Release 1, read on each provider's own pricing page on 3 October 2026
 | UptimeRobot | Free | Free | $0 |
 | Resend | Free, 3,000 emails a month | Free | $0 |
 | GitHub | Team, 1 user | $4 per user | $4 |
-| Google Gemini API | Paid plan, pay per use, Frankfurt region where the model is offered; the model chosen by the test of the first assistant task | About $2 per million tokens in and $10 to $12 out for a middle model (November 2026; read on Google's pricing page when the model is chosen) | at most $300: the monthly cap (owner, 21 November 2026) |
+| Google Gemini API | Paid plan, pay per use, Frankfurt region where the model is offered, Google's worldwide endpoint only when Frankfurt does not answer; the model chosen by the test of the first assistant task | About $2 per million tokens in and $10 to $12 out for a middle model (November 2026; read on Google's pricing page when the model is chosen) | at most $300: the monthly cap (owner, 21 November 2026) |
 | **Total** |  |  | **about $231 to $316, and the assistant up to its cap of $300** |
 
 Servers of 2 CPU and 4 GB cost $85 each instead of $25, which adds $120 a month. Later or optional: Sentry Team at $29 a month ($26 if paid yearly), Resend Pro at $20 a month for 50,000 emails, and AG Grid Enterprise at $999 once per developer.
