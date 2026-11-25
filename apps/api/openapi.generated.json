@@ -1181527,7 +1181527,8 @@
                                   "assistant_model_unavailable",
                                   "assistant_model_busy",
                                   "assistant_answer_failed",
-                                  "assistant_cap_reached"
+                                  "assistant_cap_reached",
+                                  "assistant_figures_unchecked"
                                 ]
                               }
                             },
@@ -1184371,7 +1184372,8 @@
                                       "assistant_model_unavailable",
                                       "assistant_model_busy",
                                       "assistant_answer_failed",
-                                      "assistant_cap_reached"
+                                      "assistant_cap_reached",
+                                      "assistant_figures_unchecked"
                                     ]
                                   }
                                 },
@@ -1187159,7 +1187161,8 @@
                                   "assistant_model_unavailable",
                                   "assistant_model_busy",
                                   "assistant_answer_failed",
-                                  "assistant_cap_reached"
+                                  "assistant_cap_reached",
+                                  "assistant_figures_unchecked"
                                 ]
                               }
                             },
@@ -1189989,7 +1189992,8 @@
                                       "assistant_model_unavailable",
                                       "assistant_model_busy",
                                       "assistant_answer_failed",
-                                      "assistant_cap_reached"
+                                      "assistant_cap_reached",
+                                      "assistant_figures_unchecked"
                                     ]
                                   }
                                 },
@@ -1192777,7 +1192781,8 @@
                                   "assistant_model_unavailable",
                                   "assistant_model_busy",
                                   "assistant_answer_failed",
-                                  "assistant_cap_reached"
+                                  "assistant_cap_reached",
+                                  "assistant_figures_unchecked"
                                 ]
                               }
                             },
@@ -1197467,7 +1197472,8 @@
                                   "assistant_model_unavailable",
                                   "assistant_model_busy",
                                   "assistant_answer_failed",
-                                  "assistant_cap_reached"
+                                  "assistant_cap_reached",
+                                  "assistant_figures_unchecked"
                                 ]
                               }
                             },
@@ -1202146,7 +1202152,8 @@
                                   "assistant_model_unavailable",
                                   "assistant_model_busy",
                                   "assistant_answer_failed",
-                                  "assistant_cap_reached"
+                                  "assistant_cap_reached",
+                                  "assistant_figures_unchecked"
                                 ]
                               }
                             },

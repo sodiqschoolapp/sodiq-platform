@@ -209539,7 +209539,7 @@ export interface operations {
                             /** @enum {string} */
                             kind: "notice";
                             /** @enum {string} */
-                            code: "assistant_model_unavailable" | "assistant_model_busy" | "assistant_answer_failed" | "assistant_cap_reached";
+                            code: "assistant_model_unavailable" | "assistant_model_busy" | "assistant_answer_failed" | "assistant_cap_reached" | "assistant_figures_unchecked";
                         })[];
                         proposals: {
                             /** Format: uuid */
@@ -210067,7 +210067,7 @@ export interface operations {
                                 /** @enum {string} */
                                 kind: "notice";
                                 /** @enum {string} */
-                                code: "assistant_model_unavailable" | "assistant_model_busy" | "assistant_answer_failed" | "assistant_cap_reached";
+                                code: "assistant_model_unavailable" | "assistant_model_busy" | "assistant_answer_failed" | "assistant_cap_reached" | "assistant_figures_unchecked";
                             })[];
                             proposals: {
                                 /** Format: uuid */
@@ -210578,7 +210578,7 @@ export interface operations {
                             /** @enum {string} */
                             kind: "notice";
                             /** @enum {string} */
-                            code: "assistant_model_unavailable" | "assistant_model_busy" | "assistant_answer_failed" | "assistant_cap_reached";
+                            code: "assistant_model_unavailable" | "assistant_model_busy" | "assistant_answer_failed" | "assistant_cap_reached" | "assistant_figures_unchecked";
                         })[];
                         proposals: {
                             /** Format: uuid */
@@ -211096,7 +211096,7 @@ export interface operations {
                                 /** @enum {string} */
                                 kind: "notice";
                                 /** @enum {string} */
-                                code: "assistant_model_unavailable" | "assistant_model_busy" | "assistant_answer_failed" | "assistant_cap_reached";
+                                code: "assistant_model_unavailable" | "assistant_model_busy" | "assistant_answer_failed" | "assistant_cap_reached" | "assistant_figures_unchecked";
                             })[];
                             proposals: {
                                 /** Format: uuid */
@@ -211607,7 +211607,7 @@ export interface operations {
                             /** @enum {string} */
                             kind: "notice";
                             /** @enum {string} */
-                            code: "assistant_model_unavailable" | "assistant_model_busy" | "assistant_answer_failed" | "assistant_cap_reached";
+                            code: "assistant_model_unavailable" | "assistant_model_busy" | "assistant_answer_failed" | "assistant_cap_reached" | "assistant_figures_unchecked";
                         })[];
                         proposals: {
                             /** Format: uuid */
@@ -212424,7 +212424,7 @@ export interface operations {
                             /** @enum {string} */
                             kind: "notice";
                             /** @enum {string} */
-                            code: "assistant_model_unavailable" | "assistant_model_busy" | "assistant_answer_failed" | "assistant_cap_reached";
+                            code: "assistant_model_unavailable" | "assistant_model_busy" | "assistant_answer_failed" | "assistant_cap_reached" | "assistant_figures_unchecked";
                         })[];
                         proposals: {
                             /** Format: uuid */
@@ -213233,7 +213233,7 @@ export interface operations {
                             /** @enum {string} */
                             kind: "notice";
                             /** @enum {string} */
-                            code: "assistant_model_unavailable" | "assistant_model_busy" | "assistant_answer_failed" | "assistant_cap_reached";
+                            code: "assistant_model_unavailable" | "assistant_model_busy" | "assistant_answer_failed" | "assistant_cap_reached" | "assistant_figures_unchecked";
                         })[];
                         proposals: {
                             /** Format: uuid */
