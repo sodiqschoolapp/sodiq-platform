@@ -38,10 +38,41 @@ export const ASSISTANT_QUESTION_MAX_LENGTH = 2000;
 /** `02`, Audit: "90 days after its last message a conversation is archived". */
 export const ASSISTANT_ARCHIVE_DAYS = 90;
 
-/** The bounds of the daily limit per person (plan decision 10; the check of 0178). */
-export const ASSISTANT_DAILY_LIMIT_MIN = 1;
+/**
+ * The bounds of the daily limit per person (the check of 0184); 0 is "none" (task 11.21; `02`,
+ * Limits: "requests per person per day (none at the start)").
+ */
+export const ASSISTANT_DAILY_LIMIT_MIN = 0;
 export const ASSISTANT_DAILY_LIMIT_MAX = 500;
-export const ASSISTANT_DAILY_LIMIT_DEFAULT = 30;
+export const ASSISTANT_DAILY_LIMIT_DEFAULT = 0;
+
+/**
+ * Task 11.21 (`02`, Limits; plan decision 4): reads and changes in one question, changes in one
+ * proposal and the minutes of one question, with the bounds of the checks of 0184.
+ */
+export const ASSISTANT_QUESTION_ACTIONS_MIN = 1;
+export const ASSISTANT_QUESTION_ACTIONS_MAX = 200;
+export const ASSISTANT_QUESTION_ACTIONS_DEFAULT = 40;
+export const ASSISTANT_PROPOSAL_STEPS_MIN = 1;
+export const ASSISTANT_PROPOSAL_STEPS_MAX = 200;
+export const ASSISTANT_PROPOSAL_STEPS_DEFAULT = 100;
+export const ASSISTANT_QUESTION_MINUTES_MIN = 1;
+export const ASSISTANT_QUESTION_MINUTES_MAX = 30;
+export const ASSISTANT_QUESTION_MINUTES_DEFAULT = 10;
+
+/**
+ * The answer window of a question is its time limit and this margin (task 11.21, plan decision 5;
+ * 240 s and 30 s before), stored with the question (`answer_until`).
+ */
+export const ASSISTANT_ANSWER_MARGIN_MS = 30_000;
+
+/** The window of a question stored before 0184, which has no `answer_until` (task 11.16). */
+export const ASSISTANT_LEGACY_WINDOW_MS = 270_000;
+
+/** Task 11.21 (plan decision 12): the choices of a question the assistant asks. */
+export const ASSISTANT_CHOICES_MIN = 2;
+export const ASSISTANT_CHOICES_MAX = 8;
+export const ASSISTANT_CHOICE_MAX_LENGTH = 80;
 
 /** The bounds of the monthly cap in whole dollars; `02`: "$300 at the start". */
 export const ASSISTANT_CAP_MIN_DOLLARS = 1;
@@ -93,16 +124,11 @@ export const ASSISTANT_NOTICES = [
   'assistant_model_unavailable',
   'assistant_model_busy',
   'assistant_answer_failed',
+  /** Task 11.21: the monthly cap was reached while the question was answered. */
+  'assistant_cap_reached',
 ] as const;
 
 export type AssistantNotice = (typeof ASSISTANT_NOTICES)[number];
-
-/**
- * How long a question is being answered after its stored moment (task 11.16, plan decision 4;
- * review correction 1): the model calls stop at 240 s (`QUESTION_TIME_LIMIT_MS` of the API), and
- * past this window the work writes and sends nothing more, and a new question may be asked.
- */
-export const ASSISTANT_ANSWER_WINDOW_MS = 270_000;
 
 const moment = z.iso.datetime({ offset: true });
 
@@ -114,8 +140,8 @@ export const assistantStatusSchema = z.object({
   /** True when a question would be taken now. */
   available: z.boolean(),
   refusal: z.enum(ASSISTANT_REFUSALS).nullable(),
-  /** Questions the person may still ask today, every branch together. */
-  questionsLeftToday: z.int().nonnegative(),
+  /** Questions the person may still ask today, every branch together; `null`: no daily limit. */
+  questionsLeftToday: z.int().nonnegative().nullable(),
 });
 
 export type AssistantStatus = z.infer<typeof assistantStatusSchema>;
@@ -148,14 +174,24 @@ export const assistantPlaceSchema = z.strictObject({
 
 export type AssistantPlace = z.infer<typeof assistantPlaceSchema>;
 
-export const assistantQuestionSchema = z.strictObject({
-  role: assistantRoleSchema,
-  /** Left out: a new conversation. */
-  conversationId: z.uuid().optional(),
-  text: z.string().trim().min(1).max(ASSISTANT_QUESTION_MAX_LENGTH),
-  /** Task 11.19: the page the question is asked from; none from the Assistant page. */
-  place: assistantPlaceSchema.optional(),
-});
+export const assistantQuestionSchema = z
+  .strictObject({
+    role: assistantRoleSchema,
+    /** Left out: a new conversation. */
+    conversationId: z.uuid().optional(),
+    text: z.string().trim().min(1).max(ASSISTANT_QUESTION_MAX_LENGTH),
+    /** Task 11.19: the page the question is asked from; none from the Assistant page. */
+    place: assistantPlaceSchema.optional(),
+    /**
+     * Task 11.21 (`02`, Answers: "offers Continue"): the next part of the newest answer, which a
+     * limit cut; only in a conversation (review of the plan, should fix 6).
+     */
+    continue: z.literal(true).optional(),
+  })
+  .refine((question) => question.continue !== true || question.conversationId !== undefined, {
+    message: 'Continue goes on in a conversation.',
+    path: ['conversationId'],
+  });
 
 export type AssistantQuestion = z.infer<typeof assistantQuestionSchema>;
 
@@ -196,7 +232,15 @@ export type AssistantPlaceLink = z.infer<typeof assistantPlaceLinkSchema>;
 
 /** One message of a conversation, as the person and the Super Admin read it. */
 export const assistantMessageSchema = z.discriminatedUnion('kind', [
-  z.object({ ...messageBase, kind: z.literal('question'), text: z.string() }),
+  z.object({
+    ...messageBase,
+    kind: z.literal('question'),
+    text: z.string(),
+    /** Task 11.21: Continue was pressed (the next part of a cut answer). */
+    continued: z.boolean().default(false),
+    /** Task 11.21: an Undo of this proposal, asked with its button. */
+    undoOf: z.uuid().nullable().default(null),
+  }),
   z.object({
     ...messageBase,
     kind: z.literal('answer'),
@@ -207,6 +251,29 @@ export const assistantMessageSchema = z.discriminatedUnion('kind', [
     links: z.array(assistantPlaceLinkSchema).default([]),
     /** Lessons whose journal column the answer opens (task 11.14); none before 11.14. */
     lessons: z.array(assistantLessonLinkSchema),
+    /** Task 11.21: a limit cut the work; the answer offers Continue. */
+    continues: z.boolean().default(false),
+    /** Task 11.21: the options of the question the assistant asks, drawn as buttons. */
+    choices: z.array(z.string()).default([]),
+    /**
+     * Task 11.21: the answer of an Undo: the proposal undone, and each change of it that has no
+     * reverse proposed, with the reason (`no_reverse`, `action_off`, `over_step_limit`, or the
+     * refusal code of its drafting).
+     */
+    undo: z
+      .object({
+        proposalId: z.uuid(),
+        none: z.array(
+          z.object({
+            seq: z.int().positive(),
+            action: z.string(),
+            summary: z.string(),
+            reason: z.string(),
+          }),
+        ),
+      })
+      .nullable()
+      .default(null),
   }),
   z.object({
     ...messageBase,
@@ -242,9 +309,6 @@ export type AssistantConversationList = z.infer<typeof assistantConversationList
 
 /** Task 11.13: the header naming the step of a proposal that a change runs for. */
 export const ASSISTANT_STEP_HEADER = 'X-Assistant-Step';
-
-/** At most this many steps in one proposal (plan decision 8). */
-export const ASSISTANT_MAX_STEPS = 10;
 
 /** How long a proposal may be confirmed (`02`: "not confirmed within 15 minutes expires"). */
 export const ASSISTANT_PROPOSAL_MINUTES = 15;
@@ -353,6 +417,11 @@ export type AssistantProposal = z.infer<typeof assistantProposalSchema>;
 export const assistantDecisionSchema = z.strictObject({ role: assistantRoleSchema });
 
 export type AssistantDecision = z.infer<typeof assistantDecisionSchema>;
+
+/** Task 11.21: Undo of a confirmed proposal, in the role chosen in the tab. */
+export const assistantUndoSchema = z.strictObject({ role: assistantRoleSchema });
+
+export type AssistantUndo = z.infer<typeof assistantUndoSchema>;
 
 export const assistantConversationSchema = assistantConversationSummarySchema.extend({
   archived: z.boolean(),
@@ -498,6 +567,18 @@ export const assistantSettingsRecordSchema = z.strictObject({
   monthlyCapDollars: z.int().min(ASSISTANT_CAP_MIN_DOLLARS).max(ASSISTANT_CAP_MAX_DOLLARS),
   /** Task 11.15: the worldwide fallback (`02`, Where the model runs: "on until switched off"). */
   fallbackOn: z.boolean(),
+  /** Task 11.21: reads and changes in one question (`02`, Limits: "40 at the start"). */
+  questionActions: z
+    .int()
+    .min(ASSISTANT_QUESTION_ACTIONS_MIN)
+    .max(ASSISTANT_QUESTION_ACTIONS_MAX),
+  /** Task 11.21: changes in one proposal ("100 at the start"). */
+  proposalSteps: z.int().min(ASSISTANT_PROPOSAL_STEPS_MIN).max(ASSISTANT_PROPOSAL_STEPS_MAX),
+  /** Task 11.21: the minutes of one question ("10 minutes at the start"). */
+  questionMinutes: z
+    .int()
+    .min(ASSISTANT_QUESTION_MINUTES_MIN)
+    .max(ASSISTANT_QUESTION_MINUTES_MAX),
   /** Task 11.20: the personal-data groups that reach the model (`02`: "All are on at the start"). */
   dataGroupsOn: z
     .array(assistantDataGroupSchema)

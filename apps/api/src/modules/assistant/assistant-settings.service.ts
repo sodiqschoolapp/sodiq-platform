@@ -25,6 +25,10 @@ export interface AssistantSwitches {
   rolesOn: AssistantRole[];
   dailyLimit: number;
   monthlyCapDollars: number;
+  /** Task 11.21: reads and changes in one question, changes in one proposal, minutes of one. */
+  questionActions: number;
+  proposalSteps: number;
+  questionMinutes: number;
   /** Task 11.15: the worldwide fallback. */
   fallbackOn: boolean;
   /** Task 11.20: the personal-data groups that reach the model (`02`, Personal data and the model). */
@@ -86,6 +90,9 @@ export class AssistantSettingsService {
         'roles_on',
         'daily_limit',
         'monthly_cap_dollars',
+        'question_actions',
+        'proposal_steps',
+        'question_minutes',
         'fallback_on',
         'data_groups_off',
       ])
@@ -95,6 +102,9 @@ export class AssistantSettingsService {
       rolesOn: ASSISTANT_ROLES.filter((role) => row.roles_on.includes(role)),
       dailyLimit: row.daily_limit,
       monthlyCapDollars: row.monthly_cap_dollars,
+      questionActions: row.question_actions,
+      proposalSteps: row.proposal_steps,
+      questionMinutes: row.question_minutes,
       fallbackOn: row.fallback_on,
       dataGroupsOn: ASSISTANT_DATA_GROUPS.filter((group) => !row.data_groups_off.includes(group)),
     };
@@ -164,6 +174,9 @@ export class AssistantSettingsService {
           roles_on: ASSISTANT_ROLES.filter((role) => record.rolesOn.includes(role)),
           daily_limit: record.dailyLimit,
           monthly_cap_dollars: record.monthlyCapDollars,
+          question_actions: record.questionActions,
+          proposal_steps: record.proposalSteps,
+          question_minutes: record.questionMinutes,
           fallback_on: record.fallbackOn,
           data_groups_off: ASSISTANT_DATA_GROUPS.filter(
             (group) => !record.dataGroupsOn.includes(group),

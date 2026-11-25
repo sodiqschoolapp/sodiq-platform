@@ -182,6 +182,7 @@ export interface AssistantConversations {
 
 export interface AssistantMessages {
   account_id: string;
+  answer_until: Timestamp | null;
   branch_id: string;
   content: Json;
   conversation_id: string;
@@ -228,6 +229,7 @@ export interface AssistantProposalSteps {
   code: string | null;
   created_at: Timestamp;
   proposal_id: string;
+  record_id: string | null;
   seq: number;
   state: string;
   status: number;
@@ -240,6 +242,9 @@ export interface AssistantSettings {
   fallback_on: Generated<boolean>;
   id: Generated<boolean>;
   monthly_cap_dollars: Generated<number>;
+  proposal_steps: Generated<number>;
+  question_actions: Generated<number>;
+  question_minutes: Generated<number>;
   roles_on: Generated<string[]>;
   school_on: Generated<boolean>;
 }

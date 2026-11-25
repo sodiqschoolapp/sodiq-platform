@@ -59,7 +59,8 @@ export class AssistantConversations {
       const switches = await this.settings.switches(transaction);
       const asked = await this.settings.questionsToday(transaction, access.accountId, now);
       const spend = await this.settings.spendThisMonth(transaction, now);
-      const left = Math.max(0, switches.dailyLimit - asked);
+      // Task 11.21: a daily limit of 0 is none (review of the plan, must fix 2).
+      const left = switches.dailyLimit === 0 ? null : Math.max(0, switches.dailyLimit - asked);
       const refusal =
         !switches.schoolOn || !switches.rolesOn.includes(role)
           ? 'assistant_off'
