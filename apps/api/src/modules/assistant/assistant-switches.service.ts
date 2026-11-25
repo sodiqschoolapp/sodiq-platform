@@ -14,6 +14,7 @@ import { AssistantRoutes } from '../access/assistant-routes.check.js';
 import type { Access } from '../access/permission.guard.js';
 import { Audit } from '../audit/audit.service.js';
 import { generatedOf } from './tools.js';
+import { fileToolOf } from './file-tools.js';
 
 /** What the Super Admin set: `<role> <area>` and `<role> <route>` to on or off. */
 export interface SwitchRows {
@@ -107,7 +108,10 @@ export class AssistantSwitches {
         kind: facts.kind,
         on: this.isOn(rows, role, route),
         defaultOn: assistantDefaultOn(facts.area, route, facts.kind),
-        hasTool: !ASSISTANT_KINDS_WITHOUT_TOOL.includes(facts.kind),
+        // Task 11.22: an import upload and an export run through the tools of files.
+        hasTool:
+          !ASSISTANT_KINDS_WITHOUT_TOOL.includes(facts.kind) ||
+          fileToolOf(route, facts.kind) !== undefined,
       });
     }
     return [...byArea.values()].sort((a, b) => a.area.localeCompare(b.area));

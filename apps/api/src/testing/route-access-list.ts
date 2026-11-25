@@ -1041,7 +1041,21 @@ export const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
     branch: 'request',
     roles: ['super_admin', 'academic_vice_principal', 'teacher'],
   },
+  // Task 11.22: a file attached or recorded, and a file of the own conversation (assistant view).
+  'PUT /api/assistant/files': {
+    branch: 'request',
+    roles: ['super_admin', 'academic_vice_principal', 'teacher'],
+  },
+  'GET /api/assistant/files/:id': {
+    branch: 'request',
+    roles: ['super_admin', 'academic_vice_principal', 'teacher'],
+  },
   'GET /api/assistant/all-conversations': { branch: 'none', roles: ['super_admin'] },
+  // Task 11.22 (review of the plan, correction 3): a file of any conversation (monitoring).
+  'GET /api/assistant/all-conversations/:id/files/:fileId': {
+    branch: 'none',
+    roles: ['super_admin'],
+  },
   'GET /api/assistant/all-conversations/:id': { branch: 'none', roles: ['super_admin'] },
   'POST /api/assistant/all-conversations/:id/restore': { branch: 'none', roles: ['super_admin'] },
   'GET /api/setup/school-settings/assistant': { branch: 'none', roles: ['super_admin'] },

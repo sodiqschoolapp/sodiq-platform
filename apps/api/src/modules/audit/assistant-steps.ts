@@ -34,6 +34,15 @@ export async function assistantStepsOf(
     cross join lateral jsonb_array_elements(p.steps) s
     join assistant_messages m on m.id = p.question_id and m.branch_id = p.branch_id
     where s.value ->> 'id' = any(${ids}::text[])
+    union all
+    -- Task 11.22: the run of an import upload or an export the assistant sent, stored with its
+    -- read; the question is the last one before it in the conversation.
+    select r.content ->> 'runId' as step_id, r.account_id, r.conversation_id,
+      (select q.content ->> 'text' from assistant_messages q
+        where q.conversation_id = r.conversation_id and q.kind = 'question' and q.seq < r.seq
+        order by q.seq desc limit 1) as question
+    from assistant_messages r
+    where r.kind = 'read' and r.content ->> 'runId' = any(${ids}::text[])
   `.execute(transaction);
   return new Map(
     rows.rows.map((row) => [

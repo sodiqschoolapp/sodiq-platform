@@ -225,6 +225,16 @@ const reportLines = (tests: { tutor: string; heads: string }): ScopeLine[] => [
   },
 ];
 
+/** Task 11.22: a file of the person's own conversation only. */
+const ASSISTANT_OWN_FILE: ScopeLine = {
+  roles: ['teacher'],
+  scope: 'own_record',
+  rule: '02, Assistant: "The person sees their own conversations"; Files, photos and voice (task 11.22)',
+  refusedIn: [
+    'src/modules/assistant/assistant-file-routes.test.ts > answers 404 for a file of another account, another branch, an unknown id, a role given up and an archived conversation',
+  ],
+};
+
 export const OTHER_SCOPES: RouteScopes = {
   // --- The assistant (task 11.14) -----------------------------------------------------------
   'GET /api/assistant/status': [ASSISTANT_PANEL],
@@ -234,6 +244,8 @@ export const OTHER_SCOPES: RouteScopes = {
   'POST /api/assistant/proposals/:id/confirm': [ASSISTANT_OWN],
   'POST /api/assistant/proposals/:id/decline': [ASSISTANT_OWN],
   'POST /api/assistant/proposals/:id/undo': [ASSISTANT_UNDO_OWN],
+  'PUT /api/assistant/files': [ASSISTANT_PANEL],
+  'GET /api/assistant/files/:id': [ASSISTANT_OWN_FILE],
 
   'GET /api/setup/current-period': [
     {

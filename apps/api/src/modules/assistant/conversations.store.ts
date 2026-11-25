@@ -20,6 +20,12 @@ import { proposalsOf } from './proposal-views.js';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+/**
+ * Task 11.22: the tool name of the stored words of a recorded question (a message of kind `read`,
+ * since a question is insert-only); the conversation shows them as the question's text.
+ */
+export const TRANSCRIBE_VOICE = 'transcribe_voice';
+
 /** The content of each kind of message as stored in `assistant_messages.content` (0178). */
 export type StoredContent =
   | {
@@ -245,6 +251,30 @@ export function messageOf(row: MessageRow, files: readonly MessageFile[] = []): 
   }
 }
 
+/**
+ * Task 11.22: the messages as shown: a recorded question carries its written-out words as its
+ * text, and the stored words themselves are not shown as a read.
+ */
+export function shownMessages(
+  messages: readonly MessageRow[],
+  files: ReadonlyMap<string, MessageFile[]>,
+): AssistantMessage[] {
+  const shown: AssistantMessage[] = [];
+  let question: Extract<AssistantMessage, { kind: 'question' }> | undefined;
+  for (const message of messages) {
+    const content = message.content;
+    if (content.kind === 'read' && content.tool === TRANSCRIBE_VOICE) {
+      const transcript = (content.result as { transcript?: unknown } | null)?.transcript;
+      if (question !== undefined && typeof transcript === 'string') question.text = transcript;
+      continue;
+    }
+    const one = messageOf(message, files.get(message.id));
+    if (one.kind === 'question') question = one;
+    shown.push(one);
+  }
+  return shown;
+}
+
 export async function conversationOf(
   transaction: Transaction,
   row: ConversationListRow,
@@ -257,7 +287,7 @@ export async function conversationOf(
     ...summaryOf(row),
     archived: isArchived(last, now),
     archivesAt: archivesAt(last).toISOString(),
-    messages: messages.map((message) => messageOf(message, files.get(message.id))),
+    messages: shownMessages(messages, files),
     proposals: await proposalsOf(transaction, row.id, now),
     working: workingOf(messages, now),
   };

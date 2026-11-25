@@ -82,8 +82,10 @@ describe('declared file routes', () => {
     // the upload of the student import (9.4g, decision 1 of #278, Look first) and of the staff
     // import (9.4h, decision 1 of #279, Look first); the upload of the subject import (the
     // owner's change of 7 November 2026, #316, Look first); the upload of the load import
-    // (task 5.13, decision 1, Look first).
+    // (task 5.13, decision 1, Look first); a file of a question of the assistant (task 11.22,
+    // decision 1, Look first).
     expect(FILE_ROUTES.map((route) => route.path).sort()).toEqual([
+      '/api/assistant/files',
       '/api/auth/photo',
       '/api/exemptions/:id/document',
       '/api/journal/student-absences/:studentId/:date/file',

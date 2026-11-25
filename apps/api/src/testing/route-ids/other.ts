@@ -68,6 +68,13 @@ const PROPOSAL_RULE =
 const UNDO_404 =
   'src/modules/assistant/assistant-undo.test.ts > answers 404 for an unknown proposal, another person’s and the own one in another branch, with every row unchanged';
 
+// Task 11.22: the files of the assistant's conversations.
+const F = 'src/modules/assistant/assistant-file-routes.test.ts';
+const FILE_404 = `${F} > answers 404 for a file of another account, another branch, an unknown id, a role given up and an archived conversation`;
+const SEND_404 = `${F} > refuses a question with a file of another branch, another account, one already sent, an old one and an unknown one (404): nothing stored`;
+const FILE_RULE =
+  '02, Assistant, Audit: the person sees their own conversations and their files; task 11.22';
+
 const OWN_RULE = '.claude/rules/api.md, @AnySignedIn: never on one named in the request';
 
 const line = (
@@ -186,6 +193,13 @@ export const OTHER_IDS: RouteIds = {
   ],
   'POST /api/assistant/questions': [
     line('body:conversationId', 'assistant conversation', 'own', CONVERSATION_RULE, [ASKED_IN]),
+    line('body:files', 'assistant file', 'own', FILE_RULE, [SEND_404]),
+    line('body:voice', 'assistant file', 'own', FILE_RULE, [SEND_404]),
+  ],
+  'GET /api/assistant/files/:id': [line('path:id', 'assistant file', 'own', FILE_RULE, [FILE_404])],
+  'GET /api/assistant/all-conversations/:id/files/:fileId': [
+    line('path:id', 'assistant conversation', 'none', ALL_CONVERSATIONS_RULE, []),
+    line('path:fileId', 'assistant file', 'none', ALL_CONVERSATIONS_RULE, []),
   ],
   'GET /api/assistant/all-conversations/:id': [
     line('path:id', 'assistant conversation', 'none', ALL_CONVERSATIONS_RULE, []),

@@ -6,6 +6,7 @@ import type { ModelFilter } from './field-filter.js';
 import { PLATFORM_MAP } from './platform-map.js';
 import type { ModelTool, ToolArgumentsSchema, ToolParameterSchema } from './model.js';
 import { GENERATED_TOOLS } from './tools.generated.js';
+import { fileToolOf } from './file-tools.js';
 
 /** The lines open to the chosen role, by route name (`AssistantRoutes.linesOf`). */
 export type RoleLines = Readonly<Record<string, AssistantRouteLine>>;
@@ -627,7 +628,13 @@ export function findActions(
   if (words.length === 0) return [];
   const scored: { route: string; score: number; line: AssistantRouteLine }[] = [];
   for (const [route, line] of Object.entries(lines)) {
-    if (ASSISTANT_KINDS_WITHOUT_TOOL.includes(kindOfLine(line))) continue;
+    // Task 11.22: an import or an export is found too, with the tool of files that runs it.
+    if (
+      ASSISTANT_KINDS_WITHOUT_TOOL.includes(kindOfLine(line)) &&
+      fileToolOf(route, kindOfLine(line)) === undefined
+    ) {
+      continue;
+    }
     const generated = GENERATED_TOOLS[route];
     if (generated === undefined) continue;
     const haystack = [
@@ -650,7 +657,7 @@ export function findActions(
     .slice(0, FIND_ACTIONS_LIMIT)
     .map(({ route, line }) => ({
       route,
-      tool: toolNameOf(route, line),
+      tool: fileToolOf(route, kindOfLine(line)) ?? toolNameOf(route, line),
       kind: kindOfLine(line),
       description: line.description,
     }));
