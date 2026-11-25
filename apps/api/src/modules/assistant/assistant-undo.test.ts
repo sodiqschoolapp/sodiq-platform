@@ -185,6 +185,8 @@ describe('Undo of a confirmed proposal', () => {
       `/api/classes/${ids[1] ?? ''}/restore`,
       `/api/classes/${ids[0] ?? ''}/restore`,
     ]);
+    // A second Undo while the first still waits.
+    expect(errorCode(await post('undo', proposalId))).toBe('assistant_undo_exists');
     expect((await post('confirm', reverses?.id ?? '')).status).toBe(200);
     for (const id of ids) expect(await status(id)).toBe('active');
     // A second Undo of the same proposal: its Undo was confirmed.
@@ -301,6 +303,13 @@ describe('Undo of a confirmed proposal', () => {
     expect(errorCode(await post('undo', waiting.proposalId))).toBe('assistant_undo_not_open');
     expect((await post('decline', waiting.proposalId)).status).toBe(200);
     expect(errorCode(await post('undo', waiting.proposalId))).toBe('assistant_undo_not_open');
+    // An expired proposal was never confirmed: nothing to undo.
+    const [c] = await classes('Oxford R3');
+    const expired = await propose([archive(c ?? '')]);
+    await sql`update assistant_proposals set created_at = created_at - interval '1 hour', expires_at = expires_at - interval '1 hour' where id = ${expired.proposalId}`.execute(
+      scene.database.migrator,
+    );
+    expect(errorCode(await post('undo', expired.proposalId))).toBe('assistant_undo_not_open');
     const outdated = await propose([archive(b ?? '')]);
     await scene.database.migrator
       .updateTable('classes')
@@ -435,8 +444,27 @@ describe('Undo of a confirmed proposal', () => {
       select m.id, m.branch_id, 'fake-model', 0, 0, 5000000, 'europe-west3', ${scene.clock.now()}
       from assistant_messages m where m.kind = 'question' limit 1
     `.execute(scene.database.migrator);
+    const status = async () =>
+      (
+        await request(server())
+          .get('/api/assistant/status?role=super_admin')
+          .set('Cookie', scene.admin)
+          .set(BRANCH_HEADER, scene.north)
+      ).body as { questionsLeftToday: number | null };
+    const limit = (daily: number) =>
+      scene.database.migrator
+        .updateTable('assistant_settings')
+        .set({ daily_limit: daily })
+        .execute();
+    await limit(100);
+    const left = (await status()).questionsLeftToday;
+    await limit(1);
     const conversation = undone(await post('undo', proposalId));
     expect(conversation.proposals.at(-1)?.steps).toHaveLength(1);
+    // The Undo is stored as a question, and the count of the day leaves it out (0184).
+    await limit(100);
+    expect(left).not.toBeNull();
+    expect((await status()).questionsLeftToday).toBe(left);
     await sql`delete from assistant_model_calls where cost_micros = 5000000`.execute(
       scene.database.migrator,
     );

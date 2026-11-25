@@ -36,7 +36,7 @@ export const DESCRIPTIONS: Readonly<Record<string, string>> = {
   'features/assistant/proposal-card.tsx#button:assistant.proposal.secretClose':
     'Closes the one-time password or secret a confirmed step gave out; it is shown once and is not kept in the conversation.',
   'features/assistant/assistant-settings-section.tsx#field:assistant.settings.dailyLimit':
-    'How many questions each person may ask the assistant per day.',
+    'How many questions each person may ask the assistant per day; 0 is no daily limit.',
   'features/assistant/assistant-settings-section.tsx#field:assistant.settings.fallbackOn':
     'Lets a question go through a worldwide endpoint when the Frankfurt one is busy or does not answer.',
   'features/assistant/assistant-settings-section.tsx#field:assistant.settings.monthlyCap':
@@ -49,4 +49,15 @@ export const DESCRIPTIONS: Readonly<Record<string, string>> = {
     "Confirms the assistant's proposal: its changes run in order as on their pages, and the first one refused stops the rest.",
   'features/assistant/proposal-card.tsx#button:assistant.proposal.decline':
     "Declines the assistant's proposal; nothing is changed.",
+  // Task 11.21: the limits, Continue and Undo.
+  'features/assistant/assistant-chat.tsx#button:assistant.continue':
+    'Shown under an answer that a limit of one question cut: asks the next part of the work, which never proposes again a step proposed before. Waits until the proposal shown is confirmed or declined.',
+  'features/assistant/assistant-settings-section.tsx#field:assistant.settings.questionActions':
+    'How many reads and changes the assistant may make for one question (40 at the start); past it, the answer offers Continue.',
+  'features/assistant/assistant-settings-section.tsx#field:assistant.settings.proposalSteps':
+    'How many changes one proposal may hold (100 at the start); the rest goes to the next part.',
+  'features/assistant/assistant-settings-section.tsx#field:assistant.settings.questionMinutes':
+    'How many minutes the assistant may work on one question (10 at the start); then it says what is done and offers Continue.',
+  'features/assistant/proposal-card.tsx#button:assistant.proposal.undoing':
+    'Undo of a confirmed proposal: proposes the reverse of each change made, the last first, as a new proposal to confirm; a change no action reverses is named.',
 };

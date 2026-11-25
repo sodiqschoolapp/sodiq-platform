@@ -26,7 +26,7 @@ import { FIELD } from '@/components/ui/control';
 import { BUILT_PAGES } from '@/features/access/menu-pages';
 import { useView } from '@/features/access/use-view';
 import { appNow } from '@/lib/app-now';
-import { schoolDateText } from '@/lib/dates';
+import { formatMoment, schoolDateText } from '@/lib/dates';
 import { languageOf } from '@/i18n/i18n';
 import { AnswerText } from './answer-text';
 import {
@@ -460,8 +460,21 @@ export function Messages({
       <li key={message.id}>
         <MessageView
           message={message}
+          undoOfTime={
+            message.kind === 'question' && message.undoOf !== null
+              ? (conversation.proposals.find((proposal) => proposal.id === message.undoOf)
+                  ?.createdAt ?? null)
+              : null
+          }
           {...(message === newest && onChoose !== undefined && onContinue !== undefined
-            ? { onChoose, onContinue }
+            ? {
+                onChoose,
+                // A waiting proposal is confirmed or declined before the next part (the server
+                // refuses it too).
+                ...(conversation.proposals.some((proposal) => proposal.state === 'waiting')
+                  ? {}
+                  : { onContinue }),
+              }
             : {})}
         />
       </li>,
@@ -507,10 +520,13 @@ export function Messages({
 
 function MessageView({
   message,
+  undoOfTime = null,
   onChoose,
   onContinue,
 }: {
   message: AssistantMessage;
+  /** Task 11.21: when the proposal an Undo question names was made, to tell two Undos apart. */
+  undoOfTime?: string | null;
   onChoose?: (option: string) => void;
   onContinue?: () => void;
 }) {
@@ -520,7 +536,9 @@ function MessageView({
       return (
         <p className="ml-8 rounded-lg bg-accent px-3 py-2 break-words whitespace-pre-wrap">
           {message.undoOf !== null
-            ? t('assistant.undoAsked')
+            ? undoOfTime === null
+              ? t('assistant.undoAsked')
+              : t('assistant.undoAskedAt', { time: formatMoment(i18n.language, undoOfTime) })
             : message.continued
               ? t('assistant.continued')
               : message.text}

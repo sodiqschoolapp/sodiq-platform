@@ -1052,6 +1052,8 @@ export const uz: Texts<'one' | 'other'> = {
       'Yordamchi hozir band. Bir daqiqadan keyin qayta urinib koʻring; barcha sahifalar odatdagidek ishlaydi.',
     assistant_nothing_to_continue:
       'Bu suhbatda davom ettiradigan narsa qolmadi. Yangi savol bering.',
+    assistant_continue_waiting:
+      'Avval koʻrsatilgan taklifni tasdiqlang yoki rad eting, soʻng Davom ettirishni bosing.',
     assistant_undo_not_open:
       'Faqat oʻzgarish kiritilgan tasdiqlangan taklifni bekor qilish mumkin. Suhbatni qayta oʻqing.',
     assistant_undo_exists:
@@ -1343,6 +1345,7 @@ export const uz: Texts<'one' | 'other'> = {
     continue: 'Davom ettirish',
     continued: 'Davom ettirish',
     undoAsked: 'Tasdiqlangan oʻzgarishlarni bekor qilish',
+    undoAskedAt: '{{time}} dagi taklifning tasdiqlangan oʻzgarishlarini bekor qilish',
     choices: 'Variantlar',
     undo: {
       all: 'Har bir oʻzgarishning teskarisi quyida taklif qilingan.',

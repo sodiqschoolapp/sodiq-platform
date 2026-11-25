@@ -314,6 +314,12 @@ export class AssistantEngine {
         if (last?.kind !== 'answer' || last.continues !== true) {
           throw new ApiException('assistant_nothing_to_continue', 409);
         }
+        // Review of the code, must fix 2: a later proposal supersedes a waiting one, so the next
+        // part waits until the person confirmed or declined the part shown; nothing is lost.
+        const waiting = (await proposalsOf(transaction, existing?.id ?? '', now)).some(
+          (proposal) => proposal.state === 'waiting',
+        );
+        if (waiting) throw new ApiException('assistant_continue_waiting', 409);
       }
       const earlier =
         existing === undefined
@@ -963,9 +969,14 @@ export class AssistantEngine {
                     `${String(step.seq)}. ${step.summary} (${step.state}${step.code === null ? '' : `, ${step.code}`})`,
                 )
                 .join('; ')}]`;
+        // Task 11.21: an Undo's answer has no words of the model; it is told as what it was.
+        const said =
+          content.undo !== undefined
+            ? `[The platform proposed the reverse of the confirmed changes; ${String(content.undo.none.length)} could not be reversed.]`
+            : content.text;
         turns.push({
           seq: message.seq,
-          turn: { role: 'model', parts: [{ kind: 'text', text: content.text + note }] },
+          turn: { role: 'model', parts: [{ kind: 'text', text: (said + note).trim() || '…' }] },
         });
       }
     }

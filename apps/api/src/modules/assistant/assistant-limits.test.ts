@@ -13,6 +13,7 @@ import {
 } from '../../testing/assistant-kit.js';
 import { errorCode } from '../../testing/sign-in-kit.js';
 import { costMicros } from './assistant.engine.js';
+import { answerUntilOf, messagesOf, workingOf } from './conversations.store.js';
 import { GENERATED_TOOLS } from './tools.generated.js';
 
 // Task 11.12. `02`, Assistant: "The Super Admin can switch it off for the whole school or for one
@@ -80,6 +81,13 @@ describe('the assistant: the switch, the daily limit and the monthly cap', () =>
   });
 
   it('is off until switched on, and the switch per school and per role stops the panel while every screen works', async () => {
+    // Task 11.21 (plan decision 3): before any save, the row as 0178 wrote it and 0184 kept it.
+    expect(
+      await scene.database.migrator
+        .selectFrom('assistant_settings')
+        .select(['daily_limit', 'question_actions', 'proposal_steps', 'question_minutes'])
+        .executeTakeFirstOrThrow(),
+    ).toEqual({ daily_limit: 30, question_actions: 40, proposal_steps: 100, question_minutes: 10 });
     expect(await status()).toEqual({
       available: false,
       refusal: 'assistant_off',
@@ -243,6 +251,67 @@ describe('the assistant: the switch, the daily limit and the monthly cap', () =>
     );
     await expect(store({ steps: [] })).rejects.toThrow(/assistant_proposals_steps_check/);
     await expect(store([])).rejects.toThrow(/assistant_proposals_steps_check/);
+    // The seq of a step's outcome: up to 200 (review of the plan, correction 1).
+    const proposal = await scene.database.migrator
+      .selectFrom('assistant_proposals')
+      .select('id')
+      .where('conversation_id', '=', conversation.id)
+      .executeTakeFirstOrThrow();
+    const outcome = (seq: number) =>
+      sql`
+        insert into assistant_proposal_steps (step_id, proposal_id, branch_id, seq, state, status, code, created_at)
+        values (gen_random_uuid(), ${proposal.id}, ${scene.north}, ${seq}, 'done', 200, null, ${scene.clock.now()})
+      `.execute(scene.database.migrator);
+    await expect(outcome(200)).resolves.toBeDefined();
+    await expect(outcome(201)).rejects.toThrow(/assistant_proposal_steps_seq_check/);
+  });
+
+  it('keeps the 270 s window of a question stored before 0184, which has no stored end (plan, Time)', async () => {
+    const conversation = await scene.database.migrator
+      .insertInto('assistant_conversations')
+      .values({
+        branch_id: scene.north,
+        account_id: scene.adminAccount,
+        role: 'super_admin',
+        title: 'Before 0184.',
+        created_at: scene.clock.now(),
+      })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    const asked = scene.clock.now();
+    await scene.database.migrator
+      .insertInto('assistant_messages')
+      .values({
+        conversation_id: conversation.id,
+        branch_id: scene.north,
+        account_id: scene.adminAccount,
+        seq: 1,
+        kind: 'question',
+        content: sql`'{"kind":"question","text":"Old."}'::jsonb`,
+        created_at: asked,
+      })
+      .execute();
+    const running = async (ms: number) =>
+      (
+        await sql<{ running: boolean }>`
+          select assistant_question_running(${scene.adminAccount}, ${new Date(asked.getTime() + ms)}) as running
+        `.execute(scene.database.migrator)
+      ).rows[0]?.running;
+    expect(await running(269_000)).toBe(true);
+    expect(await running(270_000)).toBe(false);
+    const messages = await messagesOf(
+      // A read of the migrator: the rows written above, past the branch filter of a transaction.
+      scene.database.migrator as unknown as Parameters<typeof messagesOf>[0],
+      conversation.id,
+    );
+    expect(messages[0]?.answerUntil).toBeNull();
+    expect(answerUntilOf(messages[0] ?? { createdAt: asked, answerUntil: null }).getTime()).toBe(
+      asked.getTime() + 270_000,
+    );
+    expect(workingOf(messages, new Date(asked.getTime() + 269_000))?.until).toBe(
+      new Date(asked.getTime() + 270_000).toISOString(),
+    );
+    expect(workingOf(messages, new Date(asked.getTime() + 270_000))).toBeNull();
   });
 
   it('takes a daily limit of 0 as none: the status names no limit and every question is taken (build plan 11.21, Done when; review of the plan, must fix 2)', async () => {

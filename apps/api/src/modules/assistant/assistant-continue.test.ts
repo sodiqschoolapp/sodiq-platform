@@ -10,6 +10,7 @@ import { ask, assistantScene, type AssistantScene } from '../../testing/assistan
 import { errorCode } from '../../testing/sign-in-kit.js';
 import { ASK_CHOICE, choicesOf, LIMIT_REACHED_LINE, modelCallsOf } from './assistant.engine.js';
 import { attemptsOf } from './model-caller.js';
+import { targetOf } from './proposals.js';
 import { GENERATED_TOOLS } from './tools.generated.js';
 
 // Task 11.21 (pull request #388). `02`, Assistant, Answers: "A long piece of work goes on in
@@ -156,6 +157,80 @@ describe('the assistant past the limit of one question: Continue, choices and th
     expect(together.sort()).toEqual(rooms.map((room) => room.id).sort());
   }, 180_000);
 
+  it('refuses Continue while the part shown waits, and takes the steps of a declined part as proposed (review of the code, must fix 2)', async () => {
+    const decide = (id: string, which: 'confirm' | 'decline') =>
+      request(server())
+        .post(`/api/assistant/proposals/${id}/${which}`)
+        .set('Cookie', scene.admin)
+        .set(BRANCH_HEADER, scene.north)
+        .send({ role: 'super_admin' });
+    await scene.database.migrator
+      .updateTable('assistant_settings')
+      .set({ question_actions: 2 })
+      .execute();
+    const some = rooms.slice(0, 3).map((room, index) => rename(room, `Gym ${String(index)}`));
+    scene.model.script(calls(...some), answer('Two proposed; one left.'));
+    const first = conversationOf(
+      await ask(scene, scene.admin, scene.north, { text: 'Rename three rooms.' }),
+    );
+    expect(first.proposals.at(-1)?.steps).toHaveLength(2);
+    // The part shown still waits: the next part would supersede it, so Continue is refused.
+    const refused = await ask(scene, scene.admin, scene.north, {
+      text: 'Continue',
+      conversationId: first.id,
+      continue: true,
+    });
+    expect([refused.status, errorCode(refused)]).toEqual([409, 'assistant_continue_waiting']);
+    // Declined: its steps count as proposed (the person said no to them); the third is new.
+    expect((await decide(first.proposals.at(-1)?.id ?? '', 'decline')).status).toBe(200);
+    scene.model.script(
+      calls(
+        some[0] ?? rename(rooms[0] ?? { id: '', floorId: '' }, 'x'),
+        some[2] ?? rename(rooms[0] ?? { id: '', floorId: '' }, 'y'),
+      ),
+      answer('Done.'),
+    );
+    const second = conversationOf(
+      await ask(scene, scene.admin, scene.north, {
+        text: 'Continue',
+        conversationId: first.id,
+        continue: true,
+      }),
+    );
+    const results = lastResults(
+      scene.model.requests.at(-1) ?? { system: '', turns: [], tools: [] },
+    );
+    expect(results.map((one) => (one.result as { error?: string }).error ?? 'proposed')).toEqual([
+      'already_proposed',
+      'proposed',
+    ]);
+    expect(second.proposals.at(-1)?.steps).toHaveLength(1);
+  });
+
+  it('names a step by its route, path and records, never by the words or versions of its body (review of the code, must fix 1)', () => {
+    const cancel = (reason: string, id = 'a1') => ({
+      route: 'POST /api/timetable/lessons/:id/cancel',
+      url: `/api/timetable/lessons/${id}/cancel`,
+      records: [id],
+      body: { reason, confirm: true },
+    });
+    expect(targetOf(cancel('Trip'))).toBe(targetOf(cancel('A school trip, all day.')));
+    expect(targetOf(cancel('Trip', 'a1'))).not.toBe(targetOf(cancel('Trip', 'b2')));
+    // A step that names no record is told apart by what its body names.
+    const bulk = (date: string, reason: string) => ({
+      route: 'POST /api/timetable/bulk-cancels',
+      url: '/api/timetable/bulk-cancels',
+      records: [],
+      body: { date, lessonNumbers: [3], reason, version: 4 },
+    });
+    expect(targetOf(bulk('2026-10-12', 'Power cut'))).toBe(
+      targetOf(bulk('2026-10-12', 'No light')),
+    );
+    expect(targetOf(bulk('2026-10-12', 'Power cut'))).not.toBe(
+      targetOf(bulk('2026-10-13', 'Power cut')),
+    );
+  });
+
   it('refuses Continue when the newest answer was not cut, and without a conversation (review of the plan, should fix 6)', async () => {
     scene.model.script(answer('All done.'));
     const done = conversationOf(await ask(scene, scene.admin, scene.north, { text: 'Hello.' }));
@@ -192,7 +267,7 @@ describe('the assistant past the limit of one question: Continue, choices and th
     ]);
   });
 
-  it('bounds the model calls at the reads allowed and two more, and the attempts at twice that (.claude/rules/api.md)', async () => {
+  it('bounds the model calls at the reads allowed and two more (.claude/rules/api.md; the attempts at twice that are exercised in assistant-retry.test.ts)', async () => {
     await scene.database.migrator
       .updateTable('assistant_settings')
       .set({ question_actions: 3 })
@@ -262,7 +337,6 @@ describe('the assistant past the limit of one question: Continue, choices and th
     const seconds = (performance.now() - started) / 1000;
     expect(confirmed.status).toBe(200);
     // The time is given in the report of the task; the bound keeps a wide margin.
-    console.info(`A Confirm of 200 steps took ${seconds.toFixed(1)} s.`);
     expect(seconds).toBeLessThan(150);
   }, 300_000);
 

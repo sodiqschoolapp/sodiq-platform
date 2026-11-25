@@ -8,13 +8,13 @@ Newest entry first. Each finished task adds an entry: what was built, what was l
 - **Continue, choices, tables**: a question cut by a limit (reads, steps or time) answers with `continues` and offers Continue; a step of an earlier part is refused `already_proposed`; `ask_choice` gives buttons; answers may hold pipe tables.
 - **Undo**: `POST /api/assistant/proposals/:id/undo` proposes the reverses of a confirmed proposal's done steps, newest first, from `reverses.ts`, with no model call.
 
-Left out: an edit of fields has no reverse (plan decision 10); files, voice, imports and exports (11.22); the helpers (11.23).
+Left out: an edit of fields, a one-day move and a room change have no reverse (plan decision 10); the eval set has no Continue case (its replay scores one question; a part is proven by `assistant-continue.test.ts`); files, voice, imports and exports (11.22); the helpers (11.23).
 
 The next sessions must know:
 
 - Every database keeps the daily limit it stored (30 on the test environment); the Super Admin sets 0 on the page (plan decision 3, on #42).
-- A new pair of a change and its reverse goes into `ASSISTANT_REVERSES` (`apps/api/src/modules/assistant/reverses.ts`); `assistant-undo.test.ts` tests the pairs.
-- A Continue's chain of parts starts at the last question that was not a Continue; only done steps of confirmed proposals and steps of declined ones are "taken".
+- A new pair of a change and its reverse goes into `ASSISTANT_REVERSES` (`apps/api/src/modules/assistant/reverses.ts`, `recordAt` when a create's answer keeps the id deeper); `assistant-reverses.test.ts` holds the table against the routes and roles.
+- A Continue's chain of parts starts at the last question that was not a Continue; done steps of confirmed proposals and steps of declined ones are "taken"; Continue waits while a proposal of the conversation waits.
 
 ## 25 November 2026: task 11.20, every action of the role open to the assistant
 

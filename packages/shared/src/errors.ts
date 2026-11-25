@@ -1335,6 +1335,7 @@ export const ERROR_CODES = [
   /** Task 11.16: a question of the same person is still being answered (`02`, While it works; `edge/people-roles-accounts`, "… or in two tabs"). */
   'assistant_question_running',
   'assistant_nothing_to_continue',
+  'assistant_continue_waiting',
   'assistant_undo_not_open',
   'assistant_undo_exists',
   /** Task 11.12: the role sent is not one the person holds now in this branch, or not one the assistant is given to. */

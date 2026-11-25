@@ -1034,6 +1034,7 @@ export const en = {
       'The assistant is busy now. Try again in a minute; every page works as usual.',
     assistant_nothing_to_continue:
       'There is nothing left to continue in this conversation. Ask a new question.',
+    assistant_continue_waiting: 'Confirm or decline the proposal shown first, then press Continue.',
     assistant_undo_not_open:
       'Only a confirmed proposal with a change made can be undone. Read the conversation again.',
     assistant_undo_exists:
@@ -1321,6 +1322,7 @@ export const en = {
     continue: 'Continue',
     continued: 'Continue',
     undoAsked: 'Undo the confirmed changes',
+    undoAskedAt: 'Undo the confirmed changes of the proposal of {{time}}',
     choices: 'Choices',
     undo: {
       all: 'The reverse of each change is proposed below.',

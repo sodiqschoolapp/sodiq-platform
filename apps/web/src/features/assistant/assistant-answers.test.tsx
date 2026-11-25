@@ -273,7 +273,9 @@ describe('choices, Continue and Undo in the chat', () => {
         calls.find((call) => call.route === `POST /api/assistant/proposals/${uid(800)}/undo`)?.body,
       ).toEqual({ role: 'super_admin' });
     });
-    expect(await panel.findByText(en.assistant.undoAsked)).toBeTruthy();
+    expect(
+      await panel.findByText(new RegExp(en.assistant.undoAskedAt.replace('{{time}}', '.+'))),
+    ).toBeTruthy();
     const answer = document.querySelector('[data-assistant-undo]');
     expect(answer?.textContent).toContain(en.assistant.undo.reasons.no_reverse);
     // Its Undo is shown: no second Undo is offered.

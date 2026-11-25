@@ -6439,6 +6439,38 @@ export const PLATFORM_MAP_SOURCE: unknown = {
    "description": "The title of the announcement or event."
   },
   {
+   "id": "features/assistant/assistant-chat.tsx#button:assistant.continue",
+   "kind": "button",
+   "label": {
+    "uz": "Davom ettirish",
+    "ru": "Продолжить",
+    "en": "Continue"
+   },
+   "pages": [
+    "*"
+   ],
+   "parent": null,
+   "roles": [
+    "super_admin",
+    "principal",
+    "academic_vice_principal",
+    "spiritual_vice_principal",
+    "head_tutor",
+    "tutor",
+    "class_teacher",
+    "senior_head_teacher",
+    "head_teacher",
+    "teacher",
+    "hr",
+    "nurse",
+    "psychologist",
+    "librarian"
+   ],
+   "operations": [],
+   "opens": null,
+   "description": "Shown under an answer that a limit of one question cut: asks the next part of the work, which never proposes again a step proposed before. Waits until the proposal shown is confirmed or declined."
+  },
+  {
    "id": "features/assistant/assistant-chat.tsx#button:assistant.sending",
    "kind": "button",
    "label": {
@@ -6809,7 +6841,7 @@ export const PLATFORM_MAP_SOURCE: unknown = {
    ],
    "operations": [],
    "opens": null,
-   "description": "How many questions each person may ask the assistant per day."
+   "description": "How many questions each person may ask the assistant per day; 0 is no daily limit."
   },
   {
    "id": "features/assistant/assistant-settings-section.tsx#field:assistant.settings.dataGroup_contact",
@@ -6867,6 +6899,63 @@ export const PLATFORM_MAP_SOURCE: unknown = {
    "operations": [],
    "opens": null,
    "description": "The most the assistant may spend in a month, in US dollars."
+  },
+  {
+   "id": "features/assistant/assistant-settings-section.tsx#field:assistant.settings.proposalSteps",
+   "kind": "field",
+   "label": {
+    "uz": "Bitta taklifdagi oʻzgarishlar",
+    "ru": "Изменений в одном предложении",
+    "en": "Changes in one proposal"
+   },
+   "pages": [
+    "/setup/assistant"
+   ],
+   "parent": null,
+   "roles": [
+    "super_admin"
+   ],
+   "operations": [],
+   "opens": null,
+   "description": "How many changes one proposal may hold (100 at the start); the rest goes to the next part."
+  },
+  {
+   "id": "features/assistant/assistant-settings-section.tsx#field:assistant.settings.questionActions",
+   "kind": "field",
+   "label": {
+    "uz": "Bitta savoldagi oʻqishlar va oʻzgarishlar",
+    "ru": "Чтений и изменений в одном вопросе",
+    "en": "Reads and changes in one question"
+   },
+   "pages": [
+    "/setup/assistant"
+   ],
+   "parent": null,
+   "roles": [
+    "super_admin"
+   ],
+   "operations": [],
+   "opens": null,
+   "description": "How many reads and changes the assistant may make for one question (40 at the start); past it, the answer offers Continue."
+  },
+  {
+   "id": "features/assistant/assistant-settings-section.tsx#field:assistant.settings.questionMinutes",
+   "kind": "field",
+   "label": {
+    "uz": "Bitta savol uchun daqiqalar",
+    "ru": "Минут на один вопрос",
+    "en": "Minutes for one question"
+   },
+   "pages": [
+    "/setup/assistant"
+   ],
+   "parent": null,
+   "roles": [
+    "super_admin"
+   ],
+   "operations": [],
+   "opens": null,
+   "description": "How many minutes the assistant may work on one question (10 at the start); then it says what is done and offers Continue."
   },
   {
    "id": "features/assistant/assistant-settings-section.tsx#field:assistant.settings.roleOn",
@@ -7033,6 +7122,38 @@ export const PLATFORM_MAP_SOURCE: unknown = {
    "operations": [],
    "opens": null,
    "description": "Prints the one-time password or secret a confirmed step gave out, as its screen prints the slip."
+  },
+  {
+   "id": "features/assistant/proposal-card.tsx#button:assistant.proposal.undoing",
+   "kind": "button",
+   "label": {
+    "uz": "Bekor qilish taklif qilinmoqda…",
+    "ru": "Предлагаем отмену…",
+    "en": "Proposing the undo…"
+   },
+   "pages": [
+    "*"
+   ],
+   "parent": null,
+   "roles": [
+    "super_admin",
+    "principal",
+    "academic_vice_principal",
+    "spiritual_vice_principal",
+    "head_tutor",
+    "tutor",
+    "class_teacher",
+    "senior_head_teacher",
+    "head_teacher",
+    "teacher",
+    "hr",
+    "nurse",
+    "psychologist",
+    "librarian"
+   ],
+   "operations": [],
+   "opens": null,
+   "description": "Undo of a confirmed proposal: proposes the reverse of each change made, the last first, as a new proposal to confirm; a change no action reverses is named."
   },
   {
    "id": "features/audit/audit-page.tsx#button:audit.clear",

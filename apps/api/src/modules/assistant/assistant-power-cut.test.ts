@@ -317,6 +317,81 @@ describe('the assistant at a power cut: no day off today, a bulk cancel from the
       .set(BRANCH_HEADER, branch)
       .send({ role: 'academic_vice_principal' });
 
+  // Task 11.21 (`02`, Reading and proposing: "A confirmed proposal can be undone"; review of the
+  // code, must fix 4): two one-day cancels of the next Monday confirmed, then undone: the Undo
+  // proposes the restore of each lesson, the last first, and its Confirm gives both lessons back.
+  it('undoes two confirmed lesson cancels by proposing their restores, and Confirm gives the lessons back (task 11.21)', async () => {
+    const nextMonday = '2026-10-19';
+    const lessons = await t.database.migrator
+      .selectFrom('lessons')
+      .select(['id', 'cancel_cause'])
+      .where('branch_id', '=', branch)
+      .where('lesson_date', '=', nextMonday)
+      .where('class_id', '=', oxford)
+      .orderBy('starts_at')
+      .execute();
+    expect(lessons.length).toBeGreaterThanOrEqual(2);
+    const [first, second] = lessons;
+    const cancel = (id: string, reason: string) => ({
+      name: `propose_${tool('POST /api/timetable/lessons/:id/cancel')}`.slice(0, 64),
+      args: { id, body: { reason }, summary: `Cancel the lesson: ${reason}` },
+    });
+    model.script(
+      calls(cancel(first?.id ?? '', 'Trip'), cancel(second?.id ?? '', 'Trip')),
+      answer('I propose to cancel the two lessons.'),
+    );
+    const asked = await request(t.kit.server)
+      .post('/api/assistant/questions')
+      .set('Cookie', vice.cookie)
+      .set(BRANCH_HEADER, branch)
+      .send({ role: 'academic_vice_principal', text: 'Cancel lessons 1 and 2 of next Monday.' });
+    expect(asked.status, JSON.stringify(asked.body).slice(0, 500)).toBe(202);
+    await settle(t.app, asked, vice.cookie, branch);
+    const proposed = assistantConversationSchema.parse(
+      (asked.body as { conversation: unknown }).conversation,
+    );
+    const proposal = proposed.proposals.at(-1);
+    expect(proposal?.steps).toHaveLength(2);
+    const confirmed = await confirm(proposal?.id ?? '');
+    expect(confirmed.status, JSON.stringify(confirmed.body).slice(0, 500)).toBe(200);
+    const causes = async () =>
+      (
+        await t.database.migrator
+          .selectFrom('lessons')
+          .select(['id', 'cancel_cause'])
+          .where('id', 'in', [first?.id ?? '', second?.id ?? ''])
+          .orderBy('starts_at')
+          .execute()
+      ).map((row) => row.cancel_cause);
+    expect((await causes()).every((cause) => cause !== null)).toBe(true);
+
+    const undone = await request(t.kit.server)
+      .post(`/api/assistant/proposals/${proposal?.id ?? ''}/undo`)
+      .set('Cookie', vice.cookie)
+      .set(BRANCH_HEADER, branch)
+      .send({ role: 'academic_vice_principal' });
+    expect(undone.status, JSON.stringify(undone.body).slice(0, 500)).toBe(200);
+    const reverses = (
+      undone.body as { conversation: AssistantConversation }
+    ).conversation.proposals.at(-1);
+    expect(reverses?.steps.map((step) => step.action)).toEqual([
+      tool('POST /api/timetable/lessons/:id/restore'),
+      tool('POST /api/timetable/lessons/:id/restore'),
+    ]);
+    const stored = await t.database.migrator
+      .selectFrom('assistant_proposals')
+      .select('steps')
+      .where('id', '=', reverses?.id ?? '')
+      .executeTakeFirstOrThrow();
+    expect((stored.steps as { url: string }[]).map((step) => step.url)).toEqual([
+      `/api/timetable/lessons/${second?.id ?? ''}/restore`,
+      `/api/timetable/lessons/${first?.id ?? ''}/restore`,
+    ]);
+    const restored = await confirm(reverses?.id ?? '');
+    expect(restored.status, JSON.stringify(restored.body).slice(0, 500)).toBe(200);
+    expect(await causes()).toEqual([null, null]);
+  });
+
   // `edge/people-roles-accounts`, "Add an extra lesson": no listed route adds one, and the move
   // that exists stays inside the quarter (`edge/time-dates-calendar`): the route refuses a move
   // into another quarter at Confirm, and the lesson is as it was.

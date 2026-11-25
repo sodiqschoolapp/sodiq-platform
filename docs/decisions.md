@@ -85,7 +85,10 @@ Plan approved on pull request #388 with corrections 1 (the step bounds 1 to 200 
 | Choices 2 to 8 of at most 80 characters, under the newest answer only | Decision 12 |
 | Tables in pipe form, at most 8 columns | Decision 13 |
 | A turn with tools is sent only with room for a last call without tools (two calls' timeouts, the attempts of two turns); the answer of a cut question stores the steps drafted | Review must fix 3 |
-| A step of a waiting proposal is not "taken": the next part supersedes it, so its steps may be proposed again | Found in the build: a waiting part 1 is superseded by part 2 (11.13's rule), and nothing may be lost |
+| Continue is refused (`assistant_continue_waiting`) while a proposal of the conversation waits; the panel offers it only once the part shown is confirmed or declined | A later proposal supersedes a waiting one (11.13), so the part shown would be lost or proposed again for ever; code review must fix 2 |
+| A step of a declined part counts as proposed: the next part does not propose it again | The person said no to it; "nothing proposed twice" (`edge/people-roles-accounts`); code review must fix 2 |
+| A step's target is its route, its path and the records it names; a step that names no record (a bulk cancel) adds its body without versions, warning flags and the model's words (reason, note, comment) | A lesson cancelled again with other words is the same step; code review must fix 1 |
+| The pairs of Undo (`reverses.ts`): archive and restore of every record that has both, a lesson's cancel and restore, a substitution and its withdrawal, an absence, a room closure and a calendar day added and withdrawn or archived, an exam added and cancelled, a vacancy added and deleted, closed and reopened, an account locked and unlocked. A one-day move or room change has none (no route removes it) | Plan decision 10; code review must fix 4 and nit 1 |
 
 ## 25 November 2026: every action of the role open to the assistant, with the Super Admin's switches (task 11.20)
 

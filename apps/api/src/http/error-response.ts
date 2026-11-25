@@ -718,6 +718,8 @@ const MESSAGE: Record<ErrorCode, string> = {
   assistant_model_busy: 'The language model of the assistant is busy. Try again in a minute.',
   assistant_nothing_to_continue:
     'The newest answer of the conversation has nothing left to continue.',
+  assistant_continue_waiting:
+    'Confirm or decline the proposal shown before the next part of the work.',
   assistant_undo_not_open: 'Only a confirmed proposal with a change made can be undone.',
   assistant_undo_exists: 'This proposal already has an Undo.',
   assistant_question_running:

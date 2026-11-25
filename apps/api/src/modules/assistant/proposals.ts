@@ -101,33 +101,38 @@ export interface ProposingAs {
   taken?: ReadonlySet<string>;
 }
 
-/** Keys of a body that carry a version or a warning flag, not what the step changes. */
-const NOT_TARGET_KEY = /version|confirm|fingerprint/i;
+/**
+ * Keys of a body that do not name what a step changes: a version, a warning flag, and the words
+ * the model writes (a reason, a note, a comment).
+ */
+const NOT_TARGET_KEY = /version|confirm|fingerprint|reason|note|comment|summary|text/i;
 
-function withoutVersions(value: unknown): unknown {
-  if (Array.isArray(value)) return value.map(withoutVersions);
+function withoutWords(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(withoutWords);
   if (value !== null && typeof value === 'object') {
     return Object.fromEntries(
       Object.entries(value as Record<string, unknown>)
         .filter(([key]) => !NOT_TARGET_KEY.test(key))
-        .map(([key, inner]) => [key, withoutVersions(inner)]),
+        .map(([key, inner]) => [key, withoutWords(inner)]),
     );
   }
   return value;
 }
 
 /**
- * Task 11.21 (review of the plan, must fix 4): what a step changes, as the person would name it:
- * its route, the path with its values, the records it names and its body without versions and
- * warning flags; so a step proposed again after the first part was confirmed (with new versions)
- * has the same target.
+ * Task 11.21 (review of the plan, must fix 4; review of the code, must fix 1): what a step
+ * changes, as the person would name it: its route, the path with its values, and the records it
+ * names. A step that names no record (a bulk cancel by date and slots) is told apart by its body,
+ * without its versions, warning flags and the model's words; so a lesson cancelled again with
+ * other words, or after the first part was confirmed (new versions), has the same target.
  */
 export function targetOf(step: Pick<StoredStep, 'route' | 'url' | 'records' | 'body'>): string {
+  const records = [...step.records].sort();
   return [
     step.route,
     step.url,
-    [...step.records].sort().join(','),
-    fingerprintOf(withoutVersions(step.body ?? null)),
+    records.join(','),
+    records.length > 0 ? '' : fingerprintOf(withoutWords(step.body ?? null)),
   ].join('|');
 }
 
