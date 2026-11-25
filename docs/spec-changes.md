@@ -2,6 +2,17 @@
 
 The spec in `docs/spec/` was taken from the full spec document on 3 October 2026 (revision 88). Every later change to a spec file is listed here, newest first, with the date, what changed, why, and the files touched. Changes are made only with the `/spec-change` skill and the owner's approval.
 
+## 25 November 2026: past marks from before go-live
+
+- What changed:
+  1. **An import of past marks.** A branch that went live in the middle of the year can import the attendance, classwork and homework of its lessons before its go-live date from the system's Excel template (one row per student, date and subject; a further row for a second work of one kind), by the Super Admin and by the Academic Vice Principal for their own branch: a preview of every row with its problems, all rows or none, at most 50,000 rows a file, no repeats in the file or across the uploads that stand. Before, nothing from before go-live was in the platform.
+  2. **Withdrawal.** An upload can be withdrawn whole, with a reason; its rows are kept, hidden from parents, and a corrected file imported again. Upload and withdrawal are audited.
+  3. **For parents only.** The portal's Grades, Attendance and Homework pages list past marks with the platform's own, with no separate label; the percent comes from `packages/calc`. They never appear in averages, results (the start quarter stays "from" its date, earlier quarters "not in the system"), the rating, reports, the early-warning list, the Today page's latest scores, the digest, or any staff screen or export; the personal data report includes them. They are stored in their own tables, never as lessons, cells or works.
+  4. **Around them.** A change of the go-live date that would put a past mark on or after it is refused; past marks follow a student merge and a branch move and stay with their year.
+- Why: the owner, 25 November 2026, in chat: so that parents of a branch that went live mid-year see the marks of the lessons before it. The owner approved the decisions of the proposal: the 50,000-row limit, the name check, the repeat rules, the point-only decimals, withdrawal that keeps the rows, the go-live date guard, the student's life, staff seeing the uploads but not the marks, and the personal data report.
+- Not changed: the journal, its calculation rules, the start quarter's results and labels, the quarters "not in the system".
+- Files: `docs/spec/10-portal-notifications-release-2.md` (new section Past marks from before go-live; What parents see; The parents' digest), `docs/spec/edge-cases/academic-year.md` (go-live row; new section Past marks from before go-live), `docs/spec/edge-cases/developer-rules.md` (new row Past marks), `docs/spec/edge-cases/people-roles-accounts.md` (personal data report), `docs/spec/02-roles-and-access.md` (Academic Vice Principal), `docs/spec/13-technology.md` (Moving from myss.uz), `docs/spec/16-open-questions.md` (row 14). Proposal `docs/proposals/spec-change-past-marks-before-go-live.md`.
+
 ## 25 November 2026: decimal scores for classwork and homework
 
 - What changed:

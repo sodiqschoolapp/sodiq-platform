@@ -9,17 +9,28 @@ The first version of the portal is for parents only (owner, 6 November 2026). It
 
 | Page | What a parent sees for each child |
 | --- | --- |
-| Today | The child's lessons of the day with the mark of each one marked, or the next school day of the week when the day has none; the latest scores (see Grades). Each part links to its page. It is the first page a parent opens (owner, 19 November 2026). |
+| Today | The child's lessons of the day with the mark of each one marked, or the next school day of the week when the day has none; the latest scores saved in the platform (see Grades; never past marks). Each part links to its page. It is the first page a parent opens (owner, 19 November 2026). |
 | Timetable | The child's week, with rooms and teachers, and changes marked. |
-| Homework | Tasks by the date of the lesson where they were given and by subject, with their titles and the files attached to each homework; never the plan item's materials, which are for staff. |
-| Grades | Each score with the work's name and the lesson date (the Today page lists the scores saved last; the moment of saving orders that list and is not shown); the averages and quarter results of each subject as the staff pages show them, the current quarter marked "provisional" until it is closed; the comments marked "visible to parents". |
-| Attendance | The child's marks by day and lesson. An exempt lesson shows as exempt, never as an absence. |
+| Homework | Tasks by the date of the lesson where they were given and by subject, with their titles and the files attached to each homework; never the plan item's materials, which are for staff. Past homework from before go-live is listed with the rest (Past marks from before go-live). |
+| Grades | Each score with the work's name and the lesson date (the Today page lists the scores saved last; the moment of saving orders that list and is not shown); past scores from before go-live stand in the same list (Past marks from before go-live) and are in no average or result; the averages and quarter results of each subject as the staff pages show them, the current quarter marked "provisional" until it is closed; the comments marked "visible to parents". |
+| Attendance | The child's marks by day and lesson, past marks from before go-live included. An exempt lesson shows as exempt, never as an absence. |
 
 Later in Release 2, not in the first version: the rating (own place and the class average), announcements, the stipend and scholarship history, and the student portal (the same pages for the student's own data).
 
 - A parent sees each linked student whose link has portal access switched on, and switches between children at the top of the page. A link with portal access off shows nothing of that child, in the portal or in the digest, from the next request. A student who left the school is not shown.
 - A parent never sees staff-only comments, staff notes, the early-warning list or another student's data.
 - Parents change no school data. In the portal a parent changes only their own password, language and digest frequency.
+
+## Past marks from before go-live
+
+A branch that went live in the middle of the year (`edge/academic-year`) can import the attendance, classwork and homework of its lessons before its go-live date, so that parents see them in the portal (owner, 25 November 2026). They are history for parents only: nothing is calculated from them and staff do not see them.
+
+- **The file.** The system's Excel template, downloaded from the import page, with its column headings in Uzbek, Russian and English. One row is one student, one date, one subject: the UID; the student's name, checked against the UID; the date; the subject, by its name in any of the three languages; the lesson, the number of that subject's lesson on that day (1, 2, 3 and so on; empty means 1); the attendance mark (0, 1, 2 or 3, 4 or 5 for exempt, or empty); the classwork title, total and score; the homework title, total and score. A file holds at most 50,000 rows; a branch can import several files.
+- **The rules of a row.** A work's three cells are filled together or left empty. The title is at most 60 characters, the total is a whole number of 1 or more, and the score is from 0 to the total with at most two digits after the decimal point. A second work of one kind in the same lesson is a further row for the same student, date, subject and lesson, with the attendance empty. Homework stands on the date it was given. The date is before the branch's go-live date, in the current academic year, on a school day of the calendar. The student is a student of the branch of the import. An attendance-only subject takes attendance only.
+- **The upload.** By the Super Admin, and by the Academic Vice Principal for their own branch. The upload first shows a preview of every row with its problems. Nothing is saved until every row is clean; confirming checks everything again and saves all rows or none, and the same file is not imported twice while its upload stands. A row that repeats one already imported (the same student, date, subject and lesson, with the same work title, or a second attendance mark) is a problem of the row. The import page lists the uploads: file name, who, when, the number of rows, and whether it stands or was withdrawn.
+- **Withdrawal.** The same roles can withdraw an upload whole, with a reason; its rows are kept, hidden from parents, and a corrected file can be imported again. The upload and the withdrawal are each an entry in the audit log.
+- **What parents see.** On the Grades, Attendance and Homework pages, the imported marks, scores and homework titles stand in the same lists and the same form as the platform's own, with no separate label. The percent of a score comes from `packages/calc`, as for any score. A past mark has no teacher, slot or time: it is shown by date, subject and the lesson's number that day.
+- **Where they never appear.** Averages, quarter and year results (the start quarter stays labelled "from" its start date, and quarters before it stay "not in the system"), the rating, reports, the early-warning list, the Today page's latest scores, the parents' digest, and every staff screen and export. The one exception is the personal data report (`edge/people-roles-accounts`).
 
 ## Signing in
 
@@ -42,7 +53,7 @@ Parents receive notices as messages from the school's bot, gathered in a digest,
   - grades: each score entered or changed in that time, with the subject, the work's name, the lesson date and the score as it stands when the digest is sent;
   - comments marked "visible to parents", with the subject and the date.
 
-  A score, mark or comment that was in an earlier digest and was changed or removed since appears again, marked "corrected" or "removed". The period is by the moment an entry was saved, not by the lesson date, so a mark entered late still reaches the parent once. A button opens the portal.
+  A score, mark or comment that was in an earlier digest and was changed or removed since appears again, marked "corrected" or "removed". The period is by the moment an entry was saved, not by the lesson date, so a mark entered late still reaches the parent once. A button opens the portal. Past marks from before go-live are never in a digest.
 - **Nothing new:** no message is sent when no lesson was held and nothing was saved for any of the parent's children.
 - **Who gets it.** Only a parent whose Telegram chat is linked. A parent without Telegram sees the same things in the portal in a browser.
 - **Privacy.** Each message is checked again just before it is sent: a child whose link lost portal access or "receives notices", or who left the school, is taken out. The digest names a child by first name and class only and holds no phone, document or address.

@@ -1,6 +1,6 @@
 # Spec change proposal: past marks from before go-live
 
-Requested by the owner, 25 November 2026. Status: **waiting for the owner's approval**. Nothing under `docs/spec/` is changed yet.
+Requested by the owner, 25 November 2026. Status: **approved by the owner, 25 November 2026, and applied** (`docs/spec-changes.md`).
 
 ## 1. Every place that states the rule
 

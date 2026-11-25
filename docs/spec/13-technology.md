@@ -87,4 +87,4 @@ Not chosen: AWS (about $550 to $650 a month for the same setup, and more to oper
 
 ## Moving from myss.uz
 
-Nothing is moved from myss.uz at the start. Students and staff are imported from the system's Excel template (`04`); other imports are added feature by feature, in the formats the school will give.
+Nothing is moved from myss.uz at the start. Students and staff are imported from the system's Excel template (`04`). A branch that went live in the middle of the year can import the marks of its lessons before go-live, for parents to see (`10`, Past marks from before go-live). Other imports are added feature by feature, in the formats the school will give.
