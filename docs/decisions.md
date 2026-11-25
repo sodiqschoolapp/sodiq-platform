@@ -79,6 +79,8 @@ Plan approved on pull request #392 with corrections 1 (the ranking reorders the 
 | Substitutes ranked: language last, then subject, department, other, then fewest lessons that day in the branch, then a lesson that day ending before this one, then name; the day read is `GET /api/timetable/views/branch` (the plan named `GET /api/timetable/day`, which reads one class only) | `06`, Substitution; decisions 6 and 7 |
 | A unit's rows: the next N empty rows open for writing, bounded by the proposal's steps and the question's reads, with Continue for the rest; the window read is the plan read's own `window` (no separate windows read) | `09`; decision 8 |
 | An answer checked for its figures is not streamed: it shows once checked | `02`, Calculation stays here |
+| The figure check takes a date as one figure (2026-10-12, 12.10.2026, 12/10/2026), never its parts; the model is told to write dates so. It runs once `explain_result` was called, also when it found no breakdown (then only the person's words pass) | Review of the code, must fix 3 and should fix 1 |
+| Another teacher's plan of the subject is readable (`09`): the unit helper gives no row to write (`canEdit` false), in place of the plan's "refused by the read" | `09`, What a plan contains (readable by teachers of the subject and grade) |
 
 ## 25 November 2026: files, photos and voice in the conversation; imports and exports through it (task 11.22)
 
