@@ -43,13 +43,16 @@ async function newestMailTo(address: string): Promise<Mail | undefined> {
     return undefined;
   }
   const mails = await Promise.all(
-    files.map(async (file) => {
-      const full = path.join(OUTBOX, file);
-      return {
-        mail: JSON.parse(await readFile(full, 'utf8')) as Mail,
-        at: (await stat(full)).mtimeMs,
-      };
-    }),
+    // Only whole mails: the mailer renames a file to .json once it is written.
+    files
+      .filter((file) => file.endsWith('.json'))
+      .map(async (file) => {
+        const full = path.join(OUTBOX, file);
+        return {
+          mail: JSON.parse(await readFile(full, 'utf8')) as Mail,
+          at: (await stat(full)).mtimeMs,
+        };
+      }),
   );
   return mails
     .filter((one) => one.mail.to === address)
