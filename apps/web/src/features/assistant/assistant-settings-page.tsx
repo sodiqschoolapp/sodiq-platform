@@ -219,9 +219,11 @@ function AreaSwitches({
                   })}
                 </span>
                 <span className="text-muted-foreground">
-                  {t(`assistant.settingsPage.kind_${action.kind}`)}
-                  {!action.hasTool && ` · ${t('assistant.settingsPage.noTool')}`}
-                  {!action.defaultOn && ` · ${t('assistant.settingsPage.offAtStart')}`}
+                  {[
+                    t(`assistant.settingsPage.kind_${action.kind}`),
+                    ...(action.hasTool ? [] : [t('assistant.settingsPage.noTool')]),
+                    ...(action.defaultOn ? [] : [t('assistant.settingsPage.offAtStart')]),
+                  ].join(' · ')}
                 </span>
               </label>
             </li>

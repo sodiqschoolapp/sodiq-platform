@@ -1,6 +1,9 @@
 import { expect, type Page } from '@playwright/test';
 import { en } from '../src/i18n/locales/en';
-import { heading } from './steps';
+import { ru } from '../src/i18n/locales/ru';
+import { uz } from '../src/i18n/locales/uz';
+import { LANGUAGE_NAMES } from '../src/i18n/languages';
+import { chooseTheme, heading, openPersonMenu } from './steps';
 
 /**
  * Task 11.12 (build plan, Done when: "with the fake model the Super Admin asks 'which classes have
@@ -14,7 +17,8 @@ import { heading } from './steps';
 export async function askTheAssistant(page: Page): Promise<void> {
   // Off until switched on: no button in the top bar.
   await expect(page.getByRole('button', { name: en.assistant.open, exact: true })).toHaveCount(0);
-  await page.goto('/setup/settings');
+  // Task 11.20: the settings live on the Assistant settings page.
+  await page.goto('/setup/assistant');
   const section = page.getByRole('region', { name: en.assistant.settings.title });
   await section.getByLabel(en.assistant.settings.schoolOn, { exact: true }).check();
   await section
@@ -24,6 +28,7 @@ export async function askTheAssistant(page: Page): Promise<void> {
     .check();
   await section.getByRole('button', { name: en.form.save, exact: true }).click();
   await expect(section.getByText(en.form.saved)).toBeVisible();
+  await theSwitches(page);
 
   await page
     .getByRole('combobox', { name: en.switcher.branch, exact: true })
@@ -159,4 +164,52 @@ async function whileItWorks(page: Page): Promise<void> {
   // fix 8: no fixed wait).
   await expect(chat.getByText(answer, { exact: true })).toHaveCount(3, { timeout: 15_000 });
   await expect(chat.getByText(en.assistant.working, { exact: true })).toHaveCount(0);
+}
+
+/**
+ * Task 11.20 (`02`, Assistant, Switches): the Super Admin switches a whole area of the Super
+ * Admin's actions off and on again on the Assistant settings page, and reads the page in the
+ * three languages and in dark mode. Each switch is saved when pressed.
+ */
+async function theSwitches(page: Page): Promise<void> {
+  const actions = page.getByRole('region', { name: en.assistant.settingsPage.actions });
+  const area = actions.locator('details').filter({ hasText: en.assistant.areas.rooms });
+  await area.locator('summary').click();
+  const whole = area.getByLabel(
+    en.assistant.settingsPage.areaSwitch.replace('{{area}}', en.assistant.areas.rooms),
+    { exact: true },
+  );
+  await expect(whole).toBeChecked();
+  await whole.uncheck();
+  await expect(whole).not.toBeChecked();
+  await expect(area.getByText(/^0 of \d+ on$/)).toBeVisible();
+  await whole.check();
+  await expect(whole).toBeChecked();
+  // The heavy actions start off (`02`, Switches): a password reset says so.
+  const access = actions.locator('details').filter({ hasText: en.assistant.areas.account_access });
+  await access.locator('summary').click();
+  await expect(access.getByText(en.assistant.settingsPage.offAtStart).first()).toBeVisible();
+  // The page in Uzbek and Russian, then in English again, and in dark mode.
+  let now: typeof en | typeof uz | typeof ru = en;
+  for (const [language, texts] of [
+    ['uz', uz],
+    ['ru', ru],
+    ['en', en],
+  ] as const) {
+    await openPersonMenu(page, now);
+    await page.getByRole('menuitemradio', { name: LANGUAGE_NAMES[language], exact: true }).click();
+    await expect(
+      page.getByRole('region', { name: texts.assistant.settingsPage.actions }),
+    ).toBeVisible();
+    await expect(
+      page
+        .getByRole('region', { name: texts.assistant.settingsPage.actions })
+        .getByText(texts.assistant.areas.rooms, { exact: true }),
+    ).toBeVisible();
+    now = texts;
+  }
+  await chooseTheme(page, en, 'dark');
+  await expect(page.locator('html')).toHaveClass(/dark/);
+  await expect(heading(page, en.assistant.settingsPage.title)).toBeVisible();
+  await chooseTheme(page, en, 'light');
 }
