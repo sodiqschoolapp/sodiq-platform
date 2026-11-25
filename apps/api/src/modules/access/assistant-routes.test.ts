@@ -17,7 +17,13 @@ import {
 import { createTestApp } from '../../testing/create-test-app.js';
 import { ROUTE_ACCESS } from '../../testing/route-access-list.js';
 import { routesOf, type Route } from '../../testing/routes.js';
-import { OPEN_FILTER, STRICT_FILTER, isSecretKey } from '../assistant/field-filter.js';
+import {
+  OPEN_FILTER,
+  SECRET_KEY_HINTS,
+  STRICT_FILTER,
+  isSecretKey,
+  secretsOf,
+} from '../assistant/field-filter.js';
 import { generatedOf, requiredFieldsWithheld, toolsOf } from '../assistant/tools.js';
 import { WARNING_FLAGS } from './assistant-change-routes.js';
 import { AssistantRoutes } from './assistant-routes.check.js';
@@ -48,6 +54,18 @@ const REPO_ROOT = path.resolve(API_ROOT, '../..');
  */
 const HEAVY_WORDS =
   /roles|tutors|acting-teachers|head-teacher|account|password|session|slips|second-step|publish|withdraw|\/start|close|closing|recalculation|forced|integration-keys|reopen/;
+
+/** The listed routes whose answer gives a secret out (a first-password slip, a key's secret). */
+const SECRET_ROUTES: readonly string[] = [
+  'POST /api/integration-keys',
+  'POST /api/people/classes/:classId/parent-slips',
+  'POST /api/people/parents/:relativeId/password-reset',
+  'POST /api/people/staff/:id/account',
+  'POST /api/people/staff/:id/account/password-reset',
+  'POST /api/people/staff/:id/account/second-step-reset',
+  'POST /api/people/staff/:id/status',
+  'POST /api/people/staff/imports/:id/confirm',
+];
 
 const NOT_HEAVY: Readonly<Record<string, string>> = {
   'POST /api/people/staff/:id/status':
@@ -299,6 +317,111 @@ describe('the actions open to the assistant', () => {
         expect(requiredFieldsWithheld(name, OPEN_FILTER), name).toEqual([]);
         expect(isSecretKey('password')).toBe(true);
       }
+    }
+  });
+
+  // The floor (plan, test 5; plan review 4): every key of a listed route's answer that looks like
+  // a secret (a password, a secret, a token, the second step, recovery codes, a session) is one
+  // the floor removes, or named here as no secret; and the routes that give a secret out are
+  // these, each tested (`assistant-switches.test.ts`, the password reset; the others give the
+  // same slip or secret through the same floor).
+  it('removes every key of a listed answer that looks like a secret, and knows each route that gives one out', () => {
+    const document = JSON.parse(
+      readFileSync(path.join(API_ROOT, 'openapi.generated.json'), 'utf8'),
+    ) as {
+      paths: Record<
+        string,
+        Record<
+          string,
+          { responses?: Record<string, { content?: Record<string, { schema?: unknown }> }> }
+        >
+      >;
+      components: { schemas: Record<string, unknown> };
+    };
+    const resolve = (schema: unknown): Record<string, unknown> | undefined => {
+      if (schema === null || typeof schema !== 'object') return undefined;
+      const ref = (schema as { $ref?: string }).$ref;
+      return (
+        ref === undefined ? schema : document.components.schemas[ref.split('/').pop() ?? '']
+      ) as Record<string, unknown> | undefined;
+    };
+    const keysOf = (schema: unknown, seen = new Set<unknown>()): string[] => {
+      const one = resolve(schema);
+      if (one === undefined || seen.has(one)) return [];
+      seen.add(one);
+      const properties = (one.properties ?? {}) as Record<string, unknown>;
+      return [
+        ...Object.entries(properties).flatMap(([key, value]) => [key, ...keysOf(value, seen)]),
+        ...keysOf(one.items, seen),
+        ...[
+          ...((one.anyOf as unknown[] | undefined) ?? []),
+          ...((one.oneOf as unknown[] | undefined) ?? []),
+          ...((one.allOf as unknown[] | undefined) ?? []),
+        ].flatMap((option) => keysOf(option, seen)),
+      ];
+    };
+    const unknown: string[] = [];
+    const giving = new Set<string>();
+    const listed = new Set(ASSISTANT_ROLES.flatMap((role) => Object.keys(linesOf(role))));
+    for (const name of listed) {
+      const [method = '', route = ''] = name.split(' ');
+      const operation =
+        document.paths[route.replace(/:([A-Za-z0-9_]+)/g, '{$1}')]?.[method.toLowerCase()];
+      for (const response of Object.values(operation?.responses ?? {})) {
+        for (const key of keysOf(response.content?.['application/json']?.schema)) {
+          const lower = key.toLowerCase();
+          if (!SECRET_KEY_HINTS.some((hint) => lower.includes(hint))) continue;
+          if (isSecretKey(key)) {
+            if (['password', 'secret'].includes(lower)) giving.add(name);
+          } else {
+            unknown.push(`${name}: ${key}`);
+          }
+        }
+      }
+    }
+    expect(unknown).toEqual([]);
+    expect([...giving].sort()).toEqual([...SECRET_ROUTES].sort());
+    // One case per route that gives a secret out: an answer of its own schema, every text a
+    // sentinel of its key, reaches the model with no secret and gives each secret to the person.
+    const sample = (schema: unknown, key: string, seen: Set<unknown>): unknown => {
+      const one = resolve(schema);
+      if (one === undefined || seen.has(one)) return null;
+      const options = [
+        ...((one.anyOf as unknown[] | undefined) ?? []),
+        ...((one.oneOf as unknown[] | undefined) ?? []),
+      ];
+      if (options.length > 0)
+        return sample(
+          options.find((option) => resolve(option)?.type !== 'null'),
+          key,
+          seen,
+        );
+      const inner = new Set(seen).add(one);
+      if (one.type === 'array') return [sample(one.items, key, inner)];
+      if (one.type === 'object' || one.properties !== undefined) {
+        return Object.fromEntries(
+          Object.entries((one.properties ?? {}) as Record<string, unknown>).map(([name, value]) => [
+            name,
+            sample(value, name, inner),
+          ]),
+        );
+      }
+      return one.type === 'string' ? `sentinel-${key}` : one.type === 'boolean' ? false : 1;
+    };
+    for (const name of SECRET_ROUTES) {
+      const [method = '', route = ''] = name.split(' ');
+      const operation =
+        document.paths[route.replace(/:([A-Za-z0-9_]+)/g, '{$1}')]?.[method.toLowerCase()];
+      const answer = Object.entries(operation?.responses ?? {})
+        .filter(([status]) => status.startsWith('2'))
+        .map(([, response]) =>
+          sample(response.content?.['application/json']?.schema, '', new Set()),
+        )[0];
+      const text = JSON.stringify(answer);
+      const secret = text.includes('sentinel-password') ? 'sentinel-password' : 'sentinel-secret';
+      expect(text, name).toContain(secret);
+      expect(JSON.stringify(OPEN_FILTER.read(answer)), name).not.toContain(secret);
+      expect(JSON.stringify(secretsOf(answer)), name).toContain(secret);
     }
   });
 
