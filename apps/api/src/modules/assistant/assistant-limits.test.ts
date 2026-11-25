@@ -92,6 +92,7 @@ describe('the assistant: the switch, the daily limit and the monthly cap', () =>
       available: false,
       refusal: 'assistant_off',
       questionsLeftToday: 30,
+      files: false,
     });
     let response = await ask(scene, scene.admin, scene.north, { text: 'Hello?' });
     expect([response.status, errorCode(response)]).toEqual([409, 'assistant_off']);
@@ -113,7 +114,12 @@ describe('the assistant: the switch, the daily limit and the monthly cap', () =>
     expect((await read(scene, scene.admin, '/api/classes', scene.north)).status).toBe(200);
 
     expect((await put(settingsBody())).status).toBe(200);
-    expect(await status()).toEqual({ available: true, refusal: null, questionsLeftToday: 30 });
+    expect(await status()).toEqual({
+      available: true,
+      refusal: null,
+      questionsLeftToday: 30,
+      files: false,
+    });
     expect((await ask(scene, scene.admin, scene.north, { text: 'Hello?' })).status).toBe(202);
   });
 
@@ -337,7 +343,12 @@ describe('the assistant: the switch, the daily limit and the monthly cap', () =>
         ${scene.clock.now()}
       from generate_series(1, 1200) n
     `.execute(scene.database.migrator);
-    expect(await status()).toEqual({ available: true, refusal: null, questionsLeftToday: null });
+    expect(await status()).toEqual({
+      available: true,
+      refusal: null,
+      questionsLeftToday: null,
+      files: false,
+    });
     expect((await ask(scene, scene.admin, scene.north, { text: 'One more.' })).status).toBe(202);
     await put(settingsBody());
   });
@@ -436,6 +447,7 @@ describe('the assistant: the switch, the daily limit and the monthly cap', () =>
       available: false,
       refusal: 'assistant_daily_limit',
       questionsLeftToday: 0,
+      files: false,
     });
     const third = await ask(scene, scene.admin, scene.north, { text: 'Three.' });
     expect([third.status, errorCode(third)]).toEqual([409, 'assistant_daily_limit']);
@@ -471,7 +483,12 @@ describe('the assistant: the switch, the daily limit and the monthly cap', () =>
         })
         .execute();
     }
-    expect(await status()).toEqual({ available: true, refusal: null, questionsLeftToday: 1 });
+    expect(await status()).toEqual({
+      available: true,
+      refusal: null,
+      questionsLeftToday: 1,
+      files: false,
+    });
     await put(settingsBody());
   });
 

@@ -52,6 +52,8 @@ const RECORD_TYPES = [
   'integration_key',
   // Task 11.12: a conversation of the assistant (its restore).
   'assistant_conversation',
+  // Task 11.22: a file attached, recorded or exported in a conversation.
+  'assistant_file',
 ] as const;
 
 /** The name of a kind of record; a kind the list does not hold shows as stored. */

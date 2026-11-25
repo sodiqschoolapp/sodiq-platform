@@ -13,6 +13,8 @@ import { ApiException } from '../../http/api-exception.js';
 import type { Access } from '../access/permission.guard.js';
 import { Audit } from '../audit/audit.service.js';
 import { AssistantEngine } from './assistant.engine.js';
+import { AssistantFiles } from './assistant-files.service.js';
+import type { StoredFile } from '../../http/stored-file.js';
 import { AssistantSettingsService, MICROS_PER_DOLLAR } from './assistant-settings.service.js';
 import {
   conversationOf,
@@ -35,7 +37,43 @@ export class AssistantConversations {
     private readonly audit: Audit,
     private readonly settings: AssistantSettingsService,
     private readonly engine: AssistantEngine,
+    private readonly files: AssistantFiles,
   ) {}
+
+  /**
+   * Task 11.22: a file of the person's own conversation, under the rule of reading one (a branch
+   * and role held now, not archived); anything else 404.
+   */
+  async ownFile(
+    access: Access,
+    held: readonly HeldRole[],
+    fileId: string,
+    requestId: string,
+  ): Promise<StoredFile> {
+    return this.files.ownDownload(
+      access,
+      (row) => holds(held, row),
+      await this.everyBranch(),
+      fileId,
+      requestId,
+    );
+  }
+
+  /** Task 11.22 (review of the plan, correction 3): the Super Admin's download of any file. */
+  async anyFile(
+    access: Access,
+    conversationId: string,
+    fileId: string,
+    requestId: string,
+  ): Promise<StoredFile> {
+    return this.files.anyDownload(
+      access,
+      await this.everyBranch(),
+      conversationId,
+      fileId,
+      requestId,
+    );
+  }
 
   /** Every branch, so that a person's own conversations of every branch are read (decision 9). */
   private async everyBranch(): Promise<string[]> {
@@ -71,7 +109,12 @@ export class AssistantConversations {
               : this.settings.modelName() === null
                 ? 'assistant_model_unavailable'
                 : null;
-      return { available: refusal === null, refusal, questionsLeftToday: left };
+      return {
+        available: refusal === null,
+        refusal,
+        questionsLeftToday: left,
+        files: this.files.configured,
+      };
     });
   }
 

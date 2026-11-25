@@ -19,7 +19,11 @@ export const ASSISTANT_ACTION_KINDS = [
 
 export type AssistantActionKind = (typeof ASSISTANT_ACTION_KINDS)[number];
 
-/** The kinds the model is given no tool for until task 11.22 (plan decision 7). */
+/**
+ * The kinds the model is given no tool of their own for (task 11.20, plan decision 7); since task
+ * 11.22 an import upload and an export run through the tools of files (`import_attachment`,
+ * `export_file`), and the other routes of these kinds have none.
+ */
 export const ASSISTANT_KINDS_WITHOUT_TOOL: readonly AssistantActionKind[] = [
   'export',
   'file',

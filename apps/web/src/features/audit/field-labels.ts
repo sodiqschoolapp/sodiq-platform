@@ -234,6 +234,14 @@ const LABELS: Record<string, Record<string, ParseKeys>> = {
   assistant_conversation: {
     restoredAt: 'assistant.conversationsPage.restoredAt',
   },
+  // Task 11.22: a file of a conversation, uploaded or downloaded.
+  assistant_file: {
+    kind: 'assistant.files.fields.kind',
+    name: 'assistant.files.fields.name',
+    mediaType: 'assistant.files.fields.mediaType',
+    size: 'assistant.files.fields.size',
+    conversationId: 'assistant.files.fields.conversation',
+  },
 };
 
 /**
@@ -260,6 +268,10 @@ export function codesOf(type: string, key: string): string | undefined {
   // Task 11.20: the area of a switch of the assistant, by its name on the settings page.
   if (type === 'assistant_switch' && field === 'area') {
     return 'assistant.areas';
+  }
+  // Task 11.22: the kind of a file of the assistant, by its name.
+  if (type === 'assistant_file' && field === 'kind') {
+    return 'assistant.files.kinds';
   }
   if (field === 'status') {
     return type === 'student'

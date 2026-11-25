@@ -148,8 +148,10 @@ describe('the Super Admin’s switches of the assistant’s actions', () => {
     expect(actionOf('super_admin', 'PUT /api/setup/rooms/:id')?.on).toBe(true);
     expect(actionOf('teacher', 'POST /api/journal/lessons/:lessonId/attendance')?.on).toBe(true);
     expect(actionOf('teacher', 'PUT /api/setup/rooms/:id')).toBeUndefined();
-    // An export is listed with no tool yet (plan decision 7).
-    expect(actionOf('super_admin', 'POST /api/people/students/export')?.hasTool).toBe(false);
+    // Task 11.22: an export runs through export_file; a stored photo of a record has no tool
+    // (11.22, plan decision 7).
+    expect(actionOf('super_admin', 'POST /api/people/students/export')?.hasTool).toBe(true);
+    expect(actionOf('super_admin', 'PUT /api/people/students/:id/photo')?.hasTool).toBe(false);
     // Another role is refused, in the route and through the guard (`ROUTE_ACCESS` covers each).
     const vice = await scene.kit.completeSession('Zarina', 'Qodirova');
     await scene.kit.giveRole(vice.account.id, {

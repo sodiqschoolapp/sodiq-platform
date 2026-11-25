@@ -16,7 +16,7 @@ import { setWindowWidth } from '@/testing/window-width';
 // are invented.
 
 const uid = (n: number): string => `0199a000-0000-7000-8000-${String(n).padStart(12, '0')}`;
-const ON = { available: true, refusal: null, questionsLeftToday: 30 };
+const ON = { available: true, refusal: null, questionsLeftToday: 30, files: false };
 const ASKED_AT = '2026-11-20T05:00:00.000Z';
 
 const admin = () =>

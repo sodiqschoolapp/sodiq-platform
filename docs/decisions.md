@@ -65,6 +65,27 @@ The owner's answers to the decided-ahead questions for Phase 10, given in chat o
 19. Production deploys only after 18:00 or at the weekend, Tashkent time.
 20. The test environment stays after go-live; every change is tried there first.
 
+## 25 November 2026: files, photos and voice in the conversation; imports and exports through it (task 11.22)
+
+Plan approved on pull request #390 with corrections 1 (the run mark used once), 2 (previews and reports through the field filter), 3 (the Super Admin downloads the files of any conversation; decision 12 changed), 4 (the foreign key of a link to its file's branch) and 5 (decision 7 written as left undone). Approved by the owner in chat on 25 November 2026 (stop-list item 5): `PermissionGuard.assistantCall` may let an assistant request to a line of kind `file`, `download` or `export` through, only with a single-use run mark that `AssistantCalls` issued for that one request, checked against the account, the chosen role, the route and the branch the way a step is checked; `decide` still runs with the chosen role's assignments only, so no role gains a right; the audit entries are marked "via assistant". Both imports and exports. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first.** `PUT /api/assistant/files` is a declared exception of the JSON-only rule: raw body, the listed types, 10 MB | The build plan names `json-only.ts`; a raw body keeps the rule's reason; decision 1 |
+| **Look first.** An import's upload runs at once with a run mark; it keeps the rows and the preview, saves no person; the save is the proposal's Confirm | Build plan: "the proposal is the preview's Confirm"; decision 2 |
+| **Look first.** An export runs at once, without a proposal, logged by its own route "via assistant"; a download from the conversation is logged again | It changes no data; `02`: "prepares as a file the person downloads"; decision 3 |
+| **Look first.** The journal's background export has no tool; the answer links the exports page | It writes a request and makes the file later; decision 4 |
+| **Look first.** No `.docx`: reading it needs a library; `/spec-change` of `02` proposed | Decision 5 |
+| **Look first.** The Done when's "as a Principal" is tested as the Academic Vice Principal: the Principal has no assistant | `02`, Who has it; decision 6 |
+| **Look first.** The other file routes (photos, plan files, documents, reasons of absence) get no tool | They need a step that carries a file; decision 7 |
+| **Look first.** A Teacher asking for an export in the Teacher role is refused even when another role of theirs exports | The chosen role's list only (11.12) |
+| Files on R2 under `assistant/<id>`; no store, no paperclip or microphone | `13`; decision 8 |
+| An upload not sent within 24 hours cannot be sent; nothing deletes it | Decision 9 |
+| A recorded question's words are stored as a message of kind read (`transcribe_voice`), since a question is insert-only, and shown as the question's text | The table grants no update; decision 11 |
+| The Super Admin downloads any conversation's files through `GET /api/assistant/all-conversations/:id/files/:fileId` (monitoring view), audited | Review correction 3; decision 12 changed |
+| 5 files and 14 MB a question; Excel and voice 5 MB, PDF and photo 10 MB | Decision 13 |
+| While relatives are kept from the model, an import preview's `held` list (a relative holding a phone) reaches it as "[removed]" | Review correction 2 |
+
 ## 25 November 2026: fewer limits, and answers that are easier to use (task 11.21)
 
 Plan approved on pull request #388 with corrections 1 (the step bounds 1 to 200 everywhere) and 2 (the array check kept beside the wider length). Approved by the owner in chat on 25 November 2026 (stop-list item 1): larger questions may spend more of the monthly cap, which stays always in force. Flagged on issue #42.

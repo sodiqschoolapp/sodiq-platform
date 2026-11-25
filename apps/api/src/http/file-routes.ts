@@ -1,4 +1,6 @@
 import {
+  ASSISTANT_UPLOAD_MAX_BYTES,
+  ASSISTANT_UPLOAD_TYPES,
   EXEMPTION_FILE_MAX_BYTES,
   EXEMPTION_FILE_TYPES,
   PHOTO_MAX_BYTES,
@@ -168,6 +170,20 @@ export const PATTERN_IMPORT_ROUTE: FileRoute = {
   tooLarge: 'import_file_too_large',
 };
 
+/**
+ * A file attached to a question of the assistant, or a recorded question (task 11.22, plan
+ * decision 1, Look first; `02`, Assistant, Files, photos and voice): an Excel workbook, a PDF, a
+ * photo or a recording of at most 10 MB here; the handler holds each type to its own limit. The
+ * role, the kind and the name travel in the query.
+ */
+export const ASSISTANT_FILE_ROUTE: FileRoute = {
+  method: 'PUT',
+  path: '/api/assistant/files',
+  types: ASSISTANT_UPLOAD_TYPES,
+  maxBytes: ASSISTANT_UPLOAD_MAX_BYTES,
+  tooLarge: 'assistant_file_too_large',
+};
+
 export const FILE_ROUTES: readonly FileRoute[] = [
   STAFF_PHOTO_ROUTE,
   OWN_PHOTO_ROUTE,
@@ -180,6 +196,7 @@ export const FILE_ROUTES: readonly FileRoute[] = [
   SUBJECT_IMPORT_ROUTE,
   LOAD_IMPORT_ROUTE,
   PATTERN_IMPORT_ROUTE,
+  ASSISTANT_FILE_ROUTE,
 ];
 
 /**

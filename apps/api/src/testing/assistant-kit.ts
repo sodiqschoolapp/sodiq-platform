@@ -3,6 +3,7 @@ import { BRANCH_HEADER, type AssistantRole, type PermissionTable } from '@sodiq/
 import request from 'supertest';
 import type { AssistantRouteLine } from '../modules/access/assistant-routes.js';
 import { insertBranch } from './branch-filter-sql.js';
+import type { PhotoStore } from '../modules/people/photo-store.js';
 import { ClassesKit } from './classes-kit.js';
 import { createTestApp } from './create-test-app.js';
 import { FakeModel } from './assistant-model.js';
@@ -43,6 +44,8 @@ export async function assistantScene(
     routeLines?: Readonly<Record<string, AssistantRouteLine>>;
     on?: boolean;
     permissionTable?: PermissionTable;
+    /** Task 11.22: the store of the files; without it the configuration's (none). */
+    photoStore?: PhotoStore;
   } = {},
 ): Promise<AssistantScene> {
   const database = await createTestDatabase();
@@ -63,6 +66,7 @@ export async function assistantScene(
     listen: true,
     ...(options.routeLines === undefined ? {} : { assistantRouteLines: options.routeLines }),
     ...(options.permissionTable === undefined ? {} : { permissionTable: options.permissionTable }),
+    ...(options.photoStore === undefined ? {} : { photoStore: options.photoStore }),
   });
   const kit = signInKit(app);
   const people = new ClassesKit(database.migrator);
@@ -109,6 +113,9 @@ export function send(
     place?: unknown;
     /** Task 11.21: Continue. */
     continue?: true;
+    /** Task 11.22: the files attached, and the recording. */
+    files?: string[];
+    voice?: string;
   },
 ) {
   return request(scene.app.getHttpServer() as Parameters<typeof request>[0])
@@ -134,6 +141,8 @@ export async function ask(
     place?: unknown;
     /** Task 11.21: Continue. */
     continue?: true;
+    files?: string[];
+    voice?: string;
   },
 ): Promise<Awaited<ReturnType<typeof send>>> {
   return settle(scene.app, await send(scene, cookie, branch, body), cookie, branch);
@@ -185,4 +194,41 @@ export function noticeOf(response: { body: unknown }): string | undefined {
   ).conversation?.messages;
   const last = messages?.at(-1);
   return last?.kind === 'notice' ? last.code : undefined;
+}
+
+/** Task 11.22: uploads a file for a question, as a session, in a branch. */
+export function upload(
+  scene: Pick<AssistantScene, 'app'>,
+  cookie: string,
+  branch: string,
+  file: { bytes: Buffer; type: string; name?: string; kind?: 'attachment' | 'voice' },
+  role: AssistantRole = 'super_admin',
+) {
+  const query = new URLSearchParams({
+    role,
+    kind: file.kind ?? 'attachment',
+    name: file.name ?? 'file',
+  });
+  return request(scene.app.getHttpServer() as Parameters<typeof request>[0])
+    .put(`/api/assistant/files?${query.toString()}`)
+    .set('Cookie', cookie)
+    .set(BRANCH_HEADER, branch)
+    .set('Content-Type', file.type)
+    .send(file.bytes);
+}
+
+/** Task 11.22: bytes that start as a file of the type (the route checks the first bytes). */
+export function bytesOf(type: string, size = 64): Buffer {
+  const heads: Record<string, Buffer> = {
+    'image/png': Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+    'image/jpeg': Buffer.from([0xff, 0xd8, 0xff, 0xe0]),
+    'application/pdf': Buffer.from('%PDF-1.4\n', 'latin1'),
+    'audio/webm': Buffer.from([0x1a, 0x45, 0xdf, 0xa3]),
+    'audio/ogg': Buffer.from('OggS', 'latin1'),
+  };
+  const head = heads[type];
+  if (head === undefined) throw new Error(`No head for ${type}.`);
+  const bytes = Buffer.alloc(Math.max(size, head.length), 0x20);
+  head.copy(bytes);
+  return bytes;
 }

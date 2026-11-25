@@ -1079,6 +1079,15 @@ export const uz: Texts<'one' | 'other'> = {
       'Taklifda har bir yozuv uchun bitta oʻzgarish boʻladi. Ikkinchisini birinchisi tasdiqlangandan keyin soʻrang.',
     assistant_step_invalid:
       'Bu oʻzgarish tasdiqlangan taklif tomonidan yuborilmagan va bajarilmadi.',
+    assistant_files_not_configured:
+      'Bu serverda fayl biriktirib boʻlmaydi: fayl ombori sozlanmagan.',
+    assistant_files_unavailable:
+      'Fayl ombori javob bermadi. Bir daqiqadan soʻng qayta urinib koʻring.',
+    assistant_file_too_large:
+      'Fayl juda katta: Excel fayli yoki ovozli yozuv 5 MB gacha, PDF yoki rasm 10 MB gacha.',
+    assistant_files_too_large:
+      'Bitta savoldagi fayllar jami 14 MB dan oshmasligi kerak. Bir faylni olib tashlang.',
+    assistant_file_not_found: 'Bu faylni yuborib boʻlmaydi: uni qayta biriktiring.',
     request_refused:
       'Soʻrov rad etildi. Qayta urinib koʻring yoki administratorga murojaat qiling.',
     already_exists: 'Bu nomdagi yozuv bu yerda allaqachon bor. Boshqa nom tanlang.',
@@ -1343,6 +1352,35 @@ export const uz: Texts<'one' | 'other'> = {
     reading: 'Oʻqimoqda: {{what}}',
     noAnswer: 'Javob kelmadi. Qayta soʻrang.',
     continue: 'Davom ettirish',
+    files: {
+      fields: {
+        kind: 'Turi',
+        name: 'Fayl nomi',
+        mediaType: 'Format',
+        size: 'Hajmi, bayt',
+        conversation: 'Suhbat',
+      },
+      kinds: {
+        attachment: 'Biriktirilgan fayl',
+        voice: 'Ovozli savol',
+        export: 'Eksport',
+      },
+      attach: 'Fayl biriktirish',
+      attached: 'Biriktirilgan fayllar',
+      remove: '{{name}} ni olib tashlash',
+      record: 'Savolni ovoz bilan berish',
+      stop: 'Toʻxtatish va yuborish',
+      recording: 'Yozilmoqda {{time}}',
+      voiceSent: 'Ovozli savol',
+      spoken: 'Ovoz bilan berilgan savol',
+      files: 'Fayllar',
+      download: '{{name}} ni yuklab olish',
+      recordingFile: 'Ovozli yozuv',
+      tooMany: 'Bitta savolga koʻpi bilan 5 ta fayl biriktiriladi. Avval bittasini olib tashlang.',
+      noRecorder: 'Bu brauzer ovoz yozolmaydi. Savolni yozib yuboring.',
+      microphoneRefused:
+        'Mikrofonga ruxsat berilmagan. Brauzerda ruxsat bering yoki savolni yozing.',
+    },
     continued: 'Davom ettirish',
     undoAsked: 'Tasdiqlangan oʻzgarishlarni bekor qilish',
     undoAskedAt: '{{time}} dagi taklifning tasdiqlangan oʻzgarishlarini bekor qilish',
@@ -5021,6 +5059,7 @@ export const uz: Texts<'one' | 'other'> = {
       feedback_report: 'Fikr-mulohaza',
       integration_key: 'Integratsiya kaliti',
       assistant_conversation: 'Yordamchi suhbati',
+      assistant_file: 'Yordamchi fayli',
     },
     actions: {
       auth: {
@@ -5073,6 +5112,10 @@ export const uz: Texts<'one' | 'other'> = {
       },
       assistant_switch: {
         change: 'Yordamchi amali yoqildi yoki oʻchirildi',
+      },
+      assistant_file: {
+        upload: 'Yordamchiga fayl biriktirildi',
+        download: 'Yordamchi fayli yuklab olindi',
       },
       assistant_conversation: {
         restore: 'Yordamchi suhbati tiklandi',

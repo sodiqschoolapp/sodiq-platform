@@ -1,7 +1,10 @@
+import { randomUUID } from 'node:crypto';
 import type { AddressInfo } from 'node:net';
 import { Injectable } from '@nestjs/common';
 import { HttpAdapterHost } from '@nestjs/core';
 import {
+  ASSISTANT_RUN_HEADER,
+  ASSISTANT_UPLOAD_MAX_BYTES,
   ASSISTANT_STEP_HEADER,
   BRANCH_HEADER,
   REQUEST_KEY_HEADER,
@@ -15,6 +18,24 @@ import { AssistantSwitches } from './assistant-switches.service.js';
 /** How long one read may take, and how much of its answer is read (plan review, should fix 6). */
 export const READ_TIMEOUT_MS = 10_000;
 export const READ_MAX_BYTES = 2 * 1024 * 1024;
+
+/**
+ * Task 11.22: the largest file answer an export may give the assistant, the bound of
+ * `assistant_files.size_bytes` (10 MB; spec review must fix 10).
+ */
+export const FILE_MAX_BYTES = ASSISTANT_UPLOAD_MAX_BYTES;
+
+/** Task 11.22: a file the platform answered (an export), with its type and name. */
+export interface FileAnswer {
+  bytes: Buffer;
+  mediaType: string;
+  name: string;
+}
+
+/** What a run answered: a file, or a JSON body (a preview, a report, a refusal). */
+export type RunOutcome =
+  | { status: number; body: unknown; file?: FileAnswer; failure?: undefined }
+  | { status: 0; failure: 'timeout' | 'too_large' | 'unreachable' };
 
 /** What a read answered: the status and the body, or why nothing came back. */
 export type ReadOutcome =
@@ -137,6 +158,114 @@ export class AssistantDispatcher {
     }
     return { status: response.status, body };
   }
+
+  /**
+   * Task 11.22 (approved by the owner on 25 November 2026, stop-list item 5): an import upload or
+   * an export, sent as the person with a single-use run mark of this account, role, route and
+   * branch, issued for this one request only. The bytes of an upload go as the raw body with the
+   * file's own type; a file answer is read up to 10 MB with its type and name. The same switch
+   * check as every other request.
+   */
+  async run(
+    method: string,
+    url: string,
+    payload: { json: unknown } | { bytes: Buffer; type: string } | undefined,
+    as: { pass: SessionPass; branchId: string; role: AssistantRole; accountId: string },
+    route: string,
+  ): Promise<RunOutcome & { runId: string }> {
+    const runId = randomUUID();
+    if (!url.startsWith('/api/') || !route.startsWith(`${method} `)) {
+      throw new Error('The assistant runs only routes of the API, by their own method.');
+    }
+    const facts = this.routes.factsOf(route);
+    if (facts === undefined || this.routes.linesOf(as.role)[route] === undefined) {
+      return { ...refusal('assistant_route_closed'), runId };
+    }
+    if (!pathFits(url, route.slice(route.indexOf(' ') + 1))) {
+      throw new Error('The assistant sends a route only to its own path.');
+    }
+    if (!this.switches.isOn(await this.switches.rows(), as.role, route)) {
+      return { ...refusal('assistant_action_off'), runId };
+    }
+    const outcome = await this.calls.whileRun(
+      { stepId: runId, accountId: as.accountId, branchId: as.branchId, role: as.role, route },
+      async (): Promise<RunOutcome> => {
+        let response: Response;
+        try {
+          response = await fetch(`${this.origin()}${url}`, {
+            method,
+            headers: {
+              Accept: '*/*',
+              Cookie: as.pass.cookieHeader,
+              [BRANCH_HEADER]: as.branchId,
+              ...this.calls.headersFor(as.role),
+              [ASSISTANT_RUN_HEADER]: runId,
+              [REQUEST_KEY_HEADER]: runId,
+              ...(payload === undefined
+                ? {}
+                : { 'Content-Type': 'json' in payload ? 'application/json' : payload.type }),
+            },
+            ...(payload === undefined
+              ? {}
+              : { body: 'json' in payload ? JSON.stringify(payload.json) : payload.bytes }),
+            redirect: 'error',
+            signal: AbortSignal.timeout(READ_TIMEOUT_MS * 3),
+          });
+        } catch (error) {
+          return {
+            status: 0,
+            failure:
+              error instanceof Error && error.name === 'TimeoutError' ? 'timeout' : 'unreachable',
+          };
+        }
+        const type = (response.headers.get('content-type') ?? '').split(';')[0]?.trim() ?? '';
+        let bytes: Buffer | undefined;
+        try {
+          bytes = await readBytes(
+            response,
+            type === 'application/json' ? READ_MAX_BYTES : FILE_MAX_BYTES,
+          );
+        } catch {
+          return { status: 0, failure: 'timeout' };
+        }
+        if (bytes === undefined) return { status: 0, failure: 'too_large' };
+        if (type === 'application/json' || response.status >= 400 || bytes.length === 0) {
+          let body: unknown;
+          try {
+            body = bytes.length === 0 ? null : (JSON.parse(bytes.toString('utf8')) as unknown);
+          } catch {
+            body = null;
+          }
+          return { status: response.status, body };
+        }
+        return {
+          status: response.status,
+          body: null,
+          file: {
+            bytes,
+            mediaType: type,
+            name: fileNameOf(response.headers.get('content-disposition')),
+          },
+        };
+      },
+    );
+    return { ...outcome, runId };
+  }
+}
+
+/** The file name of a `Content-Disposition` header: `filename*` first, then `filename`. */
+export function fileNameOf(header: string | null): string {
+  if (header === null) return 'file';
+  const extended = /filename\*=UTF-8''([^;]+)/i.exec(header)?.[1];
+  if (extended !== undefined) {
+    try {
+      return decodeURIComponent(extended).slice(0, 200) || 'file';
+    } catch {
+      // Falls through to the plain name.
+    }
+  }
+  const plain = /filename="([^"]*)"/i.exec(header)?.[1];
+  return plain?.slice(0, 200) || 'file';
 }
 
 /** Whether the path of a URL is the route's template with its values (`[A-Za-z0-9_-]+`). */
@@ -155,6 +284,20 @@ function pathFits(url: string, template: string): boolean {
 /** A refusal of the dispatcher itself, as the guard would answer it; nothing was sent. */
 function refusal(code: 'assistant_route_closed' | 'assistant_action_off'): ReadOutcome {
   return { status: 403, body: { error: { code, message: 'Not sent by the assistant.' } } };
+}
+
+/** The answer's bytes, or `undefined` past `limit` (leaving the loop cancels the stream). */
+async function readBytes(response: Response, limit: number): Promise<Buffer | undefined> {
+  const stream = response.body;
+  if (stream === null) return Buffer.alloc(0);
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  for await (const value of stream as unknown as AsyncIterable<Uint8Array>) {
+    size += value.byteLength;
+    if (size > limit) return undefined;
+    chunks.push(value);
+  }
+  return Buffer.concat(chunks);
 }
 
 /** The answer's text, or `undefined` past `READ_MAX_BYTES` (leaving the loop cancels the stream). */

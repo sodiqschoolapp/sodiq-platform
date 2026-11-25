@@ -17,7 +17,7 @@ const uid = (n: number): string => `0199a000-0000-7000-8000-${String(n).padStart
 const admin = () =>
   sessionOf({ assignments: [{ role: 'super_admin', branchId: null }], branches: [NORTH] });
 
-const ON = { available: true, refusal: null, questionsLeftToday: null };
+const ON = { available: true, refusal: null, questionsLeftToday: null, files: false };
 
 const message = (seq: number, fields: Partial<AssistantMessage> & Pick<AssistantMessage, 'kind'>) =>
   ({ id: uid(500 + seq), seq, at: '2026-11-20T05:00:00.000Z', ...fields }) as AssistantMessage;

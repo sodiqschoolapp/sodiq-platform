@@ -43,7 +43,12 @@ export type ModelPart =
       /** Gemini's thought signature of the call, sent back with it on the next turn. */
       signature?: string;
     }
-  | { kind: 'result'; name: string; result: unknown };
+  | { kind: 'result'; name: string; result: unknown }
+  /**
+   * Task 11.22: a file the person attached or recorded (a PDF, a photo, audio), as base64; an
+   * Excel workbook goes as text, since the model does not read `.xlsx`.
+   */
+  | { kind: 'file'; mediaType: string; data: string };
 
 /** One turn of the conversation as the model reads it. */
 export interface ModelTurn {

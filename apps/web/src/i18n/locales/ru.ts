@@ -1052,6 +1052,13 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       'В предложении одно изменение на запись. Попросите второе после подтверждения первого.',
     assistant_step_invalid:
       'Это изменение отправлено не подтверждённым предложением и не выполнено.',
+    assistant_files_not_configured:
+      'На этом сервере нельзя прикреплять файлы: хранилище файлов не настроено.',
+    assistant_files_unavailable: 'Хранилище файлов не ответило. Попробуйте через минуту.',
+    assistant_file_too_large:
+      'Файл слишком большой: файл Excel или запись до 5 МБ, PDF или фото до 10 МБ.',
+    assistant_files_too_large: 'Файлы одного вопроса вместе — не более 14 МБ. Уберите один файл.',
+    assistant_file_not_found: 'Этот файл нельзя отправить: прикрепите его снова.',
     request_refused: 'Запрос отклонён. Попробуйте ещё раз или обратитесь к администратору.',
     already_exists: 'Запись с таким названием здесь уже есть. Выберите другое название.',
     staff_id_exhausted:
@@ -1324,6 +1331,34 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
     reading: 'Читает: {{what}}',
     noAnswer: 'Ответ не пришёл. Спросите ещё раз.',
     continue: 'Продолжить',
+    files: {
+      fields: {
+        kind: 'Вид',
+        name: 'Имя файла',
+        mediaType: 'Формат',
+        size: 'Размер, байт',
+        conversation: 'Разговор',
+      },
+      kinds: {
+        attachment: 'Прикреплённый файл',
+        voice: 'Голосовой вопрос',
+        export: 'Экспорт',
+      },
+      attach: 'Прикрепить файл',
+      attached: 'Прикреплённые файлы',
+      remove: 'Убрать {{name}}',
+      record: 'Задать вопрос голосом',
+      stop: 'Остановить и отправить',
+      recording: 'Запись {{time}}',
+      voiceSent: 'Голосовой вопрос',
+      spoken: 'Вопрос голосом',
+      files: 'Файлы',
+      download: 'Скачать {{name}}',
+      recordingFile: 'Запись',
+      tooMany: 'К вопросу можно прикрепить не более 5 файлов. Сначала уберите один.',
+      noRecorder: 'Этот браузер не умеет записывать звук. Напишите вопрос.',
+      microphoneRefused: 'Микрофон не разрешён. Разрешите его в браузере или напишите вопрос.',
+    },
     continued: 'Продолжить',
     undoAsked: 'Отменить подтверждённые изменения',
     undoAskedAt: 'Отменить подтверждённые изменения предложения от {{time}}',
@@ -5193,6 +5228,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       feedback_report: 'Отзыв',
       integration_key: 'Ключ интеграции',
       assistant_conversation: 'Разговор с помощником',
+      assistant_file: 'Файл помощника',
     },
     actions: {
       auth: {
@@ -5245,6 +5281,10 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       },
       assistant_switch: {
         change: 'Действие помощника включено или выключено',
+      },
+      assistant_file: {
+        upload: 'Файл прикреплён к помощнику',
+        download: 'Файл помощника скачан',
       },
       assistant_conversation: {
         restore: 'Разговор с помощником восстановлен',

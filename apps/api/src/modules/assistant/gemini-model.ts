@@ -179,7 +179,7 @@ function parseCredentials(text: string): Record<string, unknown> {
   throw new Error('ASSISTANT_VERTEX_CREDENTIALS is not the JSON key of a service account.');
 }
 
-function contentOf(turn: ModelRequest['turns'][number]): Content {
+export function contentOf(turn: ModelRequest['turns'][number]): Content {
   return { role: turn.role === 'person' ? 'user' : 'model', parts: turn.parts.map(partOf) };
 }
 
@@ -194,5 +194,8 @@ function partOf(part: ModelPart): Part {
       };
     case 'result':
       return { functionResponse: { name: part.name, response: { result: part.result } } };
+    case 'file':
+      // Task 11.22: inline data, as Vertex takes a PDF, an image or audio in the request.
+      return { inlineData: { mimeType: part.mediaType, data: part.data } };
   }
 }

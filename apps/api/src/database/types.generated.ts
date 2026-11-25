@@ -180,6 +180,25 @@ export interface AssistantConversations {
   title: string;
 }
 
+export interface AssistantFiles {
+  account_id: string;
+  branch_id: string;
+  created_at: Timestamp;
+  id: Generated<string>;
+  kind: string;
+  media_type: string;
+  name: string;
+  size_bytes: number;
+  store_key: string;
+}
+
+export interface AssistantMessageFiles {
+  branch_id: string;
+  file_id: string;
+  message_id: string;
+  position: number;
+}
+
 export interface AssistantMessages {
   account_id: string;
   answer_until: Timestamp | null;
@@ -2537,6 +2556,8 @@ export interface DB {
   assistant_area_switches: AssistantAreaSwitches;
   assistant_conversation_restores: AssistantConversationRestores;
   assistant_conversations: AssistantConversations;
+  assistant_files: AssistantFiles;
+  assistant_message_files: AssistantMessageFiles;
   assistant_messages: AssistantMessages;
   assistant_model_calls: AssistantModelCalls;
   assistant_proposal_decisions: AssistantProposalDecisions;

@@ -1060,6 +1060,14 @@ export const en = {
     assistant_step_same_record:
       'A proposal holds one change per record. Ask for the second change after the first is confirmed.',
     assistant_step_invalid: 'This change was not sent by a confirmed proposal and was not made.',
+    assistant_files_not_configured:
+      'Files cannot be attached on this server: no file store is set up.',
+    assistant_files_unavailable: 'The file store did not answer. Try again in a minute.',
+    assistant_file_too_large:
+      'The file is too large: an Excel file or a recording up to 5 MB, a PDF or a photo up to 10 MB.',
+    assistant_files_too_large:
+      'The files of one question can be at most 14 MB together. Remove a file.',
+    assistant_file_not_found: 'This file cannot be sent: attach it again.',
     request_refused: 'The request was refused. Try again or ask an administrator.',
     already_exists: 'A record of this name already exists here. Choose another name.',
     staff_id_exhausted:
@@ -1320,6 +1328,35 @@ export const en = {
     reading: 'Reading: {{what}}',
     noAnswer: 'No answer came. Ask again.',
     continue: 'Continue',
+    files: {
+      fields: {
+        kind: 'Kind',
+        name: 'File name',
+        mediaType: 'Type',
+        size: 'Size, bytes',
+        conversation: 'Conversation',
+      },
+      kinds: {
+        attachment: 'Attached file',
+        voice: 'Recorded question',
+        export: 'Export',
+      },
+      attach: 'Attach a file',
+      attached: 'Files attached',
+      remove: 'Remove {{name}}',
+      record: 'Speak the question',
+      stop: 'Stop and send',
+      recording: 'Recording {{time}}',
+      voiceSent: 'Recorded question',
+      spoken: 'Spoken question',
+      files: 'Files',
+      download: 'Download {{name}}',
+      recordingFile: 'Recording',
+      tooMany: 'A question can carry at most 5 files. Remove one first.',
+      noRecorder: 'This browser cannot record. Type the question instead.',
+      microphoneRefused:
+        'The microphone is not allowed. Allow it in the browser, or type the question.',
+    },
     continued: 'Continue',
     undoAsked: 'Undo the confirmed changes',
     undoAskedAt: 'Undo the confirmed changes of the proposal of {{time}}',
@@ -4971,6 +5008,7 @@ export const en = {
       feedback_report: 'Feedback report',
       integration_key: 'Integration key',
       assistant_conversation: 'Assistant conversation',
+      assistant_file: 'File of the assistant',
     },
     actions: {
       auth: {
@@ -5023,6 +5061,10 @@ export const en = {
       },
       assistant_switch: {
         change: "Assistant's action switched on or off",
+      },
+      assistant_file: {
+        upload: 'File attached to the assistant',
+        download: 'File of the assistant downloaded',
       },
       assistant_conversation: {
         restore: 'Assistant conversation restored',

@@ -53,6 +53,7 @@ export async function askTheAssistant(page: Page): Promise<void> {
   await theOpenRecord(page);
   await aTableAndChoices(page);
   await whileItWorks(page);
+  await filesAndExports(page);
 
   // Every conversation, for the Super Admin.
   await page.goto('/assistant-conversations');
@@ -313,4 +314,53 @@ async function aTableAndChoices(page: Page): Promise<void> {
     timeout: 15_000,
   });
   await expect(chat.getByRole('list', { name: en.assistant.choices, exact: true })).toHaveCount(0);
+}
+
+/**
+ * Task 11.22 (`02`, Assistant, Files, photos and voice; What it can do: exports "it prepares as a
+ * file the person downloads"): a photo attached in the panel reaches the model with the question
+ * and is kept with it to download; an export asked in words runs as the person through
+ * `POST /api/classes/export` and its file is linked in the answer and downloaded. The import of a
+ * template through its own preview and Confirm is proven by `assistant-files.test.ts` of the API.
+ */
+async function filesAndExports(page: Page): Promise<void> {
+  await page.goto('/');
+  await page.getByRole('button', { name: en.assistant.open, exact: true }).click();
+  const panel = page.getByRole('complementary', { name: en.assistant.title });
+  await panel.getByRole('button', { name: en.assistant.newConversation, exact: true }).click();
+  // A PNG's first bytes: the route checks them against the type.
+  const png = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0]);
+  await panel
+    .locator('input[type="file"]')
+    .setInputFiles({ name: 'list.png', mimeType: 'image/png', buffer: png });
+  const chips = panel.getByRole('list', { name: en.assistant.files.attached, exact: true });
+  await expect(chips.getByText('list.png', { exact: true })).toBeVisible();
+  await panel.getByLabel(en.assistant.question, { exact: true }).fill('What is on this list?');
+  await panel.getByRole('button', { name: en.assistant.send, exact: true }).click();
+  await expect(panel.getByText('I see the file list.png.', { exact: true })).toBeVisible({
+    timeout: 15_000,
+  });
+  await expect(chips).toHaveCount(0);
+  const kept = panel.getByRole('button', {
+    name: en.assistant.files.download.replace('{{name}}', 'list.png'),
+    exact: true,
+  });
+  await expect(kept).toBeVisible();
+  const photo = page.waitForEvent('download');
+  await kept.click();
+  expect((await photo).suggestedFilename()).toBe('list.png');
+
+  await panel
+    .getByLabel(en.assistant.question, { exact: true })
+    .fill('The classes in Excel, please.');
+  await panel.getByRole('button', { name: en.assistant.send, exact: true }).click();
+  await expect(panel.getByText('The file is ready.', { exact: true })).toBeVisible({
+    timeout: 15_000,
+  });
+  const exported = panel.getByRole('button', { name: /\.xlsx$/ });
+  await expect(exported).toBeVisible();
+  const file = page.waitForEvent('download');
+  await exported.click();
+  expect((await file).suggestedFilename()).toMatch(/\.xlsx$/);
+  await panel.getByRole('button', { name: en.assistant.close, exact: true }).click();
 }

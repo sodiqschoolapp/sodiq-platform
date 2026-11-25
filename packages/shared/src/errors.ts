@@ -1364,6 +1364,16 @@ export const ERROR_CODES = [
   'assistant_step_same_record',
   /** Task 11.13: a change marked as the assistant's names no step that is running now. */
   'assistant_step_invalid',
+  /** Task 11.22: no store for files is configured on this server; the assistant takes no file. */
+  'assistant_files_not_configured',
+  /** Task 11.22: the store of files failed or did not answer in time. */
+  'assistant_files_unavailable',
+  /** Task 11.22: a file is larger than its type allows (Excel and voice 5 MB, PDF and photo 10 MB). */
+  'assistant_file_too_large',
+  /** Task 11.22: the files of one question are more than 14 MB together. */
+  'assistant_files_too_large',
+  /** Task 11.22: the file is not the person’s own upload of that kind, unsent, of this branch and the last 24 hours. */
+  'assistant_file_not_found',
   /** Any other refusal that has no code of its own yet. */
   'request_refused',
   /** A fault on the server. The answer says nothing about it; the log does. */
