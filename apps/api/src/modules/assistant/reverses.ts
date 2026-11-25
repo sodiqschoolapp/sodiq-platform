@@ -18,6 +18,11 @@ export interface Reverse {
   /** `<METHOD> /api/<path>` of the reverse. */
   route: string;
   path: Readonly<Record<string, ReverseValue>>;
+  /**
+   * Where the created record's id is in the change's answer, for a reverse of a create (`record`);
+   * `['id']` when left out (an exam's save answers `{ exam, warnings }`; permission review 1).
+   */
+  recordAt?: readonly string[];
   /** The body of the reverse from the change's own body; none when left out. */
   body?: (changeBody: Readonly<Record<string, unknown>>) => Record<string, unknown>;
 }
@@ -97,6 +102,7 @@ export const ASSISTANT_REVERSES: Readonly<Record<string, Reverse>> = {
   'POST /api/timetable/exams': {
     route: 'POST /api/timetable/exams/:id/cancel',
     path: CREATED_ID,
+    recordAt: ['exam', 'id'],
     body: () => ({}),
   },
   // A vacancy added, and deleted; closed, and reopened.

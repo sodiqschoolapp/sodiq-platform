@@ -18,6 +18,7 @@ import { fingerprintOf } from './canonical.js';
 import { conversationOf, conversationsQuery, isArchived } from './conversations.store.js';
 import { AssistantDispatcher, type ReadOutcome } from './dispatcher.js';
 import { secretsOf } from './field-filter.js';
+import { ASSISTANT_REVERSES } from './reverses.js';
 import { basisStill, stateOfOutcome, type StoredStep } from './proposals.js';
 
 interface ProposalRow {
@@ -231,7 +232,7 @@ export class AssistantProposals {
         if (outcome.state === 'done' && 'body' in sent) {
           const items = secretsOf(sent.body);
           if (items.length > 0) secrets.push({ stepId: step.id, items });
-          recordId = createdIdOf(sent.body);
+          recordId = createdIdOf(sent.body, ASSISTANT_REVERSES[step.route]?.recordAt);
         }
       }
       await this.record(proposal, step, outcome, recordId);
@@ -311,9 +312,15 @@ function isUniqueViolation(error: unknown): boolean {
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-/** Task 11.21: the `id` at the top of a done step's answer, when it is a uuid. */
-export function createdIdOf(body: unknown): string | null {
-  if (body === null || typeof body !== 'object' || Array.isArray(body)) return null;
-  const id = (body as { id?: unknown }).id;
-  return typeof id === 'string' && UUID.test(id) ? id.toLowerCase() : null;
+/**
+ * Task 11.21: the id a done step's answer gave at `path` (`['id']`, the top of the answer, unless
+ * the reverse names another place), when it is a uuid.
+ */
+export function createdIdOf(body: unknown, path: readonly string[] = ['id']): string | null {
+  let value: unknown = body;
+  for (const key of path) {
+    if (value === null || typeof value !== 'object' || Array.isArray(value)) return null;
+    value = (value as Record<string, unknown>)[key];
+  }
+  return typeof value === 'string' && UUID.test(value) ? value.toLowerCase() : null;
 }

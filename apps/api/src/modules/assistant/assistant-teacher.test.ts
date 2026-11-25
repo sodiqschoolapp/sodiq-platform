@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import {
+  assistantAnswerSchema,
   assistantConversationSchema,
   BRANCH_HEADER,
   REQUEST_KEY_HEADER,
@@ -888,7 +889,7 @@ describe('the assistant for teachers (task 11.14)', () => {
     expect((await planItem(theirs.id))?.topic).toBe('Theirs');
   });
 
-  it('sends an unlock of an own locked lesson at Confirm, and refuses one of another teacher’s lesson', async () => {
+  it('sends an unlock of an own locked lesson at Confirm, and refuses one of another teacher’s lesson; the Teacher’s Undo of it answers, another Teacher’s is 404 (task 11.21)', async () => {
     const before = await everyRow();
     const conversation = await asked([
       {
@@ -936,6 +937,41 @@ describe('the assistant for teachers (task 11.14)', () => {
       .execute();
     expect(notices.length).toBeGreaterThan(0);
     expect(notices.map((one) => one.account_id)).not.toContain(owner.account.id);
+
+    // Task 11.21: Undo in the Teacher role. Another Teacher of the branch gets 404 and nothing
+    // is written; the own Undo answers, naming the request that no action reverses here.
+    const undoAs = (cookie: string) =>
+      request(server())
+        .post(`/api/assistant/proposals/${proposal.id}/undo`)
+        .set('Cookie', cookie)
+        .set(BRANCH_HEADER, scene.branch)
+        .send({ role: 'teacher' });
+    const stranger = await t.kit.completeSession('Malika', 'Yusupova');
+    await t.kit.giveRole(stranger.account.id, { role: 'teacher', branchId: scene.branch });
+    const untouched = await t.database.migrator
+      .selectFrom('assistant_messages')
+      .selectAll()
+      .orderBy('id')
+      .execute();
+    const refused = await undoAs(stranger.cookie);
+    expect([refused.status, (refused.body as { error?: { code?: string } }).error?.code]).toEqual([
+      404,
+      'not_found',
+    ]);
+    expect(
+      await t.database.migrator
+        .selectFrom('assistant_messages')
+        .selectAll()
+        .orderBy('id')
+        .execute(),
+    ).toEqual(untouched);
+    const own = await undoAs(owner.cookie);
+    expect(own.status, JSON.stringify(own.body).slice(0, 600)).toBe(200);
+    const undone = assistantAnswerSchema.parse(own.body).conversation;
+    const last = undone.messages.at(-1);
+    expect(last?.kind === 'answer' ? last.undo?.none.map((one) => one.reason) : []).toEqual([
+      'no_reverse',
+    ]);
   });
 
   it('keeps the plan window’s rules: a save after the window ended is refused at Confirm; a Text request confirmed and approved opens it', async () => {

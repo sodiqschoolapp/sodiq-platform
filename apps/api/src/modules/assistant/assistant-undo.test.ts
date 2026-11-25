@@ -132,6 +132,16 @@ describe('Undo of a confirmed proposal', () => {
       .selectAll()
       .orderBy('id')
       .execute(),
+    steps: await scene.database.migrator
+      .selectFrom('assistant_proposal_steps')
+      .selectAll()
+      .orderBy('step_id')
+      .execute(),
+    decisions: await scene.database.migrator
+      .selectFrom('assistant_proposal_decisions')
+      .selectAll()
+      .orderBy('proposal_id')
+      .execute(),
     audit: await scene.database.migrator
       .selectFrom('audit_log')
       .selectAll()
@@ -285,7 +295,7 @@ describe('Undo of a confirmed proposal', () => {
     expect(again.proposals.at(-1)?.questionId).not.toBe(again.messages.at(-2)?.id);
   });
 
-  it('refuses an Undo of a proposal waiting, declined or with nothing done, and while a question is answered', async () => {
+  it('refuses an Undo of a proposal waiting, declined or with nothing done', async () => {
     const [a, b] = await classes('Oxford R1', 'Oxford R2');
     const waiting = await propose([archive(a ?? '')]);
     expect(errorCode(await post('undo', waiting.proposalId))).toBe('assistant_undo_not_open');
@@ -299,6 +309,117 @@ describe('Undo of a confirmed proposal', () => {
       .execute();
     expect((await post('confirm', outdated.proposalId)).status).toBe(200);
     expect(errorCode(await post('undo', outdated.proposalId))).toBe('assistant_undo_not_open');
+  });
+
+  it('reaches each refusal of the route with every earlier check passing: the role not held, another role, the assistant off, a question running, an archived conversation (permission review 2)', async () => {
+    // A person with the Academic Vice Principal's and the Super Admin's roles.
+    const browser = await scene.kit.completeSession('Feruza', 'Nazarova');
+    const vice = await scene.kit.giveRole(browser.account.id, {
+      role: 'academic_vice_principal',
+      branchId: scene.north,
+    });
+    await scene.kit.giveRole(browser.account.id, { role: 'super_admin' });
+    const [a, b] = await classes('Oxford X1', 'Oxford X2');
+    const asVice = await propose([archive(a ?? '')], browser.cookie, 'academic_vice_principal');
+    expect(
+      (
+        await post(
+          'confirm',
+          asVice.proposalId,
+          browser.cookie,
+          scene.north,
+          'academic_vice_principal',
+        )
+      ).status,
+    ).toBe(200);
+    const before = await rows();
+    // Another role than the proposal's, held: 409.
+    expect(
+      errorCode(await post('undo', asVice.proposalId, browser.cookie, scene.north, 'super_admin')),
+    ).toBe('assistant_conversation_other_role');
+    // The assistant switched off for the role: 409.
+    await scene.database.migrator
+      .updateTable('assistant_settings')
+      .set({ roles_on: ['super_admin'] })
+      .execute();
+    expect(
+      errorCode(
+        await post(
+          'undo',
+          asVice.proposalId,
+          browser.cookie,
+          scene.north,
+          'academic_vice_principal',
+        ),
+      ),
+    ).toBe('assistant_off');
+    await scene.database.migrator
+      .updateTable('assistant_settings')
+      .set({ roles_on: ['super_admin', 'academic_vice_principal'] })
+      .execute();
+    // A question of the person still being answered: 409.
+    const running = await scene.database.migrator
+      .insertInto('assistant_messages')
+      .values({
+        conversation_id: asVice.conversationId,
+        branch_id: scene.north,
+        account_id: browser.account.id,
+        seq: 100,
+        kind: 'question',
+        content: sql`'{"kind":"question","text":"Still running."}'::jsonb`,
+        created_at: scene.clock.now(),
+        answer_until: new Date(scene.clock.now().getTime() + 60_000),
+      })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    expect(
+      errorCode(
+        await post(
+          'undo',
+          asVice.proposalId,
+          browser.cookie,
+          scene.north,
+          'academic_vice_principal',
+        ),
+      ),
+    ).toBe('assistant_question_running');
+    await sql`delete from assistant_messages where id = ${running.id}`.execute(
+      scene.database.migrator,
+    );
+    // The chosen role no longer held, the guard letting the person in through the Super Admin.
+    await scene.database.migrator
+      .updateTable('assignments')
+      .set({
+        valid_from: new Date('2026-11-20T08:00:00+05:00'),
+        valid_until: new Date('2026-11-20T09:00:00+05:00'),
+      })
+      .where('id', '=', vice.id)
+      .execute();
+    expect(
+      errorCode(
+        await post(
+          'undo',
+          asVice.proposalId,
+          browser.cookie,
+          scene.north,
+          'academic_vice_principal',
+        ),
+      ),
+    ).toBe('assistant_role_not_held');
+    expect(await rows()).toEqual(before);
+    // An archived conversation (90 days after its last message): 404.
+    const own = await propose([archive(b ?? '')]);
+    expect((await post('confirm', own.proposalId)).status).toBe(200);
+    const old = new Date(scene.clock.now().getTime() - 100 * 24 * 60 * 60 * 1000);
+    await sql`update assistant_conversations set created_at = ${old} where id = ${own.conversationId}`.execute(
+      scene.database.migrator,
+    );
+    await sql`update assistant_messages set created_at = ${old} where conversation_id = ${own.conversationId}`.execute(
+      scene.database.migrator,
+    );
+    const archivedBefore = await rows();
+    expect((await post('undo', own.proposalId)).status).toBe(404);
+    expect(await rows()).toEqual(archivedBefore);
   });
 
   it('works when the cap is reached and is not counted in the daily limit: no call of the model (plan decision 9)', async () => {
@@ -354,6 +475,9 @@ describe('Undo of a confirmed proposal', () => {
     expect(createdIdOf({ id, name: 'Day off' })).toBe(id);
     expect(createdIdOf({ id: 'not-a-uuid' })).toBeNull();
     expect(createdIdOf([{ id }])).toBeNull();
+    // An exam's save answers { exam, warnings }: its reverse names where the id is.
+    expect(createdIdOf({ exam: { id }, warnings: [] }, ['exam', 'id'])).toBe(id);
+    expect(createdIdOf({ exam: { id }, warnings: [] })).toBeNull();
     const made = reverseOf(
       { route: 'POST /api/timetable/absences', url: '/api/timetable/absences', body: {} },
       id,
