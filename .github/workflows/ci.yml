@@ -64,6 +64,8 @@ jobs:
         run: pnpm lint
       - name: Type-check
         run: pnpm typecheck
+      - name: Tests of the loop's scripts (heartbeat and watchdog)
+        run: node --test scripts/loop/task-state.test.mjs
 
   tests:
     name: tests (${{ matrix.part }})
