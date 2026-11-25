@@ -244,6 +244,50 @@ describe('the assistant past the limit of one question: Continue, choices and th
     expect(bare.status).toBe(400);
   });
 
+  it('answers 404 to a Continue of another person’s conversation, of the own one in another branch and of an unknown one, with every row unchanged (permission review of the code, should fix 3)', async () => {
+    await scene.database.migrator
+      .updateTable('assistant_settings')
+      .set({ proposal_steps: 1 })
+      .execute();
+    const other = await scene.kit.completeSession('Malika', 'Tursunova');
+    await scene.kit.giveRole(other.account.id, { role: 'super_admin' });
+    const cutFor = async (cookie: string) => {
+      scene.model.script(
+        calls(
+          rename(rooms[0] ?? { id: '', floorId: '' }, 'Hall X'),
+          rename(rooms[1] ?? { id: '', floorId: '' }, 'Hall Y'),
+        ),
+        answer('One proposed.'),
+      );
+      const cut = conversationOf(await ask(scene, cookie, scene.north, { text: 'Rename two.' }));
+      expect(cut.messages.at(-1)).toEqual(expect.objectContaining({ continues: true }));
+      return cut.id;
+    };
+    const theirs = await cutFor(other.cookie);
+    const own = await cutFor(scene.admin);
+    const rows = async () => ({
+      messages: await scene.database.migrator
+        .selectFrom('assistant_messages')
+        .selectAll()
+        .orderBy('id')
+        .execute(),
+      proposals: await scene.database.migrator
+        .selectFrom('assistant_proposals')
+        .selectAll()
+        .orderBy('id')
+        .execute(),
+    });
+    const before = await rows();
+    const calledBefore = scene.model.requests.length;
+    const cont = (branch: string, conversationId: string) =>
+      ask(scene, scene.admin, branch, { text: 'Continue', conversationId, continue: true });
+    expect((await cont(scene.north, theirs)).status).toBe(404);
+    expect((await cont(scene.south, own)).status).toBe(404);
+    expect((await cont(scene.north, '0199a3c4-0000-7000-8000-00000000abcd')).status).toBe(404);
+    expect(await rows()).toEqual(before);
+    expect(scene.model.requests.length).toBe(calledBefore);
+  });
+
   it('sets Continue when a proposal is full at the setting of the steps', async () => {
     await scene.database.migrator
       .updateTable('assistant_settings')

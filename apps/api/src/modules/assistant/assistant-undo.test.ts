@@ -301,6 +301,34 @@ describe('Undo of a confirmed proposal', () => {
     expect(later.proposals.at(-1)?.steps).toHaveLength(3);
   });
 
+  it('names a reverse that the person’s own route refuses at drafting with that route’s code, proposes nothing for it and changes no target (permission review of the code, must-fix 1)', async () => {
+    const [a, b] = await classes('Oxford G1', 'Oxford G2');
+    const { proposalId } = await propose([archive(a ?? ''), archive(b ?? '')]);
+    expect((await post('confirm', proposalId)).status).toBe(200);
+    // The first class leaves the person's reach after the change (removed, as a forced delete
+    // would): the reverse is drafted through the person's own read of it, which answers 404.
+    await sql`delete from classes where id = ${a ?? ''}`.execute(scene.database.migrator);
+    const before = await rows();
+    const conversation = undone(await post('undo', proposalId));
+    const reply = conversation.messages.at(-1);
+    expect(
+      reply?.kind === 'answer' ? reply.undo?.none.map((one) => [one.seq, one.reason]) : [],
+    ).toEqual([[1, 'not_found']]);
+    // Only the reverse of the second class is proposed.
+    const stored = await scene.database.migrator
+      .selectFrom('assistant_proposals')
+      .select('steps')
+      .where('id', '=', conversation.proposals.at(-1)?.id ?? '')
+      .executeTakeFirstOrThrow();
+    expect((stored.steps as { url: string }[]).map((step) => step.url)).toEqual([
+      `/api/classes/${b ?? ''}/restore`,
+    ]);
+    // Proposing changes no target: the classes are as they were.
+    const after = await rows();
+    expect(after.classes).toEqual(before.classes);
+    expect(await status(b ?? '')).toBe('archived');
+  });
+
   it('refuses an Undo of a proposal waiting, declined or with nothing done', async () => {
     const [a, b] = await classes('Oxford R1', 'Oxford R2');
     const waiting = await propose([archive(a ?? '')]);

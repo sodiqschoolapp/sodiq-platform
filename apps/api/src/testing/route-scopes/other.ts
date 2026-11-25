@@ -42,6 +42,7 @@ const ASSISTANT_UNDO_OWN: ScopeLine = {
   rule: '02, Assistant: "The person sees their own conversations"; Reading and proposing: "A confirmed proposal can be undone"',
   refusedIn: [
     'src/modules/assistant/assistant-undo.test.ts > answers 404 for an unknown proposal, another person’s and the own one in another branch, with every row unchanged',
+    'src/modules/assistant/assistant-teacher.test.ts > sends an unlock of an own locked lesson at Confirm, and refuses one of another teacher’s lesson; the Teacher’s Undo of it answers, another Teacher’s is 404 (task 11.21)',
   ],
 };
 
