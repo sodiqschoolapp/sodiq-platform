@@ -2,6 +2,19 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 25 November 2026: task 11.23, helpers: the day's briefing, substitutes, a unit of plans, and why a result is what it is
+
+- **Four helpers** (`apps/api/src/modules/assistant/helpers.ts`), tools of the engine that run only the platform's own reads as the person (each stored and counted as a read): `todays_briefing` (Super Admin, Academic Vice Principal: absences today, lessons without a teacher, unlock and plan requests waiting, overdue plans, the early-warning list, each counted and linked), `suggest_substitutes` (the lesson's own substitutes list per lesson of an absence, ranked: language last, group, fewest lessons that day, already in the building), `draft_plan_unit` (Teacher only: the next N empty rows of the own plan) and `explain_result` (the results row, the trace's works and the journal legend's weights).
+- **The figure check**: once `explain_result` ran, an answer with a figure not in the breakdown (or the person's words) is sent back once with the figures named, then replaced by the notice `assistant_figures_unchecked`; such an answer is not streamed.
+- No migration, no route, no permission, no change of `packages/calc` or `packages/timetable-rules`. `publishedScene` takes `lessonMinutes`.
+
+Left out: the substitutes helper has no eval case (the demo has no absence at its setup moment; it is tested through the routes); the per-journal substitutes route is not used by the helper (plan, Left out). No later task is named; the owner decides.
+
+The next sessions must know:
+
+- A helper is offered by `helpersOf` from the role's switched-on lines; a new kind of digest reads through `HelperContext.read`, never the dispatcher directly, so the read is counted, stored and filtered.
+- The figure check compares against the breakdown only (`figuresOutsideBreakdown`), never every read of the question.
+
 ## 25 November 2026: task 11.22, files, photos and voice in the conversation; imports and exports through it
 
 - **Files** (0185, `assistant_files`, `assistant_message_files`): `PUT /api/assistant/files` takes an Excel file, a PDF, a photo or a recording (types and limits in `packages/shared/src/assistant-files.ts`) into the photo store under `assistant/<id>`; a question sends up to 5 (14 MB); the model gets PDFs, photos and audio inline and Excel as text; `read_attachment` gives one again.
