@@ -11,9 +11,9 @@ Every teacher must have a lesson plan for each class or group they teach, for ea
 | --- | --- |
 | Lesson number | Order within the quarter. Given by the system. |
 | Date | The date of the dated lesson this item is attached to. Taken from the timetable, never typed. |
-| Topic | Required. |
-| Classwork | Optional, any number. Each classwork is a graded work done in class and becomes the title of its own classwork column in the journal. A lesson with no classwork has no classwork column. A classwork can carry its own files. |
-| Homework | Optional, any number. Each homework is a task given at this lesson and becomes the title of its own homework column at this lesson, where it is graded. A lesson with no homework has no homework column. A homework can carry its own files; from Release 2 students and parents see them with the homework. |
+| Topic | Required. In a subject with codes on, an optional topic code beside it (Codes). |
+| Classwork | Optional, any number. Each classwork is a graded work done in class and becomes the title of its own classwork column in the journal. In a subject with codes on, it can have a code beside its title (Codes). A lesson with no classwork has no classwork column. A classwork can carry its own files. |
+| Homework | Optional, any number. Each homework is a task given at this lesson and becomes the title of its own homework column at this lesson, where it is graded. In a subject with codes on, it can have a code beside its title (Codes). A lesson with no homework has no homework column. A homework can carry its own files; from Release 2 students and parents see them with the homework. |
 | Objectives and materials | Optional: short text, links, and files for staff only ("Materials": the teacher's own files, such as slides or an answer key; never shown to students or parents). |
 
 - One plan for each class or group, subject and quarter. The form shows one row for every dated lesson of the quarter, with number and date already filled; the teacher fills in the rest. Files, of the materials and of each work, can be attached while a row is being written, not only after it is saved.
@@ -35,6 +35,16 @@ A Head Teacher can keep a master plan for one of their subjects, a grade, a lang
 - **Optional.** Teachers may start from the master, from a copy, or from an empty plan.
 - **Parallel classes.** The Head Teacher sees all classes of a grade side by side with the item each has reached.
 - **New year.** Masters are copied into the new academic year.
+
+## Codes
+
+The Super Admin switches codes on for chosen subjects: a switch on the subject, off by default (owner, 25 November 2026).
+
+- **What has a code.** In a subject with codes on, a plan item has an optional topic code beside its topic, and each classwork and homework an optional code beside its title: in the plan, in master plans, on the lesson card and wherever a work is added in the journal. A code is free text of at most 20 characters (spaces at either end are dropped); it need not be unique. It is edited under the same rules and history as the topic or title it stands beside.
+- **Where it shows.** Where a code is filled it is shown first, with the full name beside it: in the journal, on the lesson card, in plan lists and the plan editor, in reports, in exports and prints, and in the parent portal. Where space is short (journal column headers, the lesson header, lesson mode on a phone) the code is shown alone, with the full name on hover or on a tap. Where the code is empty, the name is shown alone.
+- **Switching off.** Switching codes off for a subject hides every code of that subject everywhere, exports and the API included, and keeps them; switching on again shows them. While a subject's codes are off, no code can be set in it. Other subjects are not affected.
+- **Copies.** Codes are copied with a plan (from another class, another teacher or last year) and from a master plan, and are part of "master updated".
+- **The assistant and keys.** The assistant and integration keys set and read codes wherever they set and read topics and titles. The switch on a subject is the Super Admin's, on the screen and through the assistant.
 
 ## The plan window
 

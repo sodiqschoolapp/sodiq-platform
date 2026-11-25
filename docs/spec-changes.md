@@ -2,6 +2,18 @@
 
 The spec in `docs/spec/` was taken from the full spec document on 3 October 2026 (revision 88). Every later change to a spec file is listed here, newest first, with the date, what changed, why, and the files touched. Changes are made only with the `/spec-change` skill and the owner's approval.
 
+## 25 November 2026: codes for topics and works
+
+- What changed:
+  1. **A codes switch on the subject**, off by default, set only by the Super Admin (on the screen and through the assistant); not in the subject import, read only for the Academic Vice Principal.
+  2. **Optional codes.** In a subject with codes on, a plan item has an optional topic code beside its topic, and each classwork and homework an optional code beside its title, in the plan, master plans, the lesson card and wherever a work is added in the journal. A code is free text of at most 20 characters, need not be unique, and follows the edit rules and history of the topic or title beside it.
+  3. **Shown first.** A filled code is shown first with the full name beside it in the journal, the lesson card, plan lists, reports, exports and prints, and the parent portal; where space is short (journal column headers, the lesson header, lesson mode on a phone) the code alone, with the full name on hover or a tap. An empty code leaves the name alone.
+  4. **Off hides and keeps.** Switching a subject's codes off hides its codes everywhere, exports and the API included, keeps them, and allows no new code in it; other subjects are not affected.
+  5. **Copies, assistant and keys.** Codes are copied with a plan and from a master plan and are part of "master updated"; the assistant and integration keys set and read codes wherever they set and read topics and titles.
+- Why: the owner, 25 November 2026, in chat. The owner approved the decisions of the proposal (short places, off means no new codes, edit rules, no uniqueness, no codes in the past-marks file, the switch not in the import, spaces dropped).
+- Not changed: plan completeness (a topic is required, a code never is); the journal's calculation; the past-marks file (no code columns).
+- Files: `docs/spec/09-lesson-plans.md` (What a plan contains; new section Codes), `docs/spec/05-classes-groups-subjects.md` (Subject; Excel import of subjects), `docs/spec/02-roles-and-access.md` (Super Admin; Academic Vice Principal; Integration keys), `docs/spec/07-journal.md` (Layout, Lessons; Classwork and homework), `docs/spec/edge-cases/journal.md` (no plan item), `docs/spec/edge-cases/lesson-plans.md` (approved edit; file limits and titles). Proposal `docs/proposals/spec-change-codes-for-topics-and-works.md`.
+
 ## 25 November 2026: past marks from before go-live
 
 - What changed:

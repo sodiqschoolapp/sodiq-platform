@@ -1,6 +1,6 @@
 # Spec change proposal: codes for topics and works
 
-Requested by the owner, 25 November 2026. Status: **waiting for the owner's approval**. Nothing under `docs/spec/` is changed yet.
+Requested by the owner, 25 November 2026. Status: **approved by the owner, 25 November 2026, and applied** (`docs/spec-changes.md`). The applied wording says outright that switching codes off for one subject does not affect other subjects.
 
 ## 1. Every place that states the rule
 
