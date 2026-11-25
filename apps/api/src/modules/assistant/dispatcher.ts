@@ -230,7 +230,7 @@ export class AssistantDispatcher {
         }
         if (bytes === undefined) return { status: 0, failure: 'too_large' };
         if (type === 'application/json' || response.status >= 400 || bytes.length === 0) {
-          let body: unknown = null;
+          let body: unknown;
           try {
             body = bytes.length === 0 ? null : (JSON.parse(bytes.toString('utf8')) as unknown);
           } catch {

@@ -285,7 +285,9 @@ describe('the assistant: the routes of files', () => {
       files: [photo.id],
     });
     expect(answered.status).toBe(202);
-    const conversation = assistantConversationSchema.parse(answered.body.conversation);
+    const conversation = assistantConversationSchema.parse(
+      (answered.body as { conversation: unknown }).conversation,
+    );
     const question = conversation.messages.find((message) => message.kind === 'question');
     expect(question?.kind === 'question' ? question.files : []).toEqual([
       { id: photo.id, kind: 'attachment', name: 'Days off.png', mediaType: 'image/png', size: 64 },
