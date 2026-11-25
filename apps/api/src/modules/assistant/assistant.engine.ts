@@ -1166,7 +1166,7 @@ export class AssistantEngine {
           line,
           args: {
             ...made.pathArgs,
-            [SUMMARY_ARGUMENT]: `Undo: ${step.summary}`.slice(0, SUMMARY_MAX_LENGTH),
+            [SUMMARY_ARGUMENT]: step.summary.slice(0, SUMMARY_MAX_LENGTH),
             ...(made.body === undefined ? {} : { [BODY_ARGUMENT]: made.body }),
           },
         },
@@ -1271,14 +1271,15 @@ export class AssistantEngine {
     if (decided?.decision !== 'confirmed' || done.length === 0) {
       throw new ApiException('assistant_undo_not_open', 409);
     }
-    // One Undo of a proposal, unless the earlier one was declined or expired, or superseded.
+    // One Undo of a proposal at a time: one that waits or was confirmed; an Undo that proposed
+    // nothing, or was declined, expired or superseded, does not block a later one.
     const views = await proposalsOf(transaction, proposal.conversation_id, now);
     const undone = (await messagesOf(transaction, proposal.conversation_id)).filter(
       (message) => message.content.kind === 'question' && message.content.undoOf === proposal.id,
     );
     for (const question of undone) {
       const its = views.find((view) => view.questionId === question.id);
-      if (its === undefined || its.state === 'waiting' || its.state === 'confirmed') {
+      if (its !== undefined && (its.state === 'waiting' || its.state === 'confirmed')) {
         throw new ApiException('assistant_undo_exists', 409);
       }
     }

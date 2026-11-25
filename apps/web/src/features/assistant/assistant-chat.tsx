@@ -427,13 +427,13 @@ export function Messages({
     }
   }
   if (open !== null && open !== workingId) unanswered.add(open);
-  // Task 11.21: a proposal with an Undo that waits, was confirmed, or proposed nothing, offers
-  // no Undo again; one whose Undo was declined, expired or superseded does.
+  // Task 11.21: a proposal whose Undo waits or was confirmed offers no Undo again; one whose
+  // Undo proposed nothing, or was declined, expired or superseded, does.
   const undone = new Set<string>();
   for (const message of conversation.messages) {
     if (message.kind !== 'question' || message.undoOf === null) continue;
     const its = conversation.proposals.find((proposal) => proposal.questionId === message.id);
-    if (its === undefined || its.state === 'waiting' || its.state === 'confirmed') {
+    if (its !== undefined && (its.state === 'waiting' || its.state === 'confirmed')) {
       undone.add(message.undoOf);
     }
   }

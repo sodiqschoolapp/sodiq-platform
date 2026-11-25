@@ -295,6 +295,10 @@ describe('Undo of a confirmed proposal', () => {
     ]);
     // Nothing to propose: no proposal is stored for it.
     expect(again.proposals.at(-1)?.questionId).not.toBe(again.messages.at(-2)?.id);
+    // An Undo that proposed nothing does not block a later one (once the action is on again).
+    await sql`delete from assistant_action_switches`.execute(scene.database.migrator);
+    const later = undone(await post('undo', proposalId));
+    expect(later.proposals.at(-1)?.steps).toHaveLength(3);
   });
 
   it('refuses an Undo of a proposal waiting, declined or with nothing done', async () => {

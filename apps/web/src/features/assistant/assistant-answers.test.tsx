@@ -251,7 +251,21 @@ describe('choices, Continue and Undo in the chat', () => {
           },
         }),
       ],
-      { proposals: confirmed.proposals },
+      {
+        // The Undo proposed the reverse of the done step: it waits.
+        proposals: [
+          ...confirmed.proposals,
+          {
+            id: uid(801),
+            questionId: uid(503),
+            createdAt: '2026-11-20T05:02:00.000Z',
+            expiresAt: '2026-11-20T05:17:00.000Z',
+            state: 'waiting',
+            decidedAt: null,
+            steps: [{ ...step(1, 'done'), id: uid(710), state: 'waiting', status: 0, code: null }],
+          },
+        ],
+      },
     );
     let now: ReturnType<typeof conversation> = confirmed;
     const calls = fakeApi({
