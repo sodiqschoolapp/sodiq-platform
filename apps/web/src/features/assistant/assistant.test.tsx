@@ -19,7 +19,7 @@ const admin = (extra: { role: 'teacher' | 'principal'; branchId: string }[] = []
     branches: [NORTH],
   });
 
-const ON = { available: true, refusal: null, questionsLeftToday: 30 };
+const ON = { available: true, refusal: null, questionsLeftToday: 30, files: false };
 
 const message = (seq: number, fields: Partial<AssistantMessage> & Pick<AssistantMessage, 'kind'>) =>
   ({ id: uid(500 + seq), seq, at: '2026-11-20T05:00:00.000Z', ...fields }) as AssistantMessage;

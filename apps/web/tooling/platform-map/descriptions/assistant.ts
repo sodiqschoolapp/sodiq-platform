@@ -50,6 +50,15 @@ export const DESCRIPTIONS: Readonly<Record<string, string>> = {
   'features/assistant/proposal-card.tsx#button:assistant.proposal.decline':
     "Declines the assistant's proposal; nothing is changed.",
   // Task 11.21: the limits, Continue and Undo.
+  // Task 11.22: files, photos and voice in the conversation.
+  'features/assistant/assistant-files.tsx#button:assistant.files.attach':
+    'Attaches an Excel file, a PDF or a photo to the next question (at most 5 files, Excel up to 5 MB, a PDF or photo up to 10 MB, 14 MB together). An import template attached goes through that import\u2019s own preview; the assistant reads any other file into a proposal.',
+  'features/assistant/assistant-files.tsx#button:assistant.files.remove':
+    'Removes an attached file from the question before it is sent.',
+  'features/assistant/assistant-files.tsx#button:assistant.files.stop':
+    'On a phone: records the question by voice (up to 2 minutes) and, when pressed again, stops and sends it; the assistant writes it out word for word and answers.',
+  'features/assistant/assistant-files.tsx#button:assistant.files.recordingFile':
+    'Downloads a file of the conversation: one the person attached, the recording of a spoken question, or an export the assistant made.',
   'features/assistant/assistant-chat.tsx#button:assistant.continue':
     'Shown under an answer that a limit of one question cut: asks the next part of the work, which never proposes again a step proposed before. Waits until the proposal shown is confirmed or declined.',
   'features/assistant/assistant-settings-section.tsx#field:assistant.settings.questionActions':

@@ -119,7 +119,7 @@ describe('the menu and the home page of each role', () => {
       'GET /api/timetable/home': () => json(NO_LESSONS),
       // Task 11.16: the Assistant page shows while the assistant is on for the chosen role.
       'GET /api/assistant/status': () =>
-        json({ available: true, refusal: null, questionsLeftToday: 30 }),
+        json({ available: true, refusal: null, questionsLeftToday: 30, files: false }),
     });
 
     renderApp('/');

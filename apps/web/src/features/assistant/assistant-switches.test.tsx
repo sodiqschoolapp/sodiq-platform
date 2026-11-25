@@ -82,7 +82,7 @@ describe('the Assistant settings page', () => {
     const calls = fakeApi({
       'GET /api/auth/session': () => json(admin()),
       'GET /api/assistant/status': () =>
-        json({ available: true, refusal: null, questionsLeftToday: 30 }),
+        json({ available: true, refusal: null, questionsLeftToday: 30, files: false }),
       'GET /api/setup/school-settings/assistant': () => json(SETTINGS),
       'PUT /api/setup/school-settings/assistant': (body) =>
         json({ ...SETTINGS, ...(body as object) }),
@@ -152,7 +152,7 @@ describe('the Assistant settings page', () => {
       fakeApi({
         'GET /api/auth/session': () => json({ ...admin(), language }),
         'GET /api/assistant/status': () =>
-          json({ available: true, refusal: null, questionsLeftToday: 30 }),
+          json({ available: true, refusal: null, questionsLeftToday: 30, files: false }),
         'GET /api/setup/school-settings/assistant': () => json(SETTINGS),
         'GET /api/assistant/actions': () => json(CATALOGUE),
       });
@@ -230,7 +230,7 @@ describe('a proposal of many entries, and a secret shown once', () => {
     fakeApi({
       'GET /api/auth/session': () => json(admin()),
       'GET /api/assistant/status': () =>
-        json({ available: true, refusal: null, questionsLeftToday: 30 }),
+        json({ available: true, refusal: null, questionsLeftToday: 30, files: false }),
       'GET /api/assistant/conversations': () =>
         json({ conversations: [{ ...waiting, messages: undefined, proposals: undefined }] }),
       [`GET /api/assistant/conversations/${uid(1)}`]: () => json(waiting),

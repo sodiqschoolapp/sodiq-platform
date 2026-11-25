@@ -1,6 +1,7 @@
 import {
   ASSISTANT_QUESTION_MAX_LENGTH,
   type AssistantConversation,
+  type AssistantFile,
   type AssistantMessage,
   type AssistantRole,
   type AssistantStatus,
@@ -40,6 +41,18 @@ import {
 import { placeOf } from './assistant-place';
 import { progressQuery, type QuestionProgress } from './assistant-progress';
 import { ProposalCard } from './proposal-card';
+import {
+  AttachButton,
+  canRecord,
+  DraftChips,
+  MessageFiles,
+  MicButton,
+  useDraftFiles,
+  useFileFailureText,
+  type FileFailure,
+} from './assistant-files';
+import { MicIcon } from '@/components/icons';
+import { SM, useMinWidth } from '@/lib/use-min-width';
 
 /** The refusals the chat says in a line of its own (`02`, Limits; task 11.16). */
 const REFUSALS = [
@@ -130,6 +143,11 @@ export function AssistantChat({
   const [sent, setSent] = useState<string | null>(null);
 
   const router = useRouter();
+  // Task 11.22: the files attached and not sent, kept outside the chat (`12`, No lost work).
+  const [draftFiles, setDraftFiles] = useDraftFiles();
+  const [fileFailure, setFileFailure] = useState<FileFailure | null>(null);
+  const fileFailureText = useFileFailureText();
+  const phone = !useMinWidth(SM);
   const ask = useMutation({
     mutationFn: (question: Asked) => {
       const place = withPlace ? placeOf(router.state.matches.at(-1)) : undefined;
@@ -140,12 +158,26 @@ export function AssistantChat({
         ...(place === undefined ? {} : { place }),
         // Task 11.21: Continue of the newest answer, which a limit cut.
         ...(question.kind === 'continue' ? { continue: true as const } : {}),
+        // Task 11.22: the files go with a typed question; a recording with its own.
+        ...(question.kind === 'typed' && question.files.length > 0
+          ? { files: question.files.map((file) => file.id) }
+          : {}),
+        ...(question.kind === 'voice' ? { voice: question.voice } : {}),
       });
     },
     onMutate: (question) => {
-      setSent(question.kind === 'continue' ? t('assistant.continued') : question.text);
+      setSent(
+        question.kind === 'continue'
+          ? t('assistant.continued')
+          : question.kind === 'voice'
+            ? t('assistant.files.voiceSent')
+            : question.text,
+      );
       // A choice or Continue pressed leaves what is typed in the box (`12`, No lost work).
-      if (question.kind === 'typed') setText('');
+      if (question.kind === 'typed' && question.typed) setText('');
+      if (question.kind === 'typed' && question.files.length > 0) {
+        setDraftFiles(draftFiles.filter((file) => !question.files.includes(file)));
+      }
     },
     onSuccess: (answer) => {
       setSent(null);
@@ -163,8 +195,17 @@ export function AssistantChat({
     },
     onError: (_error, question) => {
       setSent(null);
-      // Refused: the question goes back into the box, unless something new was typed meanwhile.
-      if (question.kind === 'typed') setText((now) => (now === '' ? question.text : now));
+      // Refused: the question goes back into the box, unless something new was typed meanwhile,
+      // and its files back among the chips.
+      if (question.kind === 'typed' && question.typed) {
+        setText((now) => (now === '' ? question.text : now));
+      }
+      if (question.kind === 'typed' && question.files.length > 0) {
+        setDraftFiles([
+          ...question.files,
+          ...draftFiles.filter((file) => !question.files.includes(file)),
+        ]);
+      }
     },
     onSettled: async () => {
       await queryClient.invalidateQueries({ queryKey: [...ASSISTANT_KEY, 'status'] });
@@ -224,7 +265,7 @@ export function AssistantChat({
     const question = text.trim();
     if (question === '' || busy) return;
     ask.reset();
-    ask.mutate({ kind: 'typed', text: question });
+    ask.mutate({ kind: 'typed', text: question, typed: true, files: draftFiles });
   };
   // Task 11.21: a choice pressed is sent as the person's answer; Continue as the next part.
   const mayAsk = !busy && !readOnly && (status === undefined || status.available);
@@ -274,7 +315,7 @@ export function AssistantChat({
                 {...(mayAsk
                   ? {
                       onChoose: (option: string) => {
-                        press({ kind: 'typed', text: option });
+                        press({ kind: 'typed', text: option, typed: false, files: [] });
                       },
                       onContinue: () => {
                         press({ kind: 'continue', text: t('assistant.continue') });
@@ -309,41 +350,62 @@ export function AssistantChat({
         {readOnly ? (
           <p className="text-sm text-muted-foreground">{t('assistant.readOnly')}</p>
         ) : (
-          <form className="flex items-end gap-2" onSubmit={submit}>
-            <label className="sr-only" htmlFor="assistant-question">
-              {t('assistant.question')}
-            </label>
-            <textarea
-              id="assistant-question"
-              className={`${FIELD} h-auto min-h-10 resize-none py-2`}
-              rows={2}
-              maxLength={ASSISTANT_QUESTION_MAX_LENGTH}
-              value={text}
-              placeholder={t('assistant.placeholder')}
-              onChange={(event) => {
-                setText(event.target.value);
-              }}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter' && !event.shiftKey) submit(event);
-              }}
-            />
-            <Button
-              type="submit"
-              size="icon"
-              className="max-sm:size-11"
-              aria-label={
-                ask.isPending
-                  ? t('assistant.sending')
-                  : busy
-                    ? t('assistant.working')
-                    : t('assistant.send')
-              }
-              pending={busy}
-              disabled={text.trim() === '' || (status !== undefined && !status.available)}
-            >
-              {!busy && <SendIcon aria-hidden />}
-            </Button>
-          </form>
+          <>
+            <DraftChips />
+            {fileFailure !== null && (
+              <p role="alert" className="text-sm text-destructive">
+                {fileFailureText(fileFailure)}
+              </p>
+            )}
+            <form className="flex items-end gap-2" onSubmit={submit}>
+              {status?.files === true && (
+                <AttachButton role={role} disabled={!mayAsk} onFailure={setFileFailure} />
+              )}
+              <label className="sr-only" htmlFor="assistant-question">
+                {t('assistant.question')}
+              </label>
+              <textarea
+                id="assistant-question"
+                className={`${FIELD} h-auto min-h-10 resize-none py-2`}
+                rows={2}
+                maxLength={ASSISTANT_QUESTION_MAX_LENGTH}
+                value={text}
+                placeholder={t('assistant.placeholder')}
+                onChange={(event) => {
+                  setText(event.target.value);
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' && !event.shiftKey) submit(event);
+                }}
+              />
+              <Button
+                type="submit"
+                size="icon"
+                className="max-sm:size-11"
+                aria-label={
+                  ask.isPending
+                    ? t('assistant.sending')
+                    : busy
+                      ? t('assistant.working')
+                      : t('assistant.send')
+                }
+                pending={busy}
+                disabled={text.trim() === '' || (status !== undefined && !status.available)}
+              >
+                {!busy && <SendIcon aria-hidden />}
+              </Button>
+              {status?.files === true && phone && canRecord() && (
+                <MicButton
+                  role={role}
+                  disabled={!mayAsk}
+                  onFailure={setFileFailure}
+                  onRecorded={(voice) => {
+                    press({ kind: 'voice', text: '', voice });
+                  }}
+                />
+              )}
+            </form>
+          </>
         )}
         {ask.error !== null && refusedBy === null && <FailureAlert error={ask.error} />}
       </footer>
@@ -391,8 +453,11 @@ export function Messages({
   undoing,
   onChoose,
   onContinue,
+  readsAny = false,
 }: {
   conversation: AssistantConversation;
+  /** Task 11.22: the Super Admin's page of every conversation: files through its own route. */
+  readsAny?: boolean;
   onDecide?: (proposalId: string, which: 'confirm' | 'decline') => void;
   deciding?: boolean;
   /** Task 11.21: Undo of a confirmed proposal. */
@@ -460,6 +525,7 @@ export function Messages({
       <li key={message.id}>
         <MessageView
           message={message}
+          {...(readsAny ? { conversationId: conversation.id } : {})}
           undoOfTime={
             message.kind === 'question' && message.undoOf !== null
               ? (conversation.proposals.find((proposal) => proposal.id === message.undoOf)
@@ -527,8 +593,11 @@ function MessageView({
   undoOfTime = null,
   onChoose,
   onContinue,
+  conversationId,
 }: {
   message: AssistantMessage;
+  /** Task 11.22: the Super Admin reads another person's conversation: files through that route. */
+  conversationId?: string;
   /** Task 11.21: when the proposal an Undo question names was made, to tell two Undos apart. */
   undoOfTime?: string | null;
   onChoose?: (option: string) => void;
@@ -546,12 +615,26 @@ function MessageView({
             : message.continued
               ? t('assistant.continued')
               : message.text}
+          {message.voice && (
+            <span className="ms-2 inline-flex align-middle text-muted-foreground">
+              <MicIcon aria-hidden className="size-4" />
+              <span className="sr-only">{t('assistant.files.spoken')}</span>
+            </span>
+          )}
+          <MessageFiles
+            message={message}
+            {...(conversationId === undefined ? {} : { conversationId })}
+          />
         </p>
       );
     case 'answer':
       return (
         <div className="grid gap-2">
           <AnswerText text={message.text} />
+          <MessageFiles
+            message={message}
+            {...(conversationId === undefined ? {} : { conversationId })}
+          />
           {message.undo !== null && <UndoAnswer undo={message.undo} />}
           {onChoose !== undefined && message.choices.length > 0 && (
             <ul className="flex flex-wrap gap-2" aria-label={t('assistant.choices')}>
@@ -643,8 +726,14 @@ function MessageView({
   }
 }
 
-/** A question sent: typed (or a choice pressed), or Continue of a cut answer (task 11.21). */
-type Asked = { kind: 'typed'; text: string } | { kind: 'continue'; text: string };
+/**
+ * A question sent: typed (or a choice pressed), or Continue of a cut answer (task 11.21); task
+ * 11.22: with the files attached, or a recording.
+ */
+type Asked =
+  | { kind: 'typed'; text: string; typed: boolean; files: readonly AssistantFile[] }
+  | { kind: 'continue'; text: string }
+  | { kind: 'voice'; text: string; voice: string };
 
 /** The reasons an Undo names a change it does not reverse, by their texts. */
 const UNDO_REASONS = [

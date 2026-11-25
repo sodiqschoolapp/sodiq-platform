@@ -6640,6 +6640,139 @@ export const PLATFORM_MAP_SOURCE: unknown = {
    "description": "The name of the conversation."
   },
   {
+   "id": "features/assistant/assistant-files.tsx#button:assistant.files.attach",
+   "kind": "button",
+   "label": {
+    "uz": "Fayl biriktirish",
+    "ru": "Прикрепить файл",
+    "en": "Attach a file"
+   },
+   "pages": [
+    "*"
+   ],
+   "parent": null,
+   "roles": [
+    "super_admin",
+    "principal",
+    "academic_vice_principal",
+    "spiritual_vice_principal",
+    "head_tutor",
+    "tutor",
+    "class_teacher",
+    "senior_head_teacher",
+    "head_teacher",
+    "teacher",
+    "hr",
+    "nurse",
+    "psychologist",
+    "librarian"
+   ],
+   "operations": [],
+   "opens": null,
+   "description": "Attaches an Excel file, a PDF or a photo to the next question (at most 5 files, Excel up to 5 MB, a PDF or photo up to 10 MB, 14 MB together). An import template attached goes through that import’s own preview; the assistant reads any other file into a proposal."
+  },
+  {
+   "id": "features/assistant/assistant-files.tsx#button:assistant.files.recordingFile",
+   "kind": "button",
+   "label": {
+    "uz": "Ovozli yozuv",
+    "ru": "Запись",
+    "en": "Recording"
+   },
+   "pages": [
+    "*"
+   ],
+   "parent": null,
+   "roles": [
+    "super_admin",
+    "principal",
+    "academic_vice_principal",
+    "spiritual_vice_principal",
+    "head_tutor",
+    "tutor",
+    "class_teacher",
+    "senior_head_teacher",
+    "head_teacher",
+    "teacher",
+    "hr",
+    "nurse",
+    "psychologist",
+    "librarian"
+   ],
+   "operations": [
+    "AssistantAdminController_file",
+    "AssistantController_file"
+   ],
+   "opens": null,
+   "description": "Downloads a file of the conversation: one the person attached, the recording of a spoken question, or an export the assistant made."
+  },
+  {
+   "id": "features/assistant/assistant-files.tsx#button:assistant.files.remove",
+   "kind": "button",
+   "label": {
+    "uz": "… ni olib tashlash",
+    "ru": "Убрать …",
+    "en": "Remove …"
+   },
+   "pages": [
+    "*"
+   ],
+   "parent": null,
+   "roles": [
+    "super_admin",
+    "principal",
+    "academic_vice_principal",
+    "spiritual_vice_principal",
+    "head_tutor",
+    "tutor",
+    "class_teacher",
+    "senior_head_teacher",
+    "head_teacher",
+    "teacher",
+    "hr",
+    "nurse",
+    "psychologist",
+    "librarian"
+   ],
+   "operations": [],
+   "opens": null,
+   "description": "Removes an attached file from the question before it is sent."
+  },
+  {
+   "id": "features/assistant/assistant-files.tsx#button:assistant.files.stop",
+   "kind": "button",
+   "label": {
+    "uz": "Toʻxtatish va yuborish",
+    "ru": "Остановить и отправить",
+    "en": "Stop and send"
+   },
+   "pages": [
+    "*"
+   ],
+   "parent": null,
+   "roles": [
+    "super_admin",
+    "principal",
+    "academic_vice_principal",
+    "spiritual_vice_principal",
+    "head_tutor",
+    "tutor",
+    "class_teacher",
+    "senior_head_teacher",
+    "head_teacher",
+    "teacher",
+    "hr",
+    "nurse",
+    "psychologist",
+    "librarian"
+   ],
+   "operations": [
+    "AssistantController_upload"
+   ],
+   "opens": null,
+   "description": "On a phone: records the question by voice (up to 2 minutes) and, when pressed again, stops and sends it; the assistant writes it out word for word and answers."
+  },
+  {
    "id": "features/assistant/assistant-page.tsx#button:assistant.newConversation",
    "kind": "button",
    "label": {

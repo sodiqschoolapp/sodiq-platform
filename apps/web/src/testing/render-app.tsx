@@ -138,7 +138,7 @@ const SHELL_ANSWERS: Record<string, Handler> = {
   // Task 11.12: the top bar asks whether the assistant is open to the chosen role; off until
   // switched on (`02`, Assistant), so no button shows.
   'GET /api/assistant/status': () =>
-    json({ available: false, refusal: 'assistant_off', questionsLeftToday: 30 }),
+    json({ available: false, refusal: 'assistant_off', questionsLeftToday: 30, files: false }),
   'GET /api/results/branch-summary': () =>
     json({
       date: '2026-10-19',

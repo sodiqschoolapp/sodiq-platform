@@ -179,7 +179,7 @@ function ConversationPanel({ row }: { row: AssistantAnyConversation }) {
       ) : detail.data === undefined ? (
         <LoadingOutline />
       ) : (
-        <Messages conversation={detail.data} />
+        <Messages conversation={detail.data} readsAny />
       )}
     </div>
   );

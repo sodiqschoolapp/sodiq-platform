@@ -47,6 +47,8 @@ import ContentCopySvg from '@material-symbols/svg-500/rounded/content_copy-fill.
 import UndoSvg from '@material-symbols/svg-500/rounded/undo-fill.svg?react';
 import AccountCircleSvg from '@material-symbols/svg-500/rounded/account_circle-fill.svg?react';
 import AttachFileSvg from '@material-symbols/svg-500/rounded/attach_file-fill.svg?react';
+import MicSvg from '@material-symbols/svg-500/rounded/mic-fill.svg?react';
+import StopSvg from '@material-symbols/svg-500/rounded/stop-fill.svg?react';
 import CampaignSvg from '@material-symbols/svg-500/rounded/campaign-fill.svg?react';
 import EventSvg from '@material-symbols/svg-500/rounded/event-fill.svg?react';
 import GradingSvg from '@material-symbols/svg-500/rounded/grading-fill.svg?react';
@@ -130,6 +132,8 @@ export const ContentCopyIcon = icon(ContentCopySvg);
 export const UndoIcon = icon(UndoSvg);
 export const AccountCircleIcon = icon(AccountCircleSvg);
 export const AttachFileIcon = icon(AttachFileSvg);
+export const MicIcon = icon(MicSvg);
+export const StopIcon = icon(StopSvg);
 export const CampaignIcon = icon(CampaignSvg);
 export const EventIcon = icon(EventSvg);
 export const FactCheckIcon = icon(FactCheckSvg);

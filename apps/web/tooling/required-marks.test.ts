@@ -91,6 +91,11 @@ const NOT_FORM_FIELDS: Readonly<Record<string, { count: number; reason: string }
     reason:
       "The chat's question box; Send stays off while it is empty, a message box rather than a field of a record form.",
   },
+  'features/assistant/assistant-files.tsx': {
+    count: 1,
+    reason:
+      'The hidden file input of the paperclip: each file chosen is uploaded at once; nothing is required.',
+  },
   'features/audit/audit-page.tsx': {
     count: 6,
     reason: 'Filters of the audit log list; they send no record.',
