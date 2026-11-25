@@ -517,6 +517,33 @@ describe('the helpers of the assistant (task 11.23)', () => {
         const closed = given(model, DRAFT_PLAN_UNIT);
         expect(closed.rows).toEqual([]);
         expect((closed.window as { state: string }).state).toBe('ended');
+        // A step proposed there all the same is refused at Confirm as on the screen.
+        const [, , l26] = await lessonsOf(scene.classId, scene.subject, '2026-10-01', '2026-10-31');
+        const proposed = await ask(ownerAs(), [
+          calls({
+            name: ITEM_CREATE,
+            args: {
+              journalId: journal,
+              body: {
+                quarterId: q1,
+                position: 3,
+                lessonId: l26?.id,
+                values: { topic: 'Late', objectives: '', links: [], classworks: [], homeworks: [] },
+              },
+              summary: 'Item 3.',
+            },
+          }),
+          answer('Proposed.'),
+        ]);
+        const late = proposed.proposals.at(-1);
+        const refused = await confirm(late?.id ?? '', ownerAs());
+        expect(refused.status, JSON.stringify(refused.body).slice(0, 600)).toBe(200);
+        expect(
+          assistantConversationSchema
+            .parse(refused.body)
+            .proposals.at(-1)
+            ?.steps.map((step) => [step.state, step.code]),
+        ).toEqual([['refused', 'plan_window_closed']]);
         const other = await journalOf(scene.otherClass, scene.subject);
         await ask(ownerAs(), [
           calls({ name: DRAFT_PLAN_UNIT, args: { journalId: other, count: 3 } }),
@@ -524,6 +551,31 @@ describe('the helpers of the assistant (task 11.23)', () => {
         ]);
         // Another teacher's plan of the subject is readable (`09`), never writable: no row, no item tool.
         expect(given(model, DRAFT_PLAN_UNIT)).toMatchObject({ canEdit: false, rows: [] });
+      });
+
+      it('proposes what the proposal\u2019s limit holds of a larger unit and offers Continue', async () => {
+        await at(NOVEMBER_2);
+        const q3 = await quarterOf(scene, 3);
+        await t.database.migrator
+          .updateTable('assistant_settings')
+          .set({ proposal_steps: 3 })
+          .execute();
+        try {
+          const conversation = await ask(ownerAs(), [
+            calls({ name: DRAFT_PLAN_UNIT, args: { journalId: journal, quarterId: q3, count: 8 } }),
+            answer('The first part.'),
+          ]);
+          const unit = given(model, DRAFT_PLAN_UNIT) as { rows: unknown[]; cut: number };
+          expect(unit.rows).toHaveLength(3);
+          expect(unit.cut).toBe(5);
+          const last = conversation.messages.at(-1);
+          expect(last?.kind === 'answer' ? last.continues : undefined).toBe(true);
+        } finally {
+          await t.database.migrator
+            .updateTable('assistant_settings')
+            .set({ proposal_steps: 100 })
+            .execute();
+        }
       });
 
       it('is never given to the Super Admin or the Academic Vice Principal', async () => {
@@ -584,6 +636,20 @@ describe('the helpers of the assistant (task 11.23)', () => {
         expect(last?.kind === 'answer' ? last.text : '').toContain('classwork 10 % at weight 40');
       });
 
+      it('keeps an answer that quotes a work of the breakdown with its date', async () => {
+        await at(MONDAY_26);
+        const conversation = await ask(viceAs(), [
+          explainCall(),
+          answer('The classwork of 12.10.2026 scored 1 of 10, that is 10%; the grade is 2.'),
+        ]);
+        const breakdown = given(model, EXPLAIN_RESULT) as { outcome: { grade?: number } };
+        expect(breakdown.outcome.grade).toBe(2);
+        expect(conversation.messages.at(-1)).toMatchObject({
+          kind: 'answer',
+          text: 'The classwork of 12.10.2026 scored 1 of 10, that is 10%; the grade is 2.',
+        });
+      });
+
       it('refuses a figure that is not in the breakdown, also one found elsewhere in the journal read: one more call, then the notice', async () => {
         await at(MONDAY_26);
         // 90 is another student's classwork percent in the journal read, never this student's.
@@ -616,16 +682,23 @@ describe('the helpers of the assistant (task 11.23)', () => {
         await at(MONDAY_26);
         // The owner teaches the other class its second subject only; its maths is another's.
         const pupil = await student(scene.branch, scene.otherClass, 'Laylo', 'Hasanova');
-        await ask(ownerAs(), [
+        // A result of the model's own after "not open" is refused all the same (review of the
+        // code, should fix 1).
+        const conversation = await ask(ownerAs(), [
           calls({
             name: EXPLAIN_RESULT,
             args: { studentId: pupil, subjectId: scene.subject, quarterId: q1 },
           }),
-          answer('Not open.'),
+          answer('It is about 85.'),
+          answer('It is about 85.'),
         ]);
         const result = given(model, EXPLAIN_RESULT);
-        expect(result.error).toMatch(/^(not_open|not_found)$/);
+        expect(result.error).toBe('not_open');
         expect(result).not.toHaveProperty('averages');
+        expect(conversation.messages.at(-1)).toMatchObject({
+          kind: 'notice',
+          code: 'assistant_figures_unchecked',
+        });
       });
     });
   });
@@ -637,7 +710,7 @@ describe('the helpers of the assistant (task 11.23)', () => {
      */
     async function scenes(subjectOfCandidates: 'same' | 'other') {
       t.clock.set(START);
-      const a = await publishedScene(t, load, { graded: true });
+      const a = await publishedScene(t, load, { graded: true, secondSubject: true });
       const b = await publishedScene(t, load, {
         graded: true,
         secondSubject: true,
@@ -681,7 +754,18 @@ describe('the helpers of the assistant (task 11.23)', () => {
         .where('id', '=', await onMonday(b.otherClass, b.subject))
         .execute();
       const lesson = await onMonday(a.classId, a.subject);
-      return { a, b, busy: busy.staffId, free: free.staffId, lesson };
+      // A third teacher of the subject with one lesson in A that day, after the absent one's
+      // (the other class's second subject, lesson 2 at 08:55): fewer lessons rank first.
+      const later = await load.teacher(a.branch, {
+        subjects: [{ subject: candidateSubject, grades: [7] }],
+      });
+      await hoursOf(t, a.branch, later.staffId);
+      await t.database.migrator
+        .updateTable('lessons')
+        .set({ teacher_id: later.staffId })
+        .where('id', '=', await onMonday(a.otherClass, a.secondSubject ?? ''))
+        .execute();
+      return { a, b, busy: busy.staffId, free: free.staffId, later: later.staffId, lesson };
     }
 
     const adminOf = (branch: string) => ({ cookie: t.admin, branch, role: 'super_admin' as const });
@@ -721,6 +805,12 @@ describe('the helpers of the assistant (task 11.23)', () => {
       const ids = forLesson?.teachers.map((one) => one.id) ?? [];
       expect(ids).toContain(s.free);
       expect(ids).not.toContain(s.busy);
+      // The ranking through the route: the lessons that day come from the branch's day read.
+      const counts = new Map(forLesson?.teachers.map((one) => [one.id, one.lessonsThatDay]));
+      expect(counts.get(s.later)).toBe(1);
+      expect(counts.get(s.free)).toBe(0);
+      expect(ids.indexOf(s.free)).toBeLessThan(ids.indexOf(s.later));
+      expect(ids.at(-1)).toBe(s.later);
       const teacherOf = async () =>
         (
           await t.database.migrator
@@ -735,6 +825,14 @@ describe('the helpers of the assistant (task 11.23)', () => {
       const confirmed = await confirm(proposal?.id ?? '', adminOf(s.a.branch));
       expect(confirmed.status, JSON.stringify(confirmed.body).slice(0, 600)).toBe(200);
       const after = await teacherOf();
+      // Audited as the person's change, marked "via assistant" (`02`, Audit).
+      const marked = await t.database.migrator
+        .selectFrom('audit_log')
+        .select('action')
+        .where('branch_id', '=', s.a.branch)
+        .where('assistant_step_id', 'is not', null)
+        .execute();
+      expect(marked.length).toBeGreaterThan(0);
       expect(before).toBe(s.a.teacher.staffId);
       expect(ids.includes(after ?? '')).toBe(true);
       expect(after).not.toBe(before);

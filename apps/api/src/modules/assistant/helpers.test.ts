@@ -4,6 +4,7 @@ import {
   DRAFT_PLAN_UNIT,
   EXPLAIN_RESULT,
   figuresOf,
+  figuresOfBreakdown,
   figuresOutsideBreakdown,
   helpersOf,
   rankSubstitutes,
@@ -81,6 +82,35 @@ describe('the figure check (task 11.23, plan decision 9, review correction 3)', 
     // "82,5" is never read as 82 and 5: a figure the check cannot match does not pass.
     expect(figuresOutsideBreakdown('Classwork 82,5 %.', allowed)).toEqual(['82.5']);
     expect(figuresOutsideBreakdown('Weighted: 32.8 points.', allowed)).toEqual(['32.8']);
+  });
+});
+
+describe('the figure check over a breakdown with dates (review of the code, must fix 3)', () => {
+  const breakdown = {
+    averages: { attendance: 50, classwork: 10, homework: null },
+    weights: { attendance: 20, classwork: 40, homework: 40 },
+    outcome: { kind: 'number', shown: 22, grade: 2 },
+    classworks: [{ date: '2026-10-12', score: 1, total: 10, percent: 10 }],
+    attendanceMarks: [
+      { date: '2026-10-19', value: 0 },
+      { date: '2026-10-26', value: 100 },
+    ],
+  };
+  const allowed = figuresOfBreakdown(breakdown);
+
+  it('takes a date as one figure, so a wrong grade or a small invented figure is refused', () => {
+    expect(allowed.has('2026')).toBe(false);
+    expect(allowed.has('19')).toBe(false);
+    expect(figuresOutsideBreakdown('The grade is 3.', allowed)).toEqual(['3']);
+    expect(figuresOutsideBreakdown('Homework is 12%.', allowed)).toEqual(['12']);
+    expect(figuresOutsideBreakdown('The grade is 2, the result 22.', allowed)).toEqual([]);
+  });
+
+  it('lets a date of the breakdown through as the three languages write it, and refuses another date', () => {
+    expect(figuresOutsideBreakdown('The work of 12.10.2026 scored 1 of 10.', allowed)).toEqual([]);
+    expect(figuresOutsideBreakdown('The work of 2026-10-12: 10%.', allowed)).toEqual([]);
+    expect(figuresOutsideBreakdown('Absent on 19/10/2026.', allowed)).toEqual([]);
+    expect(figuresOutsideBreakdown('Absent on 20.10.2026.', allowed)).toEqual(['date:2026-10-20']);
   });
 });
 

@@ -78,7 +78,7 @@ export const HELPER_DEFINITIONS: Readonly<Record<string, ModelTool>> = {
   [SUGGEST_SUBSTITUTES]: {
     name: SUGGEST_SUBSTITUTES,
     description:
-      'For a teacher’s absence, gives each of its lessons not yet substituted (from today, at most 7 days) with the substitutes the platform offers for it, checked by the timetable rules at the lesson’s clock time, ranked: same subject first, then fewest lessons that day, then already in the building. Take the absence id from the absences read. Then propose one substitution per lesson with the substitute tool it declares, naming the teacher, lesson, date and time; never a teacher it did not offer.',
+      'For a teacher’s absence, gives each of its lessons not yet substituted (from today, at most 7 days) with the substitutes the platform offers for it, checked by the timetable rules at the lesson’s clock time, ranked: teachers who cannot teach in the class\u2019s language last, then same subject, then fewest lessons that day, then already in the building. Take the absence id from the absences read. Then propose one substitution per lesson with the substitute tool it declares, naming the teacher, lesson, date and time; never a teacher it did not offer.',
     parameters: {
       type: 'object',
       properties: {
@@ -110,7 +110,7 @@ export const HELPER_DEFINITIONS: Readonly<Record<string, ModelTool>> = {
   [EXPLAIN_RESULT]: {
     name: EXPLAIN_RESULT,
     description:
-      'Explains why a student has a result: gives the platform’s own breakdown of one subject and quarter (each part’s average, the quarter’s weight of each part, the parts left out and why, the shown result and grade, whether provisional, the lessons it is based on, and the works behind the averages). Quote only these figures, as given; never add, multiply or average them. Your answer is checked: a figure not in the breakdown is refused.',
+      'Explains why a student has a result: gives the platform’s own breakdown of one subject and quarter (each part’s average, the quarter’s weight of each part, the parts left out and why, the shown result and grade, whether provisional, the lessons it is based on, and the works behind the averages). Quote only these figures, as given; never add, multiply or average them. Write a date as day.month.year (12.10.2026), never as words. Your answer is checked: a figure not in the breakdown is refused.',
     parameters: {
       type: 'object',
       properties: {
@@ -577,7 +577,22 @@ export async function draftPlanUnit(
   };
 }
 
-/** The numbers of a value's strings and numbers, for the figure check; ids are left out. */
+/** A date written as a whole: ISO (2026-10-12) or day first (12.10.2026, 12/10/2026). */
+const DATE_TOKEN = /\b(\d{4})-(\d{2})-(\d{2})\b|\b(\d{1,2})[./](\d{1,2})[./](\d{4})\b/g;
+
+/** A date token as compared: `date:YYYY-MM-DD`. */
+function dateKey(match: RegExpMatchArray): string {
+  const [, year, month, day, dayFirst, monthSecond, yearLast] = match;
+  return year !== undefined
+    ? `date:${year}-${month ?? ''}-${day ?? ''}`
+    : `date:${yearLast ?? ''}-${(monthSecond ?? '').padStart(2, '0')}-${(dayFirst ?? '').padStart(2, '0')}`;
+}
+
+/**
+ * The numbers of a value's strings and numbers, for the figure check (review of the code, must
+ * fix 3): a date is one figure, never its year, month and day apart, so a breakdown's dates do not
+ * let every number from 1 to 31 through; ids are left out.
+ */
 function figuresIn(value: unknown, into: Set<string>, key = ''): void {
   if (typeof value === 'number') {
     into.add(normalFigure(String(value)));
@@ -606,17 +621,30 @@ function normalFigure(figure: string): string {
 }
 
 /**
- * The figures written in a text (plan decision 9, review correction 3): whole numbers and decimals
- * with a point or a comma ("82,5"), with a percent sign attached or apart ("82%", "82 %"). A
- * digit is never skipped: "82.5" is the figure 82.5, never 82 and 5.
+ * The figures written in a text (plan decision 9, review correction 3): a date as one figure
+ * (2026-10-12, 12.10.2026, 12/10/2026), then whole numbers and decimals with a point or a comma
+ * ("82,5"), with a percent sign attached or apart ("82%", "82 %"). A digit is never skipped:
+ * "82.5" is the figure 82.5, never 82 and 5.
  */
 export function figuresOf(value: string): string[] {
-  return [...value.matchAll(/\d+(?:[.,]\d+)?/g)].map((match) => normalFigure(match[0]));
+  const dates = [...value.matchAll(DATE_TOKEN)].map(dateKey);
+  const rest = value.replace(DATE_TOKEN, ' ');
+  return [
+    ...dates,
+    ...[...rest.matchAll(/\d+(?:[.,]\d+)?/g)].map((match) => normalFigure(match[0])),
+  ];
 }
 
 /** The figures of an answer that are in no allowed figure (the breakdown, the person's words). */
 export function figuresOutsideBreakdown(answer: string, allowed: ReadonlySet<string>): string[] {
   return [...new Set(figuresOf(answer).filter((figure) => !allowed.has(figure)))];
+}
+
+/** The figures of a breakdown, as the check allows them. */
+export function figuresOfBreakdown(value: unknown): Set<string> {
+  const into = new Set<string>();
+  figuresIn(value, into);
+  return into;
 }
 
 /** The figures of the person's own words, allowed in the answer. */
@@ -728,8 +756,7 @@ export async function explainResult(
       : { error: trace.ok ? null : trace.error },
     ratingExamEntry: trace.ok && isRecord(trace.body) ? (trace.body.ratingExam ?? null) : null,
   };
-  const figures = new Set<string>();
-  figuresIn(breakdown, figures);
+  const figures = figuresOfBreakdown(breakdown);
   const link =
     journalId === undefined
       ? undefined

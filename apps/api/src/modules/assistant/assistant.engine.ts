@@ -769,9 +769,11 @@ export class AssistantEngine {
             if (!links.some((one) => sameLink(one, link))) links.push(link);
           }
           if (outcome.cut === true) limitReached = true;
-          if (call.name === EXPLAIN_RESULT && outcome.figures !== undefined) {
+          // Review of the code, should fix 1: once explain_result ran, the answer is checked, also
+          // when it found no breakdown (not open, no result): then only the person's words pass.
+          if (call.name === EXPLAIN_RESULT) {
             figures ??= figuresOfWords(asked);
-            for (const figure of outcome.figures) figures.add(figure);
+            for (const figure of outcome.figures ?? []) figures.add(figure);
           }
           results.parts.push({
             kind: 'result',
