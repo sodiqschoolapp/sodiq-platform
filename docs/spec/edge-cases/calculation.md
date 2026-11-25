@@ -6,6 +6,7 @@
 | Case | Rule |
 | --- | --- |
 | A result lands exactly on a boundary. Weights 10 · 50 · 40, attendance 100, classworks 10, 10 and 25 out of 30, homework 29 out of 80: the exact result is 49.5, grade 3. Ordinary computer arithmetic can give 49.4999 and grade 2. | All arithmetic is done on exact fractions, from the number and total typed to the final result. Rounding happens once, at the end. Tests include totals of 3, 7 and 30 that land exactly on 49.5, 66.5 and 83.5. |
+| A score with decimals: 8.25 out of 11, and 7.5 and 9.75 out of 10 in one quarter. | Each enters as an exact fraction: 8.25 ÷ 11 is exactly 75%, and the mean of 75% and 97.5% is exactly 86.25. Nothing is rounded before the end. |
 | Which value gives the grade? | The result rounded to a whole number. Thresholds such as "below 50" use the same rounded number. Ranking uses the exact value. |
 | A part has a weight but no data: no homework was given all quarter. | The result is the weighted sum over the parts that have data for that student, divided by the sum of their weights, in open and closed quarters alike. The result carries a "part left out" marker, and the closing record stores which parts were used. The checklist warns when a part has a weight but no data in a whole journal. |
 | Nothing at all was entered for a student. | The result is "No result": blank, not 0 and not a grade. |

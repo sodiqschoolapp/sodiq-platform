@@ -52,7 +52,7 @@ Students who left or moved are shown in a folded section at the bottom with thei
 - **Rating exam.** One score from 0 to 100 per student per quarter, only in rating journals (grades 2–11).
 - **Comments.** A comment can be attached to any attendance mark or score, and a general note to a student for a lesson. Each comment is either "staff only" or "visible to parents".
 - **Saving.** Every cell saves by itself and shows a saved sign. There is no Save button. If the connection drops, entries wait on the device and are sent when it returns; the page warns before closing with unsent entries.
-- **Keyboard.** Arrows, Tab and Enter move between cells; digits type; a key opens the comment.
+- **Keyboard.** Arrows, Tab and Enter move between cells; digits and a point type; a key opens the comment.
 - **Lesson mode.** On a phone, one lesson is shown at a time as a list of students with large buttons: attendance, then each classwork, then each homework.
 
 ## The total: one flexible way to grade
@@ -64,10 +64,11 @@ Every classwork and homework has a total, set by the teacher in the column heade
 | Count completed questions | 30, the number of questions given | 12 | 40% |
 | Grade on a 5 scale | 5 | 4 | 80% |
 | Grade in percent | 100 | 85 | 85% |
+| Give half points | 10 | 7.5 | 75% |
 
 - The total is a whole number, 1 or more. Numbers cannot be typed for a work until its total is set.
 - The number typed is from 0 up to the total. A number above the total is refused.
-- The number typed is a whole number. Decimals are not accepted.
+- The number typed may have up to two digits after the decimal point, for example 7.5 or 8.25 (owner, 25 November 2026). The decimal separator is a point in every language; a comma is refused. The number is kept exactly as typed, enters every calculation as an exact fraction, and is shown with a point, without trailing zeros (7.50 shows 7.5).
 - The percent is shown as a whole number: 13 out of 30 shows 43%. The exact value is kept and used in every average.
 - Each work has its own total. A teacher can use 30 for one homework and 5 for the next. The last total the teacher used in that journal is offered for the next work.
 - The teacher can change a total inside the edit period. All percents of that work are recalculated at once. If a number already typed is above the new total, the change is refused and those students are listed.

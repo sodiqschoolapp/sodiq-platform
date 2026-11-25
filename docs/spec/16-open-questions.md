@@ -24,7 +24,7 @@ No question is open. The decided ones are kept as a record.
 | 15 | Which SMS provider does the school use? Is a Telegram bot wanted? | No SMS. The parents' channel is a Telegram bot, with the portal as a mini app inside it (owner, 6 November 2026). | Decided |
 | 16 | Can one class or group have two teachers in the same lesson? | No. One teacher per lesson. Splits into groups cover the cases in the sample timetable. | Decided |
 | 17 | Is the homework score entered on the day the homework is checked, or on the day it is given? | On the day it is given, at the lesson where it was given (owner, 25 November 2026; until then, on the day it was checked). | Decided |
-| 18 | Can the number typed for a work have a decimal? | No. Whole numbers only. | Decided |
+| 18 | Can the number typed for a work have a decimal? | Yes, up to two digits after the decimal point, typed with a point (owner, 25 November 2026; until then, whole numbers only). The total and the rating exam score stay whole. | Decided |
 | 19 | Do branches and grades use different day templates? | Each branch has its own slot types and templates. Inside a branch, a range of grades can have its own template. | Decided |
 | 20 | Which preferences should the timetable generator follow? | The eight listed under Auto-generation, with weights set by the Academic Vice Principal. | Decided |
 | 21 | How early can a permanent timetable change start? | Tomorrow at the earliest; next Monday is offered by default. Today only in a branch with no lesson dated today, before today's first lesson begins (owner, 18 November 2026). Any other change for today is a one-day change with a reason. | Decided |

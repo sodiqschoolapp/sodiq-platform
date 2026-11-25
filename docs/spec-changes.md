@@ -2,6 +2,16 @@
 
 The spec in `docs/spec/` was taken from the full spec document on 3 October 2026 (revision 88). Every later change to a spec file is listed here, newest first, with the date, what changed, why, and the files touched. Changes are made only with the `/spec-change` skill and the owner's approval.
 
+## 25 November 2026: decimal scores for classwork and homework
+
+- What changed:
+  1. **Up to two decimals.** A classwork or homework score may have up to two digits after the decimal point (7.5, 8.25). Before, whole numbers only.
+  2. **A point only.** The decimal separator is a point in every language; a comma is refused. The score is kept exactly as typed and shown with a point, without trailing zeros (7.50 shows 7.5).
+  3. **Exact.** A score with decimals enters every calculation as an exact fraction (8.25 is 825/100); the percent is still shown as a whole number and results are still rounded once, at the end. The database keeps scores exactly, never as floating point.
+- Why: the owner, 25 November 2026, in chat. The owner proposed a point or a comma, then chose the point only ("only 7.5 should be accepted").
+- Not changed: the total is a whole number of 1 or more; the score is from 0 to the total; the rating exam score stays whole, from 0 to 100; the calculation rules and their single rounding.
+- Files: `docs/spec/07-journal.md` (Entering data, Keyboard; The total), `docs/spec/edge-cases/journal.md` (Entering, "The teacher types "1" then "2" for 12."), `docs/spec/edge-cases/calculation.md` (Calculation, a new row), `docs/spec/edge-cases/developer-rules.md` (Calculation), `docs/spec/13-technology.md` (Database), `docs/spec/14-quality-plan.md` (Rule tests), `docs/spec/16-open-questions.md` (row 18). With the owner's approval, the same rule in the loop's files: `CLAUDE.md` (Exact arithmetic; Conventions) and `.claude/rules/journal.md`. Proposal `docs/proposals/spec-change-decimal-scores.md`.
+
 ## 25 November 2026: homework is graded at the lesson where it was given
 
 - What changed:

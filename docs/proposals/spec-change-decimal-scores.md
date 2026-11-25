@@ -1,6 +1,6 @@
 # Spec change proposal: decimal scores for classwork and homework
 
-Requested by the owner, 25 November 2026. Status: **waiting for the owner's approval**. Nothing under `docs/spec/` is changed yet.
+Requested by the owner, 25 November 2026. Status: **approved by the owner, 25 November 2026, and applied** (`docs/spec-changes.md`), with one change: the decimal separator is a point only, in every language; a comma is refused and the score is always shown with a point. The applied wording, not section 3 below, is the one in force.
 
 ## 1. Every place that states the rule
 
