@@ -65,6 +65,23 @@ The owner's answers to the decided-ahead questions for Phase 10, given in chat o
 19. Production deploys only after 18:00 or at the weekend, Tashkent time.
 20. The test environment stays after go-live; every change is tried there first.
 
+## 25 November 2026: helpers of the assistant (task 11.23)
+
+Plan approved on pull request #392 with corrections 1 (the ranking reorders the route's list only, the same set of ids), 2 (the clock-time test through the real route and the rule engine) and 3 (the figure check reads "82,5", "82%" and "82 %"; a figure it cannot match never passes). Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first.** `explain_result` gives only what the platform returns: the results row (each part's shown average, the outcome, the parts left out, based on), the works of the trace read and the journal legend's weights; no product or sum. The final answer is checked against those figures and the person's words; one retry, then the notice `assistant_figures_unchecked` | `02`, Calculation stays here; plan decisions 1 and 9 |
+| Helpers are tools of the engine over existing reads, not routes; each read meets the guard, scope and switches and counts toward the question's limit | `02`, Acting as the person; decision 2 |
+| No switch of their own: offered while their reads are on (the briefing while any is; a part switched off or refused is named) | `02`, Switches; decision 3 (the briefing's "any" refines it so a part off can be named) |
+| Briefing: the Super Admin and the Academic Vice Principal; substitutes: the holders of the substitutes read and the substitution; unit: the Teacher alone; explanation: the three roles through their reads | `02`, Helpers; decisions 4 and 8 |
+| The briefing's kinds: absences in force today, the attention list's "needs a teacher" covering today (later days counted), unlock and plan requests "sent" in the deciding view, plans flagged overdue, the early-warning list; 10 rows a kind | Decision 5 |
+| Substitutes ranked: language last, then subject, department, other, then fewest lessons that day in the branch, then a lesson that day ending before this one, then name; the day read is `GET /api/timetable/views/branch` (the plan named `GET /api/timetable/day`, which reads one class only) | `06`, Substitution; decisions 6 and 7 |
+| A unit's rows: the next N empty rows open for writing, bounded by the proposal's steps and the question's reads, with Continue for the rest; the window read is the plan read's own `window` (no separate windows read) | `09`; decision 8 |
+| An answer checked for its figures is not streamed: it shows once checked | `02`, Calculation stays here |
+| The figure check takes a date as one figure (2026-10-12, 12.10.2026, 12/10/2026), never its parts; the model is told to write dates so. It runs once `explain_result` was called, also when it found no breakdown (then only the person's words pass) | Review of the code, must fix 3 and should fix 1 |
+| Another teacher's plan of the subject is readable (`09`): the unit helper gives no row to write (`canEdit` false), in place of the plan's "refused by the read" | `09`, What a plan contains (readable by teachers of the subject and grade) |
+
 ## 25 November 2026: files, photos and voice in the conversation; imports and exports through it (task 11.22)
 
 Plan approved on pull request #390 with corrections 1 (the run mark used once), 2 (previews and reports through the field filter), 3 (the Super Admin downloads the files of any conversation; decision 12 changed), 4 (the foreign key of a link to its file's branch) and 5 (decision 7 written as left undone). Approved by the owner in chat on 25 November 2026 (stop-list item 5): `PermissionGuard.assistantCall` may let an assistant request to a line of kind `file`, `download` or `export` through, only with a single-use run mark that `AssistantCalls` issued for that one request, checked against the account, the chosen role, the route and the branch the way a step is checked; `decide` still runs with the chosen role's assignments only, so no role gains a right; the audit entries are marked "via assistant". Both imports and exports. Flagged on issue #42.

@@ -525,11 +525,67 @@ const MAP_INTENTS: readonly EvalIntent[] = HOW_INTENTS.map((how) => ({
   how,
 }));
 
+/**
+ * Task 11.23 (`02`, Assistant, Helpers; plan decision 10): the helpers, asked in the four forms.
+ * The substitutes are tested through the routes (`assistant-helpers.test.ts`): the demo has no
+ * absence at its setup moment for the replay to name.
+ */
+const HELPER_INTENTS: readonly EvalIntent[] = [
+  {
+    id: 'briefing-vice',
+    role: 'academic_vice_principal',
+    kind: 'read',
+    reads: ['todays_briefing'],
+    texts: {
+      uz: 'Bugun menga nima kerak?',
+      'uz-Cyrl': 'Бугун менга нима керак?',
+      ru: 'Что сегодня требует моего внимания?',
+      en: 'What needs me today?',
+    },
+  },
+  {
+    id: 'briefing-super-admin',
+    kind: 'read',
+    reads: ['todays_briefing'],
+    texts: {
+      uz: 'Bugungi kun boʻyicha qisqacha maʼlumot ber: nimalar kutib turibdi?',
+      'uz-Cyrl': 'Бугунги кун бўйича қисқача маълумот бер: нималар кутиб турибди?',
+      ru: 'Дай сводку на сегодня: что ждёт решения?',
+      en: 'Give me today’s briefing: what is waiting?',
+    },
+  },
+  {
+    id: 'unit-of-plans',
+    role: 'teacher',
+    kind: 'read',
+    reads: ['draft_plan_unit'],
+    texts: {
+      uz: 'Birinchi chorak uchun 3 darslik boʻlim rejasini tuzib ber.',
+      'uz-Cyrl': 'Биринчи чорак учун 3 дарслик бўлим режасини тузиб бер.',
+      ru: 'Составь план раздела из 3 уроков на первую четверть.',
+      en: 'Draft a unit of 3 lessons of my plan for the first quarter.',
+    },
+  },
+  {
+    id: 'why-this-result',
+    role: 'academic_vice_principal',
+    kind: 'read',
+    reads: ['explain_result'],
+    texts: {
+      uz: 'Nega bu oʻquvchining natijasi shunday?',
+      'uz-Cyrl': 'Нега бу ўқувчининг натижаси шундай?',
+      ru: 'Почему у этого ученика такой результат?',
+      en: 'Why does this student have this result?',
+    },
+  },
+];
+
 /** Every case: each intent in each of its four forms. */
 export const EVAL_CASES: readonly EvalCase[] = [
   ...EVAL_INTENTS,
   ...TEACHER_INTENTS,
   ...MAP_INTENTS,
+  ...HELPER_INTENTS,
 ].flatMap((intent) =>
   (Object.entries(intent.texts) as [EvalLanguage, string][]).map(([language, text]) => ({
     id: `${intent.id}/${language}`,

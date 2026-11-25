@@ -1328,6 +1328,8 @@ export const uz: Texts<'one' | 'other'> = {
         'Yordamchi hozir band. Bir daqiqadan keyin qayta urinib koʻring; barcha sahifalar odatdagidek ishlaydi.',
       assistant_question_running:
         'Oldingi savolingizga hali javob yozilmoqda. Javobni kuting, soʻng keyingisini bering.',
+      assistant_figures_unchecked:
+        'Yordamchi bu natijani faqat platformaning oʻz raqamlari bilan tushuntira olmadi, shuning uchun javobi koʻrsatilmadi. Natija tarkibini jurnalda oching yoki qaytadan soʻrang.',
       assistant_answer_failed:
         'Yordamchi bu javobni yakunlay olmadi. Qayta soʻrang; barcha sahifalar odatdagidek ishlaydi.',
     },
