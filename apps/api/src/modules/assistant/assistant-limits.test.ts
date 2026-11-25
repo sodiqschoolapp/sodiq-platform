@@ -13,6 +13,8 @@ import {
 } from '../../testing/assistant-kit.js';
 import { errorCode } from '../../testing/sign-in-kit.js';
 import { costMicros } from './assistant.engine.js';
+import { answerUntilOf, messagesOf, workingOf } from './conversations.store.js';
+import { GENERATED_TOOLS } from './tools.generated.js';
 
 // Task 11.12. `02`, Assistant: "The Super Admin can switch it off for the whole school or for one
 // of the three roles; it is off until switched on." Limits: "A limit of requests per person per
@@ -33,6 +35,9 @@ describe('the assistant: the switch, the daily limit and the monthly cap', () =>
     rolesOn: ['super_admin'],
     dailyLimit: 30,
     monthlyCapDollars: 300,
+    questionActions: 40,
+    proposalSteps: 100,
+    questionMinutes: 10,
     fallbackOn: true,
     dataGroupsOn: [...ASSISTANT_DATA_GROUPS],
     ...change,
@@ -51,6 +56,9 @@ describe('the assistant: the switch, the daily limit and the monthly cap', () =>
 
   /** Every question, conversation and model call is gone from the tables of the counts. */
   const forget = async () => {
+    await sql`delete from assistant_proposal_steps`.execute(scene.database.migrator);
+    await sql`delete from assistant_proposal_decisions`.execute(scene.database.migrator);
+    await sql`delete from assistant_proposals`.execute(scene.database.migrator);
     await sql`delete from assistant_model_calls`.execute(scene.database.migrator);
     await sql`delete from assistant_messages`.execute(scene.database.migrator);
     await sql`delete from assistant_conversation_restores`.execute(scene.database.migrator);
@@ -73,6 +81,13 @@ describe('the assistant: the switch, the daily limit and the monthly cap', () =>
   });
 
   it('is off until switched on, and the switch per school and per role stops the panel while every screen works', async () => {
+    // Task 11.21 (plan decision 3): before any save, the row as 0178 wrote it and 0184 kept it.
+    expect(
+      await scene.database.migrator
+        .selectFrom('assistant_settings')
+        .select(['daily_limit', 'question_actions', 'proposal_steps', 'question_minutes'])
+        .executeTakeFirstOrThrow(),
+    ).toEqual({ daily_limit: 30, question_actions: 40, proposal_steps: 100, question_minutes: 10 });
     expect(await status()).toEqual({
       available: false,
       refusal: 'assistant_off',
@@ -138,10 +153,278 @@ describe('the assistant: the switch, the daily limit and the monthly cap', () =>
         new_value: expect.objectContaining({ dailyLimit: 12, monthlyCapDollars: 250 }) as unknown,
       }),
     );
-    // A value outside its bounds is refused by the schema.
-    expect((await put(settingsBody({ dailyLimit: 0 }))).status).toBe(400);
+    // A value outside its bounds is refused by the schema (task 11.21: 0 is "no daily limit").
+    for (const [field, values] of Object.entries({
+      dailyLimit: [-1, 501],
+      questionActions: [0, 201],
+      proposalSteps: [0, 201],
+      questionMinutes: [0, 31],
+    })) {
+      for (const value of values) {
+        expect(
+          (await put(settingsBody({ [field]: value }))).status,
+          `${field} ${String(value)}`,
+        ).toBe(400);
+      }
+    }
+    for (const [field, value] of Object.entries({
+      dailyLimit: 0,
+      questionActions: 200,
+      proposalSteps: 200,
+      questionMinutes: 30,
+    })) {
+      expect((await put(settingsBody({ [field]: value }))).status, field).toBe(200);
+    }
+    // Task 11.21: the new limits are read back and audited with the others, in one entry.
+    const limits = assistantSettingsSchema.parse(
+      (await put(settingsBody({ questionActions: 60, proposalSteps: 150, questionMinutes: 20 })))
+        .body,
+    );
+    expect(limits).toEqual(
+      expect.objectContaining({ questionActions: 60, proposalSteps: 150, questionMinutes: 20 }),
+    );
+    const entry = await scene.database.migrator
+      .selectFrom('audit_log_school')
+      .select(['old_value', 'new_value'])
+      .where('action', '=', 'assistant_settings.change')
+      .orderBy('occurred_at', 'desc')
+      .orderBy('id', 'desc')
+      .limit(1)
+      .executeTakeFirstOrThrow();
+    expect(entry.new_value).toEqual(
+      expect.objectContaining({ questionActions: 60, proposalSteps: 150, questionMinutes: 20 }),
+    );
     expect((await put(settingsBody({ rolesOn: ['principal'] }))).status).toBe(400);
     expect((await put(settingsBody({ rolesOn: ['super_admin', 'super_admin'] }))).status).toBe(400);
+    await put(settingsBody());
+  });
+
+  it('keeps the stored daily limit of the settings row and adds the new limits with their defaults (0184, plan decision 3)', async () => {
+    // The scene's database ran 0178 to 0184 with no settings saved yet before this file's
+    // first test; a save is read back, so the row is read as stored.
+    const row = await scene.database.migrator
+      .selectFrom('assistant_settings')
+      .select(['question_actions', 'proposal_steps', 'question_minutes'])
+      .executeTakeFirstOrThrow();
+    expect(row).toEqual({ question_actions: 40, proposal_steps: 100, question_minutes: 10 });
+    const columns = await sql<{ column_name: string; column_default: string | null }>`
+      select column_name, column_default from information_schema.columns
+      where table_name = 'assistant_settings' and column_name = 'daily_limit'
+    `.execute(scene.database.migrator);
+    expect(columns.rows[0]?.column_default).toBe('0');
+  });
+
+  it('bounds the steps of a stored proposal at 200 and keeps them an array (0184, review of the plan, corrections 1 and 2)', async () => {
+    const conversation = await scene.database.migrator
+      .insertInto('assistant_conversations')
+      .values({
+        branch_id: scene.north,
+        account_id: scene.adminAccount,
+        role: 'super_admin',
+        title: 'Steps.',
+        created_at: new Date('2026-11-20T10:00:00+05:00'),
+      })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    const question = await scene.database.migrator
+      .insertInto('assistant_messages')
+      .values({
+        conversation_id: conversation.id,
+        branch_id: scene.north,
+        account_id: scene.adminAccount,
+        seq: 1,
+        kind: 'question',
+        content: sql`'{"kind":"question","text":"x"}'::jsonb`,
+        created_at: new Date('2026-11-20T10:00:00+05:00'),
+      })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    const store = (steps: unknown) =>
+      sql`
+        insert into assistant_proposals (conversation_id, branch_id, account_id, question_id, role, steps, created_at, expires_at)
+        values (${conversation.id}, ${scene.north}, ${scene.adminAccount}, ${question.id}, 'super_admin',
+          ${JSON.stringify(steps)}::jsonb, ${new Date('2026-11-20T10:00:00+05:00')}, ${new Date('2026-11-20T10:15:00+05:00')})
+      `.execute(scene.database.migrator);
+    await expect(store(Array.from({ length: 200 }, () => ({})))).resolves.toBeDefined();
+    await expect(store(Array.from({ length: 201 }, () => ({})))).rejects.toThrow(
+      /assistant_proposals_steps_check/,
+    );
+    await expect(store({ steps: [] })).rejects.toThrow(/assistant_proposals_steps_check/);
+    await expect(store([])).rejects.toThrow(/assistant_proposals_steps_check/);
+    // The seq of a step's outcome: up to 200 (review of the plan, correction 1).
+    const proposal = await scene.database.migrator
+      .selectFrom('assistant_proposals')
+      .select('id')
+      .where('conversation_id', '=', conversation.id)
+      .executeTakeFirstOrThrow();
+    const outcome = (seq: number) =>
+      sql`
+        insert into assistant_proposal_steps (step_id, proposal_id, branch_id, seq, state, status, code, created_at)
+        values (gen_random_uuid(), ${proposal.id}, ${scene.north}, ${seq}, 'done', 200, null, ${scene.clock.now()})
+      `.execute(scene.database.migrator);
+    await expect(outcome(200)).resolves.toBeDefined();
+    await expect(outcome(201)).rejects.toThrow(/assistant_proposal_steps_seq_check/);
+  });
+
+  it('keeps the 270 s window of a question stored before 0184, which has no stored end (plan, Time)', async () => {
+    const conversation = await scene.database.migrator
+      .insertInto('assistant_conversations')
+      .values({
+        branch_id: scene.north,
+        account_id: scene.adminAccount,
+        role: 'super_admin',
+        title: 'Before 0184.',
+        created_at: scene.clock.now(),
+      })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    const asked = scene.clock.now();
+    await scene.database.migrator
+      .insertInto('assistant_messages')
+      .values({
+        conversation_id: conversation.id,
+        branch_id: scene.north,
+        account_id: scene.adminAccount,
+        seq: 1,
+        kind: 'question',
+        content: sql`'{"kind":"question","text":"Old."}'::jsonb`,
+        created_at: asked,
+      })
+      .execute();
+    const running = async (ms: number) =>
+      (
+        await sql<{ running: boolean }>`
+          select assistant_question_running(${scene.adminAccount}, ${new Date(asked.getTime() + ms)}) as running
+        `.execute(scene.database.migrator)
+      ).rows[0]?.running;
+    expect(await running(269_000)).toBe(true);
+    expect(await running(270_000)).toBe(false);
+    const messages = await messagesOf(
+      // A read of the migrator: the rows written above, past the branch filter of a transaction.
+      scene.database.migrator as unknown as Parameters<typeof messagesOf>[0],
+      conversation.id,
+    );
+    expect(messages[0]?.answerUntil).toBeNull();
+    expect(answerUntilOf(messages[0] ?? { createdAt: asked, answerUntil: null }).getTime()).toBe(
+      asked.getTime() + 270_000,
+    );
+    expect(workingOf(messages, new Date(asked.getTime() + 269_000))?.until).toBe(
+      new Date(asked.getTime() + 270_000).toISOString(),
+    );
+    expect(workingOf(messages, new Date(asked.getTime() + 270_000))).toBeNull();
+  });
+
+  it('takes a daily limit of 0 as none: the status names no limit and every question is taken (build plan 11.21, Done when; review of the plan, must fix 2)', async () => {
+    await put(settingsBody({ dailyLimit: 0 }));
+    const conversation = await scene.database.migrator
+      .insertInto('assistant_conversations')
+      .values({
+        branch_id: scene.north,
+        account_id: scene.adminAccount,
+        role: 'super_admin',
+        title: 'Many.',
+        created_at: scene.clock.now(),
+      })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    // 600 questions of today, each answered: more than the largest daily limit.
+    await sql`
+      insert into assistant_messages (conversation_id, branch_id, account_id, seq, kind, content, created_at)
+      select ${conversation.id}, ${scene.north}, ${scene.adminAccount}, n,
+        case when n % 2 = 1 then 'question' else 'answer' end,
+        case when n % 2 = 1 then '{"kind":"question","text":"x"}'::jsonb
+          else '{"kind":"answer","text":"y","pages":[]}'::jsonb end,
+        ${scene.clock.now()}
+      from generate_series(1, 1200) n
+    `.execute(scene.database.migrator);
+    expect(await status()).toEqual({ available: true, refusal: null, questionsLeftToday: null });
+    expect((await ask(scene, scene.admin, scene.north, { text: 'One more.' })).status).toBe(202);
+    await put(settingsBody());
+  });
+
+  it('ends a question with the cap’s notice when the cap is reached while it is answered, keeping the steps drafted (build plan 11.21, Done when; review of the plan, must fix 1)', async () => {
+    await put(
+      settingsBody({
+        monthlyCapDollars: 1,
+        questionActions: 200,
+        proposalSteps: 200,
+        questionMinutes: 30,
+      }),
+    );
+    const roomId = await scene.people.room(scene.north);
+    const floor = await scene.database.migrator
+      .selectFrom('rooms')
+      .select('floor_id')
+      .where('id', '=', roomId)
+      .executeTakeFirstOrThrow();
+    // The month spent all but one call: the first call of the question reaches the cap.
+    const conversation = await scene.database.migrator
+      .insertInto('assistant_conversations')
+      .values({
+        branch_id: scene.north,
+        account_id: scene.adminAccount,
+        role: 'super_admin',
+        title: 'Earlier.',
+        created_at: scene.clock.now(),
+      })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    const earlier = await scene.database.migrator
+      .insertInto('assistant_messages')
+      .values({
+        conversation_id: conversation.id,
+        branch_id: scene.north,
+        account_id: scene.adminAccount,
+        seq: 1,
+        kind: 'question',
+        content: sql`'{"kind":"question","text":"x"}'::jsonb`,
+        created_at: scene.clock.now(),
+      })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    await sql`
+      insert into assistant_messages (conversation_id, branch_id, account_id, seq, kind, content, created_at)
+      values (${conversation.id}, ${scene.north}, ${scene.adminAccount}, 2, 'answer',
+        '{"kind":"answer","text":"y","pages":[]}'::jsonb, ${scene.clock.now()})
+    `.execute(scene.database.migrator);
+    const oneCall = costMicros(FAKE_TOKENS, REGION_PRICES);
+    await sql`
+      insert into assistant_model_calls (message_id, branch_id, model, tokens_in, tokens_out, cost_micros, processed_in, created_at)
+      values (${earlier.id}, ${scene.north}, 'fake-model', 0, 0, ${String(1_000_000n - oneCall)}, 'europe-west3', ${scene.clock.now()})
+    `.execute(scene.database.migrator);
+    const roomEdit = `propose_${GENERATED_TOOLS['PUT /api/setup/rooms/:id']?.name ?? ''}`.slice(
+      0,
+      64,
+    );
+    scene.model.script(
+      calls({
+        name: roomEdit,
+        args: {
+          id: roomId,
+          body: {
+            name: 'Room 9',
+            floorId: floor.floor_id,
+            type: 'classroom',
+            capacity: 28,
+            status: 'in_use',
+            shared: false,
+            maxSimultaneousLessons: null,
+          },
+          summary: 'Rename to Room 9.',
+        },
+      }),
+      answer('Never asked.'),
+    );
+    const before = scene.model.requests.length;
+    const response = await ask(scene, scene.admin, scene.north, { text: 'Rename the room.' });
+    expect(noticeOf(response)).toBe('assistant_cap_reached');
+    expect(scene.model.requests.length - before).toBe(1);
+    const proposals = await scene.database.migrator
+      .selectFrom('assistant_proposals')
+      .select('steps')
+      .execute();
+    expect(proposals).toHaveLength(1);
+    expect((proposals[0]?.steps as unknown[]).length).toBe(1);
     await put(settingsBody());
   });
 

@@ -35,6 +35,17 @@ const ASSISTANT_PANEL: ScopeLine = {
   rule: '02, Assistant: "with the person\'s session and chosen role: the same branch, subjects, own classes and own lessons … as the screens" (each read and step meets its own route\'s limit)',
   refusedIn: [],
 };
+/** Task 11.21: an Undo of another person's proposal is refused as Confirm is. */
+const ASSISTANT_UNDO_OWN: ScopeLine = {
+  roles: ['teacher'],
+  scope: 'own_record',
+  rule: '02, Assistant: "The person sees their own conversations"; Reading and proposing: "A confirmed proposal can be undone"',
+  refusedIn: [
+    'src/modules/assistant/assistant-undo.test.ts > answers 404 for an unknown proposal, another person’s and the own one in another branch, with every row unchanged',
+    'src/modules/assistant/assistant-teacher.test.ts > sends an unlock of an own locked lesson at Confirm, and refuses one of another teacher’s lesson; the Teacher’s Undo of it answers, another Teacher’s is 404 (task 11.21)',
+  ],
+};
+
 const ASSISTANT_OWN: ScopeLine = {
   roles: ['teacher'],
   scope: 'own_record',
@@ -222,6 +233,7 @@ export const OTHER_SCOPES: RouteScopes = {
   'GET /api/assistant/conversations/:id': [ASSISTANT_OWN],
   'POST /api/assistant/proposals/:id/confirm': [ASSISTANT_OWN],
   'POST /api/assistant/proposals/:id/decline': [ASSISTANT_OWN],
+  'POST /api/assistant/proposals/:id/undo': [ASSISTANT_UNDO_OWN],
 
   'GET /api/setup/current-period': [
     {

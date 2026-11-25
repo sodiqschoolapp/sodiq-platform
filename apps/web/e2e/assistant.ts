@@ -51,6 +51,7 @@ export async function askTheAssistant(page: Page): Promise<void> {
   await panel.getByRole('button', { name: en.assistant.close, exact: true }).click();
 
   await theOpenRecord(page);
+  await aTableAndChoices(page);
   await whileItWorks(page);
 
   // Every conversation, for the Super Admin.
@@ -213,4 +214,103 @@ async function theSwitches(page: Page): Promise<void> {
   await expect(page.locator('html')).toHaveClass(/dark/);
   await expect(heading(page, en.assistant.settingsPage.title)).toBeVisible();
   await chooseTheme(page, en, 'light');
+}
+
+/**
+ * Task 11.21 (build plan, Done when: "a table and option buttons render in the panel and on the
+ * page in three languages and dark mode"; `02`, Answers): the scripted model reads the classes,
+ * offers two of them as choices and answers with a table. The table and the buttons are drawn in
+ * the panel in English, Uzbek and Russian and in dark mode, and on the Assistant page; a press
+ * sends the option as the person's next words.
+ */
+async function aTableAndChoices(page: Page): Promise<void> {
+  await page.goto('/classes');
+  await page.getByRole('button', { name: en.assistant.open, exact: true }).click();
+  let panel = page.getByRole('complementary', { name: en.assistant.title });
+  await panel.getByRole('button', { name: en.assistant.newConversation, exact: true }).click();
+  await panel
+    .getByLabel(en.assistant.question, { exact: true })
+    .fill('Show the classes with no Tutor as a table.');
+  await panel.getByRole('button', { name: en.assistant.send, exact: true }).click();
+  const table = panel.locator('[data-assistant-table] table');
+  await expect(table.getByRole('columnheader', { name: 'Class', exact: true })).toBeVisible();
+  await expect(table.getByRole('cell', { name: 'Assistant A', exact: true })).toBeVisible();
+  await expect(table.getByRole('cell', { name: 'Assistant B', exact: true })).toBeVisible();
+  let now: typeof en | typeof uz | typeof ru = en;
+  for (const [language, texts] of [
+    ['uz', uz],
+    ['ru', ru],
+    ['en', en],
+  ] as const) {
+    await openPersonMenu(page, now);
+    await page.getByRole('menuitemradio', { name: LANGUAGE_NAMES[language], exact: true }).click();
+    panel = page.getByRole('complementary', { name: texts.assistant.title });
+    if (!(await panel.isVisible())) {
+      await page.getByRole('button', { name: texts.assistant.open, exact: true }).click();
+    }
+    await expect(panel.locator('[data-assistant-table] table')).toBeVisible();
+    const choices = panel.getByRole('list', { name: texts.assistant.choices, exact: true });
+    await expect(choices.getByRole('button', { name: 'Assistant B', exact: true })).toBeVisible();
+    now = texts;
+  }
+  await chooseTheme(page, en, 'dark');
+  await expect(page.locator('html')).toHaveClass(/dark/);
+  panel = page.getByRole('complementary', { name: en.assistant.title });
+  if (!(await panel.isVisible())) {
+    await page.getByRole('button', { name: en.assistant.open, exact: true }).click();
+  }
+  await expect(panel.locator('[data-assistant-table] table')).toBeVisible();
+  await expect(
+    panel
+      .getByRole('list', { name: en.assistant.choices, exact: true })
+      .getByRole('button', { name: 'Assistant B', exact: true }),
+  ).toBeVisible();
+  await chooseTheme(page, en, 'light');
+  // On the Assistant page, the same conversation shows the table and the choices.
+  panel = page.getByRole('complementary', { name: en.assistant.title });
+  if (!(await panel.isVisible())) {
+    await page.getByRole('button', { name: en.assistant.open, exact: true }).click();
+  }
+  await panel.getByRole('link', { name: en.assistant.openPage, exact: true }).click();
+  await expect(heading(page, en.assistant.page.title)).toBeVisible();
+  // The table and the buttons on the page in the three languages and in dark mode (spec review
+  // of the code, must fix 3).
+  now = en;
+  for (const [language, texts] of [
+    ['uz', uz],
+    ['ru', ru],
+    ['en', en],
+  ] as const) {
+    await openPersonMenu(page, now);
+    await page.getByRole('menuitemradio', { name: LANGUAGE_NAMES[language], exact: true }).click();
+    const shown = page.getByRole('region', { name: texts.assistant.title, exact: true });
+    await expect(shown.locator('[data-assistant-table] table')).toBeVisible();
+    await expect(
+      shown
+        .getByRole('list', { name: texts.assistant.choices, exact: true })
+        .getByRole('button', { name: 'Assistant B', exact: true }),
+    ).toBeVisible();
+    now = texts;
+  }
+  await chooseTheme(page, en, 'dark');
+  await expect(page.locator('html')).toHaveClass(/dark/);
+  const chat = page.getByRole('region', { name: en.assistant.title, exact: true });
+  await expect(chat.locator('[data-assistant-table] table')).toBeVisible();
+  await expect(
+    chat
+      .getByRole('list', { name: en.assistant.choices, exact: true })
+      .getByRole('button', { name: 'Assistant B', exact: true }),
+  ).toBeVisible();
+  await chooseTheme(page, en, 'light');
+  // A press sends the option as the person's answer.
+  await chat
+    .getByRole('list', { name: en.assistant.choices, exact: true })
+    .getByRole('button', { name: 'Assistant B', exact: true })
+    .click();
+  await expect(chat.getByText('Assistant B', { exact: true }).first()).toBeVisible();
+  // Its answer comes before the next step asks (one question of a person at a time).
+  await expect(chat.getByText('Assistant A, Assistant B', { exact: true })).toBeVisible({
+    timeout: 15_000,
+  });
+  await expect(chat.getByRole('list', { name: en.assistant.choices, exact: true })).toHaveCount(0);
 }

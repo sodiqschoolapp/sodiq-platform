@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, rename, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { Logger } from '@nestjs/common';
 import type { MailConfig } from '../config/config.js';
@@ -48,8 +48,11 @@ export class LogMailer implements Mailer {
     this.log.log(`Not sent, no mail service: ${mail.subject}`);
     if (this.outboxDir !== undefined) {
       await mkdir(this.outboxDir, { recursive: true });
-      // A test finds its mail by the address and takes the newest file.
-      await writeFile(join(this.outboxDir, `${randomUUID()}.json`), JSON.stringify(mail));
+      // A test finds its mail by the address and takes the newest file. Written under another
+      // name first and renamed, so a test never reads half a file (e2e of #388, 25 November 2026).
+      const name = join(this.outboxDir, randomUUID());
+      await writeFile(`${name}.part`, JSON.stringify(mail));
+      await rename(`${name}.part`, `${name}.json`);
     }
   }
 }

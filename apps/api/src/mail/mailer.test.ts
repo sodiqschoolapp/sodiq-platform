@@ -40,6 +40,8 @@ describe('the mail service', () => {
 
     const files = await readdir(join(outbox, 'mails'));
     expect(files).toHaveLength(2);
+    // Each mail is renamed to .json once whole: no part file is left for a reader to meet.
+    expect(files.every((file) => file.endsWith('.json'))).toBe(true);
     const mails = await Promise.all(
       files.map(
         async (file) => JSON.parse(await readFile(join(outbox, 'mails', file), 'utf8')) as unknown,

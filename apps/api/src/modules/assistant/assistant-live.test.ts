@@ -1,7 +1,8 @@
 import type { AddressInfo } from 'node:net';
 import { Logger } from '@nestjs/common';
 import {
-  ASSISTANT_ANSWER_WINDOW_MS,
+  ASSISTANT_ANSWER_MARGIN_MS,
+  ASSISTANT_QUESTION_MINUTES_DEFAULT,
   ASSISTANT_MESSAGES,
   assistantConversationSchema,
   assistantProgressSchema,
@@ -39,6 +40,9 @@ import { AssistantDispatcher } from './dispatcher.js';
 import { GENERATED_TOOLS } from './tools.generated.js';
 import { PIECE_MAX_BYTES, piecesOf } from './progress.js';
 import { Transactions } from '../../database/transactions.js';
+
+/** Task 11.21: the answer window of a question at the default time limit (10 minutes and 30 s). */
+const ANSWER_WINDOW_MS = ASSISTANT_QUESTION_MINUTES_DEFAULT * 60_000 + ASSISTANT_ANSWER_MARGIN_MS;
 
 // Task 11.16 (pull request #381; the owner's spec change of 24 November 2026). `02`, Assistant,
 // While it works: "A question shows in the conversation the moment it is sent, and the box is
@@ -157,9 +161,7 @@ describe('the assistant while it works: the question at once, the progress live,
     expect(taken.working).toEqual({
       questionId: question?.id,
       askedAt: question?.at,
-      until: new Date(
-        new Date(question?.at ?? '').getTime() + ASSISTANT_ANSWER_WINDOW_MS,
-      ).toISOString(),
+      until: new Date(new Date(question?.at ?? '').getTime() + ANSWER_WINDOW_MS).toISOString(),
     });
     await gate.reached;
     // The model holds its answer; the conversation, read again, still shows the question working.
@@ -273,7 +275,7 @@ describe('the assistant while it works: the question at once, the progress live,
       all.some((one) => one.questionId === first.messages[0]?.id && one.event.kind === 'read'),
     );
     // The window passes while the model writes its answer.
-    scene.clock.advance(ASSISTANT_ANSWER_WINDOW_MS);
+    scene.clock.advance(ANSWER_WINDOW_MS);
     const heardBefore = asker.heard.length;
     expect((await conversation(first.id)).working).toBeNull();
     scene.model.script(answer('On time.'));
@@ -467,14 +469,14 @@ describe('the assistant while it works: the question at once, the progress live,
     expect(lines.join('\n')).not.toContain('Secret words');
   });
 
-  it('reads "being answered" with 0181 in every branch, for the person only, ending at an answer, a notice or a proposal (review of the plan, correction 3)', async () => {
-    const running = async (account: string, since: Date) =>
+  it('reads "being answered" with 0184 in every branch, for the person only, ending at an answer, a notice, a proposal or the stored end of its window (review of the plan of 11.16, correction 3; task 11.21, plan decision 5)', async () => {
+    const running = async (account: string, at: Date) =>
       (
         await sql<{ running: boolean }>`
-          select assistant_question_running(${account}, ${since}) as running
+          select assistant_question_running(${account}, ${at}) as running
         `.execute(scene.database.migrator)
       ).rows[0]?.running;
-    const before = new Date(scene.clock.now().getTime() - 1);
+    const before = scene.clock.now();
     expect(await running(scene.adminAccount, before)).toBe(false);
     // A question in South, held: being answered for the person, whatever branch asks.
     const gate = held(answer('South answer.'));
@@ -482,10 +484,22 @@ describe('the assistant while it works: the question at once, the progress live,
     accepted(await send(scene, scene.admin, scene.south, { text: 'In South.' }));
     await gate.reached;
     expect(await running(scene.adminAccount, before)).toBe(true);
-    // Not another account's, and not one asked at or before `since`.
+    // Not another account's, and not past the end of its window, stored with it.
     const other = await scene.kit.completeSession('Lola', 'Rahimova');
     expect(await running(other.account.id, before)).toBe(false);
-    expect(await running(scene.adminAccount, scene.clock.now())).toBe(false);
+    const stored = await scene.database.migrator
+      .selectFrom('assistant_messages')
+      .select(['created_at', 'answer_until'])
+      .where('kind', '=', 'question')
+      .orderBy('created_at', 'desc')
+      .limit(1)
+      .executeTakeFirstOrThrow();
+    expect(new Date(stored.answer_until ?? 0).getTime()).toBe(
+      new Date(stored.created_at).getTime() + ANSWER_WINDOW_MS,
+    );
+    const end = new Date(stored.answer_until ?? 0);
+    expect(await running(scene.adminAccount, new Date(end.getTime() - 1))).toBe(true);
+    expect(await running(scene.adminAccount, end)).toBe(false);
     gate.open();
     await scene.app.get(AssistantWork).whenIdle();
     expect(await running(scene.adminAccount, before)).toBe(false);

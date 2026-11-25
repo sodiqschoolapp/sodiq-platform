@@ -5,7 +5,8 @@ import type React from 'react';
  * write plain text with simple lists. A line that starts with `- `, `* ` or `1. ` is an item of a
  * list, `**…**` inside a line is bold; nothing else is read as markup. Built from React text
  * nodes only, so nothing the model writes is ever shown as HTML (an answer with `<b>` shows the
- * characters).
+ * characters). Task 11.21 (`02`, Answers: "Lists and comparisons come as small tables"): lines
+ * that begin and end with `|`, the second a row of dashes, are a table of at most 8 columns.
  */
 export function AnswerText({ text }: { text: string }): React.JSX.Element {
   return <div className="grid gap-1 break-words">{blocksOf(text).map(blockView)}</div>;
@@ -13,15 +14,60 @@ export function AnswerText({ text }: { text: string }): React.JSX.Element {
 
 type Block =
   | { kind: 'text'; lines: string[] }
+  | { kind: 'table'; header: string[]; rows: string[][] }
   | { kind: 'bullets'; items: string[] }
   | { kind: 'numbers'; items: string[] };
 
 const BULLET = /^\s*[-*]\s+(.*)$/;
 const NUMBER = /^\s*\d{1,3}[.)]\s+(.*)$/;
 
+/** The most columns a table of an answer has (plan decision 13). */
+export const TABLE_MAX_COLUMNS = 8;
+
+const ROW = /^\s*\|(.*)\|\s*$/;
+const SEPARATOR = /^\s*:?-{3,}:?\s*$/;
+
+/** The cells of a table line, or `null` when it is not one. */
+function cellsOf(line: string): string[] | null {
+  const row = ROW.exec(line);
+  return row === null ? null : (row[1] ?? '').split('|').map((cell) => cell.trim());
+}
+
+/** A table at the start of these lines: a header, a separator of as many cells, its rows. */
+function tableAt(lines: readonly string[], at: number): { block: Block; end: number } | null {
+  const header = cellsOf(lines[at] ?? '');
+  const separator = cellsOf(lines[at + 1] ?? '');
+  if (
+    header === null ||
+    separator === null ||
+    header.length > TABLE_MAX_COLUMNS ||
+    separator.length !== header.length ||
+    !separator.every((cell) => SEPARATOR.test(cell))
+  ) {
+    return null;
+  }
+  const rows: string[][] = [];
+  let end = at + 2;
+  for (; end < lines.length; end += 1) {
+    const cells = cellsOf(lines[end] ?? '');
+    if (cells === null) break;
+    // A row of more cells keeps the columns of the header; one of fewer is filled with blanks.
+    rows.push(header.map((_, index) => cells[index] ?? ''));
+  }
+  return { block: { kind: 'table', header, rows }, end };
+}
+
 export function blocksOf(text: string): Block[] {
   const blocks: Block[] = [];
-  for (const line of text.split(/\r?\n/)) {
+  const lines = text.split(/\r?\n/);
+  for (let index = 0; index < lines.length; index += 1) {
+    const table = tableAt(lines, index);
+    if (table !== null) {
+      blocks.push(table.block);
+      index = table.end - 1;
+      continue;
+    }
+    const line = lines[index] ?? '';
     const bullet = BULLET.exec(line);
     const number = bullet === null ? NUMBER.exec(line) : null;
     const last = blocks.at(-1);
@@ -57,6 +103,33 @@ function blockView(block: Block, index: number): React.JSX.Element {
             <li key={at}>{inline(item)}</li>
           ))}
         </ul>
+      );
+    case 'table':
+      return (
+        <div key={index} className="overflow-x-auto" data-assistant-table="">
+          <table className="w-full border-collapse text-sm">
+            <thead>
+              <tr>
+                {block.header.map((cell, at) => (
+                  <th key={at} scope="col" className="border-b px-2 py-1 text-start font-semibold">
+                    {inline(cell)}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {block.rows.map((row, at) => (
+                <tr key={at} className="border-b last:border-b-0">
+                  {row.map((cell, column) => (
+                    <td key={column} className="px-2 py-1 align-top">
+                      {inline(cell)}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       );
     case 'numbers':
       return (

@@ -26,8 +26,15 @@ import {
   read,
   type AssistantScene,
 } from '../../testing/assistant-kit.js';
-import { costMicros } from './assistant.engine.js';
-import { MAX_MODEL_ATTEMPTS, QUESTION_TIME_LIMIT_MS, RETRY_WAITS_MS } from './model-caller.js';
+import { costMicros, modelCallsOf } from './assistant.engine.js';
+import { attemptsOf, RETRY_WAITS_MS } from './model-caller.js';
+
+/**
+ * Task 11.21: this file keeps the time limit of 11.15 (4 minutes) and the default reads and
+ * changes of one question (40), so the attempts are bounded at twice 42.
+ */
+const QUESTION_MINUTES = 4;
+const MAX_MODEL_ATTEMPTS = attemptsOf(modelCallsOf(40));
 
 // Task 11.15 (pull request #379; the owner's spec change of 24 November 2026). `02`, Assistant,
 // Where the model runs: "Each request goes first to the model in Frankfurt. When Frankfurt is busy
@@ -59,6 +66,9 @@ describe('the assistant on the live model: retries, the worldwide fallback and t
         rolesOn: ['super_admin'],
         dailyLimit: 500,
         monthlyCapDollars: 300,
+        questionActions: 40,
+        proposalSteps: 100,
+        questionMinutes: QUESTION_MINUTES,
         fallbackOn: true,
         dataGroupsOn: [...ASSISTANT_DATA_GROUPS],
         ...change,
@@ -327,7 +337,7 @@ describe('the assistant on the live model: retries, the worldwide fallback and t
   it('bounds the calls of a question, every retry and fallback counted (.claude/rules/api.md)', async () => {
     // Frankfurt always busy, the worldwide endpoint always asks to read again: four calls a turn.
     scene.model.script(
-      ...Array.from({ length: 40 }, (_, index) =>
+      ...Array.from({ length: MAX_MODEL_ATTEMPTS + 8 }, (_, index) =>
         index % 4 === 3 ? calls({ name: CLASSES }) : busy429(),
       ),
     );
@@ -346,10 +356,23 @@ describe('the assistant on the live model: retries, the worldwide fallback and t
     const response = await ask(scene, scene.admin, scene.north, { text: 'Late?' });
     expect(noticeOf(response)).toBe('assistant_model_busy');
     expect(scene.model.places).toEqual(['region']);
-    expect(QUESTION_TIME_LIMIT_MS).toBe(240_000);
   });
 
-  it('sends no new turn that would pass the question’s time limit, and ends "busy"', async () => {
+  it('sends no turn with tools that would leave no time for a last call, and answers with Continue (task 11.21, review of the plan, must fix 3)', async () => {
+    const slowRead: FakeTurn = (request, place) => {
+      scene.clock.advance(185_000);
+      return calls({ name: CLASSES })(request, place);
+    };
+    scene.model.script(slowRead, answer('Read the classes; the rest is left.'));
+    const done = answered(await ask(scene, scene.admin, scene.north, { text: 'Slow read?' }));
+    expect(done.conversation.messages.at(-1)).toEqual(
+      expect.objectContaining({ kind: 'answer', continues: true }),
+    );
+    expect(scene.model.requests).toHaveLength(2);
+    expect(scene.model.requests[1]?.tools).toEqual([]);
+  });
+
+  it('ends "busy" when even the last call no longer fits the time limit', async () => {
     const slowRead: FakeTurn = (request, place) => {
       scene.clock.advance(215_000);
       return calls({ name: CLASSES })(request, place);

@@ -20,17 +20,16 @@ import {
 export const RETRY_WAITS_MS: readonly number[] = [2_000, 5_000];
 
 /**
- * At most this many calls of the model per question, every retry and fallback counted, beside the
- * 8 turns of `MAX_MODEL_CALLS` (plan decision 5; `.claude/rules/api.md`: the loop bounds its
- * calls).
+ * Task 11.21 (plan decision 6; `.claude/rules/api.md`: the loop bounds its calls): at most this
+ * many calls of the model per turn the question may take, every retry and fallback counted (16
+ * for the 8 turns of task 11.15).
  */
-export const MAX_MODEL_ATTEMPTS = 16;
+export const ATTEMPTS_PER_TURN = 2;
 
-/**
- * How long a question may take, read on the real clock: under Node's own `requestTimeout` of
- * 300 s, so the answer still reaches the browser (plan decisions 4b and 5).
- */
-export const QUESTION_TIME_LIMIT_MS = 240_000;
+/** Task 11.21: the attempts of a question whose turns are bounded at `turns`. */
+export function attemptsOf(turns: number): number {
+  return turns * ATTEMPTS_PER_TURN;
+}
 
 /** Waits that long. Injected as the clock is (`CLAUDE.md`, Time is injected); tests never sleep. */
 export type AssistantWait = (milliseconds: number) => Promise<void>;
@@ -45,6 +44,12 @@ export const REAL_WAIT: AssistantWait = (milliseconds) =>
 /** One question's count of calls and its time limit; the fallback switch read at its start. */
 export interface CallBudget {
   attempts: number;
+  /** Task 11.21: the bound of the attempts, twice the turns the question may take. */
+  readonly maxAttempts: number;
+  /**
+   * Task 11.21: the question's time limit, the setting's minutes after its stored moment, on the
+   * injected clock (review of the plan, must fix 5).
+   */
   readonly deadline: number;
   readonly fallbackOn: boolean;
 }
@@ -92,10 +97,15 @@ export class ModelCaller {
   ) {}
 
   /** The budget of a question, its time limit counted from the question's stored moment. */
-  begin(fallbackOn: boolean, askedAt: Date): CallBudget {
+  begin(
+    fallbackOn: boolean,
+    askedAt: Date,
+    limits: { minutes: number; turns: number },
+  ): CallBudget {
     return {
       attempts: 0,
-      deadline: askedAt.getTime() + QUESTION_TIME_LIMIT_MS,
+      maxAttempts: attemptsOf(limits.turns),
+      deadline: askedAt.getTime() + limits.minutes * 60_000,
       fallbackOn,
     };
   }
@@ -103,8 +113,20 @@ export class ModelCaller {
   /** Whether one more call, after `wait` milliseconds, stays within the bound and the limit. */
   private fits(budget: CallBudget, wait: number): boolean {
     return (
-      budget.attempts < MAX_MODEL_ATTEMPTS &&
+      budget.attempts < budget.maxAttempts &&
       this.clock.now().getTime() + wait + MODEL_TIMEOUT_MS <= budget.deadline
+    );
+  }
+
+  /**
+   * Task 11.21 (review of the plan, must fix 3): whether a turn with tools may still be sent,
+   * keeping the time and the attempts of one last call without tools after it (a turn and its
+   * reads, then the last call: two calls' timeouts, and the attempts of two turns).
+   */
+  roomForTools(budget: CallBudget): boolean {
+    return (
+      budget.attempts + 2 * ATTEMPTS_PER_TURN <= budget.maxAttempts &&
+      this.clock.now().getTime() + 2 * MODEL_TIMEOUT_MS <= budget.deadline
     );
   }
 

@@ -384,8 +384,9 @@ describe(
 
     // Task 11.19: 136 became 256, the requirement added 30 questions of the map (build plan,
     // Done when), 12 of the Super Admin, 9 of the Academic Vice Principal and 9 of the Teacher.
-    it('has 256 cases: 20 intents of the Super Admin and 14 of the Teacher (11.14), and 30 of the map (11.19), each in Uzbek Latin, Uzbek Cyrillic, Russian and English', () => {
-      expect(EVAL_CASES).toHaveLength(256);
+    // Task 11.21: 256 became 268, three intents of tables and choices (plan, Tests).
+    it('has 268 cases: 23 intents of the Super Admin and 14 of the Teacher (11.14), and 30 of the map (11.19), each in Uzbek Latin, Uzbek Cyrillic, Russian and English', () => {
+      expect(EVAL_CASES).toHaveLength(268);
       expect(EVAL_CASES.filter((one) => one.intent.role === 'teacher')).toHaveLength(56 + 36);
       expect(EVAL_CASES.filter((one) => one.intent.kind === 'how')).toHaveLength(120);
       expect(HOW_INTENTS.filter((one) => one.role === 'super_admin')).toHaveLength(12);

@@ -12,9 +12,14 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { answer, calls, lastResults } from '../../testing/assistant-model.js';
 import { ask, assistantScene, type AssistantScene } from '../../testing/assistant-kit.js';
 import { errorCode } from '../../testing/sign-in-kit.js';
-import { MAX_MODEL_CALLS, MAX_READS } from './assistant.engine.js';
+import { ASSISTANT_QUESTION_ACTIONS_DEFAULT } from '@sodiq/shared';
+import { modelCallsOf } from './assistant.engine.js';
 import { fingerprintOf } from './canonical.js';
 import { GENERATED_TOOLS } from './tools.generated.js';
+
+/** Task 11.21: the reads and changes of one question at the setting's default (40), and the model calls. */
+const MAX_READS = ASSISTANT_QUESTION_ACTIONS_DEFAULT;
+const MAX_MODEL_CALLS = modelCallsOf(MAX_READS);
 
 // Task 11.13 (pull request #376): proposals and Confirm. `02`, Assistant, Reading and proposing:
 // "A change is never made by the assistant alone … Nothing changes until the person presses
@@ -516,8 +521,8 @@ describe('the assistant: proposals and Confirm', () => {
     ).toBe(false);
   });
 
-  it('stops the model at its bound when it proposes forever, and stores at most 10 steps', async () => {
-    const rooms = await roomsOf(12);
+  it('stops the model at its bound when it proposes forever, and stores one step per read and change allowed (task 11.21)', async () => {
+    const rooms = await roomsOf(MAX_READS);
     const turns = Array.from({ length: MAX_MODEL_CALLS + 4 }, (_, index) =>
       calls(
         roomEdit(

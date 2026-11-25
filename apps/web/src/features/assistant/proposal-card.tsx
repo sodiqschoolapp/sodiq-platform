@@ -32,10 +32,25 @@ export function ProposalCard({
   deciding,
   secrets = [],
   onSecretsClosed,
+  onUndo,
+  undoing,
+  reverses = false,
 }: {
   proposal: AssistantProposal;
   onDecide?: (which: 'confirm' | 'decline') => void;
   deciding?: boolean;
+  /**
+   * Task 11.21 (`02`, Reading and proposing: "A confirmed proposal can be undone"): given while
+   * the proposal is confirmed with a change made and has no Undo yet.
+   */
+  onUndo?: () => void;
+  undoing?: boolean;
+  /**
+   * Task 11.21: the proposal of an Undo. Each step keeps the words of the change it undoes, so
+   * the card says it undoes them, never that the assistant proposes them again (spec review of
+   * the code: `02`, "a proposal that lists every change in plain words").
+   */
+  reverses?: boolean;
   /** Task 11.20: what a confirmed step gave out once (a first password), never kept. */
   secrets?: readonly AssistantStepSecret[];
   onSecretsClosed?: () => void;
@@ -174,7 +189,9 @@ export function ProposalCard({
               </details>
             )}
             <p className="text-sm text-muted-foreground break-words whitespace-pre-wrap">
-              {t('assistant.proposal.assistantSays', { text: step.summary })}
+              {t(reverses ? 'assistant.proposal.undoes' : 'assistant.proposal.assistantSays', {
+                text: step.summary,
+              })}
             </p>
             {proposal.state === 'confirmed' && (
               <p className={`text-sm font-semibold ${STATE_TONE[step.state]}`}>
@@ -217,6 +234,15 @@ export function ProposalCard({
           </div>
         </>
       )}
+      {proposal.state === 'confirmed' &&
+        onUndo !== undefined &&
+        proposal.steps.some((step) => step.state === 'done') && (
+          <div className="flex flex-wrap gap-2">
+            <Button variant="secondary" disabled={undoing} onClick={onUndo}>
+              {undoing === true ? t('assistant.proposal.undoing') : t('assistant.proposal.undo')}
+            </Button>
+          </div>
+        )}
     </section>
   );
 }

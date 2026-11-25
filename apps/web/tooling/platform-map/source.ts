@@ -185,6 +185,10 @@ export const UNREAD_LABELS: Readonly<Record<string, { count: number; reason: str
     count: 1,
     reason: "The banner's link names a branch.",
   },
+  'features/assistant/assistant-chat.tsx': {
+    count: 1,
+    reason: 'A choice of an answer is named by the option the assistant wrote (task 11.21).',
+  },
   'features/assistant/assistant-page.tsx': {
     count: 1,
     reason: 'A conversation of the list is named by its first question.',

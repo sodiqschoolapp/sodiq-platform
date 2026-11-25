@@ -407,6 +407,9 @@ describe('the assistant’s settings and conversations of the Super Admin', () =
     rolesOn: [],
     dailyLimit: 30,
     monthlyCapDollars: 300,
+    questionActions: 40,
+    proposalSteps: 100,
+    questionMinutes: 10,
     roles: ['super_admin'],
     spentThisMonthCents: 1234,
     modelConfigured: true,
@@ -450,6 +453,15 @@ describe('the assistant’s settings and conversations of the Super Admin', () =
     fireEvent.change(section.getByLabelText(en.assistant.settings.dailyLimit), {
       target: { value: '12' },
     });
+    // Task 11.21: the limits of one question and one proposal, and 0 as "no daily limit".
+    expect(section.getByText(en.assistant.settings.dailyLimitNote)).toBeTruthy();
+    for (const [label, value] of [
+      [en.assistant.settings.questionActions, '60'],
+      [en.assistant.settings.proposalSteps, '150'],
+      [en.assistant.settings.questionMinutes, '20'],
+    ] as const) {
+      fireEvent.change(section.getByLabelText(label), { target: { value } });
+    }
     fireEvent.click(section.getByRole('button', { name: en.form.save }));
     await waitFor(() => {
       expect(
@@ -459,6 +471,9 @@ describe('the assistant’s settings and conversations of the Super Admin', () =
         rolesOn: ['super_admin'],
         dailyLimit: 12,
         monthlyCapDollars: 300,
+        questionActions: 60,
+        proposalSteps: 150,
+        questionMinutes: 20,
         fallbackOn: true,
         dataGroupsOn: [...ASSISTANT_DATA_GROUPS],
       });

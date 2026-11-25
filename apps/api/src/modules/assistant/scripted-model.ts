@@ -21,6 +21,15 @@ function openClassOf(request: ModelRequest): string | undefined {
  * Whether the model may call a tool: declared in this call, or (task 11.20, plan decision 10)
  * callable by name while `find_actions` is offered, as any switched-on action of the role is.
  */
+/** Task 11.21: the words of the newest question of the person. */
+function newestQuestion(request: ModelRequest): string {
+  const question = [...request.turns]
+    .reverse()
+    .find((turn) => turn.role === 'person' && turn.parts.some((part) => part.kind === 'text'));
+  const text = question?.parts.find((part) => part.kind === 'text');
+  return text?.kind === 'text' ? text.text : '';
+}
+
 function offered(request: ModelRequest, name: string): boolean {
   return request.tools.some((tool) => tool.name === name || tool.name === 'find_actions');
 }
@@ -81,6 +90,43 @@ export class ScriptedModel implements AssistantModel {
         ]);
       }
       return reply([], `This is ${this.openName}.`);
+    }
+    // Task 11.21: "… as a table": it reads the classes and offers them as choices, then answers
+    // with a table of the classes and their Tutors.
+    const asked = newestQuestion(request);
+    if (/as a table/i.test(asked) && offered(request, CLASSES)) {
+      const read = last?.parts.find((part) => part.kind === 'result' && part.name === CLASSES);
+      if (read === undefined || read.kind !== 'result') {
+        return {
+          text: '',
+          calls: [
+            { name: CLASSES, args: {} },
+            { name: 'ask_choice', args: { options: ['Assistant A', 'Assistant B'] } },
+          ],
+          tokensIn: 0,
+          tokensOut: 0,
+          model: this.name,
+        };
+      }
+      const rows = (
+        (read.result as { data?: { classes?: { name: string; tutor: unknown }[] } }).data
+          ?.classes ?? []
+      )
+        .filter((one) => one.tutor === null)
+        .map((one) => one.name)
+        .sort();
+      return {
+        text: [
+          'Which class?',
+          '| Class | Tutor |',
+          '| --- | --- |',
+          ...rows.map((name) => `| ${name} | none |`),
+        ].join('\n'),
+        calls: [],
+        tokensIn: 0,
+        tokensOut: 0,
+        model: this.name,
+      };
     }
     const result = last?.parts.find((part) => part.kind === 'result' && part.name === CLASSES);
     if (result === undefined || result.kind !== 'result') {

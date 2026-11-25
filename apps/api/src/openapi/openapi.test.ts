@@ -53,6 +53,7 @@ describe('OpenAPI document', () => {
         '/api/assistant/conversations/{id}',
         '/api/assistant/proposals/{id}/confirm',
         '/api/assistant/proposals/{id}/decline',
+        '/api/assistant/proposals/{id}/undo',
         '/api/assistant/questions',
         '/api/assistant/status',
         '/api/audit/entries',

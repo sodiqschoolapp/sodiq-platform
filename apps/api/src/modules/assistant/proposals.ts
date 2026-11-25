@@ -1,6 +1,5 @@
 import { randomUUID } from 'node:crypto';
 import {
-  ASSISTANT_MAX_STEPS,
   type AssistantPreviewLesson,
   type AssistantReadGroup,
   type AssistantRole,
@@ -93,6 +92,48 @@ export interface ProposingAs {
   studentNamesOf?: (lessonId: string, ids: string[]) => Promise<ReadonlyMap<string, string>>;
   /** The date and class of a dated lesson of the branch, to name it in the panel (a one-day change). */
   lessonDateOf?: (lessonId: string) => Promise<{ date: string; classId: string } | undefined>;
+  /** Task 11.21: the changes of one proposal, as the Super Admin set them (`02`, Limits). */
+  maxSteps: number;
+  /**
+   * Task 11.21 (`edge/people-roles-accounts`, "Cancel these 60 lessons": "Nothing is lost or
+   * proposed twice"): the targets (`targetOf`) of the steps of the earlier parts of the work.
+   */
+  taken?: ReadonlySet<string>;
+}
+
+/**
+ * Keys of a body that do not name what a step changes: a version, a warning flag, and the words
+ * the model writes (a reason, a note, a comment).
+ */
+const NOT_TARGET_KEY = /version|confirm|fingerprint|reason|note|comment|summary|text/i;
+
+function withoutWords(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(withoutWords);
+  if (value !== null && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>)
+        .filter(([key]) => !NOT_TARGET_KEY.test(key))
+        .map(([key, inner]) => [key, withoutWords(inner)]),
+    );
+  }
+  return value;
+}
+
+/**
+ * Task 11.21 (review of the plan, must fix 4; review of the code, must fix 1): what a step
+ * changes, as the person would name it: its route, the path with its values, and the records it
+ * names. A step that names no record (a bulk cancel by date and slots) is told apart by its body,
+ * without its versions, warning flags and the model's words; so a lesson cancelled again with
+ * other words, or after the first part was confirmed (new versions), has the same target.
+ */
+export function targetOf(step: Pick<StoredStep, 'route' | 'url' | 'records' | 'body'>): string {
+  const records = [...step.records].sort();
+  return [
+    step.route,
+    step.url,
+    records.join(','),
+    records.length > 0 ? '' : fingerprintOf(withoutWords(step.body ?? null)),
+  ].join('|');
 }
 
 /** What a proposed call gives back: the step, and what the model is told. */
@@ -464,8 +505,8 @@ export async function draftStep(
   prior: readonly StoredStep[],
 ): Promise<Drafted> {
   const { route, tool, line, args } = call;
-  if (prior.length >= ASSISTANT_MAX_STEPS) {
-    return { given: { error: 'too_many_steps', max: ASSISTANT_MAX_STEPS } };
+  if (prior.length >= as.maxSteps) {
+    return { given: { error: 'too_many_steps', max: as.maxSteps } };
   }
   const pathArgs: Record<string, unknown> = {};
   for (const [name, value] of Object.entries(args)) {
@@ -589,6 +630,19 @@ export async function draftStep(
       step.records.some((record) => mine.has(record))
     ) {
       return { given: { error: 'assistant_step_same_record', otherStep: step.seq } };
+    }
+  }
+
+  // Task 11.21: a step of an earlier part of the work is never proposed again.
+  if (as.taken !== undefined && as.taken.size > 0) {
+    const target = targetOf({
+      route,
+      url: url.url,
+      records,
+      body: tool.body === undefined ? null : body,
+    });
+    if (as.taken.has(target)) {
+      return { given: { error: 'already_proposed' } };
     }
   }
 

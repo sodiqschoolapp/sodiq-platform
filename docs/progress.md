@@ -2,6 +2,21 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 25 November 2026: task 11.21, fewer limits, and answers that are easier to use
+
+- **Limits as settings** (0184): requests per person per day (0 = none), reads and changes in one question (40), changes in one proposal (100), minutes of one question (10) on the Assistant settings page; the model calls follow the reads (+2), the attempts twice that; each question stores the end of its window (`answer_until`); the cap is read again before each call and ends a question with its notice.
+- **Continue, choices, tables**: a question cut by a limit (reads, steps or time) answers with `continues` and offers Continue; a step of an earlier part is refused `already_proposed`; `ask_choice` gives buttons; answers may hold pipe tables.
+- **Undo**: `POST /api/assistant/proposals/:id/undo` proposes the reverses of a confirmed proposal's done steps, newest first, from `reverses.ts`, with no model call.
+
+Left out: an edit of fields, a one-day move and a room change have no reverse (plan decision 10); the eval set has no Continue case (its replay scores one question; a part is proven by `assistant-continue.test.ts`); files, voice, imports and exports (11.22); the helpers (11.23).
+
+The next sessions must know:
+
+- Every database keeps the daily limit it stored (30 on the test environment); the Super Admin sets 0 on the page (plan decision 3, on #42).
+- A new pair of a change and its reverse goes into `ASSISTANT_REVERSES` (`apps/api/src/modules/assistant/reverses.ts`, `recordAt` when a create's answer keeps the id deeper); `assistant-reverses.test.ts` holds the table against the routes and roles.
+- A Continue's chain of parts starts at the last question that was not a Continue; done steps of confirmed proposals and steps of declined ones are "taken"; Continue waits while a proposal of the conversation waits.
+- The mailer of the browser tests writes `<id>.part` and renames it to `.json`: a test reads `.json` files only (a half-written mail failed `password-reset.spec.ts` in CI).
+
 ## 25 November 2026: task 11.20, every action of the role open to the assistant
 
 - **The lists**: each role's list is every `@Requires` route the table gives it (517 for the Super Admin, 421 for the Academic Vice Principal, 100 for the Teacher), derived at start (`AssistantRoutes`); every route has a line in `ROUTE_LINES` (`access/assistant-routes.ts`, `assistant-change-routes.ts`, `assistant/lines/*.ts`) and a name in three languages under `assistant.actions`. The model finds actions with `find_actions` and gets at most 64 declarations per call.

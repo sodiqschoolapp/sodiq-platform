@@ -18,6 +18,7 @@ import { fingerprintOf } from './canonical.js';
 import { conversationOf, conversationsQuery, isArchived } from './conversations.store.js';
 import { AssistantDispatcher, type ReadOutcome } from './dispatcher.js';
 import { secretsOf } from './field-filter.js';
+import { ASSISTANT_REVERSES } from './reverses.js';
 import { basisStill, stateOfOutcome, type StoredStep } from './proposals.js';
 
 interface ProposalRow {
@@ -175,6 +176,8 @@ export class AssistantProposals {
       let basisRead: ReadOutcome | undefined;
       let previewRead: ReadOutcome | undefined;
       let outcome: { state: AssistantStepState; status: number; code: string | null };
+      // Task 11.21: the id a done step's answer gave (a create's record), kept for its Undo.
+      let recordId: string | null = null;
       if (line?.kind !== 'change') {
         // The route left the role's list since it was proposed.
         outcome = { state: 'refused', status: 403, code: 'assistant_route_closed' };
@@ -229,9 +232,10 @@ export class AssistantProposals {
         if (outcome.state === 'done' && 'body' in sent) {
           const items = secretsOf(sent.body);
           if (items.length > 0) secrets.push({ stepId: step.id, items });
+          recordId = createdIdOf(sent.body, ASSISTANT_REVERSES[step.route]?.recordAt);
         }
       }
-      await this.record(proposal, step, outcome);
+      await this.record(proposal, step, outcome, recordId);
       if (outcome.state !== 'done') {
         stopped = true;
       }
@@ -243,6 +247,7 @@ export class AssistantProposals {
     proposal: ProposalRow,
     step: StoredStep,
     outcome: { state: AssistantStepState; status: number; code: string | null },
+    recordId: string | null = null,
   ): Promise<void> {
     if (outcome.state === 'unknown' || outcome.state === 'waiting') {
       // No outcome row: a confirmed step without one is shown "not known: check the page",
@@ -260,6 +265,7 @@ export class AssistantProposals {
           state: outcome.state,
           status: outcome.status,
           code: outcome.code,
+          record_id: recordId,
           created_at: await transactionMoment(transaction),
         })
         .execute();
@@ -302,4 +308,19 @@ function isUniqueViolation(error: unknown): boolean {
     'code' in error &&
     (error as { code?: unknown }).code === '23505'
   );
+}
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * Task 11.21: the id a done step's answer gave at `path` (`['id']`, the top of the answer, unless
+ * the reverse names another place), when it is a uuid.
+ */
+export function createdIdOf(body: unknown, path: readonly string[] = ['id']): string | null {
+  let value: unknown = body;
+  for (const key of path) {
+    if (value === null || typeof value !== 'object' || Array.isArray(value)) return null;
+    value = (value as Record<string, unknown>)[key];
+  }
+  return typeof value === 'string' && UUID.test(value) ? value.toLowerCase() : null;
 }

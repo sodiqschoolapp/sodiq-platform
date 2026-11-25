@@ -1032,6 +1032,13 @@ export const en = {
       'The assistant cannot reach its language model now. Try again later; every page works as usual.',
     assistant_model_busy:
       'The assistant is busy now. Try again in a minute; every page works as usual.',
+    assistant_nothing_to_continue:
+      'There is nothing left to continue in this conversation. Ask a new question.',
+    assistant_continue_waiting: 'Confirm or decline the proposal shown first, then press Continue.',
+    assistant_undo_not_open:
+      'Only a confirmed proposal with a change made can be undone. Read the conversation again.',
+    assistant_undo_exists:
+      'This proposal already has an Undo. Confirm or decline the Undo shown in the conversation.',
     assistant_question_running:
       'A question of yours is still being answered. Wait for its answer, then ask the next one.',
     assistant_role_not_held: 'The assistant is not open to this role in this branch.',
@@ -1312,6 +1319,24 @@ export const en = {
     working: 'The assistant is working…',
     reading: 'Reading: {{what}}',
     noAnswer: 'No answer came. Ask again.',
+    continue: 'Continue',
+    continued: 'Continue',
+    undoAsked: 'Undo the confirmed changes',
+    undoAskedAt: 'Undo the confirmed changes of the proposal of {{time}}',
+    choices: 'Choices',
+    undo: {
+      all: 'The reverse of each change is proposed below.',
+      some: 'The reverse of the other changes is proposed below. These are not undone:',
+      none: 'Step {{seq}}, {{action}}: {{reason}}',
+      reasons: {
+        no_reverse: 'no action reverses this change; change it back on its page',
+        no_record: 'the record it added is not known; change it on its page',
+        action_off: 'the action that reverses it is switched off for the assistant',
+        not_on_list: 'your role cannot reverse it',
+        over_step_limit: 'more changes than one proposal may hold; undo it on its page',
+        refused: 'the platform refused to propose it',
+      },
+    },
     openPage: 'Open the Assistant page',
     page: {
       title: 'Assistant',
@@ -1353,9 +1378,12 @@ export const en = {
       validUntil: 'Valid until {{time}}',
       confirm: 'Confirm',
       decline: 'Decline',
+      undo: 'Undo',
+      undoing: 'Proposing the undo…',
       confirming: 'Confirming…',
       record: 'Record: {{name}}',
       assistantSays: 'The assistant’s words: {{text}}',
+      undoes: 'Undoes: {{text}}',
       fields: 'What is sent',
       lessons: 'Lessons it touches',
       moreLessons_one: 'and {{count}} more lesson',
@@ -2045,6 +2073,10 @@ export const en = {
       roles: 'Roles switched on',
       dailyLimit: 'Questions per person per day',
       monthlyCap: 'Monthly spending cap, US dollars',
+      dailyLimitNote: '0: no daily limit.',
+      questionActions: 'Reads and changes in one question',
+      proposalSteps: 'Changes in one proposal',
+      questionMinutes: 'Minutes for one question',
       fallbackOn: 'Worldwide fallback when Frankfurt is busy',
       fallbackNote:
         'When Frankfurt is busy or does not answer, a question is sent through Google’s worldwide endpoint, processed in a country Google chooses. Questions of this month that used it: {{number}}.',

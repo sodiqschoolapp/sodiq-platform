@@ -1050,6 +1050,14 @@ export const uz: Texts<'one' | 'other'> = {
       'Yordamchi hozir til modeliga ulana olmayapti. Keyinroq urinib koʻring; barcha sahifalar odatdagidek ishlaydi.',
     assistant_model_busy:
       'Yordamchi hozir band. Bir daqiqadan keyin qayta urinib koʻring; barcha sahifalar odatdagidek ishlaydi.',
+    assistant_nothing_to_continue:
+      'Bu suhbatda davom ettiradigan narsa qolmadi. Yangi savol bering.',
+    assistant_continue_waiting:
+      'Avval koʻrsatilgan taklifni tasdiqlang yoki rad eting, soʻng Davom ettirishni bosing.',
+    assistant_undo_not_open:
+      'Faqat oʻzgarish kiritilgan tasdiqlangan taklifni bekor qilish mumkin. Suhbatni qayta oʻqing.',
+    assistant_undo_exists:
+      'Bu taklif uchun bekor qilish allaqachon bor. Suhbatdagi bekor qilish taklifini tasdiqlang yoki rad eting.',
     assistant_question_running:
       'Oldingi savolingizga hali javob yozilmoqda. Javobni kuting, soʻng keyingisini bering.',
     assistant_role_not_held: 'Yordamchi bu filialda ushbu rol uchun ochiq emas.',
@@ -1334,6 +1342,25 @@ export const uz: Texts<'one' | 'other'> = {
     working: 'Yordamchi ishlamoqda…',
     reading: 'Oʻqimoqda: {{what}}',
     noAnswer: 'Javob kelmadi. Qayta soʻrang.',
+    continue: 'Davom ettirish',
+    continued: 'Davom ettirish',
+    undoAsked: 'Tasdiqlangan oʻzgarishlarni bekor qilish',
+    undoAskedAt: '{{time}} dagi taklifning tasdiqlangan oʻzgarishlarini bekor qilish',
+    choices: 'Variantlar',
+    undo: {
+      all: 'Har bir oʻzgarishning teskarisi quyida taklif qilingan.',
+      some: 'Qolgan oʻzgarishlarning teskarisi quyida taklif qilingan. Bular bekor qilinmaydi:',
+      none: '{{seq}}-qadam, {{action}}: {{reason}}',
+      reasons: {
+        no_reverse: 'bu oʻzgarishni qaytaradigan amal yoʻq; uni oʻz sahifasida qaytaring',
+        no_record: 'qoʻshilgan yozuv nomaʼlum; uni oʻz sahifasida oʻzgartiring',
+        action_off: 'uni qaytaradigan amal yordamchi uchun oʻchirilgan',
+        not_on_list: 'rolingiz uni qaytara olmaydi',
+        over_step_limit:
+          'bitta taklif sigʻdiradigandan koʻp oʻzgarish; uni oʻz sahifasida bekor qiling',
+        refused: 'platforma uni taklif qilishni rad etdi',
+      },
+    },
     openPage: 'Yordamchi sahifasini ochish',
     page: {
       title: 'Yordamchi',
@@ -1375,9 +1402,12 @@ export const uz: Texts<'one' | 'other'> = {
       validUntil: '{{time}} gacha amal qiladi',
       confirm: 'Tasdiqlash',
       decline: 'Rad etish',
+      undo: 'Bekor qilish',
+      undoing: 'Bekor qilish taklif qilinmoqda…',
       confirming: 'Tasdiqlanmoqda…',
       record: 'Yozuv: {{name}}',
       assistantSays: 'Yordamchining soʻzlari: {{text}}',
+      undoes: 'Bekor qiladi: {{text}}',
       fields: 'Nima yuboriladi',
       lessons: 'Tegishli darslar',
       moreLessons_one: 'va yana {{count}} ta dars',
@@ -2069,6 +2099,10 @@ export const uz: Texts<'one' | 'other'> = {
       roles: 'Yoqilgan rollar',
       dailyLimit: 'Bir kishi uchun kunlik savollar',
       monthlyCap: 'Oylik xarajat chegarasi, AQSh dollari',
+      dailyLimitNote: '0: kunlik chegara yoʻq.',
+      questionActions: 'Bitta savoldagi oʻqishlar va oʻzgarishlar',
+      proposalSteps: 'Bitta taklifdagi oʻzgarishlar',
+      questionMinutes: 'Bitta savol uchun daqiqalar',
       fallbackOn: 'Frankfurt band boʻlganda jahon zaxira manzili',
       fallbackNote:
         'Frankfurt band boʻlsa yoki javob bermasa, savol Googleʼning jahon manzili orqali yuboriladi va Google tanlagan mamlakatda qayta ishlanadi. Bu oy shu yoʻl bilan berilgan savollar: {{number}}.',

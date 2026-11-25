@@ -217,6 +217,10 @@ const LABELS: Record<string, Record<string, ParseKeys>> = {
     rolesOn: 'assistant.settings.roles',
     dailyLimit: 'assistant.settings.dailyLimit',
     monthlyCapDollars: 'assistant.settings.monthlyCap',
+    // Task 11.21: the limits of one question and one proposal.
+    questionActions: 'assistant.settings.questionActions',
+    proposalSteps: 'assistant.settings.proposalSteps',
+    questionMinutes: 'assistant.settings.questionMinutes',
     fallbackOn: 'assistant.settings.fallbackOn',
     dataGroupsOn: 'assistant.settings.dataGroups',
   },

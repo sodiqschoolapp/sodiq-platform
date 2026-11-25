@@ -1,12 +1,16 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import {
-  ASSISTANT_ANSWER_WINDOW_MS,
+  ASSISTANT_ANSWER_MARGIN_MS,
+  ASSISTANT_CHOICE_MAX_LENGTH,
+  ASSISTANT_CHOICES_MAX,
+  ASSISTANT_CHOICES_MIN,
   lessonCardSchema,
   permits,
   type AssistantAnswer,
   type AssistantLessonLink,
   type AssistantNotice,
   type AssistantPlaceLink,
+  type AssistantProposal,
   type AssistantProgress,
   type AssistantQuestion,
   type AssistantRole,
@@ -31,6 +35,7 @@ import {
   isArchived,
   messagesOf,
   type ConversationListRow,
+  type MessageRow,
   type StoredContent,
   type StoredPlace,
 } from './conversations.store.js';
@@ -55,9 +60,11 @@ import { AssistantWork } from './assistant-work.js';
 import { Sessions } from '../auth/sessions.service.js';
 import { TextProgress } from './progress.js';
 import { proposalsOf } from './proposal-views.js';
-import { draftStep, type StoredStep } from './proposals.js';
+import { draftStep, SUMMARY_MAX_LENGTH, targetOf, type StoredStep } from './proposals.js';
+import { reverseOf } from './reverses.js';
 import {
   BODY_ARGUMENT,
+  SUMMARY_ARGUMENT,
   LESSON_CARD_ROUTE,
   OPEN_LESSON_JOURNAL,
   routeOfTool,
@@ -74,13 +81,55 @@ import {
   type RoleLines,
 } from './tools.js';
 
-/** At most this many reads per question; then the model answers without tools (decision 15). */
-export const MAX_READS = 6;
 /**
  * At most this many calls of the model per question, whatever it asks for (a page link included):
- * the last is asked for an answer without tools (spec review of the code, must fix 5).
+ * the reads and changes the Super Admin allows in one question and two more (task 11.21, plan
+ * decision 6: "the model calls per question follow the reads"); the last is asked for an answer
+ * without tools (spec review of the code of 11.12, must fix 5).
  */
-export const MAX_MODEL_CALLS = MAX_READS + 2;
+export function modelCallsOf(actions: number): number {
+  return actions + 2;
+}
+
+/** Task 11.21 (build plan item 4): the question the assistant asks, with its options as buttons. */
+export const ASK_CHOICE = 'ask_choice';
+
+export const ASK_CHOICE_DEFINITION: ModelTool = {
+  name: ASK_CHOICE,
+  description: `Shows the person the options of the question you ask them as buttons (which classes, keep as held or cancel): ${String(ASSISTANT_CHOICES_MIN)} to ${String(ASSISTANT_CHOICES_MAX)} short options of at most ${String(ASSISTANT_CHOICE_MAX_LENGTH)} characters each, in the person\u2019s language. Ask the question itself in your answer; a press sends the option as the person\u2019s next words.`,
+  parameters: {
+    type: 'object',
+    properties: {
+      options: { type: 'array', items: { type: 'string' }, description: 'The options, in order.' },
+    },
+    required: ['options'],
+  },
+};
+
+/** The options of an `ask_choice` call, or why they are refused. */
+export function choicesOf(args: Readonly<Record<string, unknown>>): string[] | { error: string } {
+  const options = args.options;
+  if (!Array.isArray(options) || !options.every((option) => typeof option === 'string')) {
+    return { error: 'options_not_texts' };
+  }
+  const texts = options.map((option) => option.replace(/\s+/g, ' ').trim());
+  if (texts.length < ASSISTANT_CHOICES_MIN || texts.length > ASSISTANT_CHOICES_MAX) {
+    return { error: 'options_count' };
+  }
+  if (texts.some((text) => text === '' || text.length > ASSISTANT_CHOICE_MAX_LENGTH)) {
+    return { error: 'option_length' };
+  }
+  if (new Set(texts).size !== texts.length) return { error: 'options_repeat' };
+  return texts;
+}
+
+/** Task 11.21: the line the last call of a question cut by a limit is given. */
+export const LIMIT_REACHED_LINE =
+  'The limit of this question is reached: you have no tools now. Say in short what is done (what you read and the steps proposed) and what is left; the person can press Continue to go on.';
+
+/** Task 11.21: what the model is told of a Continue. */
+export const CONTINUE_LINE =
+  'The person pressed Continue: go on with what was left of the earlier work in this conversation. Never propose again a step proposed before.';
 /** The earlier questions and answers sent with a question, never their reads (decision 15). */
 export const HISTORY_MESSAGES = 20;
 /** A read given to the model is cut at this many characters. */
@@ -126,6 +175,8 @@ interface Started {
   questionId: string;
   /** The question's stored moment; its answer window is counted from it. */
   askedAt: Date;
+  /** Task 11.21: the end of its answer window, as stored with it (plan decision 5). */
+  answerUntil: Date;
   budget: CallBudget;
   history: ModelTurn[];
   branchName: string;
@@ -138,6 +189,14 @@ interface Started {
   switchRows: SwitchRows;
   /** Task 11.20: the operations of the conversation's earlier proposals, declared again. */
   used: string[];
+  /** Task 11.21: the limits of this question, as the Super Admin set them at its start. */
+  limits: { actions: number; steps: number };
+  /** Task 11.21: the targets of the steps of the earlier parts of this work (`targetOf`). */
+  taken: ReadonlySet<string>;
+  /** Task 11.21: the question is a Continue. */
+  continued: boolean;
+  /** Task 11.21: the month's cap in micro-dollars, read again before each call. */
+  capMicros: bigint;
 }
 
 /**
@@ -243,13 +302,29 @@ export class AssistantEngine {
           throw new ApiException('not_found', 404);
         }
       }
-      const fallbackOn = await this.refuseWhenClosed(transaction, access.accountId, role, now);
-      const filter = new ModelFilter((await this.settings.switches(transaction)).dataGroupsOn);
+      const settings = await this.refuseWhenClosed(transaction, access.accountId, role, now);
+      const filter = new ModelFilter(settings.dataGroupsOn);
       const switchRows = await this.switches.rowsIn(transaction);
+      // Task 11.21 (`02`, Answers: "offers Continue"): only the newest answer, cut by a limit,
+      // with nothing after it, can be continued.
+      const continued = question.continue === true;
+      if (continued) {
+        const last =
+          existing === undefined ? undefined : await this.lastSpoken(transaction, existing.id);
+        if (last?.kind !== 'answer' || last.continues !== true) {
+          throw new ApiException('assistant_nothing_to_continue', 409);
+        }
+        // Review of the code, must fix 2: a later proposal supersedes a waiting one, so the next
+        // part waits until the person confirmed or declined the part shown; nothing is lost.
+        const waiting = (await proposalsOf(transaction, existing?.id ?? '', now)).some(
+          (proposal) => proposal.state === 'waiting',
+        );
+        if (waiting) throw new ApiException('assistant_continue_waiting', 409);
+      }
       const earlier =
         existing === undefined
-          ? { turns: [], used: [] }
-          : await this.history(transaction, existing.id, now, asker.language, filter);
+          ? { turns: [], used: [], taken: new Set<string>() }
+          : await this.history(transaction, existing.id, now, asker.language, filter, continued);
       const conversation =
         existing === undefined
           ? await this.create(transaction, access, branchId, role, question.text, now)
@@ -257,11 +332,22 @@ export class AssistantEngine {
       // Task 11.19: only what the map knows of the page, its free texts filtered (plan
       // decisions 7 and 8; review must fix 1, correction 2); stored to replay with the history.
       const place = placeOf(role, question.place);
+      // Task 11.21 (plan decision 5): the window is the time limit of now and its margin,
+      // stored with the question, so a later change of the setting does not move it.
+      const answerUntil = new Date(
+        now.getTime() + settings.questionMinutes * 60_000 + ASSISTANT_ANSWER_MARGIN_MS,
+      );
       const questionId = await appendMessage(
         transaction,
         conversation,
-        { kind: 'question', text: question.text, ...(place === undefined ? {} : { place }) },
+        {
+          kind: 'question',
+          text: question.text,
+          ...(place === undefined ? {} : { place }),
+          ...(continued ? { continued: true } : {}),
+        },
         now,
+        answerUntil,
       );
       // Task 11.16: the other tabs of the person read the conversation again, at the commit.
       await notifyLive(transaction, {
@@ -286,9 +372,14 @@ export class AssistantEngine {
         conversation,
         questionId,
         askedAt: now,
+        answerUntil,
         // Task 11.15 (plan decision 6): the fallback switch as it is at the start of the question;
-        // task 11.16: its time limit counted from the question's stored moment.
-        budget: this.caller.begin(fallbackOn, now),
+        // task 11.16: its time limit counted from the question's stored moment; task 11.21: the
+        // limits as the Super Admin set them at the start.
+        budget: this.caller.begin(settings.fallbackOn, now, {
+          minutes: settings.questionMinutes,
+          turns: modelCallsOf(settings.questionActions),
+        }),
         history: earlier.turns,
         branchName: branch.name,
         today: today.rows[0]?.today ?? '',
@@ -296,6 +387,10 @@ export class AssistantEngine {
         filter,
         switchRows,
         used: earlier.used,
+        limits: { actions: settings.questionActions, steps: settings.proposalSteps },
+        taken: earlier.taken,
+        continued,
+        capMicros: BigInt(settings.monthlyCapDollars) * MICROS_PER_DOLLAR,
       };
       return { started, answer: { conversation: await conversationOf(transaction, row, now) } };
     });
@@ -310,8 +405,11 @@ export class AssistantEngine {
    */
   private async answer(asker: Asker, question: AssistantQuestion, start: Started): Promise<void> {
     const progress = new TextProgress((event) => this.tell(start, event));
+    // Task 11.13: the steps the model proposes in this question, stored as one proposal with the
+    // answer; task 11.21 (review of the plan, must fix 3): kept with a notice too.
+    const steps: StoredStep[] = [];
     try {
-      await this.answering(asker, question, start, progress);
+      await this.answering(asker, question, start, progress, steps);
     } catch (error) {
       if (error instanceof WindowPassed) return;
       let code: AssistantNotice;
@@ -332,6 +430,10 @@ export class AssistantEngine {
       try {
         await this.write(start, async (transaction, now) => {
           await appendMessage(transaction, start.conversation, { kind: 'notice', code }, now);
+          // Task 11.21: the model failed on a later turn; what was drafted is not lost.
+          if (error instanceof ModelCallFailed) {
+            await this.storeProposal(transaction, start, question.role, steps, now);
+          }
           await this.notify(transaction, start, { kind: 'done' });
         });
       } catch (stored) {
@@ -345,8 +447,13 @@ export class AssistantEngine {
     question: AssistantQuestion,
     start: Started,
     progress: TextProgress,
+    steps: StoredStep[],
   ): Promise<void> {
     const role = question.role;
+    // Task 11.21 (`02`, Limits): the reads and changes of one question, and the model calls
+    // that follow them, as the Super Admin set them at the question.
+    const maxReads = start.limits.actions;
+    const maxCalls = modelCallsOf(maxReads);
 
     // Task 11.20: the role's list as the Super Admin switched it at the question; the dispatcher
     // reads the switch again for every request it sends (plan review 6).
@@ -372,10 +479,8 @@ export class AssistantEngine {
     const declared = (): ModelTool[] => [
       ...declaredActions(lines, filter, { found, used, page }),
       ...always,
+      ASK_CHOICE_DEFINITION,
     ];
-    // Task 11.13: the steps the model proposes in this question, stored as one proposal with
-    // the answer; nothing is changed here.
-    const steps: StoredStep[] = [];
     const turns: ModelTurn[] = [
       ...start.history,
       {
@@ -385,9 +490,12 @@ export class AssistantEngine {
             kind: 'text',
             // Task 11.19 (review correction 5): only this question's place is "open now".
             text:
-              start.place === undefined
-                ? start.filter.words(question.text)
-                : `${start.filter.words(question.text)}\n\n${placeText(start.place, asker.language, true)}`,
+              (start.continued
+                ? `[Continue] ${CONTINUE_LINE}`
+                : start.filter.words(question.text)) +
+              (start.place === undefined
+                ? ''
+                : `\n\n${placeText(start.place, asker.language, true)}`),
           },
         ],
       },
@@ -403,13 +511,31 @@ export class AssistantEngine {
     let reads = 0;
     let modelCalls = 0;
     let text = '';
+    // Task 11.21: a limit cut the work (Continue is offered); the cap was reached meanwhile.
+    let limitReached = false;
+    let capped = false;
+    let choices: string[] = [];
     for (;;) {
       modelCalls += 1;
-      const last = reads >= MAX_READS || modelCalls >= MAX_MODEL_CALLS;
+      // Task 11.21 (review of the plan, must fix 3): the time limit is a limit too; a turn
+      // with tools is sent only with room left for one last call without tools after it.
+      const last =
+        reads >= maxReads || modelCalls >= maxCalls || !this.caller.roomForTools(start.budget);
       await this.refuseWhenSessionOver(asker.pass);
+      // Task 11.21 (build plan: "the cap still ends the question with its notice"; review of
+      // the plan, must fix 1): the month's spend read again before each call.
+      if (await this.capReached(start)) {
+        capped = true;
+        break;
+      }
+      if (last) limitReached = true;
       const reply = await this.call(
         start,
-        { system, turns, tools: last ? [] : declared() },
+        {
+          system: last ? `${system}\n${LIMIT_REACHED_LINE}` : system,
+          turns,
+          tools: last ? [] : declared(),
+        },
         progress,
       );
       if (reply.calls.length === 0 || last) {
@@ -430,7 +556,7 @@ export class AssistantEngine {
       const results: ModelTurn = { role: 'person', parts: [] };
       for (const call of reply.calls) {
         // Task 11.19: the map's tools read only the map; they are not reads of the platform,
-        // and every call of the model still counts toward MAX_MODEL_CALLS (plan decision 5).
+        // and every call of the model still counts toward the bound of the calls (plan decision 5).
         if (call.name === FIND_IN_PLATFORM || call.name === EXPLAIN_PLACE) {
           const asked = call.name === FIND_IN_PLATFORM ? call.args.words : call.args.id;
           const result =
@@ -466,6 +592,17 @@ export class AssistantEngine {
           });
           continue;
         }
+        // Task 11.21: the options of the question asked, drawn as buttons; a model call only.
+        if (call.name === ASK_CHOICE) {
+          const made = choicesOf(call.args);
+          if (Array.isArray(made)) choices = made;
+          results.parts.push({
+            kind: 'result',
+            name: call.name,
+            result: Array.isArray(made) ? { shown: made.length } : made,
+          });
+          continue;
+        }
         if (call.name === LINK_PLACE) {
           const made = linkOf(role, call.args);
           if ('link' in made && !links.some((one) => sameLink(one, made.link))) {
@@ -484,7 +621,7 @@ export class AssistantEngine {
         // the person's own read answers; a refusal links nothing.
         if (call.name === OPEN_LESSON_JOURNAL && Object.hasOwn(lines, LESSON_CARD_ROUTE)) {
           const link =
-            reads > MAX_READS
+            reads > maxReads
               ? undefined
               : await this.lessonLink(asker, start.conversation.branchId, role, call.args);
           if (
@@ -527,7 +664,7 @@ export class AssistantEngine {
           results.parts.push({ kind: 'result', name: call.name, result: given });
           continue;
         }
-        if (named.line.kind === 'change' && reads <= MAX_READS) {
+        if (named.line.kind === 'change' && reads <= maxReads) {
           const drafted = await draftStep(
             this.dispatcher,
             {
@@ -537,6 +674,8 @@ export class AssistantEngine {
               lines,
               filter,
               lessonDateOf: (lessonId) => this.lessonDate(asker.access, lessonId),
+              maxSteps: start.limits.steps,
+              taken: start.taken,
               studentNamesOf: (lessonId, ids) =>
                 this.studentNames(asker, start.conversation.branchId, role, lessonId, ids),
             },
@@ -545,6 +684,9 @@ export class AssistantEngine {
           );
           if (drafted.step !== undefined) {
             steps.push(drafted.step);
+          } else if (isError(drafted.given, 'too_many_steps')) {
+            // Task 11.21: the proposal is full; the rest is for the next part.
+            limitReached = true;
           }
           await this.store(
             start,
@@ -561,7 +703,7 @@ export class AssistantEngine {
           results.parts.push({ kind: 'result', name: call.name, result: drafted.given });
           continue;
         }
-        const result = await this.read(asker, start, { role, lines }, call, reads > MAX_READS);
+        const result = await this.read(asker, start, { role, lines }, call, reads > maxReads);
         results.parts.push({ kind: 'result', name: call.name, result });
       }
       turns.push(results);
@@ -569,29 +711,64 @@ export class AssistantEngine {
 
     await progress.flush();
     await this.write(start, async (transaction, now) => {
-      await appendMessage(
-        transaction,
-        start.conversation,
-        { kind: 'answer', text, pages: [], lessons: lessonLinks, links },
-        now,
-      );
-      if (steps.length > 0) {
-        await transaction
-          .insertInto('assistant_proposals')
-          .values({
-            conversation_id: start.conversation.id,
-            branch_id: start.conversation.branchId,
-            account_id: start.conversation.accountId,
-            question_id: start.questionId,
-            role,
-            steps: sql<JsonValue>`${JSON.stringify(steps)}::jsonb`,
-            created_at: now,
-            expires_at: new Date(now.getTime() + ASSISTANT_PROPOSAL_MINUTES * 60_000),
-          })
-          .execute();
+      if (capped) {
+        await appendMessage(
+          transaction,
+          start.conversation,
+          { kind: 'notice', code: 'assistant_cap_reached' },
+          now,
+        );
+      } else {
+        await appendMessage(
+          transaction,
+          start.conversation,
+          {
+            kind: 'answer',
+            text,
+            pages: [],
+            lessons: lessonLinks,
+            links,
+            ...(limitReached ? { continues: true } : {}),
+            ...(choices.length > 0 && !limitReached ? { choices } : {}),
+          },
+          now,
+        );
       }
+      await this.storeProposal(transaction, start, role, steps, now);
       // At the commit of the answer: the tabs read the conversation with it.
       await this.notify(transaction, start, { kind: 'done' });
+    });
+  }
+
+  /** The steps of a question as one proposal (task 11.13), when there are any. */
+  private async storeProposal(
+    transaction: Transaction,
+    start: Pick<Started, 'conversation' | 'questionId'>,
+    role: AssistantRole,
+    steps: readonly StoredStep[],
+    now: Date,
+  ): Promise<void> {
+    if (steps.length === 0) return;
+    await transaction
+      .insertInto('assistant_proposals')
+      .values({
+        conversation_id: start.conversation.id,
+        branch_id: start.conversation.branchId,
+        account_id: start.conversation.accountId,
+        question_id: start.questionId,
+        role,
+        steps: sql<JsonValue>`${JSON.stringify(steps)}::jsonb`,
+        created_at: now,
+        expires_at: new Date(now.getTime() + ASSISTANT_PROPOSAL_MINUTES * 60_000),
+      })
+      .execute();
+  }
+
+  /** Task 11.21: whether the month's spend reached the cap set at the question. */
+  private async capReached(start: Started): Promise<boolean> {
+    return this.transactions.run([start.conversation.branchId], async (transaction) => {
+      const now = await transactionMoment(transaction);
+      return (await this.settings.spendThisMonth(transaction, now)) >= start.capMicros;
     });
   }
 
@@ -602,13 +779,13 @@ export class AssistantEngine {
    * written and the work ends (`WindowPassed`).
    */
   private async write<T>(
-    start: Pick<Started, 'conversation' | 'askedAt' | 'questionId'>,
+    start: Pick<Started, 'conversation' | 'answerUntil' | 'questionId'>,
     work: (transaction: Transaction, now: Date) => Promise<T>,
   ): Promise<T> {
     return this.transactions.run([start.conversation.branchId], async (transaction) => {
       const now = await transactionMoment(transaction);
       await lockAccount(transaction, start.conversation.accountId);
-      if (now.getTime() >= start.askedAt.getTime() + ASSISTANT_ANSWER_WINDOW_MS) {
+      if (now.getTime() >= start.answerUntil.getTime()) {
         throw new WindowPassed();
       }
       // The moment of this transaction was taken before it waited on the lock: a question the
@@ -649,14 +826,15 @@ export class AssistantEngine {
 
   /**
    * `02`, Limits, and the switch: refused before anything is stored or counted (decision 10).
-   * Answers whether the worldwide fallback is on (task 11.15).
+   * Answers the settings, read once for the question (task 11.15: the fallback; task 11.21: the
+   * limits).
    */
   private async refuseWhenClosed(
     transaction: Transaction,
     accountId: string,
     role: AssistantRole,
     now: Date,
-  ): Promise<boolean> {
+  ): Promise<Awaited<ReturnType<AssistantSettingsService['switches']>>> {
     const switches = await this.settings.switches(transaction);
     if (!switches.schoolOn || !switches.rolesOn.includes(role)) {
       throw new ApiException('assistant_off', 409);
@@ -666,15 +844,18 @@ export class AssistantEngine {
     await lockAccount(transaction, accountId);
     // Task 11.16: one question of a person at a time, in every branch (0181), until its answer,
     // its notice or the end of its answer window.
+    // Task 11.21: each question's window is stored with it (0184).
     const running = await sql<{ running: boolean }>`
-      select assistant_question_running(
-        ${accountId}, ${new Date(now.getTime() - ASSISTANT_ANSWER_WINDOW_MS)}
-      ) as running
+      select assistant_question_running(${accountId}, ${now}) as running
     `.execute(transaction);
     if (running.rows[0]?.running === true) {
       throw new ApiException('assistant_question_running', 409);
     }
-    if ((await this.settings.questionsToday(transaction, accountId, now)) >= switches.dailyLimit) {
+    // Task 11.21: a daily limit of 0 is none (`02`, Limits: "none at the start").
+    if (
+      switches.dailyLimit > 0 &&
+      (await this.settings.questionsToday(transaction, accountId, now)) >= switches.dailyLimit
+    ) {
       throw new ApiException('assistant_daily_limit', 409);
     }
     const spend = await this.settings.spendThisMonth(transaction, now);
@@ -684,7 +865,23 @@ export class AssistantEngine {
     if (this.model.name === null) {
       throw new ApiException('assistant_model_unavailable', 503);
     }
-    return switches.fallbackOn;
+    return switches;
+  }
+
+  /** Task 11.21: the newest answer or notice of a conversation (the reads left out). */
+  private async lastSpoken(
+    transaction: Transaction,
+    conversationId: string,
+  ): Promise<StoredContent | undefined> {
+    const row = await transaction
+      .selectFrom('assistant_messages')
+      .select('content')
+      .where('conversation_id', '=', conversationId)
+      .where('kind', '<>', 'read')
+      .orderBy('seq', 'desc')
+      .limit(1)
+      .executeTakeFirst();
+    return row?.content as unknown as StoredContent | undefined;
   }
 
   private async create(
@@ -721,7 +918,8 @@ export class AssistantEngine {
     now: Date,
     language: Language,
     filter: ModelFilter,
-  ): Promise<{ turns: ModelTurn[]; used: string[] }> {
+    continued: boolean,
+  ): Promise<{ turns: ModelTurn[]; used: string[]; taken: Set<string> }> {
     const all = await messagesOf(transaction, conversationId);
     const proposals = await proposalsOf(transaction, conversationId, now);
     const byQuestion = new Map(proposals.map((proposal) => [proposal.questionId, proposal]));
@@ -736,6 +934,13 @@ export class AssistantEngine {
           turns.pop();
         }
         lastQuestion = message.id;
+        // Task 11.21: a Continue and an Undo are told as what they were, not as typed words.
+        const words =
+          content.undoOf !== undefined
+            ? '[The person pressed Undo on a confirmed proposal.]'
+            : content.continued === true
+              ? `[Continue] ${CONTINUE_LINE}`
+              : filter.words(content.text);
         turns.push({
           seq: message.seq,
           turn: {
@@ -747,8 +952,8 @@ export class AssistantEngine {
                 // asked from, never where the person is now.
                 text:
                   content.place === undefined
-                    ? filter.words(content.text)
-                    : `${filter.words(content.text)}\n\n${placeText(content.place, language, false)}`,
+                    ? words
+                    : `${words}\n\n${placeText(content.place, language, false)}`,
               },
             ],
           },
@@ -764,9 +969,14 @@ export class AssistantEngine {
                     `${String(step.seq)}. ${step.summary} (${step.state}${step.code === null ? '' : `, ${step.code}`})`,
                 )
                 .join('; ')}]`;
+        // Task 11.21: an Undo's answer has no words of the model; it is told as what it was.
+        const said =
+          content.undo !== undefined
+            ? `[The platform proposed the reverse of the confirmed changes; ${String(content.undo.none.length)} could not be reversed.]`
+            : content.text;
         turns.push({
           seq: message.seq,
-          turn: { role: 'model', parts: [{ kind: 'text', text: content.text + note }] },
+          turn: { role: 'model', parts: [{ kind: 'text', text: (said + note).trim() || '…' }] },
         });
       }
     }
@@ -778,7 +988,58 @@ export class AssistantEngine {
       used: [
         ...new Set(proposals.flatMap((proposal) => proposal.steps.map((step) => step.action))),
       ],
+      taken: continued ? await this.takenOf(transaction, all, proposals) : new Set<string>(),
     };
+  }
+
+  /**
+   * Task 11.21 (`edge/people-roles-accounts`, "Cancel these 60 lessons": "Nothing is lost or
+   * proposed twice"; plan decision 8): the targets of the steps of the earlier parts of the work,
+   * the questions from the last one that was not a Continue. A step done (or not known) of a
+   * confirmed proposal, and a step of a declined one, is taken; a step of a proposal still waiting
+   * is not: the next part's proposal supersedes it, so its steps may be proposed again and none is
+   * lost.
+   */
+  private async takenOf(
+    transaction: Transaction,
+    messages: readonly MessageRow[],
+    proposals: readonly AssistantProposal[],
+  ): Promise<Set<string>> {
+    const questions = messages.filter((message) => message.content.kind === 'question');
+    const chain: string[] = [];
+    for (let index = questions.length - 1; index >= 0; index -= 1) {
+      const question = questions[index];
+      if (question === undefined) break;
+      chain.push(question.id);
+      const content = question.content;
+      if (content.kind === 'question' && content.continued !== true) break;
+    }
+    const counted = proposals.filter(
+      (proposal) =>
+        chain.includes(proposal.questionId) &&
+        (proposal.state === 'confirmed' || proposal.state === 'declined'),
+    );
+    if (counted.length === 0) return new Set();
+    const rows = await transaction
+      .selectFrom('assistant_proposals')
+      .select(['id', 'steps'])
+      .where(
+        'id',
+        'in',
+        counted.map((proposal) => proposal.id),
+      )
+      .execute();
+    const taken = new Set<string>();
+    for (const row of rows) {
+      const view = counted.find((proposal) => proposal.id === row.id);
+      for (const step of row.steps as unknown as StoredStep[]) {
+        const state = view?.steps.find((one) => one.id === step.id)?.state;
+        if (view?.state === 'declined' || state === 'done' || state === 'unknown') {
+          taken.add(targetOf(step));
+        }
+      }
+    }
+    return taken;
   }
 
   /**
@@ -829,6 +1090,196 @@ export class AssistantEngine {
         created_at: now,
       })
       .execute();
+  }
+
+  /**
+   * Task 11.21, Undo (`02`, Reading and proposing: "A confirmed proposal can be undone: the
+   * assistant proposes the reverse of each change made, where an action exists that reverses it,
+   * and that new proposal is confirmed like any other"). Built by the server from the stored
+   * steps, newest first (plan decision 11), with no call of the model: neither the daily limit
+   * nor the cap applies (plan decision 9). Each reverse is drafted as any step, as the person, on
+   * the role's switched-on list; a change with none is named with its reason.
+   */
+  async undo(asker: Asker, proposalId: string, role: AssistantRole): Promise<AssistantAnswer> {
+    const { access } = asker;
+    const found = await this.transactions.run(access.branchIds, async (transaction) => {
+      const now = await transactionMoment(transaction);
+      const checked = await this.undoable(transaction, access, proposalId, role, now);
+      const settings = await this.settings.switches(transaction);
+      return {
+        ...checked,
+        filter: new ModelFilter(settings.dataGroupsOn),
+        maxSteps: settings.proposalSteps,
+        switchRows: await this.switches.rowsIn(transaction),
+      };
+    });
+    const { proposal, done } = found;
+    const listed = this.routes.linesOf(role);
+    const on = this.switches.onRoutes(found.switchRows, role);
+    const lines: RoleLines = Object.fromEntries(
+      Object.entries(listed).filter(([route]) => on.has(route)),
+    );
+    const branchId = proposal.branch_id;
+    const steps: StoredStep[] = [];
+    const none: { seq: number; action: string; summary: string; reason: string }[] = [];
+    // The last change undone first (plan decision 11).
+    for (const { step, recordId } of [...done].reverse()) {
+      const named = { seq: step.seq, action: step.action, summary: step.summary };
+      if (steps.length >= found.maxSteps) {
+        none.push({ ...named, reason: 'over_step_limit' });
+        continue;
+      }
+      const made = reverseOf(step, recordId);
+      if ('reason' in made) {
+        none.push({ ...named, reason: made.reason });
+        continue;
+      }
+      const route = made.reverse.route;
+      const line = lines[route];
+      if (line?.kind !== 'change') {
+        none.push({
+          ...named,
+          reason: Object.hasOwn(listed, route) ? 'action_off' : 'not_on_list',
+        });
+        continue;
+      }
+      const drafted = await draftStep(
+        this.dispatcher,
+        {
+          pass: asker.pass,
+          branchId,
+          role,
+          lines,
+          filter: found.filter,
+          maxSteps: found.maxSteps,
+          lessonDateOf: (lessonId) => this.lessonDate(access, lessonId),
+          studentNamesOf: (lessonId, ids) =>
+            this.studentNames(asker, branchId, role, lessonId, ids),
+        },
+        {
+          route,
+          tool: generatedOf(route),
+          line,
+          args: {
+            ...made.pathArgs,
+            [SUMMARY_ARGUMENT]: step.summary.slice(0, SUMMARY_MAX_LENGTH),
+            ...(made.body === undefined ? {} : { [BODY_ARGUMENT]: made.body }),
+          },
+        },
+        steps,
+      );
+      if (drafted.step === undefined) {
+        const given = drafted.given as { error?: unknown } | null;
+        none.push({
+          ...named,
+          reason: typeof given?.error === 'string' ? given.error : 'refused',
+        });
+        continue;
+      }
+      steps.push({ ...drafted.step, seq: steps.length + 1 });
+    }
+    return this.transactions.run(access.branchIds, async (transaction) => {
+      const now = await transactionMoment(transaction);
+      // Checked again under the person's lock: another tab may have asked or undone meanwhile.
+      await this.undoable(transaction, access, proposalId, role, now);
+      const conversation = {
+        id: proposal.conversation_id,
+        branchId,
+        accountId: proposal.account_id,
+      };
+      const questionId = await appendMessage(
+        transaction,
+        conversation,
+        { kind: 'question', text: '', undoOf: proposal.id },
+        now,
+      );
+      await appendMessage(
+        transaction,
+        conversation,
+        { kind: 'answer', text: '', pages: [], undo: { proposalId: proposal.id, none } },
+        now,
+      );
+      await this.storeProposal(transaction, { conversation, questionId }, role, steps, now);
+      await this.notify(transaction, { conversation, questionId }, { kind: 'done' });
+      const row = await conversationsQuery(transaction)
+        .where('c.id', '=', conversation.id)
+        .executeTakeFirstOrThrow();
+      return { conversation: await conversationOf(transaction, row, now) };
+    });
+  }
+
+  /**
+   * The checks of an Undo (task 11.21), under the person's question lock: the person's own
+   * proposal of a conversation not archived (anything else 404), the role held and the same, the
+   * assistant on, no question running, confirmed with a change made, and no Undo of it yet.
+   */
+  private async undoable(
+    transaction: Transaction,
+    access: Access,
+    proposalId: string,
+    role: AssistantRole,
+    now: Date,
+  ): Promise<{
+    proposal: { id: string; branch_id: string; account_id: string; conversation_id: string };
+    done: { step: StoredStep; recordId: string | null }[];
+  }> {
+    const proposal = await transaction
+      .selectFrom('assistant_proposals')
+      .select(['id', 'branch_id', 'account_id', 'conversation_id', 'role', 'steps'])
+      .where('id', '=', proposalId)
+      .where('account_id', '=', access.accountId)
+      .executeTakeFirst();
+    if (proposal === undefined) throw new ApiException('not_found', 404);
+    const conversation = await conversationsQuery(transaction)
+      .where('c.id', '=', proposal.conversation_id)
+      .executeTakeFirstOrThrow();
+    if (isArchived(new Date(conversation.last_activity_at), now)) {
+      throw new ApiException('not_found', 404);
+    }
+    if (!this.roleHeld(access, role)) throw new ApiException('assistant_role_not_held', 403);
+    if (proposal.role !== role) throw new ApiException('assistant_conversation_other_role', 409);
+    const settings = await this.settings.switches(transaction);
+    if (!settings.schoolOn || !settings.rolesOn.includes(role)) {
+      throw new ApiException('assistant_off', 409);
+    }
+    await lockAccount(transaction, access.accountId);
+    const running = await sql<{ running: boolean }>`
+      select assistant_question_running(${access.accountId}, ${now}) as running
+    `.execute(transaction);
+    if (running.rows[0]?.running === true) {
+      throw new ApiException('assistant_question_running', 409);
+    }
+    const decided = await transaction
+      .selectFrom('assistant_proposal_decisions')
+      .select('decision')
+      .where('proposal_id', '=', proposal.id)
+      .executeTakeFirst();
+    const outcomes = await transaction
+      .selectFrom('assistant_proposal_steps')
+      .select(['step_id', 'state', 'record_id'])
+      .where('proposal_id', '=', proposal.id)
+      .execute();
+    const steps = proposal.steps as unknown as StoredStep[];
+    const done = steps.flatMap((step) => {
+      const outcome = outcomes.find((one) => one.step_id === step.id);
+      return outcome?.state === 'done' ? [{ step, recordId: outcome.record_id }] : [];
+    });
+    if (decided?.decision !== 'confirmed' || done.length === 0) {
+      throw new ApiException('assistant_undo_not_open', 409);
+    }
+    // One Undo of a proposal at a time: one that waits or was confirmed; an Undo that proposed
+    // nothing, or was declined, expired or superseded, does not block a later one.
+    const views = await proposalsOf(transaction, proposal.conversation_id, now);
+    const undone = (await messagesOf(transaction, proposal.conversation_id)).filter(
+      (message) => message.content.kind === 'question' && message.content.undoOf === proposal.id,
+    );
+    for (const question of undone) {
+      const its = views.find((view) => view.questionId === question.id);
+      if (its !== undefined && (its.state === 'waiting' || its.state === 'confirmed')) {
+        throw new ApiException('assistant_undo_exists', 409);
+      }
+    }
+    return { proposal, done };
   }
 
   /**
@@ -1115,7 +1566,16 @@ export function systemInstruction(input: {
     'A question may carry where the person is: the page, its values and the record open in the side panel. "This student", "this lesson", "this journal" or "this button" mean what is there; read the record through your tools, with the person\u2019s rights, before you speak of it. The place of an earlier question is where that question was asked, not where the person is now.',
     'You can do every action the person\u2019s role has on the screens that the Super Admin switched on for you: reads, and changes as propose_ steps, the journal (attendance, numbers, comments, not held, corrections, exemptions) included. You are given only some actions as tools; use find_actions to find the one you need (it is a tool from your next step), and call find_actions before you say you cannot do something. An action answered action_off was switched off by the Super Admin: say so, and give the steps on the screen. An action answered not_on_list is not one of the role\u2019s: say so, and name the role that can, from the map. Exports and files are not open to you yet: give the steps on the screen.',
     'For many entries of one kind (attendance of a lesson for each student, the same change for several records), read first and propose one step that holds all the entries, naming each.',
-    'Write plain text, never Markdown headings, tables, links, code or HTML. For a list, start each item on its own line with "- ". You may mark a few words as **bold**.',
+    'Write plain text, never Markdown headings, links, code or HTML. For a list, start each item on its own line with "- ". You may mark a few words as **bold**.',
+    'For a list of several records with the same facts, or a comparison, write a small table in Markdown pipe form: a header row, a separator row of dashes, then one row per record, each line starting and ending with "|", at most 8 columns.',
+    'When you ask the person to choose (which classes, keep as held or cancel), ask the question in your answer and give the options with ask_choice; they become buttons.',
     'Personal fields of a group the Super Admin keeps from you appear as [removed]; never ask for them. A secret (a password, a key\u2019s secret) appears as [secret: shown to the person only]: the person sees it once on Confirm; never ask for it or repeat it.',
   ].join('\n');
+}
+
+/** Whether what a tool answered is the refusal `code`. */
+function isError(given: unknown, code: string): boolean {
+  return (
+    given !== null && typeof given === 'object' && (given as { error?: unknown }).error === code
+  );
 }

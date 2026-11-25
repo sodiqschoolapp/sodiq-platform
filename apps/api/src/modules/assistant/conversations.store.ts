@@ -1,5 +1,5 @@
 import {
-  ASSISTANT_ANSWER_WINDOW_MS,
+  ASSISTANT_LEGACY_WINDOW_MS,
   ASSISTANT_ARCHIVE_DAYS,
   assistantMessageSchema,
   type AssistantConversation,
@@ -30,6 +30,10 @@ export type StoredContent =
        * platform knows of the page; its free texts filtered as the question's words).
        */
       place?: StoredPlace;
+      /** Task 11.21: Continue was pressed. */
+      continued?: boolean;
+      /** Task 11.21: an Undo of this proposal (not counted in the daily limit, 0184). */
+      undoOf?: string;
     }
   | {
       kind: 'answer';
@@ -38,6 +42,15 @@ export type StoredContent =
       lessons?: AssistantLessonLink[];
       /** Task 11.19: the places linked; none in an answer stored before 11.19. */
       links?: AssistantPlaceLink[];
+      /** Task 11.21: a limit cut the work; Continue is offered. */
+      continues?: boolean;
+      /** Task 11.21: the options of the question the assistant asks. */
+      choices?: string[];
+      /** Task 11.21: the answer of an Undo. */
+      undo?: {
+        proposalId: string;
+        none: { seq: number; action: string; summary: string; reason: string }[];
+      };
     }
   | {
       kind: 'read';
@@ -73,6 +86,8 @@ export interface MessageRow {
   id: string;
   seq: number;
   createdAt: Date;
+  /** Task 11.21: the end of a question's answer window; `null` before 0184 and on other kinds. */
+  answerUntil: Date | null;
   content: StoredContent;
 }
 
@@ -133,7 +148,7 @@ export async function messagesOf(
 ): Promise<MessageRow[]> {
   const rows = await transaction
     .selectFrom('assistant_messages')
-    .select(['id', 'seq', 'created_at', 'content'])
+    .select(['id', 'seq', 'created_at', 'content', 'answer_until'])
     .where('conversation_id', '=', conversationId)
     .orderBy('seq')
     .execute();
@@ -141,6 +156,7 @@ export async function messagesOf(
     id: row.id,
     seq: row.seq,
     createdAt: new Date(row.created_at),
+    answerUntil: row.answer_until === null ? null : new Date(row.answer_until),
     content: row.content as unknown as StoredContent,
   }));
 }
@@ -151,7 +167,13 @@ export function messageOf(row: MessageRow): AssistantMessage {
   const content = row.content;
   switch (content.kind) {
     case 'question':
-      return { ...base, kind: 'question', text: content.text };
+      return {
+        ...base,
+        kind: 'question',
+        text: content.text,
+        continued: content.continued === true,
+        undoOf: content.undoOf ?? null,
+      };
     case 'answer':
       return {
         ...base,
@@ -160,6 +182,9 @@ export function messageOf(row: MessageRow): AssistantMessage {
         pages: content.pages,
         lessons: content.lessons ?? [],
         links: content.links ?? [],
+        continues: content.continues === true,
+        choices: content.choices ?? [],
+        undo: content.undo ?? null,
       };
     case 'read':
       return assistantMessageSchema.parse({
@@ -191,9 +216,19 @@ export async function conversationOf(
 }
 
 /**
+ * The end of a question's answer window (task 11.21, plan decision 5): stored with it; a question
+ * stored before 0184 keeps the 270 s of task 11.16.
+ */
+export function answerUntilOf(question: Pick<MessageRow, 'createdAt' | 'answerUntil'>): Date {
+  return (
+    question.answerUntil ?? new Date(question.createdAt.getTime() + ASSISTANT_LEGACY_WINDOW_MS)
+  );
+}
+
+/**
  * The question being answered now (task 11.16): the last question with no answer and no notice
  * after it, while its answer window lasts, read from its stored moment (`CLAUDE.md`, State from
- * stored moments); the same rule as `assistant_question_running` of 0181.
+ * stored moments); the same rule as `assistant_question_running` of 0184.
  */
 export function workingOf(
   messages: readonly MessageRow[],
@@ -207,7 +242,7 @@ export function workingOf(
     }
   }
   if (question === undefined) return null;
-  const until = new Date(question.createdAt.getTime() + ASSISTANT_ANSWER_WINDOW_MS);
+  const until = answerUntilOf(question);
   if (until.getTime() <= now.getTime()) return null;
   return {
     questionId: question.id,
@@ -234,6 +269,8 @@ export async function appendMessage(
   conversation: { id: string; branchId: string; accountId: string },
   content: StoredContent,
   now: Date,
+  /** Task 11.21: the end of a question's answer window (plan decision 5). */
+  answerUntil?: Date,
 ): Promise<string> {
   await sql`select pg_advisory_xact_lock(hashtextextended(${`assistant_conversation:${conversation.id}`}, 0))`.execute(
     transaction,
@@ -253,6 +290,7 @@ export async function appendMessage(
       kind: content.kind,
       content: sql<JsonValue>`${JSON.stringify(content)}::jsonb`,
       created_at: now,
+      answer_until: answerUntil ?? null,
     })
     .returning('id')
     .executeTakeFirstOrThrow();
