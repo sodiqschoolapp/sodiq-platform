@@ -90,6 +90,18 @@ Plan approved on pull request #388 with corrections 1 (the step bounds 1 to 200 
 | A step's target is its route, its path and the records it names; a step that names no record (a bulk cancel) adds its body without versions, warning flags and the model's words (reason, note, comment) | A lesson cancelled again with other words is the same step; code review must fix 1 |
 | The pairs of Undo (`reverses.ts`): archive and restore of every record that has both, a lesson's cancel and restore, a substitution and its withdrawal, an absence, a room closure and a calendar day added and withdrawn or archived, an exam added and cancelled, a vacancy added and deleted, closed and reopened, an account locked and unlocked. A one-day move or room change has none (no route removes it) | Plan decision 10; code review must fix 4 and nit 1 |
 
+## 25 November 2026: the builder's heartbeat and the watchdog (outside the loop, the owner's request)
+
+The owner, 25 November 2026, in chat: stalls of 10 to 50 minutes and two sessions on one task waste time the loop does not have. Built on its own branch; `docs/cloud-loop.md`, section 9.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first.** A builder is alive while its heartbeat comment (written by a hook before every tool, at most every two minutes) is under 15 minutes old; the 45-minute silence rule stays only for a pull request without a heartbeat | Silence on GitHub was a poor sign of death: a working builder is often quiet for 45 minutes, and a dead one was found an hour late. A command times out at ten minutes, so a live builder always beats within 15 |
+| **Look first.** The hook blocks every tool of a second session while the heartbeat of another is fresh, and refuses the end of a session twice at most while the task needs its builder | Two builders on #388 took each other's events; a builder that ended its turn to wait was never woken |
+| A watchdog workflow every five minutes fires the start routine with `Stalled #<n>`; it runs `main`'s code only and fires nothing for a live builder | The routines' schedule is hourly; GitHub's schedule allows five minutes and needs no model call when nothing is wrong |
+| The builder pushes every commit as it is made; red CI on a draft being built is expected | A resumed session goes on from the newest work instead of the plan commit |
+| The routine sessions cannot read another session's state (no session tool there), so the heartbeat goes through the pull request | Checked on the start routine's run of 09:42 UTC, 25 November 2026 |
+
 ## 25 November 2026: every action of the role open to the assistant, with the Super Admin's switches (task 11.20)
 
 Plan approved on pull request #387 with corrections 1 (the update grant of `data_groups_off`), 2 (the heavy routes by route: `POST /api/people/staff` and the status change stay on) and 3 (the 11.14 line on the Teacher's own plans marked superseded). Approved by the owner in chat on 25 November 2026 (stop-list item 5): no role gains a right; the permission table and the guard do not change. Flagged on issue #42.

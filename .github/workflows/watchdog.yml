@@ -1,0 +1,42 @@
+name: Watchdog
+
+# The watchdog of the loop (docs/cloud-loop.md, section 9; owner, 25 November
+# 2026). Every five minutes it reads the open task pull requests and, for one
+# that needs its builder while the builder's heartbeat says stopped or is older
+# than 15 minutes, posts one comment and fires the start routine with
+# "Stalled #<n>". Before it, a builder that died was found only by the hourly
+# start routine after 45 minutes of silence, and a quiet but working builder
+# was sometimes taken for dead and got a second session beside it.
+#
+# It runs the code of main only (a schedule never runs a pull request's code),
+# and fires nothing for a task whose builder is alive.
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: read
+  checks: read
+
+concurrency:
+  group: watchdog
+  cancel-in-progress: false
+
+jobs:
+  watch:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          sparse-checkout: scripts/loop
+      - name: Resume a task whose builder is gone
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          START_ROUTINE_URL: ${{ secrets.START_ROUTINE_URL }}
+          START_ROUTINE_TOKEN: ${{ secrets.START_ROUTINE_TOKEN }}
+        run: node scripts/loop/watchdog.mjs
