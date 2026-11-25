@@ -150,6 +150,18 @@ describe('the map of the platform', () => {
     });
   });
 
+  it('names in a link only a control the role sees; for another, the page (review should fix 7)', () => {
+    const add = 'features/setup/rooms-page.tsx#button:setup.rooms.add';
+    const rooms = PLATFORM_MAP.pages.find((page) => page.path === '/setup/rooms');
+    const vice = linkOf('academic_vice_principal', { page: '/setup/rooms', node: add });
+    expect('link' in vice ? [vice.link.nodeId, vice.link.label] : null).toEqual([
+      'page:/setup/rooms',
+      rooms?.title,
+    ]);
+    const admin = linkOf('super_admin', { page: '/setup/rooms', node: add });
+    expect('link' in admin ? admin.link.nodeId : null).toBe(add);
+  });
+
   it('keeps of a place only what the map records for the page, its free texts filtered (correction 2)', () => {
     expect(
       placeOf('super_admin', {
@@ -360,6 +372,20 @@ describe('the assistant: where the person is, and the map in a question', () => 
       place: { page: '/people/students', record: ID },
     });
     expect(refused.status).toBe(400);
+  });
+
+  it('drops through the route a tab outside the page’s values and an open that is not an id (review should fix 9)', async () => {
+    scene.model.script(answer('Here.'));
+    answered(
+      await ask(scene, scene.admin, scene.north, {
+        text: 'What is on this page?',
+        place: { page: '/journal', search: { tab: 'other', open: 'not-an-id', year: ID } },
+      }),
+    );
+    const text = personText(scene.model.requests[0]).at(-1) ?? '';
+    expect(text).toContain(`year = ${ID}`);
+    expect(text).not.toContain('tab =');
+    expect(text).not.toContain('not-an-id');
   });
 
   it('filters a free text of the place as the person’s words (correction 2)', async () => {

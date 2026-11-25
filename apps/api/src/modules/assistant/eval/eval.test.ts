@@ -96,6 +96,8 @@ function howFault(
       return `${how.offers} is not on the role's list`;
     }
     if (proposals > 0) return 'proposed before the person agreed';
+    // Review should fix 6: against the real model the answer offers to do it, as a question.
+    if (real && !text.includes('?')) return 'did not offer to do it';
   }
   if (real && !/(^|\n)\s*(\d+[.)]|-)\s/.test(text)) return 'gave no steps';
   return '';

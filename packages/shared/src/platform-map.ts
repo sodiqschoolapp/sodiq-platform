@@ -43,7 +43,7 @@ export const platformMapPageSchema = z.strictObject({
   roles: z.array(roleSchema),
   params: z.record(z.string(), platformValueKindSchema),
   search: z.record(z.string(), platformValueKindSchema),
-  /** The API operations the page's files call, by operation id. */
+  /** The API operations the page's controls call, by operation id. */
   operations: z.array(z.string()),
   description: z.string().min(1),
 });
@@ -61,8 +61,10 @@ export const platformMapNodeSchema = z.strictObject({
   /** The panel or dialog it is inside, by id. */
   parent: z.string().nullable(),
   roles: z.array(roleSchema),
-  /** The API operation it calls, when the map names one. */
-  operation: z.string().nullable(),
+  /** The API operations its action calls, by operation id (review must fix 1). */
+  operations: z.array(z.string()),
+  /** The route a tab drawn as a link opens. */
+  opens: z.string().nullable(),
   description: z.string().min(1),
 });
 

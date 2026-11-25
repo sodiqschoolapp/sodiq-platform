@@ -81,8 +81,24 @@ describe('the walk of the code', () => {
     expect(byId(walk, 'features/things/thing-panel.tsx#button:things.second')).toBeDefined();
   });
 
-  it('records the API calls of a file', () => {
+  it('records the API calls of a file, and of a control’s action through its mutation (review must fix 1)', () => {
     expect(walk.calls['features/things/things-page.tsx']).toEqual(['POST /api/things']);
+    expect(byId(walk, 'features/things/things-page.tsx#button:things.add')?.calls).toEqual([
+      'POST /api/things',
+    ]);
+    expect(byId(walk, 'features/things/other-page.tsx#button:other.remove')?.calls).toEqual([
+      'DELETE /api/things/{id}',
+    ]);
+  });
+
+  it('reads a row of tabs drawn as links from a list, one tab per element with the route it opens (review must fix 2)', () => {
+    const tabs = walk.controls.filter((control) =>
+      control.id.startsWith('features/things/other-page.tsx#tab:'),
+    );
+    expect(tabs.map((tab) => [tab.keys[0], tab.opens])).toEqual([
+      ['other.tabs.one', '/other'],
+      ['other.tabs.two', '/things/$thingId'],
+    ]);
   });
 
   it('names a control whose label is not a key it can read (correction 7)', () => {

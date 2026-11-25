@@ -48,4 +48,8 @@ export const DESCRIPTIONS: Readonly<Record<string, string>> = {
     'Shows the secret of the new key once, to copy it now; it can never be read again.',
   'features/access/switchers.tsx#button:switcher.roleButton':
     "Opens the role switcher, which changes the menu and home page to another of the person's roles. The rights stay those of all the person's roles.",
+  'features/access/app-menu.tsx#tab:account.title':
+    "Opens the person's own account page (/account): language, photo, password and the second step.",
+  'features/access/app-menu.tsx#tab:layout.changePassword':
+    "Opens the page to change the person's own password (/account/password).",
 };

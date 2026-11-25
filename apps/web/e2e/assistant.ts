@@ -77,10 +77,12 @@ async function theOpenRecord(page: Page): Promise<void> {
   await panel.getByRole('button', { name: en.assistant.send, exact: true }).click();
   await expect(panel.getByText('This is Assistant A.', { exact: true })).toBeVisible();
 
-  // The link opens the named record: away from it first, then back through the link.
-  await page.goto('/classes');
+  // The link opens the named record: the class's panel closed first, then opened by the link.
+  await page
+    .getByRole('complementary', { name: /Assistant A/ })
+    .getByRole('button', { name: en.list.closePanel, exact: true })
+    .click();
   await expect(page).not.toHaveURL(/open=/);
-  await page.getByRole('button', { name: en.assistant.open, exact: true }).click();
   await panel.getByRole('link', { name: 'Classes', exact: true }).last().click();
   await expect(page).toHaveURL(new RegExp(`[?&]open=${opened ?? ''}`));
   await expect(page.getByRole('heading', { name: /Assistant A/ }).first()).toBeVisible();

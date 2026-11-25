@@ -610,4 +610,30 @@ export const DESCRIPTIONS: Readonly<Record<string, string>> = {
     'Opens the delete of a student record that holds no data, after a confirmation.',
   'features/people/student-panel.tsx#button:form.edit':
     "Opens the student's record form to edit the name, the details and the documents.",
+  'features/people/people-page.tsx#tab:people.staffLink':
+    'Opens the Staff list of People (/people/staff).',
+  'features/people/people-page.tsx#tab:people.studentsLink':
+    'Opens the Students list of People (/people/students).',
+  'features/people/people-page.tsx#tab:people.parentsLink':
+    'Opens the Parents list of People (/people/parents).',
+  'features/people/people-page.tsx#tab:people.vacanciesLink':
+    'Opens the Vacancies list of People (/people/vacancies).',
+  'features/people/people-page.tsx#tab:people.headTeachersLink':
+    'Opens the Head Teachers list of People (/people/head-teachers).',
+  'features/people/people-page.tsx#tab:people.neverUsedLink':
+    'Opens the Accounts never used list of People (/people/never-used).',
+  'features/people/people-tabs.tsx#tab:people.staff.title':
+    'The Staff tab of People: switches to that list (/people/staff), with its own search, filters and open record.',
+  'features/people/people-tabs.tsx#tab:people.students.title':
+    'The Students tab of People: switches to that list (/people/students), with its own search, filters and open record.',
+  'features/people/people-tabs.tsx#tab:people.relatives.title':
+    'The Parents tab of People: switches to that list (/people/parents), with its own search, filters and open record.',
+  'features/people/people-tabs.tsx#tab:people.vacancies.title':
+    'The Vacancies tab of People: switches to that list (/people/vacancies), with its own search, filters and open record.',
+  'features/people/people-tabs.tsx#tab:people.headTeachers.title':
+    'The Head Teachers tab of People: switches to that list (/people/head-teachers), with its own search, filters and open record.',
+  'features/people/people-tabs.tsx#tab:people.neverUsed.title':
+    'The Accounts never used tab of People: switches to that list (/people/never-used), with its own search, filters and open record.',
+  'features/people/people-tabs.tsx#tab:people.resetEntries.title':
+    'The Entries after a reset tab of People: switches to that list (/people/reset-entries), with its own search, filters and open record.',
 };

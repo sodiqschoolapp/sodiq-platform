@@ -144,6 +144,10 @@ export const UNREAD_LABELS: Readonly<Record<string, { count: number; reason: str
     count: 1,
     reason: "The More menu repeats the panel's own buttons, each already a node of the panel.",
   },
+  'features/access/app-menu.tsx': {
+    count: 2,
+    reason: "The menu's items, each named by its page's title; each page is a page of the map.",
+  },
   'features/access/vice-principal-banner.tsx': {
     count: 1,
     reason: "The banner's link names a branch.",

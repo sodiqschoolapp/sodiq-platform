@@ -240,13 +240,7 @@ export function buildMap(inputs: MapInputs): { map: PlatformMap; problems: WalkP
         else search[name] = { ...kind } as PlatformValueKind;
       }
     }
-    const pageOperations = new Set<string>();
     for (const file of page.files) {
-      for (const call of walk.calls[file] ?? []) {
-        const [method, route] = call.split(' ');
-        const id = operations.get(`${method ?? ''} ${route ?? ''}`);
-        if (id !== undefined) pageOperations.add(id);
-      }
       pagesOfFile.set(file, [...(pagesOfFile.get(file) ?? []), page.path]);
     }
     const id = `page:${page.path}`;
@@ -257,7 +251,8 @@ export function buildMap(inputs: MapInputs): { map: PlatformMap; problems: WalkP
       roles,
       params,
       search,
-      operations: [...pageOperations].sort(SORT),
+      // Filled from the controls drawn on the page, below.
+      operations: [],
       description: describe(id, undefined, page.file, 0),
     });
   }
@@ -293,14 +288,20 @@ export function buildMap(inputs: MapInputs): { map: PlatformMap; problems: WalkP
       }
       roles = roles.filter((role) => permits(PERMISSIONS, role, one.area, one.action as Action));
     }
-    const operation = inputs.calls[control.id] ?? null;
-    if (operation !== null && !knownOperations.has(operation)) {
+    // The operations its action calls (review must fix 1), and one the map names by hand.
+    const named = inputs.calls[control.id];
+    if (named !== undefined && !knownOperations.has(named)) {
       problem(
         control.file,
         control.line,
-        `${control.id} calls ${operation}, which is no operation of the API`,
+        `${control.id} calls ${named}, which is no operation of the API`,
       );
     }
+    const found = control.calls.flatMap((call) => {
+      const id = operations.get(call);
+      return id === undefined ? [] : [id];
+    });
+    const own = [...new Set([...found, ...(named === undefined ? [] : [named])])].sort(SORT);
     return {
       id: control.id,
       kind: control.kind,
@@ -308,9 +309,18 @@ export function buildMap(inputs: MapInputs): { map: PlatformMap; problems: WalkP
       pages: [...onPages].sort(SORT),
       parent: control.parent,
       roles,
-      operation,
+      operations: own,
+      opens: control.opens,
       description: describe(control.id, key, control.file, control.line),
     };
+  }
+
+  // A page's operations are those of the controls drawn on it.
+  for (const page of pages) {
+    const all = nodes
+      .filter((node) => node.pages.includes(page.path))
+      .flatMap((node) => node.operations);
+    page.operations = [...new Set(all)].sort(SORT);
   }
 
   // A description, a shown-with or a call that names nothing is stale.

@@ -28,6 +28,8 @@ const walk: Walk = {
       keys: ['rooms.add'],
       parent: null,
       shownWith: [{ area: 'rooms', action: 'create' }],
+      calls: ['POST /api/setup/rooms'],
+      opens: null,
       line: 10,
     },
     {
@@ -37,6 +39,8 @@ const walk: Walk = {
       keys: ['rooms.missing'],
       parent: null,
       shownWith: [],
+      calls: [],
+      opens: null,
       line: 11,
     },
   ],
@@ -88,14 +92,38 @@ describe('the build of the map', () => {
     ]);
   });
 
-  it('gives a page the roles of its area and a guarded control only those of its action', () => {
+  it('gives a page the roles of its area and a guarded control only those of its action (review must fix 3)', () => {
     const { map } = buildMap({ ...inputs, descriptions: all });
     const page = map.pages[0];
     const add = map.nodes.find((node) => node.id.endsWith('rooms.add'));
-    expect(page?.roles).toContain('super_admin');
+    // The Academic Vice Principal views the rooms and does not create them.
+    expect(page?.roles).toContain('academic_vice_principal');
+    expect(add?.roles).not.toContain('academic_vice_principal');
+    expect(add?.roles).toContain('super_admin');
+    // The button's own call, by operation id, and the page's from its controls.
+    expect(add?.operations).toEqual(['RoomsController_create']);
     expect(page?.operations).toEqual(['RoomsController_create']);
-    expect(add?.roles.length).toBeLessThanOrEqual(page?.roles.length ?? 0);
     expect(add?.label).toEqual({ uz: 'Add uz', ru: 'Add ru', en: 'Add en' });
     expect(page?.search.open).toEqual({ kind: 'id' });
+  });
+
+  it('names a shown-with of an area the table lacks and a call of no operation (review must fix 4)', () => {
+    const problems = buildMap({
+      ...inputs,
+      descriptions: all,
+      shownWith: {
+        'features/setup/rooms-page.tsx#button:rooms.missing': {
+          area: 'no_such_area',
+          action: 'edit',
+        },
+      },
+      calls: { 'features/setup/rooms-page.tsx#button:rooms.missing': 'NoSuchController_run' },
+    }).problems.map((one) => one.problem);
+    expect(problems).toEqual(
+      expect.arrayContaining([
+        'No area no_such_area in the permission table',
+        'features/setup/rooms-page.tsx#button:rooms.missing calls NoSuchController_run, which is no operation of the API',
+      ]),
+    );
   });
 });

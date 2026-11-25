@@ -421,4 +421,42 @@ export const DESCRIPTIONS: Readonly<Record<string, string>> = {
   'features/setup/years-page.tsx#column:setup.years.startDate': "Shows the year's first date.",
   'features/setup/years-page.tsx#column:setup.years.status':
     'Shows whether the year is planned, current or closed.',
+  'features/setup/setup-page.tsx#tab:setup.branchesLink':
+    'Opens the Branches page of School setup (/setup/branches).',
+  'features/setup/setup-page.tsx#tab:setup.branchLink':
+    'Opens the Branch page of School setup (/setup/branch).',
+  'features/setup/setup-page.tsx#tab:setup.buildingsLink':
+    'Opens the Buildings and floors page of School setup (/setup/buildings).',
+  'features/setup/setup-page.tsx#tab:setup.roomsLink':
+    'Opens the Rooms page of School setup (/setup/rooms).',
+  'features/setup/setup-page.tsx#tab:setup.divisionsLink':
+    'Opens the Divisions and departments page of School setup (/setup/divisions).',
+  'features/setup/setup-page.tsx#tab:setup.yearsLink':
+    'Opens the Academic years page of School setup (/setup/years).',
+  'features/setup/setup-page.tsx#tab:setup.slotTypesLink':
+    'Opens the Slot types page of School setup (/setup/slot-types).',
+  'features/setup/setup-page.tsx#tab:setup.dayTemplatesLink':
+    'Opens the Day templates page of School setup (/setup/day-templates).',
+  'features/setup/setup-page.tsx#tab:setup.templateSettingsLink':
+    'Opens the Where templates apply page of School setup (/setup/day-template-settings).',
+  'features/setup/setup-page.tsx#tab:setup.calendarLink':
+    'Opens the Calendar page of School setup (/setup/calendar).',
+  'features/setup/setup-page.tsx#tab:setup.settingsLink':
+    'Opens the Settings page of School setup (/setup/settings).',
+  'features/setup/setup-page.tsx#tab:setup.demoClockLink':
+    'Opens the Demo time page of School setup (/setup/demo-clock).',
+  'features/setup/setup-page.tsx#tab:setup.travelTimesLink':
+    'Opens the Travel time page of School setup (/setup/travel-times).',
+  'features/setup/setup-page.tsx#tab:setup.subjectsLink':
+    'Opens the Subjects page of School setup (/setup/subjects).',
+  'features/setup/setup-page.tsx#tab:setup.forcedDeletesLink':
+    'Opens the Deleted for good page of School setup (/forced-deletes).',
+  'features/setup/setup-page.tsx#tab:setup.feedbackReportsLink':
+    'Opens the Feedback reports page of School setup (/feedback-reports).',
+  'features/setup/setup-page.tsx#tab:setup.integrationKeysLink':
+    'Opens the Integration keys page of School setup (/integration-keys).',
+  'features/setup/setup-page.tsx#tab:setup.assistantConversationsLink':
+    'Opens the Assistant conversations page of School setup (/assistant-conversations).',
+  'features/setup/setup-page.tsx#tab:setup.systemStatusLink':
+    'Opens the System status page of School setup (/system-status).',
 };

@@ -162,7 +162,8 @@ function nodeView(node: PlatformMapNode, language: Language): Record<string, unk
       : { inside: { id: parent.id, kind: parent.kind, label: labelIn(parent.label, language) } }),
     description: node.description,
     rolesThatSeeIt: node.roles,
-    ...(node.operation === null ? {} : { operation: node.operation }),
+    ...(node.operations.length === 0 ? {} : { operations: node.operations }),
+    ...(node.opens === null ? {} : { opens: node.opens }),
   };
 }
 
@@ -175,6 +176,7 @@ function pageView(page: PlatformMapPage, language: Language): Record<string, unk
     titleEnglish: page.title.en,
     description: page.description,
     rolesThatSeeIt: page.roles,
+    ...(page.operations.length === 0 ? {} : { operations: page.operations }),
     params: page.params,
     search: page.search,
   };
@@ -356,8 +358,11 @@ export function linkOf(
     ) {
       return { error: 'not_on_this_page' };
     }
-    nodeId = node.id;
-    if (node.label !== null) label = node.label;
+    // A control the role does not see is not named in the link (review should fix 7): the page.
+    if (node.roles.includes(role)) {
+      nodeId = node.id;
+      if (node.label !== null) label = node.label;
+    }
   }
   return { link: { nodeId, to: page.path, params, search, label } };
 }

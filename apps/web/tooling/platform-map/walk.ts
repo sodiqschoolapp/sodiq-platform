@@ -49,7 +49,14 @@ export interface WalkedControl {
   parent: string | null;
   /** Area and action of a `permits(...)` or `useMayView(...)` that guards it in its component. */
   shownWith: Array<{ area: string; action: string }>;
-  /** The API calls of its file (`api.POST('/api/…')`) as `POST /api/…`. */
+  /**
+   * The API calls its action makes (`POST /api/…`): its `onClick`, or the `onSubmit` of the
+   * form a submit button is in, followed through local handlers, mutations and the feature's
+   * `*-api.ts` functions (review must fix 1).
+   */
+  calls: string[];
+  /** The route a tab drawn as a link opens (`/people/vacancies`), or `null`. */
+  opens: string | null;
   line: number;
 }
 
@@ -378,6 +385,28 @@ function guardsAround(
   return out;
 }
 
+/** Is an element inside a `<nav>` of its file (a row of tabs)? */
+function insideNav(node: ts.Node): boolean {
+  let up: ts.Node | undefined = node.parent;
+  while (up !== undefined && !ts.isSourceFile(up)) {
+    if (ts.isJsxElement(up) && tagName(up.openingElement) === 'nav') return true;
+    up = up.parent;
+  }
+  return false;
+}
+
+/** The route a link opens, when its `to` is a literal. */
+function opensOf(node: ts.Node): string | null {
+  const opening = ts.isJsxElement(node)
+    ? node.openingElement
+    : ts.isJsxSelfClosingElement(node)
+      ? node
+      : undefined;
+  if (opening === undefined || tagName(opening) !== 'Link') return null;
+  const to = attribute(opening, 'to');
+  return to !== undefined && ts.isStringLiteral(to) ? to.text : null;
+}
+
 function isPanelFile(file: string): boolean {
   return /-(panel|dialog)\.tsx$/.test(file);
 }
@@ -450,6 +479,168 @@ function callsOfHelper(
   return undefined;
 }
 
+/**
+ * The API calls an action makes: `api.METHOD('/api/…')` in it, or in a function, handler or
+ * mutation it calls (`save.mutate(…)` of `useMutation({ mutationFn })`), in any file, at most
+ * five steps deep.
+ */
+function callsOfAction(checker: ts.TypeChecker, start: ts.Node | undefined): string[] {
+  const out = new Set<string>();
+  const seen = new Set<ts.Node>();
+  const follow = (node: ts.Node | undefined, depth: number): void => {
+    if (node === undefined || depth > 5 || seen.has(node)) return;
+    seen.add(node);
+    const visit = (inner: ts.Node): void => {
+      if (ts.isCallExpression(inner)) {
+        const callee = inner.expression;
+        if (ts.isPropertyAccessExpression(callee) && METHODS.has(callee.name.text)) {
+          const first = inner.arguments[0];
+          if (first !== undefined && ts.isStringLiteral(first) && first.text.startsWith('/api/')) {
+            out.add(`${callee.name.text} ${first.text}`);
+          }
+        }
+        // `x.mutate(…)`: the mutation `x`; `f(…)`: the function `f`.
+        const target =
+          ts.isPropertyAccessExpression(callee) &&
+          /^(mutate|mutateAsync|submit)$/.test(callee.name.text)
+            ? callee.expression
+            : callee;
+        if (ts.isIdentifier(target)) follow(declarationOf(checker, target), depth + 1);
+      } else if (ts.isIdentifier(inner) && ts.isJsxExpression(inner.parent)) {
+        // `onClick={save}`: the handler `save`.
+        follow(declarationOf(checker, inner), depth + 1);
+      }
+      ts.forEachChild(inner, visit);
+    };
+    visit(node);
+  };
+  follow(start, 0);
+  return [...out].sort();
+}
+
+/** What a name stands for: a function's body, a constant's value, `useMutation`'s `mutationFn`. */
+function declarationOf(checker: ts.TypeChecker, name: ts.Identifier): ts.Node | undefined {
+  let symbol = checker.getSymbolAtLocation(name);
+  if (symbol === undefined) return undefined;
+  if (symbol.flags & ts.SymbolFlags.Alias) symbol = checker.getAliasedSymbol(symbol);
+  const declaration = symbol.valueDeclaration ?? symbol.declarations?.[0];
+  if (declaration === undefined) return undefined;
+  if (ts.isFunctionDeclaration(declaration)) return declaration.body;
+  if (ts.isVariableDeclaration(declaration) && declaration.initializer !== undefined) {
+    const value = declaration.initializer;
+    if (
+      ts.isCallExpression(value) &&
+      ts.isIdentifier(value.expression) &&
+      value.expression.text === 'useMutation'
+    ) {
+      const options = value.arguments[0];
+      if (options !== undefined && ts.isObjectLiteralExpression(options)) {
+        const fn = options.properties.find((one) => one.name?.getText() === 'mutationFn');
+        return fn === undefined ? undefined : fn;
+      }
+    }
+    return value;
+  }
+  return undefined;
+}
+
+/** The action of a control: its `onClick`, or for a submit button the `onSubmit` of its form. */
+function actionOf(node: ts.Node): ts.Node | undefined {
+  const opening = ts.isJsxElement(node)
+    ? node.openingElement
+    : ts.isJsxSelfClosingElement(node)
+      ? node
+      : undefined;
+  if (opening === undefined) return undefined;
+  const click = attribute(opening, 'onClick');
+  if (click !== undefined) return click;
+  let up: ts.Node | undefined = node.parent;
+  while (up !== undefined && !ts.isSourceFile(up)) {
+    if (ts.isJsxElement(up) && tagName(up.openingElement) === 'form') {
+      return attribute(up.openingElement, 'onSubmit');
+    }
+    up = up.parent;
+  }
+  return undefined;
+}
+
+/**
+ * The objects a label reads one by one (`SECTIONS.filter(…).map((section) => … t(section.title)`):
+ * when an expression is a property of the parameter of a `.map` over a constant list of the file,
+ * that list's object literals, with the property read (review must fix 2: tab rows of links).
+ */
+function elementsOf(
+  checker: ts.TypeChecker,
+  expression: ts.Expression,
+): { property: string; elements: ts.ObjectLiteralExpression[] } | undefined {
+  let read = expression;
+  if (ts.isCallExpression(read) && isTranslate(read) && read.arguments[0] !== undefined) {
+    read = read.arguments[0];
+  }
+  if (!ts.isPropertyAccessExpression(read) || !ts.isIdentifier(read.expression)) return undefined;
+  const parameter = checker.getSymbolAtLocation(read.expression)?.valueDeclaration;
+  if (parameter === undefined || !ts.isParameter(parameter)) return undefined;
+  const fn = parameter.parent;
+  const call = fn.parent;
+  if (
+    !ts.isCallExpression(call) ||
+    !ts.isPropertyAccessExpression(call.expression) ||
+    call.expression.name.text !== 'map'
+  ) {
+    return undefined;
+  }
+  let list: ts.Expression | undefined = call.expression.expression;
+  for (let step = 0; step < 4 && list !== undefined; step += 1) {
+    if (ts.isArrayLiteralExpression(list)) {
+      const elements = list.elements.filter(ts.isObjectLiteralExpression);
+      return elements.length === list.elements.length
+        ? { property: read.name.text, elements }
+        : undefined;
+    }
+    if (ts.isCallExpression(list) && ts.isPropertyAccessExpression(list.expression)) {
+      list = list.expression.expression;
+    } else if (ts.isIdentifier(list)) {
+      list = localInitializer(checker, list) ?? moduleInitializer(checker, list);
+    } else if (ts.isAsExpression(list) || ts.isSatisfiesExpression(list)) {
+      list = list.expression;
+    } else {
+      return undefined;
+    }
+  }
+  return undefined;
+}
+
+/** The value of a constant of the file at its top, which `localInitializer` also reads. */
+function moduleInitializer(
+  checker: ts.TypeChecker,
+  name: ts.Identifier,
+): ts.Expression | undefined {
+  const declaration = checker.getSymbolAtLocation(name)?.valueDeclaration;
+  return declaration !== undefined &&
+    ts.isVariableDeclaration(declaration) &&
+    declaration.getSourceFile() === name.getSourceFile()
+    ? declaration.initializer
+    : undefined;
+}
+
+/** A string literal or a `t('…')` of an object's property, as a key. */
+function keyOfProperty(
+  checker: ts.TypeChecker,
+  element: ts.ObjectLiteralExpression,
+  property: string,
+): string | undefined {
+  const found = element.properties.find(
+    (one): one is ts.PropertyAssignment =>
+      ts.isPropertyAssignment(one) && one.name.getText() === property,
+  );
+  if (found === undefined) return undefined;
+  let value = found.initializer;
+  while (ts.isAsExpression(value) || ts.isSatisfiesExpression(value)) value = value.expression;
+  if (ts.isStringLiteral(value)) return value.text;
+  const label = labelOf(checker, value);
+  return label !== null && 'keys' in label ? label.keys[0] : undefined;
+}
+
 /** The controls of one file. */
 function controlsOf(
   checker: ts.TypeChecker,
@@ -492,6 +683,38 @@ function controlsOf(
     label: Label,
     what: string,
   ): string | undefined => {
+    const calls = kind === 'button' ? callsOfAction(checker, actionOf(node)) : [];
+    // A row of tabs or buttons drawn from a list (`SECTIONS.map(…)`): one control per element.
+    if (label !== null && ('dynamic' in label || label.keys.length > 1)) {
+      for (const expression of namingExpressions(node)) {
+        const each = elementsOf(checker, expression);
+        if (each === undefined) continue;
+        const keys = each.elements.map((element) => keyOfProperty(checker, element, each.property));
+        if (keys.some((key) => key === undefined)) continue;
+        let first: string | undefined;
+        each.elements.forEach((element, index) => {
+          const id = idOf(kind, keys[index] ?? '');
+          first ??= id;
+          const to = element.properties.find(
+            (one): one is ts.PropertyAssignment =>
+              ts.isPropertyAssignment(one) && one.name.getText() === 'to',
+          );
+          out.push({
+            id,
+            kind,
+            file,
+            keys: [keys[index] ?? ''],
+            parent: parentOf(node),
+            shownWith: guardsAround(node, guards),
+            calls,
+            opens:
+              to !== undefined && ts.isStringLiteral(to.initializer) ? to.initializer.text : null,
+            line: lineOf(element),
+          });
+        });
+        return first;
+      }
+    }
     // A label handed in by a local helper (`opens(key, t('…'), …)`): one control per call.
     if (label !== null && 'dynamic' in label) {
       const drawn = callsOfHelper(checker, source, node);
@@ -507,6 +730,8 @@ function controlsOf(
             keys: call.keys,
             parent: parentOf(call.node) ?? parentOf(node),
             shownWith: [...guardsAround(node, guards), ...guardsAround(call.node, guards)],
+            calls,
+            opens: null,
             line: lineOf(call.node),
           });
         }
@@ -532,6 +757,8 @@ function controlsOf(
       keys: label.keys,
       parent: parentOf(node),
       shownWith: guardsAround(node, guards),
+      calls,
+      opens: opensOf(node),
       line: lineOf(node),
     });
     return id;
@@ -545,6 +772,8 @@ function controlsOf(
       keys: [],
       parent: null,
       shownWith: [],
+      calls: [],
+      opens: null,
       line: 1,
     });
   }
@@ -586,6 +815,9 @@ function controlsOf(
           labelOf(checker, attribute(opening, 'label') ?? attribute(opening, 'legend')),
           `The ${name}`,
         );
+      } else if (name === 'Link' && insideNav(node)) {
+        // A row of tabs drawn as links to other pages (`people-tabs.tsx`).
+        push(node, 'tab', buttonLabel(checker, node), 'The tab link');
       } else if (TABS.has(name)) {
         push(node, 'tab', labelOf(checker, attribute(opening, 'label')), `The ${name}`);
       }
@@ -598,8 +830,24 @@ function controlsOf(
           node.parent.properties.map((property) => property.name?.getText() ?? ''),
         );
         const label = labelOf(checker, node.initializer);
-        if (siblings.has('key') && siblings.size === 2 && label !== null && 'keys' in label) {
-          push(node, 'tab', label, 'The tab');
+        // Also a link of an entry page (`{ key, to, title, area }`); not a new record's panel
+        // (`content`) or a group of cards (`items`).
+        const allowed = new Set(['key', 'title', 'to', 'area', 'action']);
+        if (
+          siblings.has('key') &&
+          [...siblings].every((one) => allowed.has(one)) &&
+          label !== null &&
+          'keys' in label
+        ) {
+          const id = push(node, 'tab', label, 'The tab');
+          const to = node.parent.properties.find(
+            (one): one is ts.PropertyAssignment =>
+              ts.isPropertyAssignment(one) && one.name.getText() === 'to',
+          );
+          const made = out.find((one) => one.id === id);
+          if (made !== undefined && to !== undefined && ts.isStringLiteral(to.initializer)) {
+            made.opens = to.initializer.text;
+          }
         }
       }
       if (
