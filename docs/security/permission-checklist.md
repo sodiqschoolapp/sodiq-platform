@@ -138,11 +138,11 @@ Neither was done by hand (owner, 29 October 2026, issue #42). In their place: th
 
 ## The routes in numbers
 
-- Routes of the application: 557, each called by the role harness as the 15 roles, an account without a role, a Parent account (task 11.1) and nobody, in the own and in another branch.
-- Without sign-in: 5. For the own account: 24. The parent portal: 8. With a permission of the table: 519.
+- Routes of the application: 558, each called by the role harness as the 15 roles, an account without a role, a Parent account (task 11.1) and nobody, in the own and in another branch.
+- Without sign-in: 5. For the own account: 24. The parent portal: 8. With a permission of the table: 520.
 - Open to integration keys: 98 (tasks 10.10 and 10.11).
-- Routes with a limit inside the route: 164.
-- Routes that take an id: 428, with 875 ids (branch 760, school 78, own 16, none 21).
+- Routes with a limit inside the route: 165.
+- Routes that take an id: 429, with 876 ids (branch 760, school 78, own 17, none 21).
 - Areas of the permission table: 66.
 
 ## Routes without a role
@@ -542,6 +542,7 @@ For every route that lets in a role for less than its whole branch, the limit of
 | `PATCH /api/plans/masters/:masterId` | senior_head_teacher | subjects | 09, Master plans: "A Head Teacher can keep a master plan for one of their subjects"; "A Senior Head Teacher can keep one master for all branches" | `src/modules/plans/plan-masters.test.ts > is kept by the Senior Head Teacher, read and copied in every branch, and refused to the others who keep branch masters` |
 | `POST /api/assistant/proposals/:id/confirm` | teacher | own_record | 02, Assistant: "The person sees their own conversations; the Super Admin sees all of them" | `src/modules/assistant/assistant-teacher.test.ts > refuses the Teacher another person’s conversation and proposal (404), and lists only the Teacher’s own` |
 | `POST /api/assistant/proposals/:id/decline` | teacher | own_record | 02, Assistant: "The person sees their own conversations; the Super Admin sees all of them" | `src/modules/assistant/assistant-teacher.test.ts > refuses the Teacher another person’s conversation and proposal (404), and lists only the Teacher’s own` |
+| `POST /api/assistant/proposals/:id/undo` | teacher | own_record | 02, Assistant: "The person sees their own conversations"; Reading and proposing: "A confirmed proposal can be undone" | `src/modules/assistant/assistant-undo.test.ts > answers 404 for an unknown proposal, another person’s and the own one in another branch, with every row unchanged` |
 | `POST /api/assistant/questions` | teacher | branch | 02, Assistant: "with the person's session and chosen role: the same branch, subjects, own classes and own lessons … as the screens" (each read and step meets its own route's limit) | — |
 | `POST /api/audit/entries/:id/show` | principal | narrower | edge/people, audit log: sign-ins and entries of another branch are not the Principal’s | `src/modules/audit/audit-entries.test.ts > answers 404 to an entry the reader may not read, and logs nothing` |
 | `POST /api/groups/transfers` | head_teacher, senior_head_teacher | subjects | 02, Head Teacher: "Moves students between groups of those subjects" (task 3.3a, decision 2) | `src/modules/people/scope-refusals.test.ts > is refused to a Head Teacher and a Senior Head Teacher of another subject, writing nothing`<br>`src/modules/people/group-transfers.test.ts > refuses a Head Teacher another subject, and a date in the past`<br>`src/modules/people/group-transfers.test.ts > lets a Senior Head Teacher move own subjects in a second branch and refuses another subject` |
@@ -907,6 +908,7 @@ For every id a route takes, in its path, its query or its body, the record it na
 | `POST /api/assistant/all-conversations/:id/restore` | `path:id` | assistant conversation | none | 02, Assistant, Audit: the Super Admin sees all of them, of every branch, by design, and can restore one; an unknown id is 404 (assistant-conversations.test.ts: "answers 404 for an unknown conversation on the Super Admin’s read", "refuses a restore of a conversation that is not archived (409) and of an unknown one (404)") |
 | `POST /api/assistant/proposals/:id/confirm` | `path:id` | assistant proposal | own | `src/modules/assistant/assistant-confirm-refusals.test.ts > answers 404 for an unknown proposal, another person’s and the own one in another branch, to Confirm and Decline alike, with every row unchanged` |
 | `POST /api/assistant/proposals/:id/decline` | `path:id` | assistant proposal | own | `src/modules/assistant/assistant-confirm-refusals.test.ts > answers 404 for an unknown proposal, another person’s and the own one in another branch, to Confirm and Decline alike, with every row unchanged` |
+| `POST /api/assistant/proposals/:id/undo` | `path:id` | assistant proposal | own | `src/modules/assistant/assistant-undo.test.ts > answers 404 for an unknown proposal, another person’s and the own one in another branch, with every row unchanged` |
 | `POST /api/assistant/questions` | `body:conversationId` | assistant conversation | own | `src/modules/assistant/assistant-conversations.test.ts > refuses a question on a conversation of another branch, of another person and an unknown one (404): nothing stored, nothing counted` |
 | `POST /api/audit/entries/:id/show` | `path:id` | audit entry | branch | `src/modules/audit/audit-entries.test.ts > answers 404 to an entry the reader may not read, and logs nothing` |
 | `POST /api/classes` | `body:mainRoomId` | room | branch | `src/modules/classes/classes.test.ts > answers 404 for a year or a room of another branch or unknown, with nothing written` |

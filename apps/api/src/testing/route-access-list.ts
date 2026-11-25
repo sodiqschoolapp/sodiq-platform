@@ -1036,6 +1036,11 @@ export const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
     branch: 'request',
     roles: ['super_admin', 'academic_vice_principal', 'teacher'],
   },
+  // Task 11.21: Undo, in the area of Confirm and Decline.
+  'POST /api/assistant/proposals/:id/undo': {
+    branch: 'request',
+    roles: ['super_admin', 'academic_vice_principal', 'teacher'],
+  },
   'GET /api/assistant/all-conversations': { branch: 'none', roles: ['super_admin'] },
   'GET /api/assistant/all-conversations/:id': { branch: 'none', roles: ['super_admin'] },
   'POST /api/assistant/all-conversations/:id/restore': { branch: 'none', roles: ['super_admin'] },

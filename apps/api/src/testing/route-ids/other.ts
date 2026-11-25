@@ -65,6 +65,9 @@ const PROPOSAL_404 =
 const PROPOSAL_RULE =
   '02, Assistant, Reading and proposing: nothing changes until the person presses Confirm; the proposal is the person’s own, of the branch of the request (plan of pull request #376)';
 
+const UNDO_404 =
+  'src/modules/assistant/assistant-undo.test.ts > answers 404 for an unknown proposal, another person’s and the own one in another branch, with every row unchanged';
+
 const OWN_RULE = '.claude/rules/api.md, @AnySignedIn: never on one named in the request';
 
 const line = (
@@ -195,6 +198,9 @@ export const OTHER_IDS: RouteIds = {
   ],
   'POST /api/assistant/proposals/:id/decline': [
     line('path:id', 'assistant proposal', 'own', PROPOSAL_RULE, [PROPOSAL_404]),
+  ],
+  'POST /api/assistant/proposals/:id/undo': [
+    line('path:id', 'assistant proposal', 'own', PROPOSAL_RULE, [UNDO_404]),
   ],
   'POST /api/notifications/:id/read': [
     line('path:id', 'notification', 'own', OWN_RULE, [NOTIFICATION]),

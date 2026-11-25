@@ -267,6 +267,7 @@ describe('the routes that work without sign-in', () => {
       'POST /api/assistant/all-conversations/:id/restore',
       'POST /api/assistant/proposals/:id/confirm',
       'POST /api/assistant/proposals/:id/decline',
+      'POST /api/assistant/proposals/:id/undo',
       'POST /api/assistant/questions',
       'POST /api/audit/entries/:id/show',
       'POST /api/auth/password',
