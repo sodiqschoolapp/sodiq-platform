@@ -19,7 +19,7 @@ import { ApiException } from '../../http/api-exception.js';
 import type { SessionPass } from '../../http/session-cookie.js';
 import { ASSISTANT_PROPOSAL_MINUTES } from '@sodiq/shared';
 import { AssistantRoutes } from '../access/assistant-routes.check.js';
-import type { AssistantRouteLine } from '../access/assistant-routes.js';
+import { kindOfLine, type AssistantRouteLine } from '../access/assistant-routes.js';
 import type { JsonValue } from '../../database/types.generated.js';
 import { PERMISSION_TABLE } from '../access/permission-table.token.js';
 import type { Access } from '../access/permission.guard.js';
@@ -39,6 +39,7 @@ import { AssistantDispatcher, type ReadOutcome } from './dispatcher.js';
 import { filterWords, ModelFilter } from './field-filter.js';
 import { AssistantSwitches, type SwitchRows } from './assistant-switches.service.js';
 import type { ModelPrice } from '../../config/config.js';
+import { ASSISTANT_KINDS_WITHOUT_TOOL } from '@sodiq/shared';
 import {
   ASSISTANT_MODEL,
   type AssistantModel,
@@ -361,12 +362,12 @@ export class AssistantEngine {
     // the page open calls, at most MAX_DECLARED_ACTIONS; and always the map's tools,
     // find_actions and the lesson link. Any switched-on action is still run when called by name.
     const found: string[] = [];
-    const used = Object.keys(lines).filter((route) =>
-      start.used.includes(generatedOf(route).name),
-    );
+    const used = Object.keys(lines).filter((route) => start.used.includes(generatedOf(route).name));
     const page = routesOfPage(lines, start.place?.page);
     const always = toolsOf(
-      Object.hasOwn(lines, LESSON_CARD_ROUTE) ? { [LESSON_CARD_ROUTE]: lines[LESSON_CARD_ROUTE] as AssistantRouteLine } : {},
+      Object.hasOwn(lines, LESSON_CARD_ROUTE)
+        ? { [LESSON_CARD_ROUTE]: lines[LESSON_CARD_ROUTE] as AssistantRouteLine }
+        : {},
       filter,
     ).filter((tool) => tool.name !== generatedOf(LESSON_CARD_ROUTE).name);
     const declared = (): ModelTool[] => {
@@ -509,11 +510,26 @@ export class AssistantEngine {
         const named = routeOfTool(lines, call.name);
         if (named === undefined) {
           // Not open: switched off by the Super Admin, or not an action of the role at all.
-          const off = routeOfTool(listed, call.name) !== undefined;
+          // By its tool's name, or by the operation alone (a careless model leaves out propose_).
+          const off = Object.keys(listed).some(
+            (route) =>
+              generatedOf(route).name === call.name.replace(/^propose_/, '') ||
+              routeOfTool(listed, call.name)?.route === route,
+          );
           const given = { error: off ? 'action_off' : 'not_on_list' };
           await this.store(
             start,
             readContent(call, null, lines, 0, given, off ? 'action_off' : 'not_on_list', filter),
+          );
+          results.parts.push({ kind: 'result', name: call.name, result: given });
+          continue;
+        }
+        if (ASSISTANT_KINDS_WITHOUT_TOOL.includes(kindOfLine(named.line))) {
+          // An export, a file or a download: no tool until task 11.22 (plan decision 7).
+          const given = { error: 'not_open_to_assistant' };
+          await this.store(
+            start,
+            readContent(call, null, lines, 0, given, 'not_open_to_assistant', filter),
           );
           results.parts.push({ kind: 'result', name: call.name, result: given });
           continue;
@@ -765,7 +781,9 @@ export class AssistantEngine {
     }
     return {
       turns: turns.slice(-HISTORY_MESSAGES).map(({ turn }) => turn),
-      used: [...new Set(proposals.flatMap((proposal) => proposal.steps.map((step) => step.action)))],
+      used: [
+        ...new Set(proposals.flatMap((proposal) => proposal.steps.map((step) => step.action))),
+      ],
     };
   }
 
@@ -970,7 +988,12 @@ export class AssistantEngine {
       const route = `${tool.method} ${tool.path}`;
       const isPreview = found?.line.kind === 'preview';
       const { [BODY_ARGUMENT]: previewBody, ...pathArgs } = call.args;
-      const url = urlOf(tool, isPreview ? pathArgs : call.args);
+      // Task 11.20: a parameter of a group switched off is not the model's to give.
+      const withheld = Object.keys(pathArgs).find((name) => start.filter.removesKey(name));
+      const url =
+        withheld === undefined
+          ? urlOf(tool, isPreview ? pathArgs : call.args)
+          : { fault: `${withheld} is not a parameter of this tool` };
       if ('fault' in url) {
         given = { error: 'invalid_arguments', detail: url.fault };
         stored = readContent(call, route, lines, 0, given, url.fault, start.filter);
@@ -1084,4 +1107,3 @@ export function systemInstruction(input: {
     'Personal fields of a group the Super Admin keeps from you appear as [removed]; never ask for them. A secret (a password, a key\u2019s secret) appears as [secret: shown to the person only]: the person sees it once on Confirm; never ask for it or repeat it.',
   ].join('\n');
 }
-

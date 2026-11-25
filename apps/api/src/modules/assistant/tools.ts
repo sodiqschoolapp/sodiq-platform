@@ -403,8 +403,13 @@ function toolsOfLines(lines: RoleLines, filter: ModelFilter, withExtras: boolean
       continue;
     }
     const generated = generatedOf(route);
+    // Task 11.20: a parameter of a group switched off (a search by phone) is not given; a
+    // route that needs one has no tool while the group is off.
+    if (generated.parameters.some((one) => one.required && filter.removesKey(one.name))) {
+      continue;
+    }
     const parameters: ToolArgumentsSchema = { type: 'object', properties: {}, required: [] };
-    for (const parameter of generated.parameters) {
+    for (const parameter of generated.parameters.filter((one) => !filter.removesKey(one.name))) {
       parameters.properties[parameter.name] = modelSchemaOf(
         parameter.schema,
         `${route} ${parameter.name}`,

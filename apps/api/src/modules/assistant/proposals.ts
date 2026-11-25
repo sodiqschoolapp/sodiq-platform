@@ -271,6 +271,14 @@ function shownBodyOf(
  * The entries of a step of many (task 11.20): the first list of the body whose items name a
  * student (`saves` of a lesson's attendance), with what each enters (its other plain values).
  */
+/** An attendance mark by the name of its text (`07`: 1 present, 0 absent, 2 late, 3 at school). */
+const MARK_NAMES: Readonly<Record<number, string>> = {
+  1: 'present',
+  0: 'absent',
+  2: 'late',
+  3: 'skipped',
+};
+
 function entryListOf(
   body: unknown,
 ): { key: string; items: { studentId: string; value: string }[] } | undefined {
@@ -284,7 +292,13 @@ function entryListOf(
       if (typeof studentId !== 'string') return undefined;
       const shown = Object.entries(rest)
         .filter(([name, inner]) => name !== 'version' && inner !== null && inner !== undefined)
-        .map(([, inner]) => (typeof inner === 'string' ? inner : JSON.stringify(inner)))
+        .map(([name, inner]) =>
+          name === 'mark' && typeof inner === 'number'
+            ? (MARK_NAMES[inner] ?? String(inner))
+            : typeof inner === 'string'
+              ? inner
+              : JSON.stringify(inner),
+        )
         .join(', ');
       items.push({ studentId, value: shown.slice(0, 100) });
     }

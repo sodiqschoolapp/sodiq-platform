@@ -1,4 +1,5 @@
 import type { AssistantConversation, AssistantMessage } from '@sodiq/shared';
+import { ASSISTANT_DATA_GROUPS } from '@sodiq/shared';
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { en } from '@/i18n/locales/en';
@@ -411,6 +412,7 @@ describe('the assistant’s settings and conversations of the Super Admin', () =
     modelConfigured: true,
     model: 'gemini-3.5-flash',
     fallbackOn: true,
+    dataGroupsOn: [...ASSISTANT_DATA_GROUPS],
     fallbackQuestionsThisMonth: 2,
   };
 
@@ -457,6 +459,7 @@ describe('the assistant’s settings and conversations of the Super Admin', () =
         dailyLimit: 12,
         monthlyCapDollars: 300,
         fallbackOn: true,
+        dataGroupsOn: [...ASSISTANT_DATA_GROUPS],
       });
     });
   });

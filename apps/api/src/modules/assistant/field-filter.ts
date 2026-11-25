@@ -52,7 +52,7 @@ const SECRET_KEYS: ReadonlySet<string> = new Set([
 ]);
 
 /** Parts that mark a secret wherever they are in a key. */
-const SECRET_PARTS = ['secret', 'token', 'totp', 'recoverycode', 'cookie'];
+const SECRET_PARTS = ['password', 'secret', 'token', 'totp', 'recoverycode', 'cookie'];
 
 /** Whether a key holds a secret: removed from every answer, whatever the switches. */
 export function isSecretKey(key: string): boolean {
@@ -119,10 +119,14 @@ export const GROUP_KEYS: Readonly<Record<AssistantDataGroup, ReadonlySet<string>
   ]),
   diagnostic: lower([...exportColumns('diagnostic'), 'diagnosticScore']),
   medical: lower(['medical']),
+  // A relative's own fields that no student or staff record has; a relative's phone and email
+  // are inside the lists removed by key, and a read of a relatives' area is removed whole.
   relatives: lower([
     ...RELATIVE_KEYS,
-    ...Object.keys(relativeIdentitySchema.shape),
-    ...Object.keys(relativeRecordSchema.shape).filter((key) => key !== 'fullName'),
+    ...Object.keys(relativeIdentitySchema.shape).filter((key) => key !== 'email'),
+    ...Object.keys(relativeRecordSchema.shape).filter(
+      (key) => !['fullName', 'phone', 'email', 'extraPhones'].includes(key),
+    ),
   ]),
 };
 

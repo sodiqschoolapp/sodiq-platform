@@ -1,4 +1,5 @@
 import { assistantSettingsSchema, assistantStatusSchema } from '@sodiq/shared';
+import { ASSISTANT_DATA_GROUPS } from '@sodiq/shared';
 import { sql } from 'kysely';
 import request from 'supertest';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
@@ -33,6 +34,7 @@ describe('the assistant: the switch, the daily limit and the monthly cap', () =>
     dailyLimit: 30,
     monthlyCapDollars: 300,
     fallbackOn: true,
+    dataGroupsOn: [...ASSISTANT_DATA_GROUPS],
     ...change,
   });
 

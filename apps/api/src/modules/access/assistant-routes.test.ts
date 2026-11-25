@@ -1,66 +1,86 @@
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import type { NestExpressApplication } from '@nestjs/platform-express';
-import { ASSISTANT_ROLES, PERMISSIONS, permits } from '@sodiq/shared';
+import {
+  ASSISTANT_ROLES,
+  HEAVY_AREAS,
+  HEAVY_ROUTES,
+  assistantDefaultOn,
+  type AssistantRole,
+} from '@sodiq/shared';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   assistantToolsOf,
   renderAssistantTools,
   type ToolsDocument,
 } from '../../openapi/assistant-tools.js';
-import {
-  ASSISTANT_ROUTE_COPY,
-  WRITTEN_ASSISTANT_LISTS,
-} from '../../testing/assistant-route-list.js';
 import { createTestApp } from '../../testing/create-test-app.js';
+import { ROUTE_ACCESS } from '../../testing/route-access-list.js';
 import { routesOf, type Route } from '../../testing/routes.js';
-import { isRemovedKey } from '../assistant/field-filter.js';
-import { requiredFieldsWithheld, toolsOf } from '../assistant/tools.js';
+import { OPEN_FILTER, STRICT_FILTER, isSecretKey } from '../assistant/field-filter.js';
+import { generatedOf, requiredFieldsWithheld, toolsOf } from '../assistant/tools.js';
 import { WARNING_FLAGS } from './assistant-change-routes.js';
 import { AssistantRoutes } from './assistant-routes.check.js';
 import {
-  ASSISTANT_ROUTES,
-  NEVER_CHANGED_THROUGH_ASSISTANT,
-  NEVER_ROUTES_THROUGH_ASSISTANT,
+  ROUTE_LINES,
   assistantRouteFault,
-  assistantRoutesOf,
+  kindOfLine,
+  notThroughAssistant,
   type AssistantRouteLine,
 } from './assistant-routes.js';
 
-// Task 11.12 (pull request #374). Build plan 11.12, Done when: "a test holds the Super Admin's
-// list, and one that no route of 'Never through the assistant' is on it". `02`, Assistant: "Never
-// through the assistant. Entering or changing journal data …, journal corrections, exemptions,
-// closing a quarter; publishing or withdrawing a timetable version; starting or closing a year;
-// force delete; accounts (passwords, second step, sessions, printed slips), roles, appointments
-// and permissions; integration keys; exports."
+// Task 11.20 (`02`, build order: "The same permission check for the person and the chosen role,
+// limited to the actions of that role the Super Admin switched on for the assistant. A test holds
+// that every action of each role is on its list"; What it can do: "Every action the person's
+// chosen role has on the screens"). Build plan 11.20, Done when: "a test that every `@Requires`
+// route of each role is on its list and no route outside the role's rights is". The lists of
+// 11.12 to 11.14, and their "never" lists, gave way to the derivation (plan decision 1, Look
+// first: the requirement changed).
 
 const API_ROOT = path.resolve(import.meta.dirname, '../../..');
+const REPO_ROOT = path.resolve(API_ROOT, '../..');
 
-/** Whether a route is one the spec's Never list names. */
-function isNever(route: Route): boolean {
-  const [access] = route.access;
-  if (route.access.length !== 1 || access?.kind !== 'requires') {
-    // An own-account, a public, a portal or a key route: never on a list.
-    return true;
-  }
-  return (
-    access.action === 'export' ||
-    NEVER_ROUTES_THROUGH_ASSISTANT.includes(route.name) ||
-    (route.method !== 'GET' && NEVER_CHANGED_THROUGH_ASSISTANT.includes(access.area))
-  );
-}
+/**
+ * Routes whose path or area names a role, an appointment, an account, a secret or one of the
+ * heavy actions of `02`, Switches (plan review 5): each such change is off at the start, or named
+ * here with the reason it is not one of `02`'s list ("Everything is on at the start except
+ * these").
+ */
+const HEAVY_WORDS =
+  /roles|tutors|acting-teachers|head-teacher|account|password|session|slips|second-step|publish|withdraw|\/start|close|closing|recalculation|forced|integration-keys|reopen/;
+
+const NOT_HEAVY: Readonly<Record<string, string>> = {
+  'POST /api/people/staff/:id/status':
+    "a status change (leave, dismissal, re-hire): not on 02's list; a re-hire's slip goes through the floor (plan review correction 2)",
+  'POST /api/classes/:id/members/:memberId/withdraw':
+    'takes back a class membership, not an appointment',
+  'POST /api/groups/:id/members/:memberId/withdraw':
+    'takes back a group membership, not an appointment',
+  'POST /api/journal/orphans/assignments/:assignmentId/withdraw':
+    'takes back a journal of a lesson without a teacher, not an appointment',
+  'POST /api/journal/unlocks/:unlockId/withdraw': 'takes back an own unlock request',
+  'POST /api/timetable/absences/:id/withdraw': 'takes back an absence of a teacher',
+  'POST /api/timetable/lessons/:id/substitution/withdraw':
+    'takes back a substitution of one lesson',
+  'POST /api/timetable/room-closures/:id/withdraw': 'takes back a room closure',
+  'POST /api/people/vacancies/:id/close': 'closes a vacancy, not a quarter or a year',
+  'POST /api/people/vacancies/:id/reopen': 'opens a closed vacancy again, not a quarter',
+  'POST /api/people/parents/:relativeId/telegram-unlink':
+    'an area of parent accounts, off at the start with it',
+  'POST /api/timetable/versions/:id/load/imports/:importId/preview':
+    'not a heavy word: "imports" holds "port"',
+};
 
 describe('the actions open to the assistant', () => {
   let app: NestExpressApplication;
   let routes: Route[];
-  let linesOf: (
-    role: (typeof ASSISTANT_ROLES)[number],
-  ) => Readonly<Record<string, AssistantRouteLine>>;
+  let assistantRoutes: AssistantRoutes;
+  let linesOf: (role: AssistantRole) => Readonly<Record<string, AssistantRouteLine>>;
 
   beforeAll(async () => {
     app = await createTestApp();
     routes = routesOf(app);
-    const assistantRoutes = app.get(AssistantRoutes);
+    assistantRoutes = app.get(AssistantRoutes);
     linesOf = (role) => assistantRoutes.linesOf(role);
   });
 
@@ -68,179 +88,174 @@ describe('the actions open to the assistant', () => {
     await app.close();
   });
 
-  it('holds each role’s list against its independent copy (`testing/assistant-route-list.ts`)', () => {
+  // Plan review 2: the expected lists come from the hand-written `ROUTE_ACCESS` of the
+  // permission harness, a source independent of the table's `permits`.
+  it('lists for each role every route the hand-written route list gives the role, and no other', () => {
     for (const role of ASSISTANT_ROLES) {
-      expect(Object.keys(linesOf(role)).sort(), role).toEqual(
-        Object.keys(ASSISTANT_ROUTE_COPY[role] ?? {}).sort(),
-      );
+      const expected = Object.entries(ROUTE_ACCESS)
+        .filter(
+          ([name, access]) =>
+            typeof access === 'object' && access.roles.includes(role) && !notThroughAssistant(name),
+        )
+        .map(([name]) => name)
+        .sort();
+      expect(Object.keys(linesOf(role)).sort(), role).toEqual(expected);
     }
-    expect(Object.keys(ASSISTANT_ROUTES).sort()).toEqual([...WRITTEN_ASSISTANT_LISTS].sort());
+    expect(Object.keys(linesOf('super_admin')).length).toBeGreaterThan(450);
+    expect(Object.keys(linesOf('teacher')).length).toBeGreaterThan(80);
   });
 
-  // Task 11.13, plan decision 4 (Look first) and decision 18: the Academic Vice Principal's list
-  // is the Super Admin's narrowed by the permission table, nothing written for the role by hand.
-  it('gives the Academic Vice Principal exactly the Super Admin’s lines the table gives the role', () => {
-    const byName = new Map(routes.map((route) => [route.name, route]));
-    const expected = Object.keys(assistantRoutesOf('super_admin')).filter((name) => {
-      const [access] = byName.get(name)?.access ?? [];
-      return (
-        access?.kind === 'requires' &&
-        permits(PERMISSIONS, 'academic_vice_principal', access.area, access.action)
-      );
-    });
-    expect(Object.keys(linesOf('academic_vice_principal')).sort()).toEqual(expected.sort());
-    expect(expected.length).toBeGreaterThan(100);
-    // `02`: "rooms and buildings (Super Admin)".
-    for (const name of [
-      'POST /api/setup/rooms',
-      'PUT /api/setup/rooms/:id',
-      'POST /api/setup/buildings',
-      'POST /api/setup/buildings/:id/floors',
-    ]) {
-      expect(linesOf('academic_vice_principal')[name], name).toBeUndefined();
-      expect(linesOf('super_admin')[name]?.kind, name).toBe('change');
-    }
+  it('has a line for every route a role holds, and only for routes that exist', () => {
+    expect(assistantRoutes.routesWithoutLine()).toEqual([]);
+    const names = new Set(routes.map((route) => route.name));
+    expect(Object.keys(ROUTE_LINES).filter((name) => !names.has(name))).toEqual([]);
   });
 
-  it('puts no route of "Never through the assistant" on any list, walking every route of the application', () => {
-    const listed = new Set(ASSISTANT_ROLES.flatMap((role) => Object.keys(linesOf(role))));
-    const never = routes.filter(isNever).map((route) => route.name);
-    expect(never.length).toBeGreaterThan(100);
-    expect(never.filter((name) => listed.has(name))).toEqual([]);
+  it('puts the assistant’s own routes on no list (plan decision 5)', () => {
+    const own = routes
+      .filter((route) => notThroughAssistant(route.name))
+      .map((route) => route.name);
+    expect(own).toEqual(
+      expect.arrayContaining([
+        'POST /api/assistant/questions',
+        'PUT /api/assistant/actions',
+        'PUT /api/setup/school-settings/assistant',
+        'POST /api/assistant/all-conversations/:id/restore',
+      ]),
+    );
     for (const role of ASSISTANT_ROLES) {
-      for (const route of routes.filter((one) => Object.hasOwn(linesOf(role), one.name))) {
-        expect(
-          assistantRouteFault({
-            name: route.name,
-            method: route.method,
-            declarations: route.access,
-            line: linesOf(role)[route.name],
-          }),
-          route.name,
-        ).toBeUndefined();
-      }
-    }
-  });
-
-  // Build plan 11.14, Done when: "a test that no journal entry route is on any list". `02`,
-  // Never through the assistant: "Entering or changing journal data (attendance, numbers, totals,
-  // comments, \"not held\"), journal corrections, exemptions". Every route of the application
-  // that changes journal data (the areas of the journal's entry, the lesson card's topic and works
-  // included) is walked, and none is on a list, written or derived.
-  it('puts no journal entry route on any role’s list (build plan 11.14)', () => {
-    const entryAreas = ['journal', 'journal_support', 'exemptions', 'absence_reasons'];
-    const entry = routes.filter((route) => {
-      const [access] = route.access;
-      return (
-        route.method !== 'GET' &&
-        access?.kind === 'requires' &&
-        entryAreas.includes(access.area) &&
-        access.action !== 'export'
-      );
-    });
-    // The attendance, the scores, the works and their totals, "not held", comments, the rating
-    // exam's entries, the card's topic and delivery, corrections, exemptions, absence reasons.
-    expect(entry.length).toBeGreaterThan(20);
-    for (const name of [
-      'POST /api/journal/lessons/:lessonId/all-present',
-      'POST /api/journal/lessons/:lessonId/attendance',
-      'POST /api/journal/lessons/:lessonId/scores',
-      'PUT /api/journal/comments',
-      'PUT /api/journal/lessons/:lessonId/topic',
-      'PUT /api/journal/lessons/:lessonId/works/not-held',
-    ]) {
       expect(
-        entry.some((route) => route.name === name),
-        name,
-      ).toBe(true);
-    }
-    for (const role of ASSISTANT_ROLES) {
-      const lines = linesOf(role);
-      expect(
-        entry.filter((route) => Object.hasOwn(lines, route.name)).map((route) => route.name),
+        own.filter((name) => Object.hasOwn(linesOf(role), name)),
         role,
       ).toEqual([]);
     }
   });
 
-  // Task 11.14, plan decisions 2 to 7: the Teacher's list is written, reads of a `view` the
-  // table gives the Teacher and the drafting of plan items, unlocks and plan requests.
-  it('gives the Teacher reads of own work and the six proposals of build plan 11.14, each permitted by the table', () => {
-    const byName = new Map(routes.map((route) => [route.name, route]));
-    const lines = linesOf('teacher');
-    for (const name of Object.keys(lines)) {
-      const [access] = byName.get(name)?.access ?? [];
-      expect(access?.kind, name).toBe('requires');
-      if (access?.kind === 'requires') {
-        expect(permits(PERMISSIONS, 'teacher', access.area, access.action), name).toBe(true);
-      }
+  it('writes each line as the kind its route is, with a description, and its basis and preview on the same list', () => {
+    for (const route of routes) {
+      const line = ROUTE_LINES[route.name];
+      if (line === undefined) continue;
+      expect(line.description.trim().length, route.name).toBeGreaterThan(10);
+      expect(
+        assistantRouteFault({
+          name: route.name,
+          method: route.method,
+          declarations: route.access,
+          takesFile: route.takesFile !== undefined,
+          returnsFile: assistantRoutes.factsOf(route.name)?.kind === 'download',
+          line,
+        }),
+        route.name,
+      ).toBeUndefined();
     }
-    expect(
-      Object.entries(lines)
-        .filter(([, line]) => line.kind === 'change')
-        .map(([name]) => name)
-        .sort(),
-    ).toEqual(
-      [
-        'POST /api/plans/journals/:journalId/items',
-        'PUT /api/plans/items/:itemId',
-        'POST /api/journal/lessons/:lessonId/unlocks',
-        'POST /api/journal/journals/:journalId/rating/:quarterId/unlocks',
-        'POST /api/plans/journals/:journalId/requests',
-        'POST /api/plans/requests/:requestId/send',
-      ].sort(),
-    );
-    // Reading only own work: nothing of the setup, the staff, classes and groups or other branches.
-    for (const name of [
-      'GET /api/timetable/views/branch',
-      'GET /api/classes',
-      'GET /api/people/staff',
-      'GET /api/people/students/:id',
-      'GET /api/exemptions',
-      'GET /api/plans/masters',
-    ]) {
-      expect(lines[name], name).toBeUndefined();
-    }
-  });
-
-  it('lists reads as GETs and changes and previews as other methods, every listed route existing', () => {
-    const names = new Set(routes.map((route) => route.name));
     for (const role of ASSISTANT_ROLES) {
       for (const [name, line] of Object.entries(linesOf(role))) {
-        expect(names.has(name), name).toBe(true);
-        expect(name.startsWith('GET '), name).toBe((line.kind ?? 'read') === 'read');
-        if (line.kind === 'change') {
-          if (line.basis.kind === 'read') {
-            expect(linesOf(role)[line.basis.route]?.kind ?? 'read', name).toBe('read');
-            expect(Object.hasOwn(linesOf(role), line.basis.route), name).toBe(true);
-          }
-          if (line.preview !== undefined) {
-            expect(linesOf(role)[line.preview.route]?.kind, name).toBe('preview');
-          }
+        if (line.kind !== 'change') continue;
+        if (line.basis.kind === 'read') {
+          expect(kindOfLine(linesOf(role)[line.basis.route] ?? line), `${name} (${role})`).toBe(
+            'read',
+          );
+        }
+        if (line.preview !== undefined) {
+          expect(linesOf(role)[line.preview.route]?.kind, `${name} (${role})`).toBe('preview');
         }
       }
     }
   });
 
-  // `06`, Changes after publishing: "The school never holds an extra lesson" (the extra-lesson
-  // case of `edge/people-roles-accounts`): no listed route creates a lesson.
-  it('lists no route that adds a lesson', () => {
+  it('names an action and an area in the three languages for every route of a list', () => {
+    const files = ['en', 'ru', 'uz'].map((language) =>
+      readFileSync(path.join(REPO_ROOT, `apps/web/src/i18n/locales/${language}.ts`), 'utf8'),
+    );
+    const missing: string[] = [];
     for (const role of ASSISTANT_ROLES) {
       for (const name of Object.keys(linesOf(role))) {
-        expect(
-          /^POST \/api\/timetable\/lessons$|^POST \/api\/timetable\/versions\/:id\/(pattern|lessons)$/.test(
-            name,
-          ),
-          name,
-        ).toBe(false);
+        const operation = generatedOf(name).name;
+        const key = /_(zero|one|two|few|many|other)$/.test(operation)
+          ? `${operation}_op`
+          : operation;
+        const area = assistantRoutes.factsOf(name)?.area ?? '';
+        files.forEach((file, index) => {
+          if (!new RegExp(`\\n      ${key}:`).test(file)) missing.push(`${String(index)} ${key}`);
+          if (!new RegExp(`\\n      ${area}:`).test(file))
+            missing.push(`${String(index)} area ${area}`);
+        });
+      }
+    }
+    expect([...new Set(missing)]).toEqual([]);
+  });
+
+  // `02`, Switches: "Everything is on at the start except these, which start off" (plan
+  // decision 3, review correction 2 and review 5).
+  it('starts off every heavy action of 02, and walks every change whose words name one', () => {
+    const names = new Set(routes.map((route) => route.name));
+    for (const name of HEAVY_ROUTES) expect(names.has(name), name).toBe(true);
+    const areas = new Set(
+      routes.flatMap((route) =>
+        route.access.flatMap((one) => (one.kind === 'requires' ? [one.area] : [])),
+      ),
+    );
+    for (const area of HEAVY_AREAS) expect(areas.has(area), area).toBe(true);
+    const missed: string[] = [];
+    for (const name of Object.keys(linesOf('super_admin'))) {
+      const facts = assistantRoutes.factsOf(name);
+      if (facts === undefined || facts.kind === 'read') continue;
+      const off = !assistantDefaultOn(facts.area, name, facts.kind);
+      if (HEAVY_WORDS.test(name) && !off && NOT_HEAVY[name] === undefined) missed.push(name);
+    }
+    expect(missed).toEqual([]);
+    for (const name of Object.keys(NOT_HEAVY)) expect(names.has(name), name).toBe(true);
+    // The named ones of `02`.
+    for (const name of [
+      'POST /api/timetable/versions/:id/publish',
+      'POST /api/timetable/versions/:id/withdraw',
+      'POST /api/results/closing/:quarterId/close',
+      'POST /api/setup/academic-years/:id/start',
+      'POST /api/results/closing/:quarterId/recalculation/apply',
+      'POST /api/timetable/lessons/:id/forced-delete',
+      'POST /api/forced-deletes/:id/restore',
+      'POST /api/people/staff/:id/account/password-reset',
+      'POST /api/people/staff/:id/account/second-step-reset',
+      'POST /api/people/classes/:classId/parent-slips',
+      'POST /api/people/staff/:id/roles',
+      'POST /api/classes/:id/tutors',
+      'POST /api/timetable/acting-teachers',
+      'POST /api/integration-keys',
+      'POST /api/people/staff/imports/:id/confirm',
+    ]) {
+      const facts = assistantRoutes.factsOf(name);
+      expect(facts, name).toBeDefined();
+      expect(assistantDefaultOn(facts?.area ?? '', name, facts?.kind ?? 'change'), name).toBe(
+        false,
+      );
+    }
+    // And an ordinary change and a read of a heavy area are on.
+    expect(
+      assistantDefaultOn('journal', 'POST /api/journal/lessons/:lessonId/attendance', 'change'),
+    ).toBe(true);
+    expect(assistantDefaultOn('accounts', 'GET /api/people/staff/:id/account', 'read')).toBe(true);
+  });
+
+  // The extra-lesson case of `edge/people-roles-accounts` (`06`: "The school never holds an extra
+  // lesson"): no route makes a dated lesson outside a published version. A draft's pattern
+  // (`POST /api/timetable/versions/:id/pattern`) is the timetable's building, now on the list.
+  it('lists no route that adds a dated lesson', () => {
+    for (const role of ASSISTANT_ROLES) {
+      for (const name of Object.keys(linesOf(role))) {
+        expect(/^POST \/api\/timetable\/lessons$/.test(name), name).toBe(false);
       }
     }
   });
 
-  // Plan review must fix 4 and review correction 2: the tools of the changes hold no field that
-  // never goes to the model, and no warning flag but those a check shows again.
-  it('gives the model no field that never goes to it and no warning flag it was not shown', () => {
-    const walk = (schema: unknown, where: string, found: string[]): void => {
+  // 11.13, review correction 2, and 11.20's floor: the tools hold no secret field and no warning
+  // flag but those a check shows again; with a group switched off, none of its fields.
+  it('gives the model no secret field, no field of a group switched off and no warning flag it was not shown', () => {
+    const walk = (
+      schema: unknown,
+      where: string,
+      found: string[],
+      removes: (key: string) => boolean,
+    ): void => {
       if (schema === null || typeof schema !== 'object') return;
       const record = schema as {
         properties?: Record<string, unknown>;
@@ -248,112 +263,77 @@ describe('the actions open to the assistant', () => {
         anyOf?: unknown[];
       };
       for (const [key, value] of Object.entries(record.properties ?? {})) {
-        if (isRemovedKey(key)) found.push(`${where}.${key}`);
-        walk(value, `${where}.${key}`, found);
+        if (removes(key)) found.push(`${where}.${key}`);
+        walk(value, `${where}.${key}`, found, removes);
       }
-      walk(record.items, `${where}[]`, found);
-      for (const option of record.anyOf ?? []) walk(option, where, found);
+      walk(record.items, `${where}[]`, found, removes);
+      for (const option of record.anyOf ?? []) walk(option, where, found, removes);
     };
     for (const role of ASSISTANT_ROLES) {
       const lines = linesOf(role);
-      const tools = toolsOf(lines);
-      const never: string[] = [];
-      for (const tool of tools) {
-        walk(tool.parameters, tool.name, never);
+      for (const filter of [OPEN_FILTER, STRICT_FILTER]) {
+        const tools = toolsOf(lines, filter);
+        const found: string[] = [];
+        for (const tool of tools)
+          walk(tool.parameters, tool.name, found, (key) => filter.removesKey(key));
+        expect(found, role).toEqual([]);
+        for (const tool of tools.filter((one) => one.name.startsWith('propose_'))) {
+          const flags: string[] = [];
+          walk(tool.parameters.properties.body, tool.name, flags, (key) =>
+            WARNING_FLAGS.includes(key),
+          );
+          const kept =
+            flags.length === 0 ||
+            [...Object.entries(lines)].some(
+              ([name, line]) =>
+                line.kind === 'change' &&
+                tool.name === `propose_${generatedOf(name).name}`.slice(0, 64) &&
+                (line.keepsFlags ?? []).length > 0,
+            );
+          expect(kept, `${tool.name}: ${flags.join(', ')}`).toBe(true);
+        }
       }
-      expect(never, role).toEqual([]);
+      // With every group on, every change has its tool: nothing it needs is withheld.
       for (const [name, line] of Object.entries(lines)) {
         if (line.kind !== 'change') continue;
-        expect(requiredFieldsWithheld(name), name).toEqual([]);
-      }
-      // Every key at any depth of a body, so that a nested flag is found too (review should fix 13).
-      const keysOf = (schema: unknown): string[] => {
-        if (schema === null || typeof schema !== 'object') return [];
-        const record = schema as {
-          properties?: Record<string, unknown>;
-          items?: unknown;
-          anyOf?: unknown[];
-        };
-        return [
-          ...Object.entries(record.properties ?? {}).flatMap(([key, value]) => [
-            key,
-            ...keysOf(value),
-          ]),
-          ...keysOf(record.items),
-          ...(record.anyOf ?? []).flatMap(keysOf),
-        ];
-      };
-      for (const tool of tools.filter((one) => one.name.startsWith('propose_'))) {
-        const flags = keysOf(tool.parameters.properties.body).filter((key) =>
-          WARNING_FLAGS.includes(key),
-        );
-        const kept = flags.length === 0 || tool.name.includes('ExamsController');
-        expect(kept, `${tool.name}: ${flags.join(', ')}`).toBe(true);
-      }
-      const relative = tools.find(
-        (one) => one.name.startsWith('propose_') && one.name.includes('Relatives'),
-      );
-      if (role === 'super_admin' || role === 'academic_vice_principal') {
-        expect(Object.keys(relative?.parameters.properties.body?.properties ?? {}), role).toEqual([
-          'portalAccess',
-        ]);
+        expect(requiredFieldsWithheld(name, OPEN_FILTER), name).toEqual([]);
+        expect(isSecretKey('password')).toBe(true);
       }
     }
   });
 
-  it('names in its Never list only routes that exist', () => {
-    const names = new Set(routes.map((route) => route.name));
-    for (const name of NEVER_ROUTES_THROUGH_ASSISTANT) {
-      expect(names.has(name), name).toBe(true);
-    }
-    const areas = new Set(
-      routes.flatMap((route) =>
-        route.access.flatMap((one) => (one.kind === 'requires' ? [one.area] : [])),
-      ),
-    );
-    for (const area of NEVER_CHANGED_THROUGH_ASSISTANT) {
-      expect(areas.has(area), area).toBe(true);
-    }
-  });
-
-  it('refuses, at the start, a listed export, a listed never-route, a listed change and a route without a permission', () => {
+  it('refuses, at the start, a line of another kind than its route, a line of the assistant’s own route and a route without a permission', () => {
     const requires = (area: string, action: 'view' | 'edit' | 'export') => [
       { kind: 'requires', area, action },
     ];
+    const change: AssistantRouteLine = {
+      kind: 'change',
+      group: 'setup',
+      description: 'x',
+      basis: { kind: 'create' },
+    };
     expect(
       assistantRouteFault({
         name: 'GET /api/x/export',
         method: 'GET',
         declarations: requires('staff', 'export'),
+        line: { group: 'staff', description: 'x' },
       }),
     ).toMatch(/export/);
     expect(
       assistantRouteFault({
-        name: 'POST /api/timetable/versions/:id/publish',
+        name: 'POST /api/setup/rooms',
         method: 'POST',
-        declarations: requires('timetable', 'edit'),
+        declarations: requires('rooms', 'edit'),
+        line: { group: 'setup', description: 'x' },
       }),
-    ).toMatch(/never/);
-    expect(
-      assistantRouteFault({
-        name: 'POST /api/journal/x',
-        method: 'POST',
-        declarations: requires('journal', 'edit'),
-      }),
-    ).toMatch(/never/);
+    ).toMatch(/read.*change/);
     expect(
       assistantRouteFault({
         name: 'POST /api/setup/rooms',
         method: 'POST',
         declarations: requires('rooms', 'edit'),
-      }),
-    ).toMatch(/read/);
-    expect(
-      assistantRouteFault({
-        name: 'POST /api/setup/rooms',
-        method: 'POST',
-        declarations: requires('rooms', 'edit'),
-        line: { kind: 'change', group: 'setup', description: '', basis: { kind: 'create' } },
+        line: change,
       }),
     ).toBeUndefined();
     expect(
@@ -361,31 +341,51 @@ describe('the actions open to the assistant', () => {
         name: 'GET /api/setup/rooms',
         method: 'GET',
         declarations: requires('rooms', 'view'),
-        line: { kind: 'change', group: 'setup', description: '', basis: { kind: 'create' } },
+        line: change,
       }),
-    ).toMatch(/GET/);
+    ).toMatch(/change.*read/);
     expect(
       assistantRouteFault({
         name: 'POST /api/setup/rooms',
         method: 'POST',
         declarations: requires('rooms', 'edit'),
-        line: { kind: 'preview', group: 'setup', description: '' },
+        line: { kind: 'preview', group: 'setup', description: 'x' },
       }),
     ).toMatch(/preview/);
+    expect(
+      assistantRouteFault({
+        name: 'PUT /api/x/photo',
+        method: 'PUT',
+        declarations: requires('staff', 'edit'),
+        takesFile: true,
+        line: change,
+      }),
+    ).toMatch(/file/);
+    expect(
+      assistantRouteFault({
+        name: 'GET /api/x/file',
+        method: 'GET',
+        declarations: requires('staff', 'view'),
+        returnsFile: true,
+        line: { group: 'staff', description: 'x' },
+      }),
+    ).toMatch(/download/);
+    expect(
+      assistantRouteFault({
+        name: 'PUT /api/assistant/actions',
+        method: 'PUT',
+        declarations: requires('school_settings', 'edit'),
+        line: change,
+      }),
+    ).toMatch(/own/);
     expect(
       assistantRouteFault({
         name: 'GET /api/auth/sessions',
         method: 'GET',
         declarations: [{ kind: 'any_signed_in' }],
+        line: { group: 'setup', description: 'x' },
       }),
     ).toMatch(/permission/);
-    expect(
-      assistantRouteFault({
-        name: 'GET /api/classes',
-        method: 'GET',
-        declarations: requires('classes', 'view'),
-      }),
-    ).toBeUndefined();
   });
 
   it('has the tools file `pnpm api:client` writes, with each tool’s parameters exactly its route’s path and query parameters', () => {
@@ -409,14 +409,15 @@ describe('the actions open to the assistant', () => {
       ).toEqual(pathParameters);
       expect(tool.name).toMatch(/^[A-Za-z0-9_]{1,64}$/);
     }
-    // Every tool of the Super Admin builds, names are unique, and the map's three tools are
-    // last (task 11.19: `link_place` in place of `suggest_page`).
-    const tools = toolsOf(assistantRoutesOf('super_admin'));
+    // Every tool of the Super Admin builds, names are unique, and the map's three tools and
+    // find_actions are last (task 11.19: `link_place` in place of `suggest_page`; 11.20).
+    const tools = toolsOf(linesOf('super_admin'), OPEN_FILTER);
     expect(new Set(tools.map((tool) => tool.name)).size).toBe(tools.length);
-    expect(tools.slice(-3).map((tool) => tool.name)).toEqual([
+    expect(tools.slice(-4).map((tool) => tool.name)).toEqual([
       'find_in_platform',
       'explain_place',
       'link_place',
+      'find_actions',
     ]);
   });
 

@@ -1,5 +1,23 @@
 import { describe, expect, it } from 'vitest';
-import { filterRead, filterWords, isRemovedKey, REMOVED, REMOVED_KEYS } from './field-filter.js';
+import { ASSISTANT_DATA_GROUPS, type AssistantDataGroup } from '@sodiq/shared';
+import {
+  GROUP_KEYS,
+  ModelFilter,
+  OPEN_FILTER,
+  REMOVED,
+  SECRET_SHOWN,
+  STRICT_FILTER,
+  filterWords,
+  secretsOf,
+} from './field-filter.js';
+
+// Task 11.20: with every group switched off (`STRICT_FILTER`) the rules of 11.12 below hold;
+// with a group on, its fields pass (see the end of this file), and the floor holds always.
+const filterRead = (value: unknown): unknown => STRICT_FILTER.read(value);
+const isRemovedKey = (key: string): boolean => STRICT_FILTER.removesKey(key);
+const REMOVED_KEYS: ReadonlySet<string> = new Set(
+  Object.values(GROUP_KEYS).flatMap((keys) => [...keys]),
+);
 
 // Task 11.12. `02`, Assistant, What never goes to the model: "Passport and birth certificate
 // numbers, medical data, the financial group, phone numbers and addresses, passwords and
@@ -26,7 +44,7 @@ const removedEverywhere = (key: string, value: unknown) => {
   expect(filtered).toContain('Kamola');
 };
 
-describe('the fields that never go to the model', () => {
+describe('the fields of the groups switched off', () => {
   describe('passport and birth certificate numbers', () => {
     it('removes the document number and its type by key', () => {
       removedEverywhere('documentNumber', 'AA1234567');
@@ -106,17 +124,23 @@ describe('the fields that never go to the model', () => {
     removedEverywhere('diagnosticScore', 87);
   });
 
-  it('removes passwords and secrets by key', () => {
-    for (const key of [
-      'password',
-      'newPassword',
-      'firstPassword',
-      'secret',
-      'token',
-      'totpSecret',
-      'recoveryCodes',
-    ]) {
-      removedEverywhere(key, 'sentinel-secret-1');
+  it('marks passwords and secrets by key, whatever the switches (the floor)', () => {
+    for (const filter of [STRICT_FILTER, OPEN_FILTER]) {
+      for (const key of [
+        'password',
+        'newPassword',
+        'firstPassword',
+        'secret',
+        'token',
+        'totpSecret',
+        'recoveryCodes',
+        'sessionToken',
+      ]) {
+        const filtered = JSON.stringify(filter.read(everywhere(key, 'sentinel-secret-1')));
+        expect(filtered, key).not.toContain('sentinel-secret-1');
+        expect(filtered, key).toContain(SECRET_SHOWN);
+        expect(filtered).toContain('Kamola');
+      }
     }
   });
 
@@ -164,6 +188,78 @@ describe('the fields that never go to the model', () => {
       expect(isRemovedKey('firstName')).toBe(false);
       expect(isRemovedKey('fullName')).toBe(false);
       expect(isRemovedKey('className')).toBe(false);
+    });
+  });
+
+  // Task 11.20 (`02`, Personal data and the model: "All are on at the start").
+  describe('the groups switched on (the start)', () => {
+    const sample = {
+      name: 'Kamola',
+      phone: '+998901234567',
+      email: 'someone@example.com',
+      jshshir: '31234567890123',
+      birthDate: '2012-04-01',
+      contracts: [{ number: 'CTR-1' }],
+      diagnosticScore: 87,
+      medicalNote: 'asthma',
+      relatives: [{ fullName: 'Sentinel Parentov', relationship: 'father' }],
+      note: 'Call +998 90 123 45 67, JSHSHIR 31234567890123.',
+      password: 'sentinel-secret-1',
+    };
+    const GROUP_SAMPLE: Readonly<Record<AssistantDataGroup, string>> = {
+      contact: '+998901234567',
+      identity: '31234567890123',
+      financial: 'CTR-1',
+      diagnostic: '87',
+      medical: 'asthma',
+      relatives: 'Sentinel Parentov',
+    };
+
+    it('passes every group but the secrets', () => {
+      const read = JSON.stringify(OPEN_FILTER.read(sample));
+      for (const value of Object.values(GROUP_SAMPLE)) expect(read, value).toContain(value);
+      expect(read).not.toContain('sentinel-secret-1');
+      expect(OPEN_FILTER.words('Call +998 90 123 45 67')).toBe('Call +998 90 123 45 67');
+    });
+
+    it('removes one group switched off and leaves the five others', () => {
+      for (const off of ASSISTANT_DATA_GROUPS) {
+        const filter = new ModelFilter(ASSISTANT_DATA_GROUPS.filter((group) => group !== off));
+        const read = JSON.stringify(filter.read({ ...sample, note: '' }));
+        expect(read, off).not.toContain(GROUP_SAMPLE[off]);
+        for (const other of ASSISTANT_DATA_GROUPS.filter((group) => group !== off)) {
+          if (other === 'identity' && off === 'contact') continue;
+          expect(read, `${off} off, ${other}`).toContain(GROUP_SAMPLE[other]);
+        }
+      }
+      // The shapes of a free text and of the person's words follow their group.
+      const noContact = new ModelFilter(
+        ASSISTANT_DATA_GROUPS.filter((group) => group !== 'contact'),
+      );
+      expect(noContact.words('Call +998 90 123 45 67')).toBe(`Call ${REMOVED}`);
+      expect(noContact.words('find 31234567890123')).toBe('find 31234567890123');
+    });
+
+    it('removes a whole read of the relatives while that group is off', () => {
+      const noRelatives = new ModelFilter(
+        ASSISTANT_DATA_GROUPS.filter((group) => group !== 'relatives'),
+      );
+      expect(noRelatives.read({ fullName: 'Sentinel Parentov' }, 'relatives')).toBe(REMOVED);
+      expect(OPEN_FILTER.read({ fullName: 'Sentinel Parentov' }, 'relatives')).toEqual({
+        fullName: 'Sentinel Parentov',
+      });
+    });
+
+    it('takes the secrets of an answer out for the person, each with its slip', () => {
+      const slip = {
+        firstName: 'Dilnoza',
+        lastName: 'Karimova',
+        login: 'd.karimova',
+        password: 'Sentinel-Pass-77',
+        validUntil: '2026-11-26T09:00:00Z',
+      };
+      expect(secretsOf({ record: { id: 'x' }, slip })).toEqual([slip]);
+      expect(secretsOf({ slip: null, slips: [] })).toEqual([]);
     });
   });
 });

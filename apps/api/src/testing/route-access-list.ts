@@ -1041,6 +1041,9 @@ export const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
   'POST /api/assistant/all-conversations/:id/restore': { branch: 'none', roles: ['super_admin'] },
   'GET /api/setup/school-settings/assistant': { branch: 'none', roles: ['super_admin'] },
   'PUT /api/setup/school-settings/assistant': { branch: 'none', roles: ['super_admin'] },
+  // Task 11.20: the switches of the assistant's actions, under `school_settings` (decision 11).
+  'GET /api/assistant/actions': { branch: 'none', roles: ['super_admin'] },
+  'PUT /api/assistant/actions': { branch: 'none', roles: ['super_admin'] },
   // Task 5.8c: the forced delete of a building, floor or room (forced_deletes).
   'POST /api/setup/buildings/:id/forced-delete': { branch: 'request', roles: ['super_admin'] },
   'POST /api/setup/floors/:id/forced-delete': { branch: 'request', roles: ['super_admin'] },

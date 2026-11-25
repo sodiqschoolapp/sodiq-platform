@@ -17,7 +17,6 @@ import { settle, assistantScene, type AssistantScene } from '../../testing/assis
 import { answer, calls } from '../../testing/assistant-model.js';
 import { errorCode } from '../../testing/sign-in-kit.js';
 import { AssistantCalls } from './assistant-calls.js';
-import { ASSISTANT_ROUTES, type AssistantRouteLists } from './assistant-routes.js';
 import { MembersKit } from '../../testing/members-kit.js';
 import { integrationKeySecretHash } from './integration-keys.service.js';
 import { readerPostsOf } from './request-posts.js';
@@ -27,18 +26,6 @@ import { readerPostsOf } from './request-posts.js';
 // chosen role"; "The actions open to it are a list fixed in code for each of the three roles".
 // Build plan 11.12, approved by the owner: "through the assistant a person does only what their
 // chosen role already allows, on the actions of the list". Names are invented.
-
-/**
- * A list for the Teacher, which has none in this task, to test the narrowing to a chosen role:
- * the staff list, which the Principal reads and the Teacher does not.
- */
-const LISTS: AssistantRouteLists = {
-  ...ASSISTANT_ROUTES,
-  teacher: {
-    'GET /api/people/staff': { group: 'staff', description: 'The staff.' },
-    'GET /api/people/students': { group: 'students', description: 'The students.' },
-  },
-};
 
 describe('the permission guard for the assistant’s reads', () => {
   let scene: AssistantScene;
@@ -53,7 +40,7 @@ describe('the permission guard for the assistant’s reads', () => {
   };
 
   beforeAll(async () => {
-    scene = await assistantScene({ routeLists: LISTS });
+    scene = await assistantScene();
     server = scene.app.getHttpServer();
     calls_ = scene.app.get(AssistantCalls);
     const both = await scene.kit.fullSession('Gulnora', 'Principalova');
@@ -91,8 +78,10 @@ describe('the permission guard for the assistant’s reads', () => {
       '/api/auth/sessions',
       '/api/portal/children',
       '/api/integration/people',
-      '/api/integration-keys',
-      '/api/audit/entries',
+      // Task 11.20: the assistant's own routes, on no list; every route with a permission of
+      // the role is on its list now (the integration keys, the audit log).
+      '/api/assistant/actions',
+      '/api/setup/school-settings/assistant',
     ]) {
       const response = await get(path, calls_.headersFor('super_admin'));
       expect([response.status, errorCode(response)], path).toEqual([403, 'assistant_route_closed']);
@@ -169,11 +158,13 @@ describe('the permission guard for the assistant’s reads', () => {
     expect((narrowed.body as { students: unknown[] }).students).toEqual([]);
   });
 
+  // Task 11.20 (plan review 2): a route outside the chosen role's list, sent marked as the
+  // assistant's through the real guard, is refused; the lists are derived from the table.
   it('narrows the rights to the chosen role: a Principal who is also a Teacher, read as the Teacher, is refused what only the Principal reads', async () => {
     // Without the mark the session reads the staff list through its Principal role.
     expect((await get('/api/people/staff', {}, principalTeacher)).status).toBe(200);
     const narrowed = await get('/api/people/staff', calls_.headersFor('teacher'), principalTeacher);
-    expect([narrowed.status, errorCode(narrowed)]).toEqual([403, 'permission_denied']);
+    expect([narrowed.status, errorCode(narrowed)]).toEqual([403, 'assistant_route_closed']);
   });
 
   it('keeps a decision read from the database to the post of the chosen role (`readerPostsOf`)', () => {
