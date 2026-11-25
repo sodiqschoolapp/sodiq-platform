@@ -1407,6 +1407,7 @@ export const uz: Texts<'one' | 'other'> = {
       confirming: 'Tasdiqlanmoqda…',
       record: 'Yozuv: {{name}}',
       assistantSays: 'Yordamchining soʻzlari: {{text}}',
+      undoes: 'Bekor qiladi: {{text}}',
       fields: 'Nima yuboriladi',
       lessons: 'Tegishli darslar',
       moreLessons_one: 'va yana {{count}} ta dars',

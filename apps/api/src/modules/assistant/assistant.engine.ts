@@ -1093,10 +1093,6 @@ export class AssistantEngine {
   }
 
   /**
-   * The journal, quarter and date of one lesson (task 11.14), when the person's own reads of its
-   * card and of its journal answer them; the card's journal and date, the quarter of the date.
-   */
-  /**
    * Task 11.21, Undo (`02`, Reading and proposing: "A confirmed proposal can be undone: the
    * assistant proposes the reverse of each change made, where an action exists that reverses it,
    * and that new proposal is confirmed like any other"). Built by the server from the stored
@@ -1286,6 +1282,10 @@ export class AssistantEngine {
     return { proposal, done };
   }
 
+  /**
+   * The journal, quarter and date of one lesson (task 11.14), when the person's own reads of its
+   * card and of its journal answer them; the card's journal and date, the quarter of the date.
+   */
   private async lessonLink(
     asker: Asker,
     branchId: string,

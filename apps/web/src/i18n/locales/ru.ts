@@ -1388,6 +1388,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       confirming: 'Подтверждение…',
       record: 'Запись: {{name}}',
       assistantSays: 'Слова помощника: {{text}}',
+      undoes: 'Отменяет: {{text}}',
       fields: 'Что будет отправлено',
       lessons: 'Затронутые уроки',
       moreLessons_one: 'и ещё {{count}} урок',

@@ -260,6 +260,11 @@ async function aTableAndChoices(page: Page): Promise<void> {
     await page.getByRole('button', { name: en.assistant.open, exact: true }).click();
   }
   await expect(panel.locator('[data-assistant-table] table')).toBeVisible();
+  await expect(
+    panel
+      .getByRole('list', { name: en.assistant.choices, exact: true })
+      .getByRole('button', { name: 'Assistant B', exact: true }),
+  ).toBeVisible();
   await chooseTheme(page, en, 'light');
   // On the Assistant page, the same conversation shows the table and the choices.
   panel = page.getByRole('complementary', { name: en.assistant.title });
@@ -268,8 +273,35 @@ async function aTableAndChoices(page: Page): Promise<void> {
   }
   await panel.getByRole('link', { name: en.assistant.openPage, exact: true }).click();
   await expect(heading(page, en.assistant.page.title)).toBeVisible();
+  // The table and the buttons on the page in the three languages and in dark mode (spec review
+  // of the code, must fix 3).
+  now = en;
+  for (const [language, texts] of [
+    ['uz', uz],
+    ['ru', ru],
+    ['en', en],
+  ] as const) {
+    await openPersonMenu(page, now);
+    await page.getByRole('menuitemradio', { name: LANGUAGE_NAMES[language], exact: true }).click();
+    const shown = page.getByRole('region', { name: texts.assistant.title, exact: true });
+    await expect(shown.locator('[data-assistant-table] table')).toBeVisible();
+    await expect(
+      shown
+        .getByRole('list', { name: texts.assistant.choices, exact: true })
+        .getByRole('button', { name: 'Assistant B', exact: true }),
+    ).toBeVisible();
+    now = texts;
+  }
+  await chooseTheme(page, en, 'dark');
+  await expect(page.locator('html')).toHaveClass(/dark/);
   const chat = page.getByRole('region', { name: en.assistant.title, exact: true });
   await expect(chat.locator('[data-assistant-table] table')).toBeVisible();
+  await expect(
+    chat
+      .getByRole('list', { name: en.assistant.choices, exact: true })
+      .getByRole('button', { name: 'Assistant B', exact: true }),
+  ).toBeVisible();
+  await chooseTheme(page, en, 'light');
   // A press sends the option as the person's answer.
   await chat
     .getByRole('list', { name: en.assistant.choices, exact: true })

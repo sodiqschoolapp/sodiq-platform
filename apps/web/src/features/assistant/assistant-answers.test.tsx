@@ -294,6 +294,20 @@ describe('choices, Continue and Undo in the chat', () => {
     expect(answer?.textContent).toContain(en.assistant.undo.reasons.no_reverse);
     // Its Undo is shown: no second Undo is offered.
     expect(panel.queryByRole('button', { name: en.assistant.proposal.undo })).toBeNull();
+    // The reverse keeps the words of the change it undoes, and says it undoes them; the
+    // confirmed proposal still shows them as the assistant's (spec review of the code, must fix 1).
+    const cards = await panel.findAllByRole('region', { name: en.assistant.proposal.title });
+    expect(cards).toHaveLength(2);
+    const [original, reverse] = cards;
+    expect(original?.textContent).toContain(
+      en.assistant.proposal.assistantSays.replace('{{text}}', 'Archive class 1.'),
+    );
+    expect(reverse?.textContent).toContain(
+      en.assistant.proposal.undoes.replace('{{text}}', 'Archive class 1.'),
+    );
+    expect(reverse?.textContent).not.toContain(
+      en.assistant.proposal.assistantSays.replace('{{text}}', ''),
+    );
   });
 
   it('has every new text in the three languages', () => {

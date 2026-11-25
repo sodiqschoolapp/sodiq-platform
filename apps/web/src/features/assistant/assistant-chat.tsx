@@ -482,6 +482,10 @@ export function Messages({
         <li key={proposal.id}>
           <ProposalCard
             proposal={proposal}
+            reverses={conversation.messages.some(
+              (one) =>
+                one.id === proposal.questionId && one.kind === 'question' && one.undoOf !== null,
+            )}
             secrets={secrets.filter((secret) =>
               proposal.steps.some((step) => step.id === secret.stepId),
             )}

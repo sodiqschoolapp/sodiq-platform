@@ -392,6 +392,177 @@ describe('the assistant at a power cut: no day off today, a bulk cancel from the
     expect(await causes()).toEqual([null, null]);
   });
 
+  // Task 11.21 (plan decision 11; spec review of the code, should fix 1): one Undo of two kinds of
+  // change, a lesson cancel and then a class archive: the restore of the class first, then the
+  // lesson's, each through its own route, and Confirm gives both back.
+  it('undoes a lesson cancel and a class archive of one proposal, the last change first (task 11.21)', async () => {
+    const oxfordRow = await t.database.migrator
+      .selectFrom('classes')
+      .select('academic_year_id')
+      .where('id', '=', oxford)
+      .executeTakeFirstOrThrow();
+    const harvard = await load.classes.schoolClass(branch, oxfordRow.academic_year_id, {
+      grade: 9,
+      name: 'Harvard',
+    });
+    const lesson = await t.database.migrator
+      .selectFrom('lessons')
+      .select('id')
+      .where('branch_id', '=', branch)
+      .where('lesson_date', '=', '2026-10-26')
+      .where('cancel_cause', 'is', null)
+      .orderBy('starts_at')
+      .executeTakeFirstOrThrow();
+    model.script(
+      calls(
+        {
+          name: `propose_${tool('POST /api/timetable/lessons/:id/cancel')}`.slice(0, 64),
+          args: { id: lesson.id, body: { reason: 'Trip' }, summary: 'Cancel the lesson: Trip' },
+        },
+        {
+          name: `propose_${tool('POST /api/classes/:id/archive')}`.slice(0, 64),
+          args: { id: harvard, summary: 'Archive the class Harvard.' },
+        },
+      ),
+      answer('Proposed.'),
+    );
+    const asked = await request(t.kit.server)
+      .post('/api/assistant/questions')
+      .set('Cookie', vice.cookie)
+      .set(BRANCH_HEADER, branch)
+      .send({ role: 'academic_vice_principal', text: 'Cancel the lesson and archive Harvard.' });
+    expect(asked.status, JSON.stringify(asked.body).slice(0, 500)).toBe(202);
+    await settle(t.app, asked, vice.cookie, branch);
+    const proposal = assistantConversationSchema
+      .parse((asked.body as { conversation: unknown }).conversation)
+      .proposals.at(-1);
+    expect(proposal?.steps).toHaveLength(2);
+    expect((await confirm(proposal?.id ?? '')).status).toBe(200);
+    const state = async () => ({
+      lesson: (
+        await t.database.migrator
+          .selectFrom('lessons')
+          .select('cancel_cause')
+          .where('id', '=', lesson.id)
+          .executeTakeFirstOrThrow()
+      ).cancel_cause,
+      archived: (
+        await t.database.migrator
+          .selectFrom('classes')
+          .select('archived_at')
+          .where('id', '=', harvard)
+          .executeTakeFirstOrThrow()
+      ).archived_at,
+    });
+    const after = await state();
+    expect(after.lesson).not.toBeNull();
+    expect(after.archived).not.toBeNull();
+
+    const undone = await request(t.kit.server)
+      .post(`/api/assistant/proposals/${proposal?.id ?? ''}/undo`)
+      .set('Cookie', vice.cookie)
+      .set(BRANCH_HEADER, branch)
+      .send({ role: 'academic_vice_principal' });
+    expect(undone.status, JSON.stringify(undone.body).slice(0, 500)).toBe(200);
+    const reverses = (
+      undone.body as { conversation: AssistantConversation }
+    ).conversation.proposals.at(-1);
+    const stored = await t.database.migrator
+      .selectFrom('assistant_proposals')
+      .select('steps')
+      .where('id', '=', reverses?.id ?? '')
+      .executeTakeFirstOrThrow();
+    expect((stored.steps as { url: string }[]).map((step) => step.url)).toEqual([
+      `/api/classes/${harvard}/restore`,
+      `/api/timetable/lessons/${lesson.id}/restore`,
+    ]);
+    expect((await confirm(reverses?.id ?? '')).status).toBe(200);
+    expect(await state()).toEqual({ lesson: null, archived: null });
+  });
+
+  // Task 11.21, build plan "Done when": "a question of 60 cancels goes past 40 reads, offers
+  // Continue and finishes in the next part with nothing proposed twice" (`edge/people-roles-
+  // accounts`, "Cancel these 60 lessons"; spec review of the code, must fix 2). Lessons of the
+  // second quarter, which no other test of this file touches; a cancel proposed again in the next
+  // part with other words is the same target (`targetOf` leaves the reason out).
+  it('proposes 40 of 60 lesson cancels, offers Continue, and the next part proposes the other 20 with nothing proposed twice (task 11.21)', async () => {
+    await t.database.migrator
+      .updateTable('assistant_settings')
+      .set({ question_actions: 40, proposal_steps: 100, daily_limit: 0 })
+      .execute();
+    const lessons = (
+      await t.database.migrator
+        .selectFrom('lessons')
+        .select('id')
+        .where('branch_id', '=', branch)
+        .where('lesson_date', '>=', '2026-11-09')
+        .where('cancel_cause', 'is', null)
+        .orderBy('starts_at')
+        .orderBy('id')
+        .limit(60)
+        .execute()
+    ).map((row) => row.id);
+    expect(lessons).toHaveLength(60);
+    const cancel = (id: string, reason: string) => ({
+      name: `propose_${tool('POST /api/timetable/lessons/:id/cancel')}`.slice(0, 64),
+      args: { id, body: { reason }, summary: `Cancel the lesson: ${reason}` },
+    });
+    const ask = async (body: Record<string, unknown>) => {
+      const response = await request(t.kit.server)
+        .post('/api/assistant/questions')
+        .set('Cookie', vice.cookie)
+        .set(BRANCH_HEADER, branch)
+        .send({ role: 'academic_vice_principal', ...body });
+      expect(response.status, JSON.stringify(response.body).slice(0, 500)).toBe(202);
+      await settle(t.app, response, vice.cookie, branch);
+      return assistantConversationSchema.parse(
+        (response.body as { conversation: unknown }).conversation,
+      );
+    };
+    const lessonsOf = async (proposalId: string) =>
+      (
+        (
+          await t.database.migrator
+            .selectFrom('assistant_proposals')
+            .select('steps')
+            .where('id', '=', proposalId)
+            .executeTakeFirstOrThrow()
+        ).steps as { url: string }[]
+      ).map((step) => step.url.split('/').at(-2) ?? '');
+
+    model.script(
+      calls(...lessons.map((id) => cancel(id, 'School trip'))),
+      answer('40 lessons proposed; 20 are left. Press Continue.'),
+    );
+    const first = await ask({ text: 'Cancel these 60 lessons for the school trip.' });
+    expect(first.messages.at(-1)).toEqual(
+      expect.objectContaining({ kind: 'answer', continues: true }),
+    );
+    const part1 = first.proposals.at(-1);
+    expect(part1?.steps).toHaveLength(40);
+    const confirmed = await confirm(part1?.id ?? '');
+    expect(confirmed.status, JSON.stringify(confirmed.body).slice(0, 500)).toBe(200);
+
+    // The next part: the 20 left, and a lesson of part 1 again in other words.
+    model.script(
+      calls(
+        ...lessons.slice(40).map((id) => cancel(id, 'School trip')),
+        cancel(lessons[0] ?? '', 'The whole school is away'),
+      ),
+      answer('Done.'),
+    );
+    const second = await ask({ text: 'Continue', conversationId: first.id, continue: true });
+    const results = lastResults(model.requests.at(-1) ?? { system: '', turns: [], tools: [] });
+    expect(results.at(-1)?.result).toEqual({ error: 'already_proposed' });
+    const part2 = second.proposals.at(-1);
+    expect(part2?.id).not.toBe(part1?.id);
+    expect(part2?.steps).toHaveLength(20);
+    expect(second.messages.at(-1)).toEqual(expect.objectContaining({ continues: false }));
+    const together = [...(await lessonsOf(part1?.id ?? '')), ...(await lessonsOf(part2?.id ?? ''))];
+    expect(new Set(together).size).toBe(60);
+    expect([...together].sort()).toEqual([...lessons].sort());
+  }, 300_000);
+
   // `edge/people-roles-accounts`, "Add an extra lesson": no listed route adds one, and the move
   // that exists stays inside the quarter (`edge/time-dates-calendar`): the route refuses a move
   // into another quarter at Confirm, and the lesson is as it was.

@@ -34,6 +34,7 @@ export function ProposalCard({
   onSecretsClosed,
   onUndo,
   undoing,
+  reverses = false,
 }: {
   proposal: AssistantProposal;
   onDecide?: (which: 'confirm' | 'decline') => void;
@@ -44,6 +45,12 @@ export function ProposalCard({
    */
   onUndo?: () => void;
   undoing?: boolean;
+  /**
+   * Task 11.21: the proposal of an Undo. Each step keeps the words of the change it undoes, so
+   * the card says it undoes them, never that the assistant proposes them again (spec review of
+   * the code: `02`, "a proposal that lists every change in plain words").
+   */
+  reverses?: boolean;
   /** Task 11.20: what a confirmed step gave out once (a first password), never kept. */
   secrets?: readonly AssistantStepSecret[];
   onSecretsClosed?: () => void;
@@ -182,7 +189,9 @@ export function ProposalCard({
               </details>
             )}
             <p className="text-sm text-muted-foreground break-words whitespace-pre-wrap">
-              {t('assistant.proposal.assistantSays', { text: step.summary })}
+              {t(reverses ? 'assistant.proposal.undoes' : 'assistant.proposal.assistantSays', {
+                text: step.summary,
+              })}
             </p>
             {proposal.state === 'confirmed' && (
               <p className={`text-sm font-semibold ${STATE_TONE[step.state]}`}>

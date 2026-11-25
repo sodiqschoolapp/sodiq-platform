@@ -1383,6 +1383,7 @@ export const en = {
       confirming: 'Confirming…',
       record: 'Record: {{name}}',
       assistantSays: 'The assistant’s words: {{text}}',
+      undoes: 'Undoes: {{text}}',
       fields: 'What is sent',
       lessons: 'Lessons it touches',
       moreLessons_one: 'and {{count}} more lesson',
