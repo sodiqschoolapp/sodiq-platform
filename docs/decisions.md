@@ -81,7 +81,10 @@ Plan approved on pull request #386 with corrections 1 (offer what the role's lis
 | A place's page unknown to the map, or one the role does not open, is left out; a value that does not fit the page's record is dropped | Decisions 7, 8; review note 8 |
 | The walk reads a label through a constant of the component and through each call of a local helper that draws the control; a panel's tabs are `{ key, title: t(…) }`; what it still cannot read is in `UNREAD_LABELS` with its count and reason | Correction 7 (found in the build: the student panel's status buttons and tabs) |
 | The 30 questions are 30 intents in the four forms (120 cases); the set has 256; the Academic Vice Principal asks as the demo branch's Vice Principal; its offer intent is a day off (the calendar), the class move being not on its list today | Decision 9; correction 1 |
-| The browser test asks from a class's panel on the Classes page (the browser test's assistant branch has classes and no students); the API test asks from a student's panel | Build plan, Done when: "a question sent from a student's panel resolves 'this student'; a link opens the named record" |
+| A control's API calls are read from its `onClick`, or the `onSubmit` of its form, through local handlers, `useMutation`'s `mutationFn` and the `*-api.ts` functions, five steps at most; a page's operations are those of its controls (162 of 526 buttons today) | Code review must fix 1: the import graph gave a page the calls of every file it imports |
+| A row of tabs drawn as links (`people-tabs.tsx`, the entry pages' link lists) is read one tab per element, with the route it opens (`opens`) | Code review must fix 2 |
+| `link_place` names a control only when the role sees it; for another it links the page | Code review should fix 7 |
+| **Look first.** The browser test asks from a class's panel on the Classes page (the browser test's assistant branch has classes and no students); the API test asks from a student's panel | Build plan, Done when: "a question sent from a student's panel resolves 'this student'; a link opens the named record" |
 
 ## 24 November 2026: the red asterisk comes from the schema (task 11.18)
 
