@@ -333,6 +333,9 @@ describe('the assistant: the routes of files', () => {
     expect(await status(teacher, teachers.file)).toBe(200);
     expect(await status(scene.admin, others.file)).toBe(404);
     expect(await status(other, own.file)).toBe(404);
+    // A Teacher never reads another account's file (the scope line of the Teacher).
+    expect(await status(teacher, own.file)).toBe(404);
+    expect(await status(teacher, others.file)).toBe(404);
     expect(await status(teacher, givenUp.file)).toBe(404);
     expect(await status(scene.admin, UNKNOWN)).toBe(404);
     expect(await status(scene.admin, archived.file)).toBe(404);

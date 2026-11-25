@@ -2,6 +2,20 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 25 November 2026: task 11.22, files, photos and voice in the conversation; imports and exports through it
+
+- **Files** (0185, `assistant_files`, `assistant_message_files`): `PUT /api/assistant/files` takes an Excel file, a PDF, a photo or a recording (types and limits in `packages/shared/src/assistant-files.ts`) into the photo store under `assistant/<id>`; a question sends up to 5 (14 MB); the model gets PDFs, photos and audio inline and Excel as text; `read_attachment` gives one again.
+- **Imports and exports** run as the person through `AssistantDispatcher.run` with a single-use run mark (the guard change approved by the owner): `import_attachment` sends a template through the import's own upload and declares its Confirm to propose; `export_file` runs an export or report, keeps a file in the store linked to the answer, logged "via assistant" (`audit_log.assistant_step_id` = the run, read back through the stored read's `runId`).
+- **Voice**: a recorded question is written out by one call without tools, stored as a read `transcribe_voice` and shown as the question's text; the panel has a paperclip, chips kept outside the chat and a phone microphone; files download from the conversation and, for the Super Admin, from every conversation (audited).
+
+Left out: the journal's background export and the files of records (photos, plan files, documents, reasons of absence) have no tool (plan decisions 4 and 7, no later task named; the owner decides); uploads never sent are not removed (decision 9); `.docx`, `.xls` and `.csv` are not taken (decision 5, a `/spec-change` proposed on #42); the browser test proves a photo and an export, the import through its preview is proven by the API test only.
+
+The next sessions must know:
+
+- A file route of a new import goes into `IMPORT_UPLOADS` (`assistant/file-tools.ts`) to be run by `import_attachment`; a new export or report is run by `export_file` without a change (`isExportRoute`).
+- A request of kind file, download or export through the assistant needs `AssistantCalls.whileRun`; the guard takes the mark on first use.
+- An import preview that names relatives goes through `withoutHolders` (`assistant.engine.ts`) when its list key is not `held`.
+
 ## 25 November 2026: task 11.21, fewer limits, and answers that are easier to use
 
 - **Limits as settings** (0184): requests per person per day (0 = none), reads and changes in one question (40), changes in one proposal (100), minutes of one question (10) on the Assistant settings page; the model calls follow the reads (+2), the attempts twice that; each question stores the end of its window (`answer_until`); the cap is read again before each call and ends a question with its notice.

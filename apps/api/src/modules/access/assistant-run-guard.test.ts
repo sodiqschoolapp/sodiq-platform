@@ -148,6 +148,92 @@ describe('the permission guard for the assistant’s imports and exports', () =>
     });
   });
 
+  // Permission review must-fix 1: on the run path `decide` still uses the chosen role's
+  // assignments only. A person who is a Teacher in North and an Academic Vice Principal in South,
+  // asking as the Teacher with a valid Teacher mark in South, is refused; as the Academic Vice
+  // Principal the same request passes the guard (the route itself then answers the unknown journal).
+  it('decides a run with the chosen role’s assignments only: the Teacher role is refused where only another role of the person is held', async () => {
+    const route = 'POST /api/journal/journals/:journalId/export';
+    const path = `/api/journal/journals/${randomUUID()}/export`;
+    const person = await scene.kit.completeSession('Malika', 'Ikkirolova');
+    await scene.kit.giveRole(person.account.id, { role: 'teacher', branchId: scene.north });
+    await scene.kit.giveRole(person.account.id, {
+      role: 'academic_vice_principal',
+      branchId: scene.south,
+    });
+    const audit = async () =>
+      (
+        await scene.database.migrator
+          .selectFrom('audit_log')
+          .select('id')
+          .where('actor_id', '=', person.account.id)
+          .execute()
+      ).length;
+    const before = await audit();
+    const post = (role: AssistantRole, run: string) => {
+      let call = request(server)
+        .post(path)
+        .set('Cookie', person.cookie)
+        .set(BRANCH_HEADER, scene.south)
+        .send({});
+      for (const [name, value] of Object.entries(calls.headersFor(role))) {
+        call = call.set(name, value);
+      }
+      return call.set(ASSISTANT_RUN_HEADER, run);
+    };
+    const asTeacher = mark(route, {
+      accountId: person.account.id,
+      role: 'teacher',
+      branchId: scene.south,
+    });
+    await calls.whileRun(asTeacher, async () => {
+      const response = await post('teacher', asTeacher.stepId);
+      expect([response.status, errorCode(response)]).toEqual([403, 'permission_denied']);
+    });
+    expect(await audit()).toBe(before);
+    const asVice = mark(route, {
+      accountId: person.account.id,
+      role: 'academic_vice_principal',
+      branchId: scene.south,
+    });
+    await calls.whileRun(asVice, async () => {
+      const response = await post('academic_vice_principal', asVice.stepId);
+      expect(response.status).not.toBe(403);
+    });
+  });
+
+  // Permission review must-fix 2: a role bound to its branch, with a mark and a header of another
+  // branch, is refused by the guard, and the mark is used up.
+  it('refuses the Academic Vice Principal of North a mark and a branch of South, and uses the mark up', async () => {
+    const vice = await scene.kit.completeSession('Nodira', 'Shimolova');
+    await scene.kit.giveRole(vice.account.id, {
+      role: 'academic_vice_principal',
+      branchId: scene.north,
+    });
+    const run = mark(TEMPLATE, {
+      accountId: vice.account.id,
+      role: 'academic_vice_principal',
+      branchId: scene.south,
+    });
+    await calls.whileRun(run, async () => {
+      const first = await sent(TEMPLATE, {
+        cookie: vice.cookie,
+        role: 'academic_vice_principal',
+        run: run.stepId,
+        branch: scene.south,
+      });
+      expect([first.status, errorCode(first)]).toEqual([403, 'permission_denied']);
+      // Used up: the same mark sent again is no mark at all.
+      const again = await sent(TEMPLATE, {
+        cookie: vice.cookie,
+        role: 'academic_vice_principal',
+        run: run.stepId,
+        branch: scene.south,
+      });
+      expect([again.status, errorCode(again)]).toEqual([403, 'assistant_step_invalid']);
+    });
+  });
+
   it('marks the audit entry of an export run with its mark "via assistant"', async () => {
     const run = mark(NEVER_USED);
     await calls.whileRun(run, async () => {

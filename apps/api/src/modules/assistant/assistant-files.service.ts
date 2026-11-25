@@ -317,7 +317,15 @@ export class AssistantFiles {
         await this.audit.record(transaction, {
           branchId: file.branch_id,
           actorId: access.accountId,
-          assignmentId: access.assignmentId,
+          // Permission review: the assignment is named only where it holds in the file's branch (a
+          // school-wide one, or one of that branch); a file of another branch names none.
+          ...(access.permitting.some(
+            (one) =>
+              one.id === access.assignmentId &&
+              (one.branchId === null || one.branchId.toLowerCase() === file.branch_id),
+          )
+            ? { assignmentId: access.assignmentId }
+            : {}),
           action: 'assistant_file.download',
           record: { type: 'assistant_file', id: file.id },
           oldValue: null,
