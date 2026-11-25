@@ -440,6 +440,26 @@ export const assistantAnyConversationDetailSchema = assistantConversationSchema.
 
 export type AssistantAnyConversationDetail = z.infer<typeof assistantAnyConversationDetailSchema>;
 
+/**
+ * Task 11.20, the personal-data groups.
+ * `02`, Personal data and the model: "contact (phones, emails, addresses), identity (passport,
+ * ID and birth certificate numbers, JSHSHIR, dates of birth), financial (contracts,
+ * scholarships, stipends), the diagnostic score, medical data, and relatives' details … All are
+ * on at the start."
+ */
+export const ASSISTANT_DATA_GROUPS = [
+  'contact',
+  'identity',
+  'financial',
+  'diagnostic',
+  'medical',
+  'relatives',
+] as const;
+
+export type AssistantDataGroup = (typeof ASSISTANT_DATA_GROUPS)[number];
+
+export const assistantDataGroupSchema = z.enum(ASSISTANT_DATA_GROUPS);
+
 /** What the Super Admin sets (`02`: "switch it off for the whole school or for one of the three roles"; Limits). */
 export const assistantSettingsRecordSchema = z.strictObject({
   schoolOn: z.boolean(),
@@ -451,6 +471,11 @@ export const assistantSettingsRecordSchema = z.strictObject({
   monthlyCapDollars: z.int().min(ASSISTANT_CAP_MIN_DOLLARS).max(ASSISTANT_CAP_MAX_DOLLARS),
   /** Task 11.15: the worldwide fallback (`02`, Where the model runs: "on until switched off"). */
   fallbackOn: z.boolean(),
+  /** Task 11.20: the personal-data groups that reach the model (`02`: "All are on at the start"). */
+  dataGroupsOn: z
+    .array(assistantDataGroupSchema)
+    .max(ASSISTANT_DATA_GROUPS.length)
+    .refine((groups) => new Set(groups).size === groups.length, { message: 'Each group once.' }),
 });
 
 export type AssistantSettingsRecord = z.infer<typeof assistantSettingsRecordSchema>;

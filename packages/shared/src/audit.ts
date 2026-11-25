@@ -483,7 +483,13 @@ export const AUDIT_ACTION_GROUPS = {
   ],
   // Task 11.12: the assistant's settings (`02`, Limits: "both audited as settings", build plan)
   // and the restore of an archived conversation by the Super Admin (`02`, Audit).
-  assistant: ['assistant_settings.change', 'assistant_conversation.restore'],
+  // Task 11.20: a change of the switches of the assistant's actions (`02`, Switches: "Each
+  // change of a switch is in the audit log").
+  assistant: [
+    'assistant_settings.change',
+    'assistant_conversation.restore',
+    'assistant_switch.change',
+  ],
   shows: [
     // Task 8.9: the support view of a student, journal and date (decision 14).
     'journal.support_view',

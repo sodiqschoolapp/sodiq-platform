@@ -1,16 +1,23 @@
 import { Inject, Injectable, RequestMethod, type OnApplicationBootstrap } from '@nestjs/common';
 import { DiscoveryService, MetadataScanner } from '@nestjs/core';
-import { ASSISTANT_ROLES, type AssistantRole, type PermissionTable } from '@sodiq/shared';
+import {
+  ASSISTANT_ROLES,
+  permits,
+  type Action,
+  type AssistantRole,
+  type PermissionTable,
+} from '@sodiq/shared';
 import { API_PREFIX } from '../../app.setup.js';
+import { RETURNS_FILE, TAKES_FILE } from '../../http/schemas.js';
 import { declarationsOf } from './access.decorators.js';
 import {
-  ASSISTANT_ROUTE_LISTS,
-  DERIVED_ASSISTANT_LISTS,
+  ASSISTANT_ROUTE_LINES,
   assistantLineFault,
   assistantRouteFault,
-  derivedOpens,
+  notThroughAssistant,
+  routeKindOf,
+  type AssistantRouteKind,
   type AssistantRouteLine,
-  type AssistantRouteLists,
 } from './assistant-routes.js';
 import { PERMISSION_TABLE } from './permission-table.token.js';
 
@@ -42,32 +49,34 @@ function routeNamesOf(controller: object, handler: object): string[] {
 }
 
 /**
- * The actions open to the assistant, by handler (task 11.12; `02`, Assistant: "a list fixed in
- * code for each of the three roles"). Built once at the start from `ASSISTANT_ROUTES`: the app
- * does not start with a listed route that does not exist or that `assistantRouteFault` refuses
- * (an export, a never-route, a change in 11.12). `PermissionGuard` asks it on each request
- * marked as the assistant's.
+ * The actions open to the assistant, by handler (task 11.20; `02`, build order: "limited to the
+ * actions of that role the Super Admin switched on for the assistant. A test holds that every
+ * action of each role is on its list"). Built once at the start: a role's list is every handler
+ * with one `@Requires(area, action)` that the permission table gives the role, except the
+ * assistant's own routes, each with its line of `ROUTE_LINES`. The app does not start with a
+ * line that `assistantRouteFault` or `assistantLineFault` refuses, or that names no route.
+ * `PermissionGuard` asks it on each request marked as the assistant's; the switches narrow it
+ * further in the dispatcher (`assistant-switches.service.ts`).
  */
 @Injectable()
 export class AssistantRoutes implements OnApplicationBootstrap {
   private readonly roles = new WeakMap<object, ReadonlySet<AssistantRole>>();
   private readonly names = new WeakMap<object, string>();
-  /** The lines of each role once the start check ran, the derived lists included (11.13). */
+  /** The lines of each role once the start check ran. */
   private readonly derived = new Map<AssistantRole, Record<string, AssistantRouteLine>>();
+  /** What each listed route is: its area, action and whether it works for no branch. */
+  private readonly facts = new Map<string, ListedRoute>();
+  /** Routes a role holds that have no line yet (a test fails on each; none is offered). */
+  private readonly unlined = new Set<string>();
   private ready = false;
 
   constructor(
     private readonly discovery: DiscoveryService,
     private readonly scanner: MetadataScanner,
-    @Inject(ASSISTANT_ROUTE_LISTS) private readonly lists: AssistantRouteLists,
+    @Inject(ASSISTANT_ROUTE_LINES)
+    private readonly lines: Readonly<Record<string, AssistantRouteLine>>,
     @Inject(PERMISSION_TABLE) private readonly table: PermissionTable,
   ) {}
-
-  /** The written list of a role, or the list a derived role is narrowed from. */
-  private listOf(role: AssistantRole): Readonly<Record<string, AssistantRouteLine>> {
-    const source = DERIVED_ASSISTANT_LISTS[role];
-    return this.lists[role] ?? (source === undefined ? undefined : this.lists[source]) ?? {};
-  }
 
   onApplicationBootstrap(): void {
     const faults: string[] = [];
@@ -86,33 +95,49 @@ export class AssistantRoutes implements OnApplicationBootstrap {
         }
         for (const name of routeNamesOf(type, handler)) {
           const declarations = declarationsOf(handler);
+          const line = this.lines[name];
+          const facts = {
+            name,
+            method: name.slice(0, name.indexOf(' ')),
+            declarations,
+            takesFile: Reflect.getMetadata(TAKES_FILE, handler) !== undefined,
+            returnsFile: Reflect.getMetadata(RETURNS_FILE, handler) === true,
+            ...(line === undefined ? {} : { line }),
+          };
+          if (line !== undefined) {
+            found.add(name);
+            const fault = assistantRouteFault(facts);
+            if (fault !== undefined) {
+              faults.push(`${name} ${fault}`);
+              continue;
+            }
+          }
           const [declaration] = declarations;
-          const roles = ASSISTANT_ROLES.filter(
-            (role) =>
-              Object.hasOwn(this.listOf(role), name) &&
-              (DERIVED_ASSISTANT_LISTS[role] === undefined ||
-                (this.lists[role] === undefined &&
-                  declaration?.kind === 'requires' &&
-                  derivedOpens(this.table, role, declaration))),
-          );
+          if (
+            declarations.length !== 1 ||
+            declaration?.kind !== 'requires' ||
+            declaration.area === undefined ||
+            declaration.action === undefined ||
+            notThroughAssistant(name)
+          ) {
+            continue;
+          }
+          const { area, action } = declaration;
+          const roles = ASSISTANT_ROLES.filter((role) => permits(this.table, role, area, action));
           if (roles.length === 0) {
             continue;
           }
-          found.add(name);
+          if (line === undefined) {
+            this.unlined.add(name);
+            continue;
+          }
+          this.facts.set(name, {
+            area,
+            action,
+            kind: routeKindOf(facts),
+            branchNone: (declaration as { branch?: string }).branch === 'none',
+          });
           for (const role of roles) {
-            const line = this.listOf(role)[name];
-            if (line === undefined) {
-              continue;
-            }
-            const fault = assistantRouteFault({
-              name,
-              method: name.slice(0, name.indexOf(' ')),
-              declarations,
-              line,
-            });
-            if (fault !== undefined) {
-              faults.push(`${name} ${fault}`);
-            }
             const lines = this.derived.get(role) ?? {};
             lines[name] = line;
             this.derived.set(role, lines);
@@ -123,18 +148,17 @@ export class AssistantRoutes implements OnApplicationBootstrap {
       }
     }
     // The jobs worker's context, the seeds and the first-account command hold none of the
-    // listed controllers and answer no request: nothing is open there. The application's own
-    // start, and `assistant-routes.test.ts`, hold every listed route.
+    // controllers and answer no request: nothing is open there.
     if (found.size === 0) {
       this.ready = true;
       return;
     }
-    for (const role of ASSISTANT_ROLES) {
-      for (const name of Object.keys(this.listOf(role))) {
-        if (!found.has(name)) {
-          faults.push(`${name} is on the assistant’s list of ${role} and is not a route`);
-        }
+    for (const name of Object.keys(this.lines)) {
+      if (!found.has(name)) {
+        faults.push(`${name} has a line of the assistant and is not a route`);
       }
+    }
+    for (const role of ASSISTANT_ROLES) {
       const lines = this.linesOf(role, true);
       for (const [name, line] of Object.entries(lines)) {
         const fault = assistantLineFault(name, line, lines);
@@ -154,16 +178,32 @@ export class AssistantRoutes implements OnApplicationBootstrap {
     return this.ready && (this.roles.get(handler)?.has(role) ?? false);
   }
 
-  /**
-   * The lines open to a role, by route name: its written list, or for a derived role the lines
-   * the table opens (task 11.13). Before the start check ran: none.
-   */
+  /** The lines open to a role, by route name. Before the start check ran: none. */
   linesOf(role: AssistantRole, starting = false): Readonly<Record<string, AssistantRouteLine>> {
     return this.ready || starting ? (this.derived.get(role) ?? {}) : {};
+  }
+
+  /** The area, action and kind of a listed route. */
+  factsOf(name: string): ListedRoute | undefined {
+    return this.facts.get(name);
+  }
+
+  /** The routes a role holds that have no line (`assistant-lines.test.ts` fails on each). */
+  routesWithoutLine(): readonly string[] {
+    return [...this.unlined].sort();
   }
 
   /** The route name of a listed handler. */
   nameOf(handler: object): string | undefined {
     return this.names.get(handler);
   }
+}
+
+/** What `AssistantRoutes` knows of a listed route. */
+export interface ListedRoute {
+  area: string;
+  action: Action;
+  kind: AssistantRouteKind;
+  /** `@Requires(…, { branch: 'none' })`: sent with no branch header. */
+  branchNone: boolean;
 }

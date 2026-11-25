@@ -147,6 +147,22 @@ export interface AssignmentSubjects {
   valid_until: Timestamp | null;
 }
 
+export interface AssistantActionSwitches {
+  changed_at: Timestamp;
+  changed_by: string;
+  is_on: boolean;
+  role: string;
+  route: string;
+}
+
+export interface AssistantAreaSwitches {
+  area: string;
+  changed_at: Timestamp;
+  changed_by: string;
+  is_on: boolean;
+  role: string;
+}
+
 export interface AssistantConversationRestores {
   branch_id: string;
   conversation_id: string;
@@ -220,6 +236,7 @@ export interface AssistantProposalSteps {
 
 export interface AssistantSettings {
   daily_limit: Generated<number>;
+  data_groups_off: Generated<string[]>;
   fallback_on: Generated<boolean>;
   id: Generated<boolean>;
   monthly_cap_dollars: Generated<number>;
@@ -2511,6 +2528,8 @@ export interface DB {
   announcements: Announcements;
   assignment_subjects: AssignmentSubjects;
   assignments: Assignments;
+  assistant_action_switches: AssistantActionSwitches;
+  assistant_area_switches: AssistantAreaSwitches;
   assistant_conversation_restores: AssistantConversationRestores;
   assistant_conversations: AssistantConversations;
   assistant_messages: AssistantMessages;

@@ -45,7 +45,6 @@ import {
   type ModelTurn,
 } from './model.js';
 import { ModelCallFailed, ModelCaller, type Attempt, type CallBudget } from './model-caller.js';
-import { journalOf, ownRecordsOnly, refusedUnlessOwnJournal } from './own-journal.js';
 import { reportFault } from '../../reporting/reporting.js';
 import { notifyLive } from '../notifications/live/live-payload.js';
 import { AssistantWork } from './assistant-work.js';
@@ -847,28 +846,10 @@ export class AssistantEngine {
       } else {
         const as = { pass: asker.pass, branchId: start.conversation.branchId, role };
         // Task 11.13: a preview or check writes nothing; it is sent with its body.
-        const line = lines[route];
-        let outcome = isPreview
+        const outcome = isPreview
           ? await this.dispatcher.send('POST', url.url, previewBody ?? {}, as)
           : await this.dispatcher.read(url.url, as);
-        // Task 11.14: a plan read of the person's own journal only (`own-journal.ts`).
-        const own = line?.kind === undefined || line.kind === 'read' ? line?.ownJournal : undefined;
-        if (own !== undefined && outcome.failure === undefined && outcome.status === 200) {
-          outcome =
-            (await refusedUnlessOwnJournal(
-              this.dispatcher,
-              as,
-              journalOf(own, call.args, outcome),
-            )) ?? outcome;
-        }
-        const ownList =
-          line?.kind === undefined || line.kind === 'read' ? line?.ownJournalList : undefined;
-        if (ownList !== undefined) {
-          outcome = await ownRecordsOnly(this.dispatcher, as, ownList, outcome);
-        }
-        const withheld =
-          line?.kind === undefined || line.kind === 'read' ? line?.withheld : undefined;
-        given = givenOf(withheld === undefined ? outcome : withholding(outcome, withheld));
+        given = givenOf(outcome);
         stored = readContent(call, route, lines, outcome.status, given);
       }
     }
@@ -971,19 +952,3 @@ export function systemInstruction(input: {
   ].join('\n');
 }
 
-/** A read with the line's withheld keys removed at any depth (task 11.13). */
-function withholding(outcome: ReadOutcome, keys: readonly string[]): ReadOutcome {
-  if ('failure' in outcome && outcome.failure !== undefined) return outcome;
-  const strip = (value: unknown): unknown => {
-    if (Array.isArray(value)) return value.map(strip);
-    if (value !== null && typeof value === 'object') {
-      return Object.fromEntries(
-        Object.entries(value)
-          .filter(([key]) => !keys.includes(key))
-          .map(([key, item]) => [key, strip(item)]),
-      );
-    }
-    return value;
-  };
-  return { status: outcome.status, body: strip('body' in outcome ? outcome.body : null) };
-}

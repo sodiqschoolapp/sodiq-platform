@@ -1,11 +1,10 @@
-import { ASSISTANT_ROLES } from '@sodiq/shared';
-import { assistantRoutesOf } from '../modules/access/assistant-routes.js';
+import { ROUTE_LINES } from '../modules/access/assistant-routes.js';
 import type { GeneratedTool, GeneratedParameter } from '../modules/assistant/tools.js';
 
 /**
  * Task 11.12 (build plan: "tools generated from the OpenAPI operations on a list fixed in code
  * per role"): `pnpm api:client` writes `src/modules/assistant/tools.generated.ts` from
- * `openapi.generated.json`, one entry per route of the lists, with the route's path and query
+ * `openapi.generated.json`, one entry per route with a line (task 11.20: every route a role of the assistant holds), with the route's path and query
  * parameters as the OpenAPI document gives them. `assistant-tools.test.ts` fails when the file
  * is not what this writes.
  */
@@ -36,9 +35,7 @@ function openApiPath(path: string): string {
 
 /** The tools of every route on a list, by route name, in the order of the names. */
 export function assistantToolsOf(document: ToolsDocument): Record<string, GeneratedTool> {
-  const names = [
-    ...new Set(ASSISTANT_ROLES.flatMap((role) => Object.keys(assistantRoutesOf(role)))),
-  ].sort();
+  const names = Object.keys(ROUTE_LINES).sort();
   const tools: Record<string, GeneratedTool> = {};
   for (const name of names) {
     const space = name.indexOf(' ');

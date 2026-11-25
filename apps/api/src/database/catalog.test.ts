@@ -68,6 +68,10 @@ const SCHOOL_WIDE_TABLES: Record<string, string> = {
     "The parents' digest time and quiet hours of the whole school, one row set by the Super Admin (10, The parents' digest; task 11.5, pull request #299). Clock times only.",
   assistant_settings:
     "The assistant's switches for the school and its three roles, the daily limit per person and the monthly cap of the whole school, one row set by the Super Admin (02, Assistant; task 11.12, pull request #374). Switches and whole numbers only.",
+  assistant_area_switches:
+    "The Super Admin's switch of one area of the assistant's actions for one of its three roles, school-wide like the settings (02, Assistant, Switches; task 11.20). A role, an area, a switch and who set it when.",
+  assistant_action_switches:
+    "The Super Admin's switch of one action of the assistant for one of its three roles, school-wide like the settings (02, Assistant, Switches; task 11.20). A role, a route name, a switch and who set it when.",
   digest_frequencies:
     'The digest frequency a Parent account chose; an account has no branch (task 11.5, pull request #299). An id, a frequency and a moment.',
   digests:
