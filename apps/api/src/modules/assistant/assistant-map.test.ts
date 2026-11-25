@@ -17,6 +17,7 @@ import {
   placeText,
 } from './platform-map.js';
 import { toolsOf } from './tools.js';
+import { OPEN_FILTER } from './field-filter.js';
 
 // Task 11.19 (`02`, Assistant, "Knows the platform", "Knows where the person is";
 // `edge/people-roles-accounts`, The assistant: "What does the button at the top right of the
@@ -247,12 +248,13 @@ describe('the map of the platform', () => {
     });
   });
 
-  it('gives the map’s three tools to every assistant role, after the role’s own', () => {
+  it('gives the map’s three tools and find_actions to every assistant role, after the role’s own', () => {
     for (const lines of [{}]) {
-      expect(toolsOf(lines).map((tool) => tool.name)).toEqual([
+      expect(toolsOf(lines, OPEN_FILTER).map((tool) => tool.name)).toEqual([
         'find_in_platform',
         'explain_place',
         'link_place',
+        'find_actions',
       ]);
     }
   });

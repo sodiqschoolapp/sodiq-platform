@@ -1,8 +1,9 @@
-import type { AssistantProposal, AssistantStep } from '@sodiq/shared';
+import type { AssistantProposal, AssistantStep, AssistantStepSecret } from '@sodiq/shared';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { SECTION_TITLE } from '@/components/ui/control';
 import { formatMoment, schoolDateText } from '@/lib/dates';
+import { actionLabelKey } from './assistant-api';
 
 /** Clock minutes of a day as "09:50". */
 function clock(minutes: number): string {
@@ -29,10 +30,15 @@ export function ProposalCard({
   proposal,
   onDecide,
   deciding,
+  secrets = [],
+  onSecretsClosed,
 }: {
   proposal: AssistantProposal;
   onDecide?: (which: 'confirm' | 'decline') => void;
   deciding?: boolean;
+  /** Task 11.20: what a confirmed step gave out once (a first password), never kept. */
+  secrets?: readonly AssistantStepSecret[];
+  onSecretsClosed?: () => void;
 }) {
   const { t, i18n } = useTranslation();
   const waiting = proposal.state === 'waiting';
@@ -60,7 +66,7 @@ export function ProposalCard({
           <li key={step.id} className="grid gap-1">
             <p className="font-semibold">
               {String(step.seq)}.{' '}
-              {t(`assistant.actions.${step.action}`, { defaultValue: step.action })}
+              {t(`assistant.actions.${actionLabelKey(step.action)}`, { defaultValue: step.action })}
             </p>
             {step.recordName !== null && (
               <p className="text-sm">
@@ -133,6 +139,23 @@ export function ProposalCard({
                   .join('; ')}
               </p>
             )}
+            {step.entries.length > 0 && (
+              <ul aria-label={t('assistant.proposal.entries')} className="grid gap-0.5 text-sm">
+                {step.entries.map((entry, index) => (
+                  <li key={`${String(index)}-${entry.name ?? ''}`}>
+                    {t('assistant.proposal.entryLine', {
+                      name: entry.name ?? t('assistant.proposal.entryUnknown'),
+                      value: t(`journal.marks.${entry.value}`, { defaultValue: entry.value }),
+                    })}
+                  </li>
+                ))}
+              </ul>
+            )}
+            {secrets
+              .filter((secret) => secret.stepId === step.id)
+              .map((secret) => (
+                <SecretShown key={secret.stepId} secret={secret} onClose={onSecretsClosed} />
+              ))}
             {step.fields.length > 0 && (
               <details className="text-sm">
                 <summary>{t('assistant.proposal.fields')}</summary>
@@ -195,5 +218,71 @@ export function ProposalCard({
         </>
       )}
     </section>
+  );
+}
+
+/** The secret keys a slip shows, in this order; the rest of the item is left out. */
+const SECRET_LINES = [
+  'firstName',
+  'lastName',
+  'fullName',
+  'login',
+  'password',
+  'secret',
+  'validUntil',
+] as const;
+
+/**
+ * Task 11.20 (`02`, Never, whatever the switches: "the secret is shown to the person in the
+ * conversation once, as the screen shows it"): the slip of a password or a key's secret, from
+ * the answer of the Confirm only; once closed or reloaded it is gone.
+ */
+function SecretShown({
+  secret,
+  onClose,
+}: {
+  secret: AssistantStepSecret;
+  onClose: (() => void) | undefined;
+}) {
+  const { t, i18n } = useTranslation();
+  return (
+    <div
+      role="region"
+      aria-label={t('assistant.proposal.secretTitle')}
+      className="grid gap-2 rounded-lg border p-3"
+    >
+      <p className="text-sm font-semibold">{t('assistant.proposal.secretTitle')}</p>
+      {secret.items.map((item, index) => (
+        <dl key={String(index)} className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-sm">
+          {SECRET_LINES.filter((key) => typeof item[key] === 'string').map((key) => (
+            <div key={key} className="contents">
+              <dt className="text-muted-foreground">{t(`assistant.proposal.secret_${key}`)}</dt>
+              <dd className="min-w-0 font-mono break-all">
+                {key === 'validUntil'
+                  ? formatMoment(i18n.language, String(item[key]))
+                  : String(item[key])}
+              </dd>
+            </div>
+          ))}
+        </dl>
+      ))}
+      <p className="text-sm text-muted-foreground">{t('assistant.proposal.secretOnce')}</p>
+      <div className="flex flex-wrap gap-2">
+        {/* As the screen's slip is printed (code review 5). */}
+        <Button
+          variant="secondary"
+          onClick={() => {
+            window.print();
+          }}
+        >
+          {t('assistant.proposal.secretPrint')}
+        </Button>
+        {onClose !== undefined && (
+          <Button variant="secondary" onClick={onClose}>
+            {t('assistant.proposal.secretClose')}
+          </Button>
+        )}
+      </div>
+    </div>
   );
 }

@@ -1,8 +1,10 @@
 import { Inject, Injectable } from '@nestjs/common';
 import {
+  ASSISTANT_DATA_GROUPS,
   ASSISTANT_ROLES,
   ASSISTANT_TIME_ZONE,
   permits,
+  type AssistantDataGroup,
   type AssistantRole,
   type AssistantSettings,
   type AssistantSettingsRecord,
@@ -25,6 +27,8 @@ export interface AssistantSwitches {
   monthlyCapDollars: number;
   /** Task 11.15: the worldwide fallback. */
   fallbackOn: boolean;
+  /** Task 11.20: the personal-data groups that reach the model (`02`, Personal data and the model). */
+  dataGroupsOn: AssistantDataGroup[];
 }
 
 /** The start and the end of the school day or month of a moment, in Asia/Tashkent. */
@@ -77,7 +81,14 @@ export class AssistantSettingsService {
   async switches(transaction: Transaction): Promise<AssistantSwitches> {
     const row = await transaction
       .selectFrom('assistant_settings')
-      .select(['school_on', 'roles_on', 'daily_limit', 'monthly_cap_dollars', 'fallback_on'])
+      .select([
+        'school_on',
+        'roles_on',
+        'daily_limit',
+        'monthly_cap_dollars',
+        'fallback_on',
+        'data_groups_off',
+      ])
       .executeTakeFirstOrThrow();
     return {
       schoolOn: row.school_on,
@@ -85,6 +96,7 @@ export class AssistantSettingsService {
       dailyLimit: row.daily_limit,
       monthlyCapDollars: row.monthly_cap_dollars,
       fallbackOn: row.fallback_on,
+      dataGroupsOn: ASSISTANT_DATA_GROUPS.filter((group) => !row.data_groups_off.includes(group)),
     };
   }
 
@@ -153,6 +165,9 @@ export class AssistantSettingsService {
           daily_limit: record.dailyLimit,
           monthly_cap_dollars: record.monthlyCapDollars,
           fallback_on: record.fallbackOn,
+          data_groups_off: ASSISTANT_DATA_GROUPS.filter(
+            (group) => !record.dataGroupsOn.includes(group),
+          ),
         })
         .execute();
       const after = await this.switches(transaction);

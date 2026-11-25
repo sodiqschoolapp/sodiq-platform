@@ -14,8 +14,7 @@ import {
 import type { SessionPass } from '../../http/session-cookie.js';
 import { fingerprintOf, findRecord, idsIn } from './canonical.js';
 import type { AssistantDispatcher, ReadOutcome } from './dispatcher.js';
-import { filterRead, filterWords } from './field-filter.js';
-import { journalOf, refusedUnlessOwnJournal } from './own-journal.js';
+import type { ModelFilter } from './field-filter.js';
 import {
   BODY_ARGUMENT,
   changeBodySchemaOf,
@@ -71,6 +70,8 @@ export interface StoredStep {
     recordName: string | null;
     recordNames: { uz: string; ru: string; en: string } | null;
     fields: { name: string; value: string }[];
+    /** Task 11.20: the entries of a step of many (attendance of a lesson), named. */
+    entries?: { name: string | null; value: string }[];
     previewLessons: AssistantPreviewLesson[];
     previewMore: number;
     previewIssues: { kind: 'warning' | 'blocked'; code: string }[];
@@ -83,6 +84,13 @@ export interface ProposingAs {
   branchId: string;
   role: AssistantRole;
   lines: RoleLines;
+  /** Task 11.20: the personal-data groups of the question. */
+  filter: ModelFilter;
+  /**
+   * Task 11.20: the names of the students of a lesson among the ids given, for the grouped list
+   * of a step (the panel only, never the model); an id not of the lesson is left out.
+   */
+  studentNamesOf?: (lessonId: string, ids: string[]) => Promise<ReadonlyMap<string, string>>;
   /** The date and class of a dated lesson of the branch, to name it in the panel (a one-day change). */
   lessonDateOf?: (lessonId: string) => Promise<{ date: string; classId: string } | undefined>;
 }
@@ -119,17 +127,6 @@ function urlFor(
     }
   }
   return urlOf(tool, given);
-}
-
-/** The values of a read's parameters, from the step (the journal of a base read). */
-function readArgsOf(
-  args: Readonly<Record<string, StepValue>>,
-  pathArgs: Readonly<Record<string, unknown>>,
-  body: Readonly<Record<string, unknown>>,
-): Record<string, unknown> {
-  return Object.fromEntries(
-    Object.entries(args).map(([name, value]) => [name, valueOf(value, pathArgs, body)]),
-  );
 }
 
 function withStepId(value: unknown, id: string | undefined): unknown {
@@ -257,6 +254,46 @@ function shownBodyOf(
     shown[key] = value;
   }
   return shown;
+}
+
+/**
+ * The entries of a step of many (task 11.20): the first list of the body whose items name a
+ * student (`saves` of a lesson's attendance), with what each enters (its other plain values).
+ */
+/** An attendance mark by the name of its text (`07`: 1 present, 0 absent, 2 late, 3 at school). */
+const MARK_NAMES: Readonly<Record<number, string>> = {
+  1: 'present',
+  0: 'absent',
+  2: 'late',
+  3: 'skipped',
+};
+
+function entryListOf(
+  body: unknown,
+): { key: string; items: { studentId: string; value: string }[] } | undefined {
+  if (body === null || typeof body !== 'object' || Array.isArray(body)) return undefined;
+  for (const [key, value] of Object.entries(body as Record<string, unknown>)) {
+    if (!Array.isArray(value) || value.length === 0) continue;
+    const items: { studentId: string; value: string }[] = [];
+    for (const item of value) {
+      if (item === null || typeof item !== 'object') return undefined;
+      const { studentId, ...rest } = item as Record<string, unknown>;
+      if (typeof studentId !== 'string') return undefined;
+      const shown = Object.entries(rest)
+        .filter(([name, inner]) => name !== 'version' && inner !== null && inner !== undefined)
+        .map(([name, inner]) =>
+          name === 'mark' && typeof inner === 'number'
+            ? (MARK_NAMES[inner] ?? String(inner))
+            : typeof inner === 'string'
+              ? inner
+              : JSON.stringify(inner),
+        )
+        .join(', ');
+      items.push({ studentId, value: shown.slice(0, 100) });
+    }
+    return { key, items };
+  }
+  return undefined;
 }
 
 function fieldsOf(body: unknown): { name: string; value: string }[] {
@@ -442,7 +479,7 @@ export async function draftStep(
   if (typeof summary !== 'string' || summary.trim() === '') {
     return { given: { error: 'invalid_arguments', detail: 'summary is required' } };
   }
-  const schema = changeBodySchemaOf(route, line);
+  const schema = changeBodySchemaOf(route, line, as.filter);
   const given = args[BODY_ARGUMENT];
   if (schema === undefined && given !== undefined) {
     return { given: { error: 'invalid_arguments', detail: 'this change takes no body' } };
@@ -462,30 +499,13 @@ export async function draftStep(
   if (line.serverBase !== undefined) {
     const server = line.serverBase;
     const readUrl = urlFor(server.route, server.args, pathArgs, body);
-    const readArgs = readArgsOf(server.args, pathArgs, body);
     for (const name of Object.keys(server.toolFields)) {
       delete body[name];
     }
     if ('fault' in readUrl) {
       return { given: { error: 'invalid_arguments', detail: readUrl.fault } };
     }
-    let outcome = await dispatcher.read(readUrl.url, as);
-    // Task 11.14 (review of the code, finding 1): the base read is narrowed as the plan read is,
-    // so a colleague's item is refused here and never stored or given to the model.
-    const own = as.lines[server.route];
-    if (
-      own !== undefined &&
-      (own.kind === undefined || own.kind === 'read') &&
-      own.ownJournal !== undefined &&
-      refusalOf(outcome) === undefined
-    ) {
-      outcome =
-        (await refusedUnlessOwnJournal(
-          dispatcher,
-          as,
-          journalOf(own.ownJournal, readArgs, outcome),
-        )) ?? outcome;
-    }
+    const outcome = await dispatcher.read(readUrl.url, as, server.route);
     const refused = refusalOf(outcome);
     if (refused !== undefined) {
       return { given: refused };
@@ -523,7 +543,7 @@ export async function draftStep(
     if ('fault' in basisUrl) {
       return { given: { error: 'invalid_arguments', detail: basisUrl.fault } };
     }
-    const outcome = await dispatcher.read(basisUrl.url, as);
+    const outcome = await dispatcher.read(basisUrl.url, as, line.basis.route);
     const refused = refusalOf(outcome);
     if (refused !== undefined) {
       return { given: refused };
@@ -587,7 +607,13 @@ export async function draftStep(
       line.preview.body === undefined ? body : line.preview.body(body),
       typeof pathArgs.id === 'string' ? pathArgs.id : undefined,
     );
-    const outcome = await dispatcher.send('POST', previewUrl.url, previewBody, as);
+    const outcome = await dispatcher.send(
+      'POST',
+      previewUrl.url,
+      previewBody,
+      as,
+      line.preview.route,
+    );
     const refused = refusalOf(outcome);
     if (refused !== undefined) {
       // A preview refused adds no step (decision 7): "today cannot become a day off".
@@ -598,7 +624,7 @@ export async function draftStep(
       body: previewBody,
       fingerprint: fingerprintOf(bodyOf(outcome)),
     };
-    const filtered = filterRead(bodyOf(outcome));
+    const filtered = as.filter.read(bodyOf(outcome));
     previewLessons = withChoices(lessonsOfPreview(filtered), body);
     previewIssues = issuesOfPreview(filtered);
     previewCounts = countsOfPreview(filtered);
@@ -618,13 +644,36 @@ export async function draftStep(
       const day = await dispatcher.read(
         `/api/timetable/day?date=${at.date}&classId=${at.classId}`,
         as,
+        'GET /api/timetable/day',
       );
       const lesson = findRecord(bodyOf(day), 'id', pathArgs.id);
-      previewLessons = lessonsOfPreview(lesson === undefined ? [] : [filterRead(lesson)]).map(
+      previewLessons = lessonsOfPreview(lesson === undefined ? [] : [as.filter.read(lesson)]).map(
         (one) => ({ ...one, list: 'lesson' }),
       );
     }
   }
+
+  // Task 11.20: a step of many entries shows them as one list, each named (build plan).
+  const shownBody = tool.body === undefined ? null : shownBodyOf(body, line);
+  const entryList = entryListOf(shownBody);
+  let entries: { name: string | null; value: string }[] = [];
+  if (
+    entryList !== undefined &&
+    typeof pathArgs.lessonId === 'string' &&
+    as.studentNamesOf !== undefined
+  ) {
+    const names = await as.studentNamesOf(
+      pathArgs.lessonId,
+      entryList.items.map((item) => item.studentId),
+    );
+    entries = entryList.items.map((item) => ({
+      name: names.get(item.studentId) ?? null,
+      value: item.value,
+    }));
+  }
+  const shownFields = fieldsOf(shownBody).filter(
+    (field) => entries.length === 0 || field.name !== entryList?.key,
+  );
 
   const step: StoredStep = {
     id: randomUUID(),
@@ -635,7 +684,7 @@ export async function draftStep(
     body: tool.body === undefined ? null : body,
     action: tool.name,
     group: line.group,
-    summary: filterWords(summary).trim().slice(0, SUMMARY_MAX_LENGTH),
+    summary: as.filter.words(summary).trim().slice(0, SUMMARY_MAX_LENGTH),
     records,
     basisIds,
     basis,
@@ -643,7 +692,8 @@ export async function draftStep(
     shown: {
       recordName: nameOfRecord(picked),
       recordNames: namesOfRecord(picked),
-      fields: fieldsOf(tool.body === undefined ? null : shownBodyOf(body, line)),
+      fields: shownFields,
+      entries,
       // Only the panel's fields: the ids that matched a choice are not kept.
       previewLessons: previewLessons.map((lesson: InternalLesson) => {
         const shown: InternalLesson = { ...lesson };

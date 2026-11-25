@@ -87,6 +87,7 @@ import { YearsPage } from '@/features/setup/years-page';
 import { SlotTypesPage } from '@/features/setup/slot-types-page';
 import { CalendarPage } from '@/features/setup/calendar-page';
 import { SettingsPage } from '@/features/setup/settings-page';
+import { AssistantSettingsPage } from '@/features/assistant/assistant-settings-page';
 import { TravelTimesPage } from '@/features/setup/travel-times-page';
 import { DemoClockPage } from '@/features/setup/demo-clock-page';
 import { DayTemplatesPage } from '@/features/setup/day-templates-page';
@@ -1003,6 +1004,13 @@ const settingsRoute = createRoute({
   component: guarded('settings', SettingsPage),
 });
 
+// Task 11.20: the Assistant settings page (`02`, Assistant, Switches), the Super Admin's.
+const assistantSettingsRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/setup/assistant',
+  component: guarded('school_settings', AssistantSettingsPage),
+});
+
 // Task 10.5: the demo time of the test environment, the Super Admin's.
 const demoClockRoute = createRoute({
   getParentRoute: () => appRoute,
@@ -1070,6 +1078,7 @@ const routeTree = rootRoute.addChildren([
     dayTemplatesRoute,
     templateSettingsRoute,
     settingsRoute,
+    assistantSettingsRoute,
     demoClockRoute,
     travelTimesRoute,
     subjectsRoute,

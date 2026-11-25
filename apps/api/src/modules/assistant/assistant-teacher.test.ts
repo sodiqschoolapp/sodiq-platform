@@ -54,6 +54,7 @@ const PLAN_LIST = tool('GET /api/plans');
 const CARD_READ = tool('GET /api/journal/lessons/:lessonId/card');
 const TEACHER_VIEW = tool('GET /api/timetable/views/teacher');
 const STUDENTS_READ = tool('GET /api/people/students');
+const ATTENDANCE = propose('POST /api/journal/lessons/:lessonId/attendance');
 
 const values = (change: Record<string, unknown> = {}) => ({
   topic: 'Fractions',
@@ -308,31 +309,132 @@ describe('the assistant for teachers (task 11.14)', () => {
     await t.close();
   });
 
-  it('refuses "mark everyone present": nothing is entered, and the answer opens the lesson’s journal column', async () => {
+  // Task 11.20, `edge/people-roles-accounts`, "A Teacher asks the assistant to mark everyone
+  // present": "It reads the lesson's students and proposes 'present' for each, in one proposal. On
+  // Confirm each entry is saved through the journal's own action, in its edit window and locks: a
+  // locked or closed lesson is refused as on the screen, and the answer names it." (The 11.14
+  // refusal gave way: plan decision 1, Look first.)
+  it('proposes "mark everyone present" as one step of the journal’s bulk save naming each student, saves it at Confirm marked "via assistant", and refuses a locked lesson as the screen does', async () => {
+    const members = new MembersKit(t.database.migrator, await load.classes.account());
+    const pupils: string[] = [];
+    for (let index = 0; index < 2; index += 1) {
+      const student = await members.student(scene.branch);
+      await members.member({
+        branch: scene.branch,
+        classId: scene.classId,
+        studentId: student,
+        from: '2026-09-01',
+      });
+      pupils.push(student);
+    }
+    const saves = pupils.map((studentId) => ({ studentId, mark: 1, version: null }));
+    const cellsOf = (lessonId: string) =>
+      t.database.migrator
+        .selectFrom('journal_cells')
+        .select(['student_id', 'mark'])
+        .where('lesson_id', '=', lessonId)
+        .where('work_id', 'is', null)
+        .where('student_id', 'in', pupils)
+        .execute();
+    let conversation = await asked([
+      {
+        name: ATTENDANCE,
+        args: { lessonId: lessons[2], body: { saves }, summary: 'Everyone present.' },
+      },
+    ]);
+    const shown = conversation.proposals.at(-1);
+    expect(shown, JSON.stringify(results())).toBeDefined();
+    // One step, the entries grouped and each student named (build plan 11.20).
+    expect(shown?.steps).toHaveLength(1);
+    expect(shown?.steps[0]?.entries.map((entry) => entry.value)).toEqual(['present', 'present']);
+    expect(shown?.steps[0]?.entries.every((entry) => entry.name !== null)).toBe(true);
+    expect(await cellsOf(lessons[2] ?? '')).toEqual([]);
+    expect(await stepsAfter(proposalOf(conversation).id)).toEqual([['done', null]]);
+    expect((await cellsOf(lessons[2] ?? '')).length).toBe(2);
+    const audited = await t.database.migrator
+      .selectFrom('audit_log')
+      .select(['assistant_step_id'])
+      .where('assistant_step_id', '=', shown?.steps[0]?.id ?? '')
+      .execute();
+    expect(audited.length).toBeGreaterThan(0);
+    // The Monday of 12 October is locked on 27 October: refused as on the screen, nothing saved.
     const before = await everyRow();
-    const conversation = await asked([
-      // A careless model asks the journal's own action: it is on no list, so it is no tool.
-      { name: 'JournalController_allPresent', args: { lessonId: lessons[2] } },
+    conversation = await asked([
+      {
+        name: ATTENDANCE,
+        args: { lessonId: lessons[0], body: { saves }, summary: 'Everyone present.' },
+      },
+    ]);
+    const locked = proposalOf(conversation);
+    expect(locked.steps).toEqual([['waiting', null]]);
+    const outcome = await stepsAfter(locked.id);
+    expect(outcome[0]?.[0]).toBe('refused');
+    expect(outcome[0]?.[1]).toBe('journal_locked');
+    expect(await cellsOf(lessons[0] ?? '')).toEqual([]);
+    const after = await everyRow();
+    expect(after.journal_cells).toEqual(before.journal_cells);
+  });
+
+  // Code review 4a, 4b and permission review 2: a cell saved by another person between the
+  // proposal and Confirm makes the step outdated (the journal's own version refusal); a lesson
+  // of a colleague names none of its students in the card; a route of another role is no tool.
+  it('finds "mark everyone present" outdated when a cell was saved since, names nobody of a colleague’s lesson, and runs no route of another role', async () => {
+    const members = new MembersKit(t.database.migrator, await load.classes.account());
+    const pupil = await members.student(scene.branch);
+    await members.member({
+      branch: scene.branch,
+      classId: scene.classId,
+      studentId: pupil,
+      from: '2026-09-01',
+    });
+    const saves = [{ studentId: pupil, mark: 1, version: null }];
+    let conversation = await asked([
+      { name: ATTENDANCE, args: { lessonId: lessons[2], body: { saves }, summary: 'Present.' } },
+    ]);
+    const waiting = proposalOf(conversation);
+    expect(waiting.steps).toEqual([['waiting', null]]);
+    // The same cell saved on the screen meanwhile.
+    const screen = await request(server())
+      .post(`/api/journal/lessons/${lessons[2] ?? ''}/attendance`)
+      .set('Cookie', owner.cookie)
+      .set(BRANCH_HEADER, scene.branch)
+      .set(REQUEST_KEY_HEADER, randomUUID())
+      .send({ saves: [{ studentId: pupil, mark: 0, version: null }] });
+    expect(screen.status, JSON.stringify(screen.body)).toBe(200);
+    expect((await stepsAfter(waiting.id))[0]?.[0]).toBe('outdated');
+    const cell = await t.database.migrator
+      .selectFrom('journal_cells')
+      .select('mark')
+      .where('lesson_id', '=', lessons[2] ?? '')
+      .where('student_id', '=', pupil)
+      .where('work_id', 'is', null)
+      .executeTakeFirstOrThrow();
+    expect(cell.mark).toBe(0);
+    // A colleague's lesson: the step may be drafted, but no student of it is named.
+    conversation = await asked([
+      {
+        name: ATTENDANCE,
+        args: { lessonId: otherLessons[2], body: { saves }, summary: 'Present.' },
+      },
+    ]);
+    const theirs = conversation.proposals.at(-1);
+    for (const step of theirs?.steps ?? []) {
+      expect(step.entries.every((entry) => entry.name === null)).toBe(true);
+    }
+    // A route the Teacher does not hold is no tool: refused before anything is sent.
+    await asked([
+      { name: `propose_${GENERATED_TOOLS['PUT /api/setup/rooms/:id']?.name ?? ''}`.slice(0, 64) },
+    ]);
+    expect(results()).toEqual([{ error: 'not_on_list' }]);
+  });
+
+  // The lesson's journal column is still linked when the person would rather enter it there.
+  it('links the journal column of an own lesson, and nothing of another teacher’s', async () => {
+    await asked([
       { name: OPEN_LESSON_JOURNAL, args: { lessonId: lessons[2] } },
-      // Another teacher's lesson: its card is refused, so nothing is linked.
       { name: OPEN_LESSON_JOURNAL, args: { lessonId: otherLessons[2] } },
     ]);
-    expect(await everyRow()).toEqual(before);
-    expect(conversation.proposals).toEqual([]);
-    const results = lastResults(model.requests.at(-1) ?? { system: '', turns: [], tools: [] });
-    expect(results.map((one) => one.result)).toEqual([
-      expect.objectContaining({ error: expect.any(String) as unknown }),
-      { linked: 'lesson_journal' },
-      { error: 'not_open' },
-    ]);
-    const last = conversation.messages.at(-1);
-    expect(last?.kind).toBe('answer');
-    expect(last?.kind === 'answer' ? last.lessons : []).toEqual([
-      { journalId: journal, quarterId: q1, date: '2026-10-26' },
-    ]);
-    // The model is never offered an action of the journal's entry.
-    const offered = (model.requests.at(-1)?.tools ?? []).map((one) => one.name);
-    expect(offered.some((name) => /attendance|allPresent|score|comment/i.test(name))).toBe(false);
+    expect(results()).toEqual([{ linked: 'lesson_journal' }, { error: 'not_open' }]);
   });
 
   it('reads the Teacher’s own journal, plan and timetable, and refuses another teacher’s journal, plan, lesson card and timetable, also for a Teacher who is the subject’s Head Teacher and a Tutor of that class', async () => {
@@ -352,17 +454,18 @@ describe('the assistant for teachers (task 11.14)', () => {
     expect(theirJournal).toEqual({ status: 403, error: 'journal_scope' });
     expect(theirTimetable).toEqual({ status: 403, error: 'timetable_view_scope' });
     // `edge/lesson-plans`, "Who may read a plan?", lets a teacher of the same subject and grade
-    // read it on the plan page; the Teacher's assistant reads only the own (`02`: "Read … their
-    // lesson plans"; review of the code, finding 1).
-    expect(theirPlan).toEqual({ status: 403, error: 'plan_scope' });
+    // read it on the plan page. Task 11.20 (plan decision 4, Look first; `02`, What it can do:
+    // "Every action the person's chosen role has on the screens"): the Teacher's assistant reads
+    // it too, as the screen in the Teacher role does; the narrowing of 11.14 went.
+    expect((theirPlan as { status?: number }).status).toBe(200);
     await asked([
       { name: CARD_READ, args: { lessonId: otherLessons[0] } },
       { name: PLAN_LESSON_READ, args: { lessonId: otherLessons[0] } },
       { name: CARD_READ, args: { lessonId: lessons[0] } },
     ]);
     const [theirCard, theirItem, ownCard] = results();
-    expect(theirCard).toEqual({ status: 403, error: 'plan_scope' });
-    expect(theirItem).toEqual({ status: 403, error: 'plan_scope' });
+    expect((theirCard as { status?: number }).status).toBe(200);
+    expect((theirItem as { status?: number }).status).toBe(200);
     expect((ownCard as { status?: number }).status).toBe(200);
     // The same person also holds the Head Teacher of the subject and the Tutor of the other
     // class (given at the start): with the Teacher role chosen, neither counts (`02`: "in the
@@ -386,13 +489,16 @@ describe('the assistant for teachers (task 11.14)', () => {
     expect(asHeadTeacher.status).toBe(200);
   });
 
-  it('lists only the Teacher’s own plans through the assistant, while the plan page also lists a colleague’s of the same subject and grade (review round 2)', async () => {
+  // Task 11.20 (plan decision 4, Look first): the plan list as the screen gives it in the Teacher
+  // role, a colleague's of the same subject and grade included.
+  it('lists the plans the Teacher role lists on the plan page, a colleague’s of the same subject and grade included', async () => {
     await asked([{ name: PLAN_LIST }]);
     const [read] = results();
     const plans = ((read as { data?: { plans?: { journalId: string }[] } }).data?.plans ?? []).map(
       (one) => one.journalId,
     );
-    expect(plans).toEqual([journal]);
+    expect(plans).toContain(journal);
+    expect(plans).toContain(otherJournal);
     // In the person's own session every role counts (a teacher of the same subject and grade,
     // `edge/lesson-plans`, and here the subject's Head Teacher too): both are listed.
     const onScreen = await request(server())
@@ -715,7 +821,7 @@ describe('the assistant for teachers (task 11.14)', () => {
     expect(results[0]?.result).toEqual({ error: 'assistant_nothing_to_change' });
   });
 
-  it('refuses a save of another teacher’s plan item at the proposal and a new item at Confirm; nothing saved, nothing of it given to the model', async () => {
+  it('refuses a save of another teacher’s plan item and a new item at Confirm, as the plan page does; nothing saved', async () => {
     // An item of the other class's plan, written by its own teacher on the screen.
     // A session of a new account moved to the colleague's own account (the staff record's
     // account link is fixed once set).
@@ -754,12 +860,12 @@ describe('the assistant for teachers (task 11.14)', () => {
         },
       },
     ]);
-    // The base read is narrowed as the plan read is (review of the code, finding 1): the save of
-    // a colleague's item is refused at the proposal, no step is stored, and nothing of the item
-    // reaches the model.
-    expect(results()).toEqual([{ status: 403, error: 'plan_scope' }]);
-    expect(conversation.proposals.filter((one) => one.state === 'waiting')).toEqual([]);
-    expect(JSON.stringify(model.requests.at(-1))).not.toContain('Theirs');
+    // Task 11.20 (plan decision 4): the colleague's plan is read as the Teacher reads it on the
+    // screen; the save is proposed, and the plan's own route refuses it at Confirm.
+    const saving = proposalOf(conversation);
+    expect(saving.steps).toEqual([['waiting', null]]);
+    expect((await stepsAfter(saving.id))[0]?.[0]).toBe('refused');
+    expect((await planItem(theirs.id))?.topic).toBe('Theirs');
     conversation = await asked([
       {
         name: ITEM_CREATE,

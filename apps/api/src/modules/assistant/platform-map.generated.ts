@@ -2585,6 +2585,22 @@ export const PLATFORM_MAP_SOURCE: unknown = {
    "description": "The entry to school setup: branches, buildings, rooms, divisions, years, slot types, day templates, calendar, settings, subjects, and the system pages such as deleted records, feedback, keys and status."
   },
   {
+   "id": "page:/setup/assistant",
+   "path": "/setup/assistant",
+   "title": {
+    "uz": "Yordamchi sozlamalari",
+    "ru": "Настройки помощника",
+    "en": "Assistant settings"
+   },
+   "roles": [
+    "super_admin"
+   ],
+   "params": {},
+   "search": {},
+   "operations": [],
+   "description": "The Super Admin’s settings of the assistant: switched on for the school and each role, the limits, which personal data may reach the model, and every action of each role by area, each switched on or off for the assistant. Heavy actions such as publishing, closing, password resets and roles start off."
+  },
+  {
    "id": "page:/setup/branch",
    "path": "/setup/branch",
    "title": {
@@ -3791,6 +3807,7 @@ export const PLATFORM_MAP_SOURCE: unknown = {
     "/plans/masters",
     "/plans/masters/$masterId",
     "/plans/windows",
+    "/setup/assistant",
     "/setup/branch",
     "/setup/branches",
     "/setup/buildings",
@@ -3852,6 +3869,7 @@ export const PLATFORM_MAP_SOURCE: unknown = {
     "/plans/masters",
     "/plans/masters/$masterId",
     "/plans/windows",
+    "/setup/assistant",
     "/setup/branch",
     "/setup/branches",
     "/setup/buildings",
@@ -6756,6 +6774,25 @@ export const PLATFORM_MAP_SOURCE: unknown = {
    "description": "The assistant panel beside every page: ask how to do something, or ask it to prepare changes that run only after Confirm."
   },
   {
+   "id": "features/assistant/assistant-settings-page.tsx#tab:assistant.settingsPage.role",
+   "kind": "tab",
+   "label": {
+    "uz": "Rol",
+    "ru": "Роль",
+    "en": "Role"
+   },
+   "pages": [
+    "/setup/assistant"
+   ],
+   "parent": null,
+   "roles": [
+    "super_admin"
+   ],
+   "operations": [],
+   "opens": null,
+   "description": "Chooses the role whose actions are listed: the Super Admin, the Academic Vice Principal or the Teacher. Each area opens to show its actions with a switch each, and a switch for the whole area."
+  },
+  {
    "id": "features/assistant/assistant-settings-section.tsx#field:assistant.settings.dailyLimit",
    "kind": "field",
    "label": {
@@ -6764,17 +6801,34 @@ export const PLATFORM_MAP_SOURCE: unknown = {
     "en": "Questions per person per day"
    },
    "pages": [
-    "/setup/settings"
+    "/setup/assistant"
    ],
    "parent": null,
    "roles": [
-    "super_admin",
-    "principal",
-    "academic_vice_principal"
+    "super_admin"
    ],
    "operations": [],
    "opens": null,
    "description": "How many questions each person may ask the assistant per day."
+  },
+  {
+   "id": "features/assistant/assistant-settings-section.tsx#field:assistant.settings.dataGroup_contact",
+   "kind": "field",
+   "label": {
+    "uz": "Aloqa: telefonlar, pochta, manzillar",
+    "ru": "Контакты: телефоны, почта, адреса",
+    "en": "Contact: phones, emails, addresses"
+   },
+   "pages": [
+    "/setup/assistant"
+   ],
+   "parent": null,
+   "roles": [
+    "super_admin"
+   ],
+   "operations": [],
+   "opens": null,
+   "description": "Six switches, one per group of personal data (contact, identity, financial, the diagnostic score, medical, relatives): a group switched off reaches the model as [removed]. Secrets never do."
   },
   {
    "id": "features/assistant/assistant-settings-section.tsx#field:assistant.settings.fallbackOn",
@@ -6785,13 +6839,11 @@ export const PLATFORM_MAP_SOURCE: unknown = {
     "en": "Worldwide fallback when Frankfurt is busy"
    },
    "pages": [
-    "/setup/settings"
+    "/setup/assistant"
    ],
    "parent": null,
    "roles": [
-    "super_admin",
-    "principal",
-    "academic_vice_principal"
+    "super_admin"
    ],
    "operations": [],
    "opens": null,
@@ -6806,13 +6858,11 @@ export const PLATFORM_MAP_SOURCE: unknown = {
     "en": "Monthly spending cap, US dollars"
    },
    "pages": [
-    "/setup/settings"
+    "/setup/assistant"
    ],
    "parent": null,
    "roles": [
-    "super_admin",
-    "principal",
-    "academic_vice_principal"
+    "super_admin"
    ],
    "operations": [],
    "opens": null,
@@ -6827,13 +6877,11 @@ export const PLATFORM_MAP_SOURCE: unknown = {
     "en": "On for the role …"
    },
    "pages": [
-    "/setup/settings"
+    "/setup/assistant"
    ],
    "parent": null,
    "roles": [
-    "super_admin",
-    "principal",
-    "academic_vice_principal"
+    "super_admin"
    ],
    "operations": [],
    "opens": null,
@@ -6848,13 +6896,11 @@ export const PLATFORM_MAP_SOURCE: unknown = {
     "en": "Assistant on for the school"
    },
    "pages": [
-    "/setup/settings"
+    "/setup/assistant"
    ],
    "parent": null,
    "roles": [
-    "super_admin",
-    "principal",
-    "academic_vice_principal"
+    "super_admin"
    ],
    "operations": [],
    "opens": null,
@@ -6923,6 +6969,70 @@ export const PLATFORM_MAP_SOURCE: unknown = {
    "operations": [],
    "opens": null,
    "description": "Declines the assistant's proposal; nothing is changed."
+  },
+  {
+   "id": "features/assistant/proposal-card.tsx#button:assistant.proposal.secretClose",
+   "kind": "button",
+   "label": {
+    "uz": "Yozib oldim",
+    "ru": "Я записал",
+    "en": "I have written it down"
+   },
+   "pages": [
+    "*"
+   ],
+   "parent": null,
+   "roles": [
+    "super_admin",
+    "principal",
+    "academic_vice_principal",
+    "spiritual_vice_principal",
+    "head_tutor",
+    "tutor",
+    "class_teacher",
+    "senior_head_teacher",
+    "head_teacher",
+    "teacher",
+    "hr",
+    "nurse",
+    "psychologist",
+    "librarian"
+   ],
+   "operations": [],
+   "opens": null,
+   "description": "Closes the one-time password or secret a confirmed step gave out; it is shown once and is not kept in the conversation."
+  },
+  {
+   "id": "features/assistant/proposal-card.tsx#button:assistant.proposal.secretPrint",
+   "kind": "button",
+   "label": {
+    "uz": "Chop etish",
+    "ru": "Печать",
+    "en": "Print"
+   },
+   "pages": [
+    "*"
+   ],
+   "parent": null,
+   "roles": [
+    "super_admin",
+    "principal",
+    "academic_vice_principal",
+    "spiritual_vice_principal",
+    "head_tutor",
+    "tutor",
+    "class_teacher",
+    "senior_head_teacher",
+    "head_teacher",
+    "teacher",
+    "hr",
+    "nurse",
+    "psychologist",
+    "librarian"
+   ],
+   "operations": [],
+   "opens": null,
+   "description": "Prints the one-time password or secret a confirmed step gave out, as its screen prints the slip."
   },
   {
    "id": "features/audit/audit-page.tsx#button:audit.clear",
@@ -32172,6 +32282,27 @@ export const PLATFORM_MAP_SOURCE: unknown = {
    "operations": [],
    "opens": "/assistant-conversations",
    "description": "Opens the Assistant conversations page of School setup (/assistant-conversations)."
+  },
+  {
+   "id": "features/setup/setup-page.tsx#tab:setup.assistantSettingsLink",
+   "kind": "tab",
+   "label": {
+    "uz": "Yordamchi sozlamalari",
+    "ru": "Настройки помощника",
+    "en": "Assistant settings"
+   },
+   "pages": [
+    "/setup"
+   ],
+   "parent": null,
+   "roles": [
+    "super_admin",
+    "principal",
+    "academic_vice_principal"
+   ],
+   "operations": [],
+   "opens": "/setup/assistant",
+   "description": "Opens the Assistant settings page of School setup (/setup/assistant)."
   },
   {
    "id": "features/setup/setup-page.tsx#tab:setup.branchesLink",

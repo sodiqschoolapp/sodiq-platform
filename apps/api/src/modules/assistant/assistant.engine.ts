@@ -19,6 +19,7 @@ import { ApiException } from '../../http/api-exception.js';
 import type { SessionPass } from '../../http/session-cookie.js';
 import { ASSISTANT_PROPOSAL_MINUTES } from '@sodiq/shared';
 import { AssistantRoutes } from '../access/assistant-routes.check.js';
+import { kindOfLine, type AssistantRouteLine } from '../access/assistant-routes.js';
 import type { JsonValue } from '../../database/types.generated.js';
 import { PERMISSION_TABLE } from '../access/permission-table.token.js';
 import type { Access } from '../access/permission.guard.js';
@@ -35,17 +36,19 @@ import {
 } from './conversations.store.js';
 import { explainPlace, findInPlatform, linkOf, placeOf, placeText } from './platform-map.js';
 import { AssistantDispatcher, type ReadOutcome } from './dispatcher.js';
-import { filterRead, filterWords } from './field-filter.js';
+import { filterWords, ModelFilter } from './field-filter.js';
+import { AssistantSwitches, type SwitchRows } from './assistant-switches.service.js';
 import type { ModelPrice } from '../../config/config.js';
+import { ASSISTANT_KINDS_WITHOUT_TOOL } from '@sodiq/shared';
 import {
   ASSISTANT_MODEL,
   type AssistantModel,
   type ModelPlace,
   type ModelReply,
+  type ModelTool,
   type ModelTurn,
 } from './model.js';
 import { ModelCallFailed, ModelCaller, type Attempt, type CallBudget } from './model-caller.js';
-import { journalOf, ownRecordsOnly, refusedUnlessOwnJournal } from './own-journal.js';
 import { reportFault } from '../../reporting/reporting.js';
 import { notifyLive } from '../notifications/live/live-payload.js';
 import { AssistantWork } from './assistant-work.js';
@@ -59,8 +62,13 @@ import {
   OPEN_LESSON_JOURNAL,
   routeOfTool,
   EXPLAIN_PLACE,
+  FIND_ACTIONS,
   FIND_IN_PLATFORM,
   LINK_PLACE,
+  declaredActions,
+  findActions,
+  generatedOf,
+  routesOfPage,
   toolsOf,
   urlOf,
   type RoleLines,
@@ -124,6 +132,12 @@ interface Started {
   today: string;
   /** Task 11.19: where the question was asked from, as the model is told it. */
   place: StoredPlace | undefined;
+  /** Task 11.20: the personal-data groups of this question, as the Super Admin set them. */
+  filter: ModelFilter;
+  /** Task 11.20: the switches as they were at the question (the dispatcher reads them again). */
+  switchRows: SwitchRows;
+  /** Task 11.20: the operations of the conversation's earlier proposals, declared again. */
+  used: string[];
 }
 
 /**
@@ -170,6 +184,7 @@ export class AssistantEngine {
     private readonly caller: ModelCaller,
     private readonly work: AssistantWork,
     private readonly sessions: Sessions,
+    private readonly switches: AssistantSwitches,
   ) {}
 
   /**
@@ -229,10 +244,12 @@ export class AssistantEngine {
         }
       }
       const fallbackOn = await this.refuseWhenClosed(transaction, access.accountId, role, now);
-      const history =
+      const filter = new ModelFilter((await this.settings.switches(transaction)).dataGroupsOn);
+      const switchRows = await this.switches.rowsIn(transaction);
+      const earlier =
         existing === undefined
-          ? []
-          : await this.history(transaction, existing.id, now, asker.language);
+          ? { turns: [], used: [] }
+          : await this.history(transaction, existing.id, now, asker.language, filter);
       const conversation =
         existing === undefined
           ? await this.create(transaction, access, branchId, role, question.text, now)
@@ -272,10 +289,13 @@ export class AssistantEngine {
         // Task 11.15 (plan decision 6): the fallback switch as it is at the start of the question;
         // task 11.16: its time limit counted from the question's stored moment.
         budget: this.caller.begin(fallbackOn, now),
-        history,
+        history: earlier.turns,
         branchName: branch.name,
         today: today.rows[0]?.today ?? '',
         place,
+        filter,
+        switchRows,
+        used: earlier.used,
       };
       return { started, answer: { conversation: await conversationOf(transaction, row, now) } };
     });
@@ -328,8 +348,31 @@ export class AssistantEngine {
   ): Promise<void> {
     const role = question.role;
 
-    const lines = this.routes.linesOf(role);
-    const tools = toolsOf(lines);
+    // Task 11.20: the role's list as the Super Admin switched it at the question; the dispatcher
+    // reads the switch again for every request it sends (plan review 6).
+    const listed = this.routes.linesOf(role);
+    const on = this.switches.onRoutes(start.switchRows, role);
+    const lines: RoleLines = Object.fromEntries(
+      Object.entries(listed).filter(([route]) => on.has(route)),
+    );
+    const filter = start.filter;
+    // The declarations of each call (plan decision 10, review 13): the actions found in this
+    // question (newest first), then those of the conversation's earlier proposals, then those
+    // the page open calls, at most MAX_DECLARED_ACTIONS; and always the map's tools,
+    // find_actions and the lesson link. Any switched-on action is still run when called by name.
+    const found: string[] = [];
+    const used = Object.keys(lines).filter((route) => start.used.includes(generatedOf(route).name));
+    const page = routesOfPage(lines, start.place?.page);
+    const always = toolsOf(
+      Object.hasOwn(lines, LESSON_CARD_ROUTE)
+        ? { [LESSON_CARD_ROUTE]: lines[LESSON_CARD_ROUTE] as AssistantRouteLine }
+        : {},
+      filter,
+    ).filter((tool) => tool.name !== generatedOf(LESSON_CARD_ROUTE).name);
+    const declared = (): ModelTool[] => [
+      ...declaredActions(lines, filter, { found, used, page }),
+      ...always,
+    ];
     // Task 11.13: the steps the model proposes in this question, stored as one proposal with
     // the answer; nothing is changed here.
     const steps: StoredStep[] = [];
@@ -343,8 +386,8 @@ export class AssistantEngine {
             // Task 11.19 (review correction 5): only this question's place is "open now".
             text:
               start.place === undefined
-                ? filterWords(question.text)
-                : `${filterWords(question.text)}\n\n${placeText(start.place, asker.language, true)}`,
+                ? start.filter.words(question.text)
+                : `${start.filter.words(question.text)}\n\n${placeText(start.place, asker.language, true)}`,
           },
         ],
       },
@@ -364,7 +407,11 @@ export class AssistantEngine {
       modelCalls += 1;
       const last = reads >= MAX_READS || modelCalls >= MAX_MODEL_CALLS;
       await this.refuseWhenSessionOver(asker.pass);
-      const reply = await this.call(start, { system, turns, tools: last ? [] : tools }, progress);
+      const reply = await this.call(
+        start,
+        { system, turns, tools: last ? [] : declared() },
+        progress,
+      );
       if (reply.calls.length === 0 || last) {
         text = reply.text;
         break;
@@ -393,6 +440,30 @@ export class AssistantEngine {
                 ? findInPlatform(role, asked, asker.language)
                 : explainPlace(role, asked, asker.language);
           results.parts.push({ kind: 'result', name: call.name, result: cut(result) });
+          continue;
+        }
+        // Task 11.20: the search of the switched-on actions; what it finds is declared from the
+        // next call. It reads no data: a model call, never a read (review 7).
+        if (call.name === FIND_ACTIONS) {
+          const words = call.args.words;
+          const matches = typeof words === 'string' ? findActions(lines, words) : [];
+          for (const match of matches) {
+            if (!found.includes(match.route)) found.push(match.route);
+          }
+          results.parts.push({
+            kind: 'result',
+            name: call.name,
+            result:
+              typeof words !== 'string'
+                ? { error: 'not_a_text' }
+                : cut({
+                    actions: matches.map(({ tool, kind, description }) => ({
+                      tool,
+                      kind,
+                      description,
+                    })),
+                  }),
+          });
           continue;
         }
         if (call.name === LINK_PLACE) {
@@ -429,8 +500,34 @@ export class AssistantEngine {
           });
           continue;
         }
-        const found = routeOfTool(lines, call.name);
-        if (found?.line.kind === 'change' && reads <= MAX_READS) {
+        const named = routeOfTool(lines, call.name);
+        if (named === undefined) {
+          // Not open: switched off by the Super Admin, or not an action of the role at all.
+          // By its tool's name, or by the operation alone (a careless model leaves out propose_).
+          const off = Object.keys(listed).some(
+            (route) =>
+              generatedOf(route).name === call.name.replace(/^propose_/, '') ||
+              routeOfTool(listed, call.name)?.route === route,
+          );
+          const given = { error: off ? 'action_off' : 'not_on_list' };
+          await this.store(
+            start,
+            readContent(call, null, lines, 0, given, off ? 'action_off' : 'not_on_list', filter),
+          );
+          results.parts.push({ kind: 'result', name: call.name, result: given });
+          continue;
+        }
+        if (ASSISTANT_KINDS_WITHOUT_TOOL.includes(kindOfLine(named.line))) {
+          // An export, a file or a download: no tool until task 11.22 (plan decision 7).
+          const given = { error: 'not_open_to_assistant' };
+          await this.store(
+            start,
+            readContent(call, null, lines, 0, given, 'not_open_to_assistant', filter),
+          );
+          results.parts.push({ kind: 'result', name: call.name, result: given });
+          continue;
+        }
+        if (named.line.kind === 'change' && reads <= MAX_READS) {
           const drafted = await draftStep(
             this.dispatcher,
             {
@@ -438,9 +535,12 @@ export class AssistantEngine {
               branchId: start.conversation.branchId,
               role,
               lines,
+              filter,
               lessonDateOf: (lessonId) => this.lessonDate(asker.access, lessonId),
+              studentNamesOf: (lessonId, ids) =>
+                this.studentNames(asker, start.conversation.branchId, role, lessonId, ids),
             },
-            { route: found.route, tool: found.tool, line: found.line, args: call.args },
+            { route: named.route, tool: named.tool, line: named.line, args: call.args },
             steps,
           );
           if (drafted.step !== undefined) {
@@ -450,10 +550,12 @@ export class AssistantEngine {
             start,
             readContent(
               call,
-              found.route,
+              named.route,
               lines,
               drafted.step === undefined ? 0 : 200,
               drafted.given,
+              undefined,
+              filter,
             ),
           );
           results.parts.push({ kind: 'result', name: call.name, result: drafted.given });
@@ -618,7 +720,8 @@ export class AssistantEngine {
     conversationId: string,
     now: Date,
     language: Language,
-  ): Promise<ModelTurn[]> {
+    filter: ModelFilter,
+  ): Promise<{ turns: ModelTurn[]; used: string[] }> {
     const all = await messagesOf(transaction, conversationId);
     const proposals = await proposalsOf(transaction, conversationId, now);
     const byQuestion = new Map(proposals.map((proposal) => [proposal.questionId, proposal]));
@@ -644,8 +747,8 @@ export class AssistantEngine {
                 // asked from, never where the person is now.
                 text:
                   content.place === undefined
-                    ? filterWords(content.text)
-                    : `${filterWords(content.text)}\n\n${placeText(content.place, language, false)}`,
+                    ? filter.words(content.text)
+                    : `${filter.words(content.text)}\n\n${placeText(content.place, language, false)}`,
               },
             ],
           },
@@ -670,7 +773,12 @@ export class AssistantEngine {
     if (turns.at(-1)?.turn.role === 'person') {
       turns.pop();
     }
-    return turns.slice(-HISTORY_MESSAGES).map(({ turn }) => turn);
+    return {
+      turns: turns.slice(-HISTORY_MESSAGES).map(({ turn }) => turn),
+      used: [
+        ...new Set(proposals.flatMap((proposal) => proposal.steps.map((step) => step.action))),
+      ],
+    };
   }
 
   /**
@@ -737,11 +845,11 @@ export class AssistantEngine {
     if (typeof lessonId !== 'string' || !/^[0-9a-f-]{36}$/i.test(lessonId)) return undefined;
     // These two reads prove the link only: they are not given to the model and not stored as
     // reads of the conversation; the answer's stored link names what they found (code review).
-    const outcome = await this.dispatcher.read(`/api/journal/lessons/${lessonId}/card`, {
-      pass: asker.pass,
-      branchId,
-      role,
-    });
+    const outcome = await this.dispatcher.read(
+      `/api/journal/lessons/${lessonId}/card`,
+      { pass: asker.pass, branchId, role },
+      LESSON_CARD_ROUTE,
+    );
     if (outcome.failure !== undefined || outcome.status !== 200) return undefined;
     const card = lessonCardSchema.safeParse(outcome.body);
     if (!card.success) return undefined;
@@ -767,9 +875,53 @@ export class AssistantEngine {
     const journal = await this.dispatcher.read(
       `/api/journal/journals/${card.data.journalId}?quarterId=${quarterId}`,
       { pass: asker.pass, branchId, role },
+      'GET /api/journal/journals/:journalId',
     );
     if (journal.failure !== undefined || journal.status !== 200) return undefined;
     return { journalId: card.data.journalId, quarterId, date: card.data.date };
+  }
+
+  /**
+   * Task 11.20: the names of the students of one lesson among the ids of a step, for the panel's
+   * grouped list only, and only when the person's own read of the lesson's journal answers (the
+   * lesson card, as `lessonLink` proves a lesson; permission review 2): a lesson outside the
+   * person's scope names nobody.
+   */
+  private async studentNames(
+    asker: Asker,
+    branchId: string,
+    role: AssistantRole,
+    lessonId: string,
+    ids: string[],
+  ): Promise<ReadonlyMap<string, string>> {
+    if (ids.length === 0 || !/^[0-9a-f-]{36}$/i.test(lessonId)) return new Map();
+    const card = await this.dispatcher.read(
+      `/api/journal/lessons/${lessonId}/card`,
+      { pass: asker.pass, branchId, role },
+      LESSON_CARD_ROUTE,
+    );
+    if (card.failure !== undefined || card.status !== 200) return new Map();
+    const parsed = lessonCardSchema.safeParse(card.body);
+    if (!parsed.success) return new Map();
+    const journal = await this.dispatcher.read(
+      `/api/journal/journals/${parsed.data.journalId}`,
+      { pass: asker.pass, branchId, role },
+      'GET /api/journal/journals/:journalId',
+    );
+    if (journal.failure !== undefined || journal.status !== 200) return new Map();
+    return this.transactions.run(asker.access.branchIds, async (transaction) => {
+      const rows = await transaction
+        .selectFrom('students')
+        .select(['id', 'first_name', 'last_name'])
+        .where('id', 'in', ids)
+        .where(
+          'id',
+          'in',
+          sql<string>`(select s from lesson_expected_students(${lessonId}::uuid) s)`,
+        )
+        .execute();
+      return new Map(rows.map((row) => [row.id, `${row.last_name} ${row.first_name}`]));
+    });
   }
 
   /** One read the model asked for, stored, and what the model is given back. */
@@ -832,44 +984,39 @@ export class AssistantEngine {
     let given: unknown;
     if (tool === undefined) {
       given = { error: 'not_open_to_assistant' };
-      stored = readContent(call, null, lines, 0, given, 'not_open_to_assistant');
+      stored = readContent(call, null, lines, 0, given, 'not_open_to_assistant', start.filter);
     } else if (overLimit) {
       given = { error: 'too_many_reads' };
-      stored = readContent(call, tool.method + ' ' + tool.path, lines, 0, given, 'too_many_reads');
+      stored = readContent(
+        call,
+        tool.method + ' ' + tool.path,
+        lines,
+        0,
+        given,
+        'too_many_reads',
+        start.filter,
+      );
     } else {
       const route = `${tool.method} ${tool.path}`;
       const isPreview = found?.line.kind === 'preview';
       const { [BODY_ARGUMENT]: previewBody, ...pathArgs } = call.args;
-      const url = urlOf(tool, isPreview ? pathArgs : call.args);
+      // Task 11.20: a parameter of a group switched off is not the model's to give.
+      const withheld = Object.keys(pathArgs).find((name) => start.filter.removesKey(name));
+      const url =
+        withheld === undefined
+          ? urlOf(tool, isPreview ? pathArgs : call.args)
+          : { fault: `${withheld} is not a parameter of this tool` };
       if ('fault' in url) {
         given = { error: 'invalid_arguments', detail: url.fault };
-        stored = readContent(call, route, lines, 0, given, url.fault);
+        stored = readContent(call, route, lines, 0, given, url.fault, start.filter);
       } else {
         const as = { pass: asker.pass, branchId: start.conversation.branchId, role };
         // Task 11.13: a preview or check writes nothing; it is sent with its body.
-        const line = lines[route];
-        let outcome = isPreview
-          ? await this.dispatcher.send('POST', url.url, previewBody ?? {}, as)
-          : await this.dispatcher.read(url.url, as);
-        // Task 11.14: a plan read of the person's own journal only (`own-journal.ts`).
-        const own = line?.kind === undefined || line.kind === 'read' ? line?.ownJournal : undefined;
-        if (own !== undefined && outcome.failure === undefined && outcome.status === 200) {
-          outcome =
-            (await refusedUnlessOwnJournal(
-              this.dispatcher,
-              as,
-              journalOf(own, call.args, outcome),
-            )) ?? outcome;
-        }
-        const ownList =
-          line?.kind === undefined || line.kind === 'read' ? line?.ownJournalList : undefined;
-        if (ownList !== undefined) {
-          outcome = await ownRecordsOnly(this.dispatcher, as, ownList, outcome);
-        }
-        const withheld =
-          line?.kind === undefined || line.kind === 'read' ? line?.withheld : undefined;
-        given = givenOf(withheld === undefined ? outcome : withholding(outcome, withheld));
-        stored = readContent(call, route, lines, outcome.status, given);
+        const outcome = isPreview
+          ? await this.dispatcher.send('POST', url.url, previewBody ?? {}, as, route)
+          : await this.dispatcher.read(url.url, as, route);
+        given = givenOf(outcome, start.filter, this.routes.factsOf(route)?.area);
+        stored = readContent(call, route, lines, outcome.status, given, undefined, start.filter);
       }
     }
     await this.store(start, stored);
@@ -883,7 +1030,8 @@ function readContent(
   lines: RoleLines,
   status: number,
   result: unknown,
-  fault?: string,
+  fault: string | undefined,
+  filter: ModelFilter,
 ): Extract<StoredContent, { kind: 'read' }> {
   const group = route === null ? null : (lines[route]?.group ?? null);
   return {
@@ -892,7 +1040,7 @@ function readContent(
     route,
     group,
     // The arguments as the model sent them, filtered like the person's words.
-    args: filterRead(call.args) as Record<string, unknown>,
+    args: filter.read(call.args) as Record<string, unknown>,
     status,
     ...(fault === undefined ? {} : { fault }),
     result,
@@ -900,7 +1048,7 @@ function readContent(
 }
 
 /** What the model is given of a read: the filtered body, cut to its bound, or the refusal. */
-export function givenOf(outcome: ReadOutcome): unknown {
+export function givenOf(outcome: ReadOutcome, filter: ModelFilter, area?: string): unknown {
   if ('failure' in outcome) {
     return { error: `read_${outcome.failure}` };
   }
@@ -911,7 +1059,7 @@ export function givenOf(outcome: ReadOutcome): unknown {
     const code = body?.error?.code;
     return { status: outcome.status, error: typeof code === 'string' ? code : 'refused' };
   }
-  const data = filterRead(outcome.body);
+  const data = filter.read(outcome.body, area);
   const text = JSON.stringify(data);
   if (text.length <= READ_MAX_CHARACTERS) {
     return { status: outcome.status, data };
@@ -965,25 +1113,9 @@ export function systemInstruction(input: {
     'For "how do we", "where is" or "what is this", answer from the map in numbered steps, with the names of the pages, tabs, buttons and fields exactly as the map gives them in the person\u2019s language, and link the place with link_place (the page, and the record, tab or filter when you know it). When the person\u2019s role does not see a control (it is not among the roles that see it), say so and name the roles that do.',
     'When one of your propose_ tools does what the person asked how to do, give the steps and then offer to do it for them; propose it only after they agree.',
     'A question may carry where the person is: the page, its values and the record open in the side panel. "This student", "this lesson", "this journal" or "this button" mean what is there; read the record through your tools, with the person\u2019s rights, before you speak of it. The place of an earlier question is where that question was asked, not where the person is now.',
-    'You cannot enter or change journal data (attendance, marks, totals, comments, not held), correct a journal, grant exemptions, close a quarter, publish or withdraw a timetable version, start or close a year, delete, fill a vacancy, change accounts, passwords, roles, appointments or permissions, or export. For these, give the steps on the screen from the map and link the place with link_place.',
+    'You can do every action the person\u2019s role has on the screens that the Super Admin switched on for you: reads, and changes as propose_ steps, the journal (attendance, numbers, comments, not held, corrections, exemptions) included. You are given only some actions as tools; use find_actions to find the one you need (it is a tool from your next step), and call find_actions before you say you cannot do something. An action answered action_off was switched off by the Super Admin: say so, and give the steps on the screen. An action answered not_on_list is not one of the role\u2019s: say so, and name the role that can, from the map. Exports and files are not open to you yet: give the steps on the screen.',
+    'For many entries of one kind (attendance of a lesson for each student, the same change for several records), read first and propose one step that holds all the entries, naming each.',
     'Write plain text, never Markdown headings, tables, links, code or HTML. For a list, start each item on its own line with "- ". You may mark a few words as **bold**.',
-    'Some personal fields (phones, addresses, document numbers, financial and medical data) are removed before you see the data and appear as [removed]; never ask for them.',
+    'Personal fields of a group the Super Admin keeps from you appear as [removed]; never ask for them. A secret (a password, a key\u2019s secret) appears as [secret: shown to the person only]: the person sees it once on Confirm; never ask for it or repeat it.',
   ].join('\n');
-}
-
-/** A read with the line's withheld keys removed at any depth (task 11.13). */
-function withholding(outcome: ReadOutcome, keys: readonly string[]): ReadOutcome {
-  if ('failure' in outcome && outcome.failure !== undefined) return outcome;
-  const strip = (value: unknown): unknown => {
-    if (Array.isArray(value)) return value.map(strip);
-    if (value !== null && typeof value === 'object') {
-      return Object.fromEntries(
-        Object.entries(value)
-          .filter(([key]) => !keys.includes(key))
-          .map(([key, item]) => [key, strip(item)]),
-      );
-    }
-    return value;
-  };
-  return { status: outcome.status, body: strip('body' in outcome ? outcome.body : null) };
 }

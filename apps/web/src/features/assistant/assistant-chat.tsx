@@ -4,6 +4,7 @@ import {
   type AssistantMessage,
   type AssistantRole,
   type AssistantStatus,
+  type AssistantStepSecret,
 } from '@sodiq/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useRouter, type LinkProps } from '@tanstack/react-router';
@@ -166,12 +167,19 @@ export function AssistantChat({
     },
   });
 
+  // Task 11.20: the secrets a confirmed step gave out (a first password, a key's secret), shown
+  // once in this part's state only, never in a query cache (`.claude/rules/web.md`).
+  const [secrets, setSecrets] = useState<readonly AssistantStepSecret[]>([]);
   // Task 11.13: Confirm or Decline; the answer is the conversation with each step's outcome.
   const decide = useMutation({
     mutationFn: (input: { id: string; which: 'confirm' | 'decline' }) =>
       decideProposal({ ...input, role }),
+    gcTime: 0,
     onSuccess: (answer) => {
-      queryClient.setQueryData(assistantConversationQuery(answer.id).queryKey, answer);
+      const { secrets: given, ...conversation } = answer;
+      setSecrets(given);
+      queryClient.setQueryData(assistantConversationQuery(answer.id).queryKey, conversation);
+      decide.reset();
     },
     onError: async () => {
       // An expired, decided or superseded proposal: read the conversation again.
@@ -218,6 +226,10 @@ export function AssistantChat({
                 conversation={open}
                 workingId={working?.questionId ?? null}
                 deciding={decide.isPending}
+                secrets={secrets}
+                onSecretsClosed={() => {
+                  setSecrets([]);
+                }}
                 {...(readOnly
                   ? {}
                   : {
@@ -328,11 +340,16 @@ export function Messages({
   onDecide,
   deciding,
   workingId = null,
+  secrets = [],
+  onSecretsClosed,
 }: {
   conversation: AssistantConversation;
   onDecide?: (proposalId: string, which: 'confirm' | 'decline') => void;
   deciding?: boolean;
   workingId?: string | null;
+  /** Task 11.20: the secrets of the steps just confirmed, shown once. */
+  secrets?: readonly AssistantStepSecret[];
+  onSecretsClosed?: () => void;
 }) {
   const { t } = useTranslation();
   // The question each answer follows, so that its proposal is drawn after it.
@@ -381,6 +398,10 @@ export function Messages({
         <li key={proposal.id}>
           <ProposalCard
             proposal={proposal}
+            secrets={secrets.filter((secret) =>
+              proposal.steps.some((step) => step.id === secret.stepId),
+            )}
+            {...(onSecretsClosed === undefined ? {} : { onSecretsClosed })}
             {...(onDecide === undefined
               ? {}
               : {

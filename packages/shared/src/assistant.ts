@@ -318,6 +318,12 @@ export const assistantStepSchema = z.object({
   /** How many entries each list of the preview holds (its impact beyond lessons). */
   previewCounts: z.array(z.object({ list: z.string(), count: z.int().nonnegative() })),
   fields: z.array(assistantStepFieldSchema),
+  /**
+   * Task 11.20 (build plan: "The proposal of many entries of one kind (attendance for a lesson)
+   * shows them as one grouped step list"): each entry of the step, by the student it names
+   * (`null` when the student is not one of the lesson's), with what is entered.
+   */
+  entries: z.array(z.object({ name: z.string().nullable(), value: z.string() })),
   /** The lessons of the step's preview, and how many more it names. */
   previewLessons: z.array(assistantPreviewLessonSchema),
   previewMore: z.int().nonnegative(),
@@ -363,6 +369,27 @@ export const assistantConversationSchema = assistantConversationSummarySchema.ex
 });
 
 export type AssistantConversation = z.infer<typeof assistantConversationSchema>;
+
+/**
+ * Task 11.20 (`02`, Never, whatever the switches: "An action that gives one out still runs on
+ * Confirm, and the secret is shown to the person in the conversation once, as the screen shows
+ * it, never to the model and never stored in the conversation"): the secrets the steps of a
+ * confirmed proposal gave out (a first-password slip, a key's secret), in this answer only.
+ */
+export const assistantStepSecretSchema = z.object({
+  stepId: z.uuid(),
+  /** Each object of the answer that held a secret, with its plain values (login, password, …). */
+  items: z.array(z.record(z.string(), z.union([z.string(), z.number(), z.boolean(), z.null()]))),
+});
+
+export type AssistantStepSecret = z.infer<typeof assistantStepSecretSchema>;
+
+/** The answer of Confirm: the conversation, and the secrets given out, once. */
+export const assistantConfirmedSchema = assistantConversationSchema.extend({
+  secrets: z.array(assistantStepSecretSchema),
+});
+
+export type AssistantConfirmed = z.infer<typeof assistantConfirmedSchema>;
 
 export const assistantConversationParamsSchema = z.strictObject({ id: z.uuid() });
 
@@ -440,6 +467,26 @@ export const assistantAnyConversationDetailSchema = assistantConversationSchema.
 
 export type AssistantAnyConversationDetail = z.infer<typeof assistantAnyConversationDetailSchema>;
 
+/**
+ * Task 11.20, the personal-data groups.
+ * `02`, Personal data and the model: "contact (phones, emails, addresses), identity (passport,
+ * ID and birth certificate numbers, JSHSHIR, dates of birth), financial (contracts,
+ * scholarships, stipends), the diagnostic score, medical data, and relatives' details … All are
+ * on at the start."
+ */
+export const ASSISTANT_DATA_GROUPS = [
+  'contact',
+  'identity',
+  'financial',
+  'diagnostic',
+  'medical',
+  'relatives',
+] as const;
+
+export type AssistantDataGroup = (typeof ASSISTANT_DATA_GROUPS)[number];
+
+export const assistantDataGroupSchema = z.enum(ASSISTANT_DATA_GROUPS);
+
 /** What the Super Admin sets (`02`: "switch it off for the whole school or for one of the three roles"; Limits). */
 export const assistantSettingsRecordSchema = z.strictObject({
   schoolOn: z.boolean(),
@@ -451,6 +498,11 @@ export const assistantSettingsRecordSchema = z.strictObject({
   monthlyCapDollars: z.int().min(ASSISTANT_CAP_MIN_DOLLARS).max(ASSISTANT_CAP_MAX_DOLLARS),
   /** Task 11.15: the worldwide fallback (`02`, Where the model runs: "on until switched off"). */
   fallbackOn: z.boolean(),
+  /** Task 11.20: the personal-data groups that reach the model (`02`: "All are on at the start"). */
+  dataGroupsOn: z
+    .array(assistantDataGroupSchema)
+    .max(ASSISTANT_DATA_GROUPS.length)
+    .refine((groups) => new Set(groups).size === groups.length, { message: 'Each group once.' }),
 });
 
 export type AssistantSettingsRecord = z.infer<typeof assistantSettingsRecordSchema>;

@@ -1,4 +1,5 @@
 import type { AssistantConversation, AssistantMessage } from '@sodiq/shared';
+import { ASSISTANT_DATA_GROUPS } from '@sodiq/shared';
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { en } from '@/i18n/locales/en';
@@ -411,6 +412,7 @@ describe('the assistant’s settings and conversations of the Super Admin', () =
     modelConfigured: true,
     model: 'gemini-3.5-flash',
     fallbackOn: true,
+    dataGroupsOn: [...ASSISTANT_DATA_GROUPS],
     fallbackQuestionsThisMonth: 2,
   };
 
@@ -431,10 +433,11 @@ describe('the assistant’s settings and conversations of the Super Admin', () =
       'GET /api/setup/school-settings/digest': () =>
         json({ sendAt: '19:00', quietFrom: '21:00', quietUntil: '08:00' }),
       'GET /api/setup/school-settings/assistant': () => json(settings),
+      'GET /api/assistant/actions': () => json({ roles: [] }),
       'PUT /api/setup/school-settings/assistant': (body) =>
         json({ ...settings, ...(body as object) }),
     });
-    renderApp('/setup/settings', 'en');
+    renderApp('/setup/assistant', 'en');
     const section = within(
       await screen.findByRole('region', { name: en.assistant.settings.title }),
     );
@@ -457,6 +460,7 @@ describe('the assistant’s settings and conversations of the Super Admin', () =
         dailyLimit: 12,
         monthlyCapDollars: 300,
         fallbackOn: true,
+        dataGroupsOn: [...ASSISTANT_DATA_GROUPS],
       });
     });
   });
@@ -478,10 +482,11 @@ describe('the assistant’s settings and conversations of the Super Admin', () =
       'GET /api/setup/school-settings/digest': () =>
         json({ sendAt: '19:00', quietFrom: '21:00', quietUntil: '08:00' }),
       'GET /api/setup/school-settings/assistant': () => json(settings),
+      'GET /api/assistant/actions': () => json({ roles: [] }),
       'PUT /api/setup/school-settings/assistant': (body) =>
         json({ ...settings, ...(body as object) }),
     });
-    renderApp('/setup/settings', 'en');
+    renderApp('/setup/assistant', 'en');
     const section = within(
       await screen.findByRole('region', { name: en.assistant.settings.title }),
     );
@@ -563,6 +568,7 @@ describe('a proposal of the assistant', () => {
     recordName: null,
     recordNames: null,
     fields: [{ name: 'reason', value: 'No electricity' }],
+    entries: [],
     previewIssues: [{ kind: 'warning' as const, code: 'lesson_started' }],
     previewCounts: [{ list: 'cancel', count: 1 }],
     previewLessons: [
@@ -618,7 +624,7 @@ describe('a proposal of the assistant', () => {
       'GET /api/assistant/conversations': () =>
         json({ conversations: [{ ...waiting, messages: undefined, proposals: undefined }] }),
       [`GET /api/assistant/conversations/${uid(1)}`]: () => json(waiting),
-      [`POST /api/assistant/proposals/${uid(800)}/confirm`]: () => json(done),
+      [`POST /api/assistant/proposals/${uid(800)}/confirm`]: () => json({ ...done, secrets: [] }),
     });
     renderApp('/', 'en');
     const panel = await openPanel();

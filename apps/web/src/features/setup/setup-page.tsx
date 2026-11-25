@@ -103,6 +103,12 @@ export function SetupPage() {
       title: t('setup.settingsLink'),
       area: 'settings',
     },
+    {
+      key: 'assistantSettings',
+      to: '/setup/assistant',
+      title: t('setup.assistantSettingsLink'),
+      area: 'school_settings',
+    },
     ...(demoClockOn
       ? [
           {

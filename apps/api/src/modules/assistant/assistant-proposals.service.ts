@@ -1,5 +1,11 @@
 import { Injectable } from '@nestjs/common';
-import type { AssistantConversation, AssistantRole, AssistantStepState } from '@sodiq/shared';
+import type {
+  AssistantConfirmed,
+  AssistantConversation,
+  AssistantRole,
+  AssistantStepSecret,
+  AssistantStepState,
+} from '@sodiq/shared';
 import { Transactions, transactionMoment, type Transaction } from '../../database/transactions.js';
 import { ApiException } from '../../http/api-exception.js';
 import type { SessionPass } from '../../http/session-cookie.js';
@@ -10,7 +16,8 @@ import { AssistantEngine } from './assistant.engine.js';
 import { AssistantSettingsService } from './assistant-settings.service.js';
 import { fingerprintOf } from './canonical.js';
 import { conversationOf, conversationsQuery, isArchived } from './conversations.store.js';
-import { AssistantDispatcher } from './dispatcher.js';
+import { AssistantDispatcher, type ReadOutcome } from './dispatcher.js';
+import { secretsOf } from './field-filter.js';
 import { basisStill, stateOfOutcome, type StoredStep } from './proposals.js';
 
 interface ProposalRow {
@@ -150,8 +157,11 @@ export class AssistantProposals {
     pass: SessionPass,
     id: string,
     role: AssistantRole,
-  ): Promise<AssistantConversation> {
+  ): Promise<AssistantConfirmed> {
     const proposal = await this.decide(access, id, role, 'confirmed');
+    // Task 11.20: what a step gave out that is a secret, for this answer only: never stored,
+    // never given to the model (the floor, `field-filter.ts`).
+    const secrets: AssistantStepSecret[] = [];
     const steps = proposal.steps as StoredStep[];
     const lines = this.routes.linesOf(role);
     const as = { pass, branchId: proposal.branch_id, role };
@@ -162,18 +172,41 @@ export class AssistantProposals {
         continue;
       }
       const line = lines[step.route];
+      let basisRead: ReadOutcome | undefined;
+      let previewRead: ReadOutcome | undefined;
       let outcome: { state: AssistantStepState; status: number; code: string | null };
       if (line?.kind !== 'change') {
         // The route left the role's list since it was proposed.
         outcome = { state: 'refused', status: 403, code: 'assistant_route_closed' };
       } else if (
         step.basis.kind === 'read' &&
-        !basisStill(step.basis, await this.dispatcher.read(step.basis.url, as))
+        line.basis.kind === 'read' &&
+        !basisStill(
+          step.basis,
+          (basisRead = await this.dispatcher.read(step.basis.url, as, line.basis.route)),
+        )
       ) {
-        outcome = { state: 'outdated', status: 409, code: 'assistant_step_outdated' };
-      } else if (step.preview !== null && !(await this.previewStill(step.preview, as))) {
-        // A lesson that began, a new warning, another lesson with data (review should fix 5).
-        outcome = { state: 'outdated', status: 409, code: 'assistant_step_outdated' };
+        // Task 11.20 (plan review 6): a basis read switched off since refuses the step.
+        outcome = switchedOff(basisRead)
+          ? { state: 'refused', status: 403, code: 'assistant_action_off' }
+          : { state: 'outdated', status: 409, code: 'assistant_step_outdated' };
+      } else if (
+        step.preview !== null &&
+        line.preview !== undefined &&
+        (previewRead = await this.dispatcher.send(
+          'POST',
+          step.preview.url,
+          step.preview.body,
+          as,
+          line.preview.route,
+        )) !== undefined &&
+        !previewStill(step.preview, previewRead)
+      ) {
+        // A lesson that began, a new warning, another lesson with data (review should fix 5);
+        // task 11.20: a preview switched off since refuses the step.
+        outcome = switchedOff(previewRead)
+          ? { state: 'refused', status: 403, code: 'assistant_action_off' }
+          : { state: 'outdated', status: 409, code: 'assistant_step_outdated' };
       } else {
         const sent = await this.calls.whileRunning(
           {
@@ -184,31 +217,26 @@ export class AssistantProposals {
             route: step.route,
           },
           () =>
-            this.dispatcher.send(step.method, step.url, step.body ?? undefined, {
-              ...as,
-              stepId: step.id,
-            }),
+            this.dispatcher.send(
+              step.method,
+              step.url,
+              step.body ?? undefined,
+              { ...as, stepId: step.id },
+              step.route,
+            ),
         );
         outcome = stateOfOutcome(sent, line.outdatedCodes ?? []);
+        if (outcome.state === 'done' && 'body' in sent) {
+          const items = secretsOf(sent.body);
+          if (items.length > 0) secrets.push({ stepId: step.id, items });
+        }
       }
       await this.record(proposal, step, outcome);
       if (outcome.state !== 'done') {
         stopped = true;
       }
     }
-    return this.conversation(access, proposal.conversation_id);
-  }
-
-  private async previewStill(
-    preview: NonNullable<StoredStep['preview']>,
-    as: { pass: SessionPass; branchId: string; role: AssistantRole },
-  ): Promise<boolean> {
-    const outcome = await this.dispatcher.send('POST', preview.url, preview.body, as);
-    return (
-      !('failure' in outcome && outcome.failure !== undefined) &&
-      outcome.status < 400 &&
-      fingerprintOf(outcome.body) === preview.fingerprint
-    );
+    return { ...(await this.conversation(access, proposal.conversation_id)), secrets };
   }
 
   private async record(
@@ -247,6 +275,24 @@ export class AssistantProposals {
       return conversationOf(transaction, row, now);
     });
   }
+}
+
+/** Whether a preview sent again at Confirm answers as it did at the proposal. */
+function previewStill(preview: NonNullable<StoredStep['preview']>, outcome: ReadOutcome): boolean {
+  return (
+    !('failure' in outcome && outcome.failure !== undefined) &&
+    outcome.status < 400 &&
+    fingerprintOf(outcome.body) === preview.fingerprint
+  );
+}
+
+/** Whether the dispatcher refused a request because its action is switched off (task 11.20). */
+function switchedOff(outcome: ReadOutcome | undefined): boolean {
+  return (
+    outcome !== undefined &&
+    outcome.status === 403 &&
+    (outcome.body as { error?: { code?: unknown } } | null)?.error?.code === 'assistant_action_off'
+  );
 }
 
 function isUniqueViolation(error: unknown): boolean {

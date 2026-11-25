@@ -1,7 +1,7 @@
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { BRANCH_HEADER, type AssistantRole, type PermissionTable } from '@sodiq/shared';
 import request from 'supertest';
-import type { AssistantRouteLists } from '../modules/access/assistant-routes.js';
+import type { AssistantRouteLine } from '../modules/access/assistant-routes.js';
 import { insertBranch } from './branch-filter-sql.js';
 import { ClassesKit } from './classes-kit.js';
 import { createTestApp } from './create-test-app.js';
@@ -40,7 +40,7 @@ export interface AssistantScene {
  */
 export async function assistantScene(
   options: {
-    routeLists?: AssistantRouteLists;
+    routeLines?: Readonly<Record<string, AssistantRouteLine>>;
     on?: boolean;
     permissionTable?: PermissionTable;
   } = {},
@@ -61,7 +61,7 @@ export async function assistantScene(
       return Promise.resolve();
     },
     listen: true,
-    ...(options.routeLists === undefined ? {} : { assistantRouteLists: options.routeLists }),
+    ...(options.routeLines === undefined ? {} : { assistantRouteLines: options.routeLines }),
     ...(options.permissionTable === undefined ? {} : { permissionTable: options.permissionTable }),
   });
   const kit = signInKit(app);

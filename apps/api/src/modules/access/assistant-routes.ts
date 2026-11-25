@@ -1,10 +1,5 @@
-import {
-  permits,
-  type Action,
-  type AssistantReadGroup,
-  type AssistantRole,
-  type PermissionTable,
-} from '@sodiq/shared';
+import type { Action, AssistantReadGroup } from '@sodiq/shared';
+import { NEW_ROUTE_LINES } from '../assistant/lines/index.js';
 import {
   SUPER_ADMIN_CHANGES,
   TEACHER_CHANGES,
@@ -13,12 +8,14 @@ import {
 } from './assistant-change-routes.js';
 
 /**
- * The actions open to the assistant (`02`, Assistant: "The actions open to it are a list fixed
- * in code for each of the three roles; an action added later stays closed to it until a task
- * adds it"; task 11.12, pull request #374). A route is named `<METHOD> /api/<path>` as Express
- * registers it. `assistant-routes.test.ts` holds each list against the independent copy of
- * `apps/api/src/testing/assistant-route-list.ts`, and `AssistantRoutes` stops the app at start
- * for a listed route against `assistantRouteFault`.
+ * The actions open to the assistant (task 11.20; `02`, Assistant, "What it can do": "Every action
+ * the person's chosen role has on the screens … An action added to the platform later is open to
+ * it too, under the switch of its area"). A route is named `<METHOD> /api/<path>` as Express
+ * registers it. `ROUTE_LINES` holds, for every route with a permission, what the model needs to
+ * use it: a description, and for a change what it was proposed on. Which role has a route is not
+ * written here: `AssistantRoutes` (`assistant-routes.check.ts`) reads it at start from each
+ * route's `@Requires` and the permission table, so a role's list is every route it holds, and
+ * the Super Admin's switches (`assistant-switches.service.ts`) narrow what a question is given.
  */
 export interface AssistantReadLine {
   kind?: 'read';
@@ -26,26 +23,23 @@ export interface AssistantReadLine {
   group: AssistantReadGroup;
   /** The tool's description, the line the model reads: what the route answers, in English. */
   description: string;
-  /**
-   * Keys removed at any depth from this read before the model is given it, beside the field
-   * filter (task 11.13): a relative's name is of the student's Contact group (11.12 decision 2).
-   */
-  withheld?: readonly string[];
-  /**
-   * Task 11.14 (review of the code, finding 1): the read is given only for a plan of the
-   * person's own journal, found at this path value or answer field (`assistant/own-journal.ts`).
-   */
-  ownJournal?: { path: string } | { answer: string };
-  /** Task 11.14 (review round 2): a list read keeps only the records of the person's own journals. */
-  ownJournalList?: { array: string; key: string };
 }
 
 /**
- * The Super Admin's reads (task 11.12): "Reading: everything their role reads, except the fields
- * below" (`02`). Left out in this task, decision 4 of the plan (Look first): accounts and their
- * access, integration keys, the audit log, the personal-data report, monitoring, the demo clock,
- * relatives and parent accounts, the student Contact, Identity, Financial, diagnostic and history
- * routes, and exports.
+ * Task 11.20 (plan decision 7): an export, a route that takes a file, or a GET that answers a
+ * file. On the lists and on the switches page; the model is given no tool for them until 11.22
+ * (Files, photos and voice; exports prepared as a file).
+ */
+export interface AssistantFileLine {
+  kind: 'export' | 'file' | 'download';
+  group: AssistantReadGroup;
+  description: string;
+}
+
+/**
+ * The reads of 11.12 and 11.13 (the Super Admin's and the Academic Vice Principal's), kept as
+ * written; since task 11.20 they are lines of `ROUTE_LINES`, open to every role the permission
+ * table gives the route.
  */
 const SUPER_ADMIN_READS: Readonly<Record<string, AssistantReadLine>> = {
   'GET /api/setup/branch': {
@@ -346,287 +340,137 @@ const SUPER_ADMIN_READS: Readonly<Record<string, AssistantReadLine>> = {
   'GET /api/people/students/:id/relatives': {
     group: 'students',
     description:
-      'The relatives of one student: relationship, main contact and the portal access switch (names and phones are withheld).',
-    withheld: ['fullName', 'name', 'firstName', 'lastName', 'patronymic', 'paternalName'],
+      'The relatives of one student: relationship, main contact and the portal access switch.',
   },
 };
 
-/** A line of a list: a read, a change proposed and confirmed (11.13), or a preview of one. */
-export type AssistantRouteLine = AssistantReadLine | AssistantChangeLine | AssistantPreviewLine;
-
-/** The Super Admin's list: the reads and the changes (task 11.13). */
-const SUPER_ADMIN: Readonly<Record<string, AssistantRouteLine>> = {
-  ...SUPER_ADMIN_READS,
-  ...SUPER_ADMIN_CHANGES,
-};
-
-export type AssistantRouteLists = Readonly<
-  Partial<Record<AssistantRole, Readonly<Record<string, AssistantRouteLine>>>>
->;
-
-/**
- * The Teacher's reads (task 11.14; `02`, "What a Teacher can do through it": "Read their own
- * timetable, their classes and groups, their journals and the results calculated by the
- * platform, their lesson plans and requests"). Each route scopes the Teacher to own lessons and
- * the students they teach, as on the screen, and the guard narrows to the Teacher role chosen.
- * Their classes and groups are those of their journals (plan decision 3); left out: a student's
- * record and results pages, exemptions, the histories and the master plans (decision 2).
- */
+/** The reads of 11.14, first written for the Teacher. */
 const TEACHER_READS: Readonly<Record<string, AssistantReadLine>> = {
-  'GET /api/setup/current-period': {
-    group: 'calendar',
-    description: 'The current academic year and quarter of the branch.',
-  },
-  'GET /api/timetable/views/choices': {
-    group: 'timetable',
-    description: 'The weeks and the own teacher entry the timetable views offer.',
-  },
-  'GET /api/timetable/views/teacher': {
-    group: 'timetable',
-    description: 'The own timetable for a day or a week (only the own staff record is open).',
-  },
-  'GET /api/people/students': {
-    group: 'students',
-    description: 'The students the teacher teaches, with name, UID, class and groups.',
-  },
-  'GET /api/journal/journals': {
-    group: 'journal',
-    description: 'The own journals: each class or group and subject the teacher keeps.',
-  },
-  'GET /api/journal/journals/:journalId': {
-    group: 'journal',
-    description:
-      'One own journal for a quarter: lessons, attendance, works, numbers and the results the platform calculated.',
-  },
   'GET /api/journal/lessons/:lessonId/card': {
     group: 'journal',
     description: 'The card of one own lesson: number, date, slot, topic, classworks, homeworks.',
-    // A colleague of the same subject and grade reads it on the screen; the Teacher's assistant
-    // reads only the own (`02`: "their lesson plans").
-    ownJournal: { answer: 'journalId' },
   },
   'GET /api/journal/reminders': {
     group: 'journal',
     description: 'The own lessons whose journal is not filled yet.',
   },
-  'GET /api/journal/unlocks': {
-    group: 'journal',
-    description: 'The own unlock requests and their state.',
-  },
-  'GET /api/results/rating/choices': {
-    group: 'results',
-    description: 'The quarters, classes and subjects the rating can be read for.',
-  },
   // The rating by class (`rating/classes`, `rating/class`) is for management and Tutors
   // (`rating.service.ts`): it refuses the Teacher, so it is not offered (code review).
-  'GET /api/results/rating/subject': {
-    group: 'results',
-    description: 'The rating of one subject in a class, as the platform calculated it.',
-  },
-  'GET /api/results/early-warning': {
-    group: 'results',
-    description: 'The early-warning list of the own journals, as the platform calculated it.',
-  },
-  'GET /api/plans': {
-    group: 'plans',
-    description: 'The own lesson plans and the state of each quarter (complete, missing topics).',
-    // The plan list of the screen also holds the plans of a colleague of the same subject and
-    // grade, without an owner: only those of the Teacher's own journals are given (review round 2).
-    ownJournalList: { array: 'plans', key: 'journalId' },
-  },
   'GET /api/plans/journals/:journalId': {
     group: 'plans',
     description:
       'The own lesson plan of one journal for a quarter: the rows with dates, items, ids and the window state.',
-    // A colleague of the same subject and grade reads it on the screen; the Teacher's assistant
-    // reads only the own (`02`: "their lesson plans").
-    ownJournal: { path: 'journalId' },
   },
   'GET /api/plans/lessons/:lessonId': {
     group: 'plans',
     description: 'The plan item of one own lesson.',
-    // A colleague of the same subject and grade reads it on the screen; the Teacher's assistant
-    // reads only the own (`02`: "their lesson plans").
-    ownJournal: { answer: 'journalId' },
-  },
-  'GET /api/plans/windows': {
-    group: 'plans',
-    description: 'The plan windows of the year and their dates.',
-  },
-  'GET /api/plans/requests': {
-    group: 'plans',
-    description: 'The own plan edit requests, prepared, sent and decided.',
   },
   'GET /api/plans/journals/:journalId/master-compare': {
     group: 'plans',
     description: 'The own plan beside the master plan it was copied from.',
-    // A colleague of the same subject and grade reads it on the screen; the Teacher's assistant
-    // reads only the own (`02`: "their lesson plans").
-    ownJournal: { path: 'journalId' },
   },
 };
 
-/** The Teacher's list: the reads and the proposals (task 11.14). */
-const TEACHER: Readonly<Record<string, AssistantRouteLine>> = {
+/** A line: a read, a change proposed and confirmed (11.13), a preview of one, or a file line. */
+export type AssistantRouteLine =
+  AssistantReadLine | AssistantChangeLine | AssistantPreviewLine | AssistantFileLine;
+
+/** What a route is to the assistant, read from the route itself (`routeKindOf`). */
+export type AssistantRouteKind = 'read' | 'change' | 'preview' | 'export' | 'file' | 'download';
+
+/** The kind a line says it is. */
+export function kindOfLine(line: AssistantRouteLine): AssistantRouteKind {
+  return line.kind ?? 'read';
+}
+
+/** Every line, by route name; a route is on no list without one (`assistant-lines.test.ts`). */
+export const ROUTE_LINES: Readonly<Record<string, AssistantRouteLine>> = {
+  ...SUPER_ADMIN_READS,
   ...TEACHER_READS,
+  ...SUPER_ADMIN_CHANGES,
   ...TEACHER_CHANGES,
-};
-
-/** The list of each role written here; the Academic Vice Principal's is derived (11.13). */
-export const ASSISTANT_ROUTES: AssistantRouteLists = {
-  super_admin: SUPER_ADMIN,
-  teacher: TEACHER,
+  ...NEW_ROUTE_LINES,
 };
 
 /**
- * Roles whose list is another role's narrowed by the permission table (task 11.13, plan
- * decision 4, Look first): the Academic Vice Principal has every line of the Super Admin's whose
- * permission the table gives the role, and no other. `AssistantRoutes` derives it at start
- * from each route's declaration; `assistant-routes.test.ts` holds the result against a copy.
+ * The lines `AssistantRoutes` reads: `ROUTE_LINES`, except in a test app that gives other lines
+ * to test the start check or a line's absence.
  */
-export const DERIVED_ASSISTANT_LISTS: Readonly<Partial<Record<AssistantRole, AssistantRole>>> = {
-  academic_vice_principal: 'super_admin',
-};
+export const ASSISTANT_ROUTE_LINES = Symbol('ASSISTANT_ROUTE_LINES');
 
-/** Whether the table gives the role what a listed route requires. */
-export function derivedOpens(
-  table: PermissionTable,
-  role: AssistantRole,
-  declaration: { area?: string; action?: Action },
-): boolean {
-  return (
-    declaration.area !== undefined &&
-    declaration.action !== undefined &&
-    permits(table, role, declaration.area, declaration.action)
-  );
-}
+/** The prefix of the assistant's own routes. */
+export const ASSISTANT_OWN_PREFIX = '/api/assistant';
 
-/**
- * The lists `AssistantRoutes` reads for the guard: `ASSISTANT_ROUTES`, except in a test app that
- * gives a role with no list yet a list of its own, to test the narrowing to a chosen role.
- */
-export const ASSISTANT_ROUTE_LISTS = Symbol('ASSISTANT_ROUTE_LISTS');
-
-/** The routes of a role's list, by name. */
-export function assistantRoutesOf(
-  role: AssistantRole,
-): Readonly<Record<string, AssistantRouteLine>> {
-  return ASSISTANT_ROUTES[role] ?? {};
-}
-
-/**
- * `02`, Assistant, "Never through the assistant": "Entering or changing journal data …,
- * journal corrections, exemptions, closing a quarter; publishing or withdrawing a timetable
- * version; starting or closing a year; force delete; accounts (passwords, second step, sessions,
- * printed slips), roles, appointments and permissions; integration keys; exports." The areas
- * whose changes are never open (the permission table itself has no route).
- */
-export const NEVER_CHANGED_THROUGH_ASSISTANT: readonly string[] = [
-  'journal',
-  'journal_support',
-  'exemptions',
-  'quarter_closing',
-  'results_recalculation',
-  'forced_deletes',
-  'accounts',
-  'account_access',
-  'parent_accounts',
-  'integration_keys',
-  // Journal data: the reason of an absence (spec review of the code, should fix 7).
-  'absence_reasons',
+/** The assistant's settings, which live under the school settings (task 11.12). */
+export const ASSISTANT_SETTINGS_ROUTES: readonly string[] = [
+  'GET /api/setup/school-settings/assistant',
+  'PUT /api/setup/school-settings/assistant',
 ];
 
 /**
- * The same list, by route, where the area also holds changes the assistant may make (11.13).
- * Closing a year has no route yet (task 9.5a); every route stays closed to the assistant until a
- * task puts it on a list, and 9.5a adds its route here.
+ * The routes on no list, whatever the role holds (plan decision 5): the assistant's own (its
+ * status, questions, conversations, proposals, settings, switches and conversation restores).
+ * `02`, Never, whatever the switches: "The assistant cannot change its own switches or limits".
  */
-export const NEVER_ROUTES_THROUGH_ASSISTANT: readonly string[] = [
-  'POST /api/timetable/versions/:id/publish',
-  'POST /api/timetable/versions/:id/withdraw',
-  'POST /api/setup/academic-years/:id/start',
-  // Appointments (`02`: "roles, appointments and permissions"): a class's Tutor and an acting
-  // teacher, whose areas also hold changes 11.13 may open (spec review of the code, should fix 7).
-  'POST /api/classes/:id/tutors',
-  'POST /api/classes/:id/tutors/:tutorId/end',
-  'POST /api/timetable/acting-teachers',
-  'POST /api/timetable/acting-teachers/:id/end',
-  // Task 11.13 (decision 2 of the plan of pull request #376, Look first): appointments and what
-  // ends roles, a version published, held lessons changed, removals, an import that creates
-  // accounts (review correction 1).
-  'POST /api/classes/:id/tutors/preview',
-  'POST /api/timetable/acting-teachers/check',
-  'POST /api/people/staff/:id/roles',
-  'POST /api/people/staff/:id/roles/:assignmentId/end',
-  'POST /api/people/staff/:id/roles/:assignmentId/subjects',
-  'POST /api/people/staff/:id/status',
-  'PUT /api/people/staff/:id/branches',
-  'POST /api/timetable/absences/:id/journal-substitute',
-  'POST /api/timetable/vacancies/:id/journal-substitute',
-  'POST /api/timetable/lessons/:id/correction',
-  'POST /api/timetable/vacancy-fills',
-  'POST /api/timetable/vacancy-fills/check',
-  'POST /api/timetable/lessons/:id/forced-delete',
-  'POST /api/setup/buildings/:id/forced-delete',
-  'POST /api/setup/floors/:id/forced-delete',
-  'POST /api/setup/rooms/:id/forced-delete',
-  'POST /api/forced-deletes/:id/restore',
-  'POST /api/people/staff/imports/:id/confirm',
-  'POST /api/people/vacancies/:id/delete',
-  'POST /api/people/students/:id/delete',
-];
+export function notThroughAssistant(name: string): boolean {
+  if (ASSISTANT_SETTINGS_ROUTES.includes(name)) {
+    return true;
+  }
+  const path = name.slice(name.indexOf(' ') + 1);
+  return path === ASSISTANT_OWN_PREFIX || path.startsWith(`${ASSISTANT_OWN_PREFIX}/`);
+}
 
-/** What a listed route declares, as `assistantRouteFault` reads it. */
+/** What a route declares and is, as `routeKindOf` and `assistantRouteFault` read it. */
 export interface AssistantRouteFacts {
   /** `<METHOD> /api/<path>`. */
   name: string;
   method: string;
   /** `declarationsOf(handler)`. */
   declarations: readonly { kind: string; area?: string; action?: Action }[];
-  /** The line of the list (task 11.13): a read, a change or a preview. */
+  /** A route of `FILE_ROUTES` (`@ValidFile`). */
+  takesFile?: boolean;
+  /** A route marked `@ReturnsFile()`. */
+  returnsFile?: boolean;
+  /** The line of the route. */
   line?: AssistantRouteLine;
 }
 
 /**
- * Why a listed route is a fault of the code, or `undefined`. The application does not start
- * with one (`AssistantRoutes`), and `assistant-routes.test.ts` runs it over every route.
+ * The kind of a route, in this order (plan review 11): a file route, a file answer, an export
+ * (whatever its method), a GET, a preview or check, a change.
+ */
+export function routeKindOf(facts: AssistantRouteFacts): AssistantRouteKind {
+  const action = facts.declarations[0]?.action;
+  if (facts.takesFile === true) return 'file';
+  if (facts.returnsFile === true) return 'download';
+  if (action === 'export') return 'export';
+  if (facts.method === 'GET') return 'read';
+  if (/\/(preview|check)$/.test(facts.name)) return 'preview';
+  return 'change';
+}
+
+/**
+ * Why a route's line is a fault of the code, or `undefined`. The application does not start
+ * with one (`AssistantRoutes`), and `assistant-lines.test.ts` runs it over every route.
  */
 export function assistantRouteFault(facts: AssistantRouteFacts): string | undefined {
   const [declaration] = facts.declarations;
   if (declaration === undefined || facts.declarations.length !== 1) {
-    return 'is on the assistant’s list without exactly one access declaration';
+    return 'has a line without exactly one access declaration';
   }
   if (declaration.kind !== 'requires') {
-    return `is on the assistant’s list with the declaration ${declaration.kind}; only a route with a permission may be`;
+    return `has a line with the declaration ${declaration.kind}; only a route with a permission may`;
   }
-  if (declaration.action === 'export') {
-    return 'is an export, never through the assistant';
+  if (notThroughAssistant(facts.name)) {
+    return 'is the assistant’s own route, never through the assistant';
   }
-  if (NEVER_ROUTES_THROUGH_ASSISTANT.includes(facts.name)) {
-    return 'is never through the assistant';
+  if (facts.line === undefined) {
+    return undefined;
   }
-  if (
-    facts.method !== 'GET' &&
-    NEVER_CHANGED_THROUGH_ASSISTANT.some((area) => area === declaration.area)
-  ) {
-    return `changes the area ${String(declaration.area)}, never through the assistant`;
-  }
-  const kind = facts.line?.kind ?? 'read';
-  // A read is a GET of a `view`: a GET gated by another action reads what that action's
-  // holders alone may see.
-  if (kind === 'read') {
-    return facts.method === 'GET' && declaration.action === 'view'
-      ? undefined
-      : 'is listed as a read and is not a GET of a view';
-  }
-  // Task 11.13: a change is sent only at Confirm, a preview writes nothing; neither is a GET.
-  if (facts.method === 'GET') {
-    return `is listed as a ${kind} and is a GET`;
-  }
-  // A preview runs at the question, before any Confirm: only a route that is a preview or a
-  // check by its name may be one (permission review of the code, should fix 7).
-  if (kind === 'preview' && !/\/(preview|check)$/.test(facts.name)) {
-    return 'is listed as a preview and is not a preview or check route';
+  const expected = routeKindOf(facts);
+  const written = kindOfLine(facts.line);
+  if (written !== expected) {
+    return `is written as a ${written} and is a ${expected}`;
   }
   return undefined;
 }
@@ -645,8 +489,14 @@ export function assistantLineFault(
   }
   if (line.basis.kind === 'read') {
     const basis = lines[line.basis.route];
-    if (basis === undefined || (basis.kind ?? 'read') !== 'read') {
+    if (basis === undefined || kindOfLine(basis) !== 'read') {
       return `rests on ${line.basis.route}, which is not a read of the same list`;
+    }
+  }
+  if (line.serverBase !== undefined) {
+    const base = lines[line.serverBase.route];
+    if (base === undefined || kindOfLine(base) !== 'read') {
+      return `reads its base from ${line.serverBase.route}, which is not a read of the same list`;
     }
   }
   if (line.preview !== undefined && lines[line.preview.route]?.kind !== 'preview') {

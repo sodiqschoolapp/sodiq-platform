@@ -443,6 +443,8 @@ export const DESCRIPTIONS: Readonly<Record<string, string>> = {
     'Opens the Calendar page of School setup (/setup/calendar).',
   'features/setup/setup-page.tsx#tab:setup.settingsLink':
     'Opens the Settings page of School setup (/setup/settings).',
+  'features/setup/setup-page.tsx#tab:setup.assistantSettingsLink':
+    'Opens the Assistant settings page of School setup (/setup/assistant).',
   'features/setup/setup-page.tsx#tab:setup.demoClockLink':
     'Opens the Demo time page of School setup (/setup/demo-clock).',
   'features/setup/setup-page.tsx#tab:setup.travelTimesLink':

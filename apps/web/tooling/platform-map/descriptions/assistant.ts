@@ -27,6 +27,14 @@ export const DESCRIPTIONS: Readonly<Record<string, string>> = {
     'Opens the assistant panel beside the page.',
   'features/assistant/assistant-panel.tsx#panel':
     'The assistant panel beside every page: ask how to do something, or ask it to prepare changes that run only after Confirm.',
+  'features/assistant/assistant-settings-page.tsx#tab:assistant.settingsPage.role':
+    'Chooses the role whose actions are listed: the Super Admin, the Academic Vice Principal or the Teacher. Each area opens to show its actions with a switch each, and a switch for the whole area.',
+  'features/assistant/assistant-settings-section.tsx#field:assistant.settings.dataGroup_contact':
+    'Six switches, one per group of personal data (contact, identity, financial, the diagnostic score, medical, relatives): a group switched off reaches the model as [removed]. Secrets never do.',
+  'features/assistant/proposal-card.tsx#button:assistant.proposal.secretPrint':
+    'Prints the one-time password or secret a confirmed step gave out, as its screen prints the slip.',
+  'features/assistant/proposal-card.tsx#button:assistant.proposal.secretClose':
+    'Closes the one-time password or secret a confirmed step gave out; it is shown once and is not kept in the conversation.',
   'features/assistant/assistant-settings-section.tsx#field:assistant.settings.dailyLimit':
     'How many questions each person may ask the assistant per day.',
   'features/assistant/assistant-settings-section.tsx#field:assistant.settings.fallbackOn':

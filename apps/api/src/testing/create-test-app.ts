@@ -31,8 +31,8 @@ import { STATUS_FETCH } from '../monitoring/system-status.service.js';
 import type { StopBeforeHandler } from './route-harness.js';
 import { FixedClock } from './fixed-clock.js';
 import {
-  ASSISTANT_ROUTE_LISTS,
-  type AssistantRouteLists,
+  ASSISTANT_ROUTE_LINES,
+  type AssistantRouteLine,
 } from '../modules/access/assistant-routes.js';
 import { ASSISTANT_MODEL, type AssistantModel } from '../modules/assistant/model.js';
 import { ASSISTANT_WAIT, type AssistantWait } from '../modules/assistant/model-caller.js';
@@ -97,8 +97,8 @@ export interface TestAppOptions {
    * once: no test sleeps (`CLAUDE.md`, Time is injected).
    */
   assistantWait?: AssistantWait;
-  /** Task 11.12: the assistant's lists the guard reads, for a test of a role with no list yet. */
-  assistantRouteLists?: AssistantRouteLists;
+  /** Task 11.20: the assistant's lines, for a test of the start check or of a line left out. */
+  assistantRouteLines?: Readonly<Record<string, AssistantRouteLine>>;
   /**
    * Task 11.12: the server listens on an ephemeral port of 127.0.0.1, so that the assistant's
    * reads reach it (`AssistantDispatcher`).
@@ -186,8 +186,8 @@ export async function createTestApp(options: TestAppOptions = {}): Promise<NestE
   if (options.assistantModel !== undefined) {
     builder.overrideProvider(ASSISTANT_MODEL).useValue(options.assistantModel);
   }
-  if (options.assistantRouteLists !== undefined) {
-    builder.overrideProvider(ASSISTANT_ROUTE_LISTS).useValue(options.assistantRouteLists);
+  if (options.assistantRouteLines !== undefined) {
+    builder.overrideProvider(ASSISTANT_ROUTE_LINES).useValue(options.assistantRouteLines);
   }
   const moduleRef = await builder.compile();
   const app = moduleRef.createNestApplication<NestExpressApplication>();

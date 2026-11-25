@@ -121,7 +121,8 @@ describe('the assistant: questions, reads and answers', () => {
     const sent = vi.spyOn(dispatcher, 'read');
     scene.model.script(
       calls(
-        { name: 'IntegrationKeysController_list' },
+        // An own-account route: on no role's list (task 11.20: every route a role holds is).
+        { name: 'AuthController_signOut' },
         { name: CLASS, args: { id: '../members' } },
         { name: CLASS, args: { id: '%2F..%2Fsessions' } },
         { name: CLASS, args: { id: tutorClass, extra: 'x' } },
@@ -133,7 +134,7 @@ describe('the assistant: questions, reads and answers', () => {
       await ask(scene, scene.admin, scene.north, { text: 'List the integration keys.' }),
     );
     const results = lastResults(scene.model.requests[1] as ModelRequest).map((one) => one.result);
-    expect(results[0]).toEqual({ error: 'not_open_to_assistant' });
+    expect(results[0]).toEqual({ error: 'not_on_list' });
     for (const result of results.slice(1)) {
       expect(result).toEqual(expect.objectContaining({ error: 'invalid_arguments' }));
     }
@@ -252,13 +253,23 @@ describe('the assistant: questions, reads and answers', () => {
     expect(seen(request)).not.toContain('Oxford B');
   });
 
-  it('gives the model the person’s words with phones and document numbers removed, and dates kept (`02`: what never goes to the model; review correction 1)', async () => {
+  // Task 11.20: with the Contact and Identity groups switched off (`02`, Personal data and the
+  // model); they are on at the start.
+  it('gives the model the person’s words with phones and document numbers removed, and dates kept, while Contact and Identity are switched off (review correction 1 of 11.12)', async () => {
+    await scene.database.migrator
+      .updateTable('assistant_settings')
+      .set({ data_groups_off: ['contact', 'identity'] })
+      .execute();
     scene.model.script(answer('Noted.'));
     const reply = answered(
       await ask(scene, scene.admin, scene.north, {
         text: 'Call +998 90 123 45 67 about AA1234567, and move 7B on 2026-03-10.',
       }),
     );
+    await scene.database.migrator
+      .updateTable('assistant_settings')
+      .set({ data_groups_off: [] })
+      .execute();
     const given = seen(scene.model.requests[0]);
     expect(given).not.toContain('123 45 67');
     expect(given).not.toContain('AA1234567');

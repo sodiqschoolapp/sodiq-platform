@@ -1,4 +1,8 @@
-import { assistantSettingsRecordSchema, type AssistantSettings } from '@sodiq/shared';
+import {
+  ASSISTANT_DATA_GROUPS,
+  assistantSettingsRecordSchema,
+  type AssistantSettings,
+} from '@sodiq/shared';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { CHECKED, CheckboxField, NumberField } from '@/components/field';
@@ -45,7 +49,13 @@ export function AssistantSettingsSection(): React.JSX.Element | null {
   );
 }
 
-type Field = 'schoolOn' | 'dailyLimit' | 'monthlyCapDollars' | 'fallbackOn' | `role_${string}`;
+type Field =
+  | 'schoolOn'
+  | 'dailyLimit'
+  | 'monthlyCapDollars'
+  | 'fallbackOn'
+  | `role_${string}`
+  | `group_${string}`;
 
 function AssistantSettingsForm({ settings }: { settings: AssistantSettings }): React.JSX.Element {
   const { t, i18n } = useTranslation();
@@ -56,6 +66,9 @@ function AssistantSettingsForm({ settings }: { settings: AssistantSettings }): R
     monthlyCapDollars: String(settings.monthlyCapDollars),
     fallbackOn: settings.fallbackOn ? CHECKED : '',
   };
+  for (const group of ASSISTANT_DATA_GROUPS) {
+    initial[`group_${group}`] = settings.dataGroupsOn.includes(group) ? CHECKED : '';
+  }
   for (const role of settings.roles) {
     initial[`role_${role}`] = settings.rolesOn.includes(role) ? CHECKED : '';
   }
@@ -72,6 +85,8 @@ function AssistantSettingsForm({ settings }: { settings: AssistantSettings }): R
       dailyLimit: wholeNumber(typed.dailyLimit),
       monthlyCapDollars: wholeNumber(typed.monthlyCapDollars),
       fallbackOn: typed.fallbackOn === CHECKED,
+      // Task 11.20: the personal-data groups that reach the model.
+      dataGroupsOn: ASSISTANT_DATA_GROUPS.filter((group) => typed[`group_${group}`] === CHECKED),
     }),
     save: async (record) => {
       const saved = await saveAssistantSettings(record);
@@ -111,6 +126,20 @@ function AssistantSettingsForm({ settings }: { settings: AssistantSettings }): R
           })}
           {...form.bind('fallbackOn')}
         />
+        {/* Task 11.20 (`02`, Personal data and the model): all on at the start. */}
+        <fieldset className="grid gap-2">
+          <legend className="mb-1 text-sm font-semibold">
+            {t('assistant.settings.dataGroups')}
+          </legend>
+          {ASSISTANT_DATA_GROUPS.map((group) => (
+            <CheckboxField
+              key={group}
+              label={t(`assistant.settings.dataGroup_${group}`)}
+              {...form.bind(`group_${group}`)}
+            />
+          ))}
+          <p className="text-sm text-muted-foreground">{t('assistant.settings.dataGroupsNote')}</p>
+        </fieldset>
       </RecordForm>
     </div>
   );

@@ -1,4 +1,6 @@
 import {
+  assistantActionsSchema,
+  assistantConfirmedSchema,
   assistantAllConversationsSchema,
   assistantAnswerSchema,
   assistantAnyConversationDetailSchema,
@@ -9,6 +11,7 @@ import {
   type AssistantPlace,
   type AssistantRole,
   type AssistantSettingsRecord,
+  type AssistantSwitchChange,
 } from '@sodiq/shared';
 import { queryOptions } from '@tanstack/react-query';
 import { api, branchHeader } from '@/api/client';
@@ -123,16 +126,48 @@ export const decideProposal = async (input: {
   which: 'confirm' | 'decline';
   role: AssistantRole;
 }) =>
-  assistantConversationSchema.parse(
+  // Task 11.20: a Confirm's answer also holds the secrets its steps gave out, once; the card
+  // keeps them in its own state only (`.claude/rules/web.md`: a secret an answer holds once).
+  assistantConfirmedSchema.parse(
     await answerOf(
       input.which === 'confirm'
         ? api.POST('/api/assistant/proposals/{id}/confirm', {
             params: { path: { id: input.id }, header: branchHeader() },
             body: { role: input.role },
           })
-        : api.POST('/api/assistant/proposals/{id}/decline', {
-            params: { path: { id: input.id }, header: branchHeader() },
-            body: { role: input.role },
-          }),
+        : api
+            .POST('/api/assistant/proposals/{id}/decline', {
+              params: { path: { id: input.id }, header: branchHeader() },
+              body: { role: input.role },
+            })
+            .then((answer) =>
+              answer.data === undefined
+                ? answer
+                : { ...answer, data: { ...answer.data, secrets: [] } },
+            ),
     ),
   );
+
+/** Task 11.20: every action of the three roles by area, and the Super Admin's switches. */
+export const ASSISTANT_ACTIONS_KEY = [...ASSISTANT_KEY, 'actions'] as const;
+
+export const assistantActionsQuery = (enabled: boolean) =>
+  queryOptions({
+    queryKey: ASSISTANT_ACTIONS_KEY,
+    enabled,
+    queryFn: async () =>
+      assistantActionsSchema.parse(await answerOf(api.GET('/api/assistant/actions'))),
+  });
+
+export const saveAssistantSwitches = async (changes: AssistantSwitchChange[]) =>
+  assistantActionsSchema.parse(
+    await answerOf(api.PUT('/api/assistant/actions', { body: { changes } })),
+  );
+
+/**
+ * The key of an action's name under `assistant.actions`: its operation id, except an id that
+ * ends like a plural form (`ExamsController_one`), which i18next would read as one (`_op`).
+ */
+export function actionLabelKey(operation: string): string {
+  return /_(zero|one|two|few|many|other)$/.test(operation) ? `${operation}_op` : operation;
+}

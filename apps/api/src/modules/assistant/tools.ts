@@ -1,6 +1,9 @@
 import { WARNING_FLAGS, type AssistantChangeLine } from '../access/assistant-change-routes.js';
 import type { AssistantRouteLine } from '../access/assistant-routes.js';
-import { isRemovedKey } from './field-filter.js';
+import { ASSISTANT_KINDS_WITHOUT_TOOL, type Language } from '@sodiq/shared';
+import { kindOfLine } from '../access/assistant-routes.js';
+import type { ModelFilter } from './field-filter.js';
+import { PLATFORM_MAP } from './platform-map.js';
 import type { ModelTool, ToolArgumentsSchema, ToolParameterSchema } from './model.js';
 import { GENERATED_TOOLS } from './tools.generated.js';
 
@@ -45,6 +48,32 @@ export const EXPLAIN_PLACE = 'explain_place';
 export const LINK_PLACE = 'link_place';
 
 export const MAP_TOOLS: readonly string[] = [FIND_IN_PLATFORM, EXPLAIN_PLACE, LINK_PLACE];
+
+/**
+ * Task 11.20 (plan decision 10): the search of the role's switched-on actions. With about 500
+ * actions the model is not given every declaration in each call: it finds the ones it needs, and
+ * they are declared from its next call of the same question.
+ */
+export const FIND_ACTIONS = 'find_actions';
+
+/** The most actions one search answers. */
+export const FIND_ACTIONS_LIMIT = 12;
+
+/** The most action declarations one call of the model carries (plan review 13). */
+export const MAX_DECLARED_ACTIONS = 64;
+
+export const FIND_ACTIONS_DEFINITION: ModelTool = {
+  name: FIND_ACTIONS,
+  description:
+    'Searches the actions open to you for this person: every read and every change their role has on the screens and the Super Admin switched on, with what each does. Give English words (or the person\u2019s), such as "attendance of a lesson", "exemption", "move a student to another class". The actions found become tools you can call from your next step; call find_actions before you say you cannot do something.',
+  parameters: {
+    type: 'object',
+    properties: {
+      words: { type: 'string', description: 'What to do or read, in a few words.' },
+    },
+    required: ['words'],
+  },
+};
 
 const NAME_VALUE: ToolParameterSchema = {
   type: 'array',
@@ -228,7 +257,11 @@ export function toolNameOf(route: string, line: AssistantRouteLine): string {
  * plan review must fix 4), every warning flag but the line's own (review correction 2), the
  * fields the basis gives, and on a line with `only` every other field.
  */
-export function changeBodySchemaOf(route: string, line: AssistantChangeLine): unknown {
+export function changeBodySchemaOf(
+  route: string,
+  line: AssistantChangeLine,
+  filter: ModelFilter,
+): unknown {
   const body = generatedOf(route).body;
   if (body === undefined) {
     return undefined;
@@ -239,7 +272,7 @@ export function changeBodySchemaOf(route: string, line: AssistantChangeLine): un
     !(line.fromBasis ?? []).includes(key) &&
     key !== line.serverBase?.field &&
     (!WARNING_FLAGS.includes(key) || kept.has(key));
-  const stripped = stripSchema(body, top, true);
+  const stripped = stripSchema(body, top, true, filter);
   const base = line.serverBase;
   if (base === undefined) {
     return stripped;
@@ -256,13 +289,21 @@ export function changeBodySchemaOf(route: string, line: AssistantChangeLine): un
   return { ...schema, properties, required };
 }
 
-function stripSchema(value: unknown, keep: (key: string) => boolean, top: boolean): unknown {
+function stripSchema(
+  value: unknown,
+  keep: (key: string) => boolean,
+  top: boolean,
+  filter: ModelFilter,
+): unknown {
   const schema = asSchema(value);
   if (Array.isArray(schema.anyOf)) {
-    return { ...schema, anyOf: schema.anyOf.map((option) => stripSchema(option, keep, top)) };
+    return {
+      ...schema,
+      anyOf: schema.anyOf.map((option) => stripSchema(option, keep, top, filter)),
+    };
   }
   if (schema.type === 'array') {
-    return { ...schema, items: stripSchema(schema.items, keep, false) };
+    return { ...schema, items: stripSchema(schema.items, keep, false, filter) };
   }
   if (
     schema.type !== 'object' ||
@@ -273,10 +314,10 @@ function stripSchema(value: unknown, keep: (key: string) => boolean, top: boolea
   }
   const properties: Record<string, unknown> = {};
   for (const [key, property] of Object.entries(schema.properties)) {
-    if (isRemovedKey(key) || (top && !keep(key)) || (!top && WARNING_FLAGS.includes(key))) {
+    if (filter.removesKey(key) || (top && !keep(key)) || (!top && WARNING_FLAGS.includes(key))) {
       continue;
     }
-    properties[key] = stripSchema(property, keep, false);
+    properties[key] = stripSchema(property, keep, false, filter);
   }
   const required = Array.isArray(schema.required)
     ? schema.required.filter((key) => typeof key === 'string' && key in properties)
@@ -288,7 +329,7 @@ function stripSchema(value: unknown, keep: (key: string) => boolean, top: boolea
  * The required fields of a change's body that the model is not given (never-fields only: a
  * warning flag or a basis field is never required). A listed change has none; a test holds it.
  */
-export function requiredFieldsWithheld(route: string): string[] {
+export function requiredFieldsWithheld(route: string, filter: ModelFilter): string[] {
   const withheld: string[] = [];
   const walk = (value: unknown, where: string): void => {
     const schema = asSchema(value);
@@ -311,7 +352,7 @@ export function requiredFieldsWithheld(route: string): string[] {
     }
     const required = Array.isArray(schema.required) ? schema.required : [];
     for (const [key, property] of Object.entries(schema.properties)) {
-      if (isRemovedKey(key)) {
+      if (filter.removesKey(key)) {
         if (required.includes(key)) {
           withheld.push(`${where}.${key}`);
         }
@@ -324,13 +365,47 @@ export function requiredFieldsWithheld(route: string): string[] {
   return withheld;
 }
 
-/** The tools of the chosen role: its reads and proposals, and `suggest_page` with its pages. */
-export function toolsOf(lines: RoleLines): ModelTool[] {
+/**
+ * The declaration of one action of the list, or `undefined` for an action with no tool yet (an
+ * export, a file, a download: plan decision 7) or a change whose required body field the
+ * filter withholds (a group switched off).
+ */
+export function toolOf(
+  route: string,
+  line: AssistantRouteLine,
+  filter: ModelFilter,
+): ModelTool | undefined {
+  if (ASSISTANT_KINDS_WITHOUT_TOOL.includes(kindOfLine(line))) {
+    return undefined;
+  }
+  if (line.kind === 'change' && requiredFieldsWithheld(route, filter).length > 0) {
+    return undefined;
+  }
+  return toolsOfLines({ [route]: line }, filter, false)[0];
+}
+
+/** The tools of the chosen role: its reads and proposals, and the map's tools. */
+export function toolsOf(lines: RoleLines, filter: ModelFilter): ModelTool[] {
+  return toolsOfLines(lines, filter, true);
+}
+
+function toolsOfLines(lines: RoleLines, filter: ModelFilter, withExtras: boolean): ModelTool[] {
   const tools: ModelTool[] = [];
   for (const [route, line] of Object.entries(lines)) {
+    if (ASSISTANT_KINDS_WITHOUT_TOOL.includes(kindOfLine(line))) {
+      continue;
+    }
+    if (line.kind === 'change' && requiredFieldsWithheld(route, filter).length > 0) {
+      continue;
+    }
     const generated = generatedOf(route);
+    // Task 11.20: a parameter of a group switched off (a search by phone) is not given; a
+    // route that needs one has no tool while the group is off.
+    if (generated.parameters.some((one) => one.required && filter.removesKey(one.name))) {
+      continue;
+    }
     const parameters: ToolArgumentsSchema = { type: 'object', properties: {}, required: [] };
-    for (const parameter of generated.parameters) {
+    for (const parameter of generated.parameters.filter((one) => !filter.removesKey(one.name))) {
       parameters.properties[parameter.name] = modelSchemaOf(
         parameter.schema,
         `${route} ${parameter.name}`,
@@ -344,7 +419,7 @@ export function toolsOf(lines: RoleLines): ModelTool[] {
       // with the fields that never go to it removed as from a change.
       if (generated.body !== undefined) {
         parameters.properties[BODY_ARGUMENT] = modelSchemaOf(
-          stripSchema(generated.body, (key) => !WARNING_FLAGS.includes(key), true),
+          stripSchema(generated.body, (key) => !WARNING_FLAGS.includes(key), true, filter),
           `${route} body`,
         );
         parameters.required.push(BODY_ARGUMENT);
@@ -357,7 +432,7 @@ export function toolsOf(lines: RoleLines): ModelTool[] {
       continue;
     }
     if (line.kind === 'change') {
-      const body = changeBodySchemaOf(route, line);
+      const body = changeBodySchemaOf(route, line, filter);
       if (body !== undefined) {
         parameters.properties[BODY_ARGUMENT] = modelSchemaOf(body, `${route} body`);
         parameters.required.push(BODY_ARGUMENT);
@@ -377,11 +452,14 @@ export function toolsOf(lines: RoleLines): ModelTool[] {
     }
     tools.push({ name: generated.name, description: line.description, parameters });
   }
+  if (!withExtras) {
+    return tools;
+  }
   if (Object.hasOwn(lines, LESSON_CARD_ROUTE)) {
     tools.push({
       name: OPEN_LESSON_JOURNAL,
       description:
-        'Opens the journal column of one own lesson for the person, for a journal entry the assistant never makes (attendance, numbers, comments, not held).',
+        'Links the journal column of one lesson for the person, to look at it or to enter there what they prefer to type themselves.',
       parameters: {
         type: 'object',
         properties: { lessonId: { type: 'string', description: 'The id of the lesson.' } },
@@ -389,7 +467,7 @@ export function toolsOf(lines: RoleLines): ModelTool[] {
       },
     });
   }
-  tools.push(...MAP_TOOL_DEFINITIONS);
+  tools.push(...MAP_TOOL_DEFINITIONS, FIND_ACTIONS_DEFINITION);
   return tools;
 }
 
@@ -509,4 +587,103 @@ export function urlOf(
   }
   const text = query.toString();
   return { url: text === '' ? path : `${path}?${text}` };
+}
+
+/** The words of one map page or control that calls an operation, in the three languages. */
+const MAP_WORDS_OF_OPERATION: ReadonlyMap<string, string> = (() => {
+  const words = new Map<string, string[]>();
+  const add = (operations: readonly string[], label: Readonly<Record<Language, string>>): void => {
+    for (const operation of operations) {
+      const list = words.get(operation) ?? [];
+      list.push(label.uz, label.ru, label.en);
+      words.set(operation, list);
+    }
+  };
+  for (const page of PLATFORM_MAP.pages) add(page.operations, page.title);
+  for (const node of PLATFORM_MAP.nodes) {
+    if (node.label !== null) add(node.operations, node.label);
+  }
+  return new Map([...words].map(([operation, list]) => [operation, list.join(' ').toLowerCase()]));
+})();
+
+/** The words of a text, folded for a search: lower case, letters and digits. */
+function wordsOf(text: string): string[] {
+  return text
+    .toLowerCase()
+    .split(/[^\p{L}\p{N}]+/u)
+    .filter((word) => word.length >= 3);
+}
+
+/**
+ * `find_actions` (plan decision 10): the switched-on actions of the list that match the words,
+ * best first: each word counted in the description, the route, the operation and the labels of
+ * the map's pages and controls that call it (Uzbek, Russian and English).
+ */
+export function findActions(
+  lines: RoleLines,
+  text: string,
+): { route: string; tool: string; kind: string; description: string }[] {
+  const words = wordsOf(text);
+  if (words.length === 0) return [];
+  const scored: { route: string; score: number; line: AssistantRouteLine }[] = [];
+  for (const [route, line] of Object.entries(lines)) {
+    if (ASSISTANT_KINDS_WITHOUT_TOOL.includes(kindOfLine(line))) continue;
+    const generated = GENERATED_TOOLS[route];
+    if (generated === undefined) continue;
+    const haystack = [
+      line.description.toLowerCase(),
+      route.toLowerCase(),
+      generated.name.toLowerCase(),
+      MAP_WORDS_OF_OPERATION.get(generated.name) ?? '',
+    ].join(' ');
+    let score = 0;
+    for (const word of words) {
+      // A word's stem: its first five letters, so "cancel" finds "cancels" and "cancelled".
+      const stem = word.length > 5 ? word.slice(0, 5) : word;
+      if (haystack.includes(word)) score += 2;
+      else if (haystack.includes(stem)) score += 1;
+    }
+    if (score > 0) scored.push({ route, score, line });
+  }
+  return scored
+    .sort((a, b) => b.score - a.score || a.route.localeCompare(b.route))
+    .slice(0, FIND_ACTIONS_LIMIT)
+    .map(({ route, line }) => ({
+      route,
+      tool: toolNameOf(route, line),
+      kind: kindOfLine(line),
+      description: line.description,
+    }));
+}
+
+/** The routes whose operations a page of the map calls (the page the person is on). */
+export function routesOfPage(lines: RoleLines, page: string | undefined): string[] {
+  if (page === undefined) return [];
+  const found = PLATFORM_MAP.pages.find((one) => one.path === page);
+  if (found === undefined) return [];
+  const operations = new Set(found.operations);
+  return Object.keys(lines).filter((route) => {
+    const generated = GENERATED_TOOLS[route];
+    return generated !== undefined && operations.has(generated.name);
+  });
+}
+
+/**
+ * The action declarations of one call of the model (plan decision 10, review 13): the actions
+ * found in this question, newest first, then those of the conversation's earlier proposals,
+ * then those of the page open, each once, at most `MAX_DECLARED_ACTIONS` with a tool.
+ */
+export function declaredActions(
+  lines: RoleLines,
+  filter: ModelFilter,
+  from: { found: readonly string[]; used: readonly string[]; page: readonly string[] },
+): ModelTool[] {
+  const tools: ModelTool[] = [];
+  for (const route of new Set([...[...from.found].reverse(), ...from.used, ...from.page])) {
+    const line = lines[route];
+    const tool = line === undefined ? undefined : toolOf(route, line, filter);
+    if (tool !== undefined) tools.push(tool);
+    if (tools.length >= MAX_DECLARED_ACTIONS) break;
+  }
+  return tools;
 }

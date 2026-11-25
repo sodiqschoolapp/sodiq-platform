@@ -4,6 +4,7 @@ import {
   assistantSettingsSchema,
   type AssistantAnswer,
 } from '@sodiq/shared';
+import { ASSISTANT_DATA_GROUPS } from '@sodiq/shared';
 import { sql } from 'kysely';
 import request from 'supertest';
 import type { JsonValue } from '../../database/types.generated.js';
@@ -59,6 +60,7 @@ describe('the assistant on the live model: retries, the worldwide fallback and t
         dailyLimit: 500,
         monthlyCapDollars: 300,
         fallbackOn: true,
+        dataGroupsOn: [...ASSISTANT_DATA_GROUPS],
         ...change,
       });
 

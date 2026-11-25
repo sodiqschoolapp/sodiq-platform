@@ -2,6 +2,20 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 25 November 2026: task 11.20, every action of the role open to the assistant
+
+- **The lists**: each role's list is every `@Requires` route the table gives it (517 for the Super Admin, 421 for the Academic Vice Principal, 100 for the Teacher), derived at start (`AssistantRoutes`); every route has a line in `ROUTE_LINES` (`access/assistant-routes.ts`, `assistant-change-routes.ts`, `assistant/lines/*.ts`) and a name in three languages under `assistant.actions`. The model finds actions with `find_actions` and gets at most 64 declarations per call.
+- **The switches**: `/setup/assistant` (the Super Admin): every action of each role by area, saved when pressed and audited (`assistant_switch.change`); the heavy actions of `02` start off; the dispatcher checks the switch for every request; Confirm refuses a step switched off since.
+- **The floor and the data**: secrets are marked for the model and stored nowhere; a confirmed step's secret is in Confirm's answer only, shown once. Personal data reaches the model as the six groups allow (all on).
+
+Left out: exports, file uploads and downloads have no tool yet (11.22); the limits, Continue, tables, buttons and Undo (11.21); the helpers (11.23).
+
+The next sessions must know:
+
+- A new route with a permission is on the roles' lists at once: it needs a line (kind as `routeKindOf` decides, a description, a basis for a change), a name under `assistant.actions.<operationId>` in the three locale files, and `pnpm api:client`; `assistant-routes.test.ts` fails until then. A change whose words name a heavy action goes into `HEAVY_ROUTES` or `NOT_HEAVY` with its reason.
+- A listed route whose answer holds a key that looks like a secret fails `assistant-routes.test.ts` until `isSecretKey` (`field-filter.ts`) removes it; a route that gives a password or a secret out is named in `SECRET_ROUTES` there.
+- A test that scripts the model may call any switched-on action by name; a real model calls only what is declared (`find_actions`, the page's actions, those of earlier proposals).
+
 ## 25 November 2026: task 11.19, the assistant knows the platform
 
 - **The map**: `apps/web/tooling/platform-map/` walks the web app with the TypeScript compiler (81 staff pages; 1,505 tabs, panels, buttons, fields and columns), takes labels in three languages from the locale files, roles from the permission table and the API calls of each page, and writes `apps/api/src/modules/assistant/platform-map.generated.ts` (`pnpm assistant:map`). Every node has an English description in `descriptions/`; `tooling/platform-map.test.ts` fails on a stale map, a node without a description or a description of no node.

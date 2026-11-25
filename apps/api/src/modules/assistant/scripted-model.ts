@@ -18,6 +18,14 @@ function openClassOf(request: ModelRequest): string | undefined {
 }
 
 /**
+ * Whether the model may call a tool: declared in this call, or (task 11.20, plan decision 10)
+ * callable by name while `find_actions` is offered, as any switched-on action of the role is.
+ */
+function offered(request: ModelRequest, name: string): boolean {
+  return request.tools.some((tool) => tool.name === name || tool.name === 'find_actions');
+}
+
+/**
  * The model of the browser tests (task 11.12, `ASSISTANT_SCRIPTED_MODEL=1`, refused by the
  * configuration outside the test and development environments): it never leaves the server.
  * To any question it reads the classes, then answers with the names of those with no Tutor,
@@ -48,7 +56,7 @@ export class ScriptedModel implements AssistantModel {
     // Task 11.19: "which class is this?" from a class's panel: it reads the class open there,
     // links its record, and names it.
     const open = openClassOf(request);
-    if (open !== undefined && request.tools.some((tool) => tool.name === CLASS)) {
+    if (open !== undefined && offered(request, CLASS)) {
       const read = last?.parts.find((part) => part.kind === 'result' && part.name === CLASS);
       const linked = last?.parts.find(
         (part) => part.kind === 'result' && part.name === 'link_place',
@@ -76,7 +84,7 @@ export class ScriptedModel implements AssistantModel {
     }
     const result = last?.parts.find((part) => part.kind === 'result' && part.name === CLASSES);
     if (result === undefined || result.kind !== 'result') {
-      const canRead = request.tools.some((tool) => tool.name === CLASSES);
+      const canRead = offered(request, CLASSES);
       return canRead
         ? {
             text: '',
