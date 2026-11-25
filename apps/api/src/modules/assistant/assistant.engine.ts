@@ -586,7 +586,9 @@ export class AssistantEngine {
         return;
       }
       modelCalls += 1;
-      asked = await this.transcribe(start, start.voice);
+      const spoken = await this.transcribe(start, start.voice);
+      // Code review remark: words typed beside a recording go with it, as the history tells them.
+      asked = question.text === '' ? spoken : `${spoken}\n${question.text}`;
     }
     const fileParts = await this.partsOf(start.files);
     const turns: ModelTurn[] = [
@@ -1115,7 +1117,10 @@ export class AssistantEngine {
         const part = turn?.role === 'person' ? turn.parts[0] : undefined;
         const transcript = (content.result as { transcript?: unknown } | null)?.transcript;
         if (part?.kind === 'text' && typeof transcript === 'string') {
-          part.text = filter.words(transcript) + part.text;
+          part.text =
+            filter.words(transcript) +
+            (part.text === '' || part.text.startsWith('\n') ? '' : '\n') +
+            part.text;
         }
       } else if (content.kind === 'answer') {
         const proposal = lastQuestion === undefined ? undefined : byQuestion.get(lastQuestion);

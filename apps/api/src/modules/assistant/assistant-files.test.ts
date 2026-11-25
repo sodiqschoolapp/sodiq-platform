@@ -537,6 +537,72 @@ describe('the assistant: files, imports, exports and voice', () => {
     expect(resultOf(EXPORT_FILE)).toMatchObject({ error: 'invalid_arguments' });
   });
 
+  /** The audit log as the Super Admin reads it, newest first (code review of #390, finding 2). */
+  async function auditEntries(query: Record<string, string> = {}) {
+    const page = await request(server())
+      .get('/api/audit/entries')
+      .query(query)
+      .set('Cookie', scene.admin)
+      .set(BRANCH_HEADER, scene.north);
+    expect(page.status, JSON.stringify(page.body).slice(0, 300)).toBe(200);
+    return (
+      page.body as {
+        entries: {
+          action: string;
+          viaAssistant: { question: string; conversationId: string | null } | null;
+        }[];
+      }
+    ).entries;
+  }
+
+  it('shows in the audit log the request a run came from: an export of a typed question', async () => {
+    const entry = (await auditEntries()).find(
+      (one) => one.action === 'student.export' && one.viaAssistant !== null,
+    );
+    expect(entry?.viaAssistant?.question).toBe('Give me the student list in Excel.');
+  });
+
+  it('shows in the audit log the spoken words of a recorded question, for the upload it ran and the Confirm it proposed', async () => {
+    const words = 'Bu roʻyxatdagi oʻquvchilarni qoʻshing.';
+    const voice = assistantFileSchema.parse(
+      (
+        await upload(scene, scene.admin, scene.north, {
+          bytes: bytesOf('audio/webm', 300),
+          type: 'audio/webm',
+          kind: 'voice',
+          name: 'question.webm',
+        })
+      ).body,
+    );
+    const file = await attach(
+      await filledTemplate([studentRow(className)]),
+      ASSISTANT_EXCEL_TYPE,
+      'Spoken.xlsx',
+    );
+    scene.model.script(
+      answer(words),
+      calls({ name: IMPORT_ATTACHMENT, args: { fileId: file.id, import: 'students' } }),
+      confirmTurn,
+      answer('Here is the import.'),
+    );
+    const conversation = conversationOf(
+      (await ask(scene, scene.admin, scene.north, { text: '', voice: voice.id, files: [file.id] }))
+        .body,
+    );
+    const importId = (resultOf(IMPORT_ATTACHMENT) as { data?: { importId?: string } }).data
+      ?.importId;
+    expect(importId).toMatch(/^[0-9a-f-]{36}$/);
+    expect((await decide(conversation.proposals.at(-1)?.id ?? '')).status).toBe(200);
+    const entries = await auditEntries({
+      recordType: 'student_import',
+      recordId: importId ?? '',
+    });
+    expect(entries.map((one) => [one.action, one.viaAssistant?.question])).toEqual([
+      ['student_import.confirm', words],
+      ['student_import.upload', words],
+    ]);
+  });
+
   /** Every cell of each sheet of a workbook, as text. */
   async function cellsOf(bytes: Buffer): Promise<string[][]> {
     const workbook = new ExcelJS.Workbook();
