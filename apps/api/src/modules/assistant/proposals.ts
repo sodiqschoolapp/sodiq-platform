@@ -70,6 +70,8 @@ export interface StoredStep {
     recordName: string | null;
     recordNames: { uz: string; ru: string; en: string } | null;
     fields: { name: string; value: string }[];
+    /** Task 11.20: the entries of a step of many (attendance of a lesson), named. */
+    entries?: { name: string | null; value: string }[];
     previewLessons: AssistantPreviewLesson[];
     previewMore: number;
     previewIssues: { kind: 'warning' | 'blocked'; code: string }[];
@@ -84,6 +86,11 @@ export interface ProposingAs {
   lines: RoleLines;
   /** Task 11.20: the personal-data groups of the question. */
   filter: ModelFilter;
+  /**
+   * Task 11.20: the names of the students of a lesson among the ids given, for the grouped list
+   * of a step (the panel only, never the model); an id not of the lesson is left out.
+   */
+  studentNamesOf?: (lessonId: string, ids: string[]) => Promise<ReadonlyMap<string, string>>;
   /** The date and class of a dated lesson of the branch, to name it in the panel (a one-day change). */
   lessonDateOf?: (lessonId: string) => Promise<{ date: string; classId: string } | undefined>;
 }
@@ -258,6 +265,32 @@ function shownBodyOf(
     shown[key] = value;
   }
   return shown;
+}
+
+/**
+ * The entries of a step of many (task 11.20): the first list of the body whose items name a
+ * student (`saves` of a lesson's attendance), with what each enters (its other plain values).
+ */
+function entryListOf(
+  body: unknown,
+): { key: string; items: { studentId: string; value: string }[] } | undefined {
+  if (body === null || typeof body !== 'object' || Array.isArray(body)) return undefined;
+  for (const [key, value] of Object.entries(body as Record<string, unknown>)) {
+    if (!Array.isArray(value) || value.length === 0) continue;
+    const items: { studentId: string; value: string }[] = [];
+    for (const item of value) {
+      if (item === null || typeof item !== 'object') return undefined;
+      const { studentId, ...rest } = item as Record<string, unknown>;
+      if (typeof studentId !== 'string') return undefined;
+      const shown = Object.entries(rest)
+        .filter(([name, inner]) => name !== 'version' && inner !== null && inner !== undefined)
+        .map(([, inner]) => (typeof inner === 'string' ? inner : JSON.stringify(inner)))
+        .join(', ');
+      items.push({ studentId, value: shown.slice(0, 100) });
+    }
+    return { key, items };
+  }
+  return undefined;
 }
 
 function fieldsOf(body: unknown): { name: string; value: string }[] {
@@ -618,6 +651,28 @@ export async function draftStep(
     }
   }
 
+  // Task 11.20: a step of many entries shows them as one list, each named (build plan).
+  const shownBody = tool.body === undefined ? null : shownBodyOf(body, line);
+  const entryList = entryListOf(shownBody);
+  let entries: { name: string | null; value: string }[] = [];
+  if (
+    entryList !== undefined &&
+    typeof pathArgs.lessonId === 'string' &&
+    as.studentNamesOf !== undefined
+  ) {
+    const names = await as.studentNamesOf(
+      pathArgs.lessonId,
+      entryList.items.map((item) => item.studentId),
+    );
+    entries = entryList.items.map((item) => ({
+      name: names.get(item.studentId) ?? null,
+      value: item.value,
+    }));
+  }
+  const shownFields = fieldsOf(shownBody).filter(
+    (field) => entries.length === 0 || field.name !== entryList?.key,
+  );
+
   const step: StoredStep = {
     id: randomUUID(),
     seq: prior.length + 1,
@@ -635,7 +690,8 @@ export async function draftStep(
     shown: {
       recordName: nameOfRecord(picked),
       recordNames: namesOfRecord(picked),
-      fields: fieldsOf(tool.body === undefined ? null : shownBodyOf(body, line)),
+      fields: shownFields,
+      entries,
       // Only the panel's fields: the ids that matched a choice are not kept.
       previewLessons: previewLessons.map((lesson: InternalLesson) => {
         const shown: InternalLesson = { ...lesson };

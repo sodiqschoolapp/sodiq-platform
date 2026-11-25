@@ -69,6 +69,7 @@ export async function proposalsOf(
           recordName: step.shown.recordName,
           recordNames: step.shown.recordNames ?? null,
           fields: step.shown.fields,
+          entries: step.shown.entries ?? [],
           previewLessons: step.shown.previewLessons.map((lesson) => ({
             ...lesson,
             hasData: lesson.hasData ?? false,

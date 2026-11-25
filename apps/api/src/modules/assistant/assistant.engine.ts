@@ -528,6 +528,7 @@ export class AssistantEngine {
               lines,
               filter,
               lessonDateOf: (lessonId) => this.lessonDate(asker.access, lessonId),
+              studentNamesOf: (lessonId, ids) => this.studentNames(asker.access, lessonId, ids),
             },
             { route: named.route, tool: named.tool, line: named.line, args: call.args },
             steps,
@@ -866,6 +867,31 @@ export class AssistantEngine {
     );
     if (journal.failure !== undefined || journal.status !== 200) return undefined;
     return { journalId: card.data.journalId, quarterId, date: card.data.date };
+  }
+
+  /**
+   * Task 11.20: the names of the students of one lesson of the branch of the request (the row
+   * filter) among the ids of a step, for the panel's grouped list only.
+   */
+  private async studentNames(
+    access: Access,
+    lessonId: string,
+    ids: string[],
+  ): Promise<ReadonlyMap<string, string>> {
+    if (ids.length === 0) return new Map();
+    return this.transactions.run(access.branchIds, async (transaction) => {
+      const rows = await transaction
+        .selectFrom('students')
+        .select(['id', 'first_name', 'last_name'])
+        .where('id', 'in', ids)
+        .where(
+          'id',
+          'in',
+          sql<string>`(select s from lesson_expected_students(${lessonId}::uuid) s)`,
+        )
+        .execute();
+      return new Map(rows.map((row) => [row.id, `${row.last_name} ${row.first_name}`]));
+    });
   }
 
   /** One read the model asked for, stored, and what the model is given back. */

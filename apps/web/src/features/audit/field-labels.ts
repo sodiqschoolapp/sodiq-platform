@@ -218,6 +218,14 @@ const LABELS: Record<string, Record<string, ParseKeys>> = {
     dailyLimit: 'assistant.settings.dailyLimit',
     monthlyCapDollars: 'assistant.settings.monthlyCap',
     fallbackOn: 'assistant.settings.fallbackOn',
+    dataGroupsOn: 'assistant.settings.dataGroups',
+  },
+  // Task 11.20: a switch of the assistant's actions (an entry with no record, named by its action).
+  assistant_switch: {
+    role: 'assistant.settingsPage.role',
+    area: 'assistant.settingsPage.area',
+    route: 'assistant.settingsPage.action',
+    on: 'assistant.settingsPage.on',
   },
   assistant_conversation: {
     restoredAt: 'assistant.conversationsPage.restoredAt',
@@ -245,6 +253,10 @@ const CODES: Record<string, string> = {
 /** Where the names of the stored codes of a field are, for a record type. */
 export function codesOf(type: string, key: string): string | undefined {
   const field = camelCase(key);
+  // Task 11.20: the area of a switch of the assistant, by its name on the settings page.
+  if (type === 'assistant_switch' && field === 'area') {
+    return 'assistant.areas';
+  }
   if (field === 'status') {
     return type === 'student'
       ? 'people.students.statuses'

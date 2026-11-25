@@ -318,6 +318,12 @@ export const assistantStepSchema = z.object({
   /** How many entries each list of the preview holds (its impact beyond lessons). */
   previewCounts: z.array(z.object({ list: z.string(), count: z.int().nonnegative() })),
   fields: z.array(assistantStepFieldSchema),
+  /**
+   * Task 11.20 (build plan: "The proposal of many entries of one kind (attendance for a lesson)
+   * shows them as one grouped step list"): each entry of the step, by the student it names
+   * (`null` when the student is not one of the lesson's), with what is entered.
+   */
+  entries: z.array(z.object({ name: z.string().nullable(), value: z.string() })),
   /** The lessons of the step's preview, and how many more it names. */
   previewLessons: z.array(assistantPreviewLessonSchema),
   previewMore: z.int().nonnegative(),
