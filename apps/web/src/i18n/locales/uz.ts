@@ -1353,7 +1353,8 @@ export const uz: Texts<'one' | 'other'> = {
         no_record: 'qoʻshilgan yozuv nomaʼlum; uni oʻz sahifasida oʻzgartiring',
         action_off: 'uni qaytaradigan amal yordamchi uchun oʻchirilgan',
         not_on_list: 'rolingiz uni qaytara olmaydi',
-        over_step_limit: 'bitta taklif sigʻdiradigandan koʻp oʻzgarish; uni oʻz sahifasida bekor qiling',
+        over_step_limit:
+          'bitta taklif sigʻdiradigandan koʻp oʻzgarish; uni oʻz sahifasida bekor qiling',
         refused: 'platforma uni taklif qilishni rad etdi',
       },
     },

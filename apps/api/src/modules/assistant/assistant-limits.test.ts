@@ -153,7 +153,10 @@ describe('the assistant: the switch, the daily limit and the monthly cap', () =>
       questionMinutes: [0, 31],
     })) {
       for (const value of values) {
-        expect((await put(settingsBody({ [field]: value }))).status, `${field} ${String(value)}`).toBe(400);
+        expect(
+          (await put(settingsBody({ [field]: value }))).status,
+          `${field} ${String(value)}`,
+        ).toBe(400);
       }
     }
     for (const [field, value] of Object.entries({
@@ -271,7 +274,14 @@ describe('the assistant: the switch, the daily limit and the monthly cap', () =>
   });
 
   it('ends a question with the cap’s notice when the cap is reached while it is answered, keeping the steps drafted (build plan 11.21, Done when; review of the plan, must fix 1)', async () => {
-    await put(settingsBody({ monthlyCapDollars: 1, questionActions: 200, proposalSteps: 200, questionMinutes: 30 }));
+    await put(
+      settingsBody({
+        monthlyCapDollars: 1,
+        questionActions: 200,
+        proposalSteps: 200,
+        questionMinutes: 30,
+      }),
+    );
     const roomId = await scene.people.room(scene.north);
     const floor = await scene.database.migrator
       .selectFrom('rooms')
@@ -313,7 +323,10 @@ describe('the assistant: the switch, the daily limit and the monthly cap', () =>
       insert into assistant_model_calls (message_id, branch_id, model, tokens_in, tokens_out, cost_micros, processed_in, created_at)
       values (${earlier.id}, ${scene.north}, 'fake-model', 0, 0, ${String(1_000_000n - oneCall)}, 'europe-west3', ${scene.clock.now()})
     `.execute(scene.database.migrator);
-    const roomEdit = `propose_${GENERATED_TOOLS['PUT /api/setup/rooms/:id']?.name ?? ''}`.slice(0, 64);
+    const roomEdit = `propose_${GENERATED_TOOLS['PUT /api/setup/rooms/:id']?.name ?? ''}`.slice(
+      0,
+      64,
+    );
     scene.model.script(
       calls({
         name: roomEdit,

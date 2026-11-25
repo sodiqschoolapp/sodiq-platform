@@ -6,12 +6,10 @@ import { answer, calls } from '../../testing/assistant-model.js';
 import { ASSISTANT_DATA_GROUPS } from '@sodiq/shared';
 import { AssistantRoutes } from '../access/assistant-routes.check.js';
 import { ASSISTANT_QUESTION_ACTIONS_DEFAULT } from '@sodiq/shared';
-import { modelCallsOf } from './assistant.engine.js';
 import { GENERATED_TOOLS } from './tools.generated.js';
 
-/** Task 11.21: the reads and changes of one question at the setting's default (40), and the model calls. */
+/** Task 11.21: the reads and changes of one question at the setting's default (40). */
 const MAX_READS = ASSISTANT_QUESTION_ACTIONS_DEFAULT;
-const MAX_MODEL_CALLS = modelCallsOf(MAX_READS);
 
 // Task 11.20 (`02`, Personal data and the model: "The Super Admin can keep any of these groups
 // from the model, each with its own switch … A group switched off reaches the model as

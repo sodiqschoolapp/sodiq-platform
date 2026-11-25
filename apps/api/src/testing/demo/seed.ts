@@ -82,6 +82,9 @@ try {
   await fillJournals({ app, migrator, clock, school, password, today, say });
   // Task 11.1: the Parent accounts, before the second steps of the vice principals are reset.
   await seedParents({ migrator, school, password, now: clock.now(), say });
+  // Task 11.21 (plan decision 3): the demo school has the start value of `02`, Limits: no daily
+  // limit of questions to the assistant (0); a stored settings row keeps its value elsewhere.
+  await migrator.updateTable('assistant_settings').set({ daily_limit: 0 }).execute();
 
   // The second steps the seed set up are removed, so that the owner sets up
   // their own authenticator at the first sign-in of these accounts.

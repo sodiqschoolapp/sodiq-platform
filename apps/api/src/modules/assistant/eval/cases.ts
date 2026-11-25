@@ -469,6 +469,42 @@ export const TEACHER_INTENTS: readonly EvalIntent[] = [
       en: 'Send a request to change the topic of the first lesson.',
     },
   },
+  // Task 11.21 (`02`, Answers: "Lists and comparisons come as small tables. When it asks the
+  // person to choose …, the choices are buttons"): a list asked as a table, a comparison, and a
+  // choice asked for. Scored as a read and as a vague request (`ask_choice` is not a read).
+  {
+    id: 'classes-as-table',
+    kind: 'read',
+    reads: ['ClassesController_list'],
+    texts: {
+      uz: 'Sinflarni tyutorlari bilan jadval qilib koʻrsat.',
+      'uz-Cyrl': 'Синфларни тьюторлари билан жадвал қилиб кўрсат.',
+      ru: 'Покажи классы с их тьюторами таблицей.',
+      en: 'Show the classes with their Tutors as a table.',
+    },
+  },
+  {
+    id: 'compare-rooms',
+    kind: 'read',
+    reads: ['RoomsController_list'],
+    texts: {
+      uz: 'Xonalarni sigʻimi boʻyicha solishtir.',
+      'uz-Cyrl': 'Хоналарни сиғими бўйича солиштир.',
+      ru: 'Сравни кабинеты по вместимости.',
+      en: 'Compare the rooms by capacity.',
+    },
+  },
+  {
+    id: 'which-class-to-cancel',
+    kind: 'vague',
+    reads: [],
+    texts: {
+      uz: 'Ertangi darsni bekor qil.',
+      'uz-Cyrl': 'Эртанги дарсни бекор қил.',
+      ru: 'Отмени завтрашний урок.',
+      en: 'Cancel tomorrow’s lesson.',
+    },
+  },
 ];
 
 export interface EvalCase {

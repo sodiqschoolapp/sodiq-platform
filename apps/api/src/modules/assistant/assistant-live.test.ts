@@ -161,9 +161,7 @@ describe('the assistant while it works: the question at once, the progress live,
     expect(taken.working).toEqual({
       questionId: question?.id,
       askedAt: question?.at,
-      until: new Date(
-        new Date(question?.at ?? '').getTime() + ANSWER_WINDOW_MS,
-      ).toISOString(),
+      until: new Date(new Date(question?.at ?? '').getTime() + ANSWER_WINDOW_MS).toISOString(),
     });
     await gate.reached;
     // The model holds its answer; the conversation, read again, still shows the question working.

@@ -641,7 +641,11 @@ function undoReason(reason: string): (typeof UNDO_REASONS)[number] | undefined {
  * The answer of an Undo (task 11.21): the reverses are the proposal after it; each change with
  * none is named with its reason.
  */
-function UndoAnswer({ undo }: { undo: NonNullable<Extract<AssistantMessage, { kind: 'answer' }>['undo']> }) {
+function UndoAnswer({
+  undo,
+}: {
+  undo: NonNullable<Extract<AssistantMessage, { kind: 'answer' }>['undo']>;
+}) {
   const { t } = useTranslation();
   return (
     <div className="grid gap-1" data-assistant-undo="">
@@ -653,9 +657,12 @@ function UndoAnswer({ undo }: { undo: NonNullable<Extract<AssistantMessage, { ki
               {t('assistant.undo.none', {
                 seq: one.seq,
                 action: t(actionLabelKey(one.action), { defaultValue: one.summary }),
-                reason: undoReason(one.reason) !== undefined
-                  ? t(`assistant.undo.reasons.${undoReason(one.reason) ?? 'no_reverse'}`)
-                  : t(`errors.${one.reason}`, { defaultValue: t('assistant.undo.reasons.refused') }),
+                reason:
+                  undoReason(one.reason) !== undefined
+                    ? t(`assistant.undo.reasons.${undoReason(one.reason) ?? 'no_reverse'}`)
+                    : t(`errors.${one.reason}`, {
+                        defaultValue: t('assistant.undo.reasons.refused'),
+                      }),
               })}
             </li>
           ))}

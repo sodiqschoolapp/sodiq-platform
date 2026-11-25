@@ -29,7 +29,6 @@ import { PERMISSION_TABLE } from '../access/permission-table.token.js';
 import type { Access } from '../access/permission.guard.js';
 import { AssistantSettingsService, MICROS_PER_DOLLAR } from './assistant-settings.service.js';
 import {
-
   appendMessage,
   conversationOf,
   conversationsQuery,
@@ -113,7 +112,7 @@ export function choicesOf(args: Readonly<Record<string, unknown>>): string[] | {
   if (!Array.isArray(options) || !options.every((option) => typeof option === 'string')) {
     return { error: 'options_not_texts' };
   }
-  const texts = (options as string[]).map((option) => option.replace(/\s+/g, ' ').trim());
+  const texts = options.map((option) => option.replace(/\s+/g, ' ').trim());
   if (texts.length < ASSISTANT_CHOICES_MIN || texts.length > ASSISTANT_CHOICES_MAX) {
     return { error: 'options_count' };
   }
@@ -310,7 +309,8 @@ export class AssistantEngine {
       // with nothing after it, can be continued.
       const continued = question.continue === true;
       if (continued) {
-        const last = existing === undefined ? undefined : await this.lastSpoken(transaction, existing.id);
+        const last =
+          existing === undefined ? undefined : await this.lastSpoken(transaction, existing.id);
         if (last?.kind !== 'answer' || last.continues !== true) {
           throw new ApiException('assistant_nothing_to_continue', 409);
         }
@@ -484,7 +484,9 @@ export class AssistantEngine {
             kind: 'text',
             // Task 11.19 (review correction 5): only this question's place is "open now".
             text:
-              (start.continued ? `[Continue] ${CONTINUE_LINE}` : start.filter.words(question.text)) +
+              (start.continued
+                ? `[Continue] ${CONTINUE_LINE}`
+                : start.filter.words(question.text)) +
               (start.place === undefined
                 ? ''
                 : `\n\n${placeText(start.place, asker.language, true)}`),
@@ -1128,7 +1130,10 @@ export class AssistantEngine {
       const route = made.reverse.route;
       const line = lines[route];
       if (line?.kind !== 'change') {
-        none.push({ ...named, reason: Object.hasOwn(listed, route) ? 'action_off' : 'not_on_list' });
+        none.push({
+          ...named,
+          reason: Object.hasOwn(listed, route) ? 'action_off' : 'not_on_list',
+        });
         continue;
       }
       const drafted = await draftStep(
@@ -1258,8 +1263,7 @@ export class AssistantEngine {
     // One Undo of a proposal, unless the earlier one was declined or expired, or superseded.
     const views = await proposalsOf(transaction, proposal.conversation_id, now);
     const undone = (await messagesOf(transaction, proposal.conversation_id)).filter(
-      (message) =>
-        message.content.kind === 'question' && message.content.undoOf === proposal.id,
+      (message) => message.content.kind === 'question' && message.content.undoOf === proposal.id,
     );
     for (const question of undone) {
       const its = views.find((view) => view.questionId === question.id);
@@ -1560,8 +1564,6 @@ export function systemInstruction(input: {
 /** Whether what a tool answered is the refusal `code`. */
 function isError(given: unknown, code: string): boolean {
   return (
-    given !== null &&
-    typeof given === 'object' &&
-    (given as { error?: unknown }).error === code
+    given !== null && typeof given === 'object' && (given as { error?: unknown }).error === code
   );
 }

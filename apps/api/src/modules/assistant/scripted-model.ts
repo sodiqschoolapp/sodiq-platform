@@ -116,7 +116,12 @@ export class ScriptedModel implements AssistantModel {
         .map((one) => one.name)
         .sort();
       return {
-        text: ['Which class?', '| Class | Tutor |', '| --- | --- |', ...rows.map((name) => `| ${name} | none |`)].join('\n'),
+        text: [
+          'Which class?',
+          '| Class | Tutor |',
+          '| --- | --- |',
+          ...rows.map((name) => `| ${name} | none |`),
+        ].join('\n'),
         calls: [],
         tokensIn: 0,
         tokensOut: 0,

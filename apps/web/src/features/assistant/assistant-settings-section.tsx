@@ -136,7 +136,10 @@ function AssistantSettingsForm({ settings }: { settings: AssistantSettings }): R
           label={t('assistant.settings.questionActions')}
           {...form.bind('questionActions')}
         />
-        <NumberField label={t('assistant.settings.proposalSteps')} {...form.bind('proposalSteps')} />
+        <NumberField
+          label={t('assistant.settings.proposalSteps')}
+          {...form.bind('proposalSteps')}
+        />
         <NumberField
           label={t('assistant.settings.questionMinutes')}
           {...form.bind('questionMinutes')}

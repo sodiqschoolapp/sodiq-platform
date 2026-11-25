@@ -568,17 +568,11 @@ export const assistantSettingsRecordSchema = z.strictObject({
   /** Task 11.15: the worldwide fallback (`02`, Where the model runs: "on until switched off"). */
   fallbackOn: z.boolean(),
   /** Task 11.21: reads and changes in one question (`02`, Limits: "40 at the start"). */
-  questionActions: z
-    .int()
-    .min(ASSISTANT_QUESTION_ACTIONS_MIN)
-    .max(ASSISTANT_QUESTION_ACTIONS_MAX),
+  questionActions: z.int().min(ASSISTANT_QUESTION_ACTIONS_MIN).max(ASSISTANT_QUESTION_ACTIONS_MAX),
   /** Task 11.21: changes in one proposal ("100 at the start"). */
   proposalSteps: z.int().min(ASSISTANT_PROPOSAL_STEPS_MIN).max(ASSISTANT_PROPOSAL_STEPS_MAX),
   /** Task 11.21: the minutes of one question ("10 minutes at the start"). */
-  questionMinutes: z
-    .int()
-    .min(ASSISTANT_QUESTION_MINUTES_MIN)
-    .max(ASSISTANT_QUESTION_MINUTES_MAX),
+  questionMinutes: z.int().min(ASSISTANT_QUESTION_MINUTES_MIN).max(ASSISTANT_QUESTION_MINUTES_MAX),
   /** Task 11.20: the personal-data groups that reach the model (`02`: "All are on at the start"). */
   dataGroupsOn: z
     .array(assistantDataGroupSchema)

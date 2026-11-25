@@ -276,8 +276,9 @@ async function aTableAndChoices(page: Page): Promise<void> {
     .getByRole('button', { name: 'Assistant B', exact: true })
     .click();
   await expect(chat.getByText('Assistant B', { exact: true }).first()).toBeVisible();
-  await expect(chat.getByRole('list', { name: en.assistant.choices, exact: true })).toHaveCount(
-    0,
-    { timeout: 15_000 },
-  );
+  // Its answer comes before the next step asks (one question of a person at a time).
+  await expect(chat.getByText('Assistant A, Assistant B', { exact: true })).toBeVisible({
+    timeout: 15_000,
+  });
+  await expect(chat.getByRole('list', { name: en.assistant.choices, exact: true })).toHaveCount(0);
 }
