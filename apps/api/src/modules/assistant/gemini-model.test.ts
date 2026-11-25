@@ -1,7 +1,7 @@
 import { ApiError, type GoogleGenAI } from '@google/genai';
 import { describe, expect, it } from 'vitest';
 import type { AssistantConfig } from '../../config/config.js';
-import { failureOf, GeminiModel, type GeminiClientOptions } from './gemini-model.js';
+import { contentOf, failureOf, GeminiModel, type GeminiClientOptions } from './gemini-model.js';
 import { ModelUnavailable } from './model.js';
 
 // Task 11.15 (pull request #379): the SDK's failures read into a reason, the two places, and no
@@ -57,6 +57,25 @@ function apiError(status: number, body: unknown): ApiError {
 }
 
 describe('the Gemini model', () => {
+  // Task 11.22: a file the person attached or recorded goes as inline data with its type.
+  it('sends a file part as inline data with its media type, beside the text', () => {
+    expect(
+      contentOf({
+        role: 'person',
+        parts: [
+          { kind: 'text', text: 'Read this.' },
+          { kind: 'file', mediaType: 'application/pdf', data: 'JVBERi0=' },
+        ],
+      }),
+    ).toEqual({
+      role: 'user',
+      parts: [
+        { text: 'Read this.' },
+        { inlineData: { mimeType: 'application/pdf', data: 'JVBERi0=' } },
+      ],
+    });
+  });
+
   it('makes one client for the region and one for the worldwide endpoint, neither with retries of the SDK', () => {
     const { made, model } = modelWith(() => Promise.reject(new Error('unused')));
     expect(made.map((options) => options.location)).toEqual(['europe-west3', 'global']);

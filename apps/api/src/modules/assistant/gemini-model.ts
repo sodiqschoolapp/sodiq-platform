@@ -179,7 +179,7 @@ function parseCredentials(text: string): Record<string, unknown> {
   throw new Error('ASSISTANT_VERTEX_CREDENTIALS is not the JSON key of a service account.');
 }
 
-function contentOf(turn: ModelRequest['turns'][number]): Content {
+export function contentOf(turn: ModelRequest['turns'][number]): Content {
   return { role: turn.role === 'person' ? 'user' : 'model', parts: turn.parts.map(partOf) };
 }
 

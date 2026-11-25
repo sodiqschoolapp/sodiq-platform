@@ -44,7 +44,7 @@ import {
 } from './conversations.store.js';
 import { explainPlace, findInPlatform, linkOf, placeOf, placeText } from './platform-map.js';
 import { AssistantDispatcher, type ReadOutcome } from './dispatcher.js';
-import { filterWords, ModelFilter } from './field-filter.js';
+import { filterWords, ModelFilter, REMOVED } from './field-filter.js';
 import { AssistantSwitches, type SwitchRows } from './assistant-switches.service.js';
 import type { ModelPrice } from '../../config/config.js';
 import { ASSISTANT_KINDS_WITHOUT_TOOL } from '@sodiq/shared';
@@ -1716,7 +1716,10 @@ export class AssistantEngine {
         );
         runId = outcome.runId;
         status = outcome.status;
-        given = givenOf(outcome, start.filter, this.routes.factsOf(route)?.area);
+        given = withoutHolders(
+          givenOf(outcome, start.filter, this.routes.factsOf(route)?.area),
+          start.filter,
+        );
         if (status >= 200 && status < 300) {
           const confirm = confirmRouteOf(importKind);
           if (!found.includes(confirm)) found.push(confirm);
@@ -2042,4 +2045,26 @@ function exportPathFits(path: string, template: string): boolean {
       return part.startsWith(':') ? /^[A-Za-z0-9_-]+$/.test(value) : part === value;
     })
   );
+}
+
+/**
+ * Review of the plan, correction 2: an import's preview names, for a relative's phone held under
+ * another name, the relative who holds it (`held`); while the Super Admin keeps relatives'
+ * details from the model, each such list reaches it as "[removed]".
+ */
+function withoutHolders(given: unknown, filter: ModelFilter): unknown {
+  if (!filter.removes('relatives') || given === null || typeof given !== 'object') return given;
+  const data = (given as { data?: unknown }).data;
+  if (data === null || typeof data !== 'object') return given;
+  const rows = (data as { rows?: unknown }).rows;
+  if (!Array.isArray(rows)) return given;
+  return {
+    ...given,
+    data: {
+      ...data,
+      rows: rows.map((row: unknown) =>
+        row !== null && typeof row === 'object' && 'held' in row ? { ...row, held: REMOVED } : row,
+      ),
+    },
+  };
 }
