@@ -14,7 +14,7 @@ import {
 import type { SessionPass } from '../../http/session-cookie.js';
 import { fingerprintOf, findRecord, idsIn } from './canonical.js';
 import type { AssistantDispatcher, ReadOutcome } from './dispatcher.js';
-import { filterRead, filterWords } from './field-filter.js';
+import type { ModelFilter } from './field-filter.js';
 import {
   BODY_ARGUMENT,
   changeBodySchemaOf,
@@ -82,6 +82,8 @@ export interface ProposingAs {
   branchId: string;
   role: AssistantRole;
   lines: RoleLines;
+  /** Task 11.20: the personal-data groups of the question. */
+  filter: ModelFilter;
   /** The date and class of a dated lesson of the branch, to name it in the panel (a one-day change). */
   lessonDateOf?: (lessonId: string) => Promise<{ date: string; classId: string } | undefined>;
 }
@@ -441,7 +443,7 @@ export async function draftStep(
   if (typeof summary !== 'string' || summary.trim() === '') {
     return { given: { error: 'invalid_arguments', detail: 'summary is required' } };
   }
-  const schema = changeBodySchemaOf(route, line);
+  const schema = changeBodySchemaOf(route, line, as.filter);
   const given = args[BODY_ARGUMENT];
   if (schema === undefined && given !== undefined) {
     return { given: { error: 'invalid_arguments', detail: 'this change takes no body' } };
@@ -468,7 +470,7 @@ export async function draftStep(
     if ('fault' in readUrl) {
       return { given: { error: 'invalid_arguments', detail: readUrl.fault } };
     }
-    const outcome = await dispatcher.read(readUrl.url, as);
+    const outcome = await dispatcher.read(readUrl.url, as, server.route);
     const refused = refusalOf(outcome);
     if (refused !== undefined) {
       return { given: refused };
@@ -506,7 +508,7 @@ export async function draftStep(
     if ('fault' in basisUrl) {
       return { given: { error: 'invalid_arguments', detail: basisUrl.fault } };
     }
-    const outcome = await dispatcher.read(basisUrl.url, as);
+    const outcome = await dispatcher.read(basisUrl.url, as, line.basis.route);
     const refused = refusalOf(outcome);
     if (refused !== undefined) {
       return { given: refused };
@@ -570,7 +572,13 @@ export async function draftStep(
       line.preview.body === undefined ? body : line.preview.body(body),
       typeof pathArgs.id === 'string' ? pathArgs.id : undefined,
     );
-    const outcome = await dispatcher.send('POST', previewUrl.url, previewBody, as);
+    const outcome = await dispatcher.send(
+      'POST',
+      previewUrl.url,
+      previewBody,
+      as,
+      line.preview.route,
+    );
     const refused = refusalOf(outcome);
     if (refused !== undefined) {
       // A preview refused adds no step (decision 7): "today cannot become a day off".
@@ -581,7 +589,7 @@ export async function draftStep(
       body: previewBody,
       fingerprint: fingerprintOf(bodyOf(outcome)),
     };
-    const filtered = filterRead(bodyOf(outcome));
+    const filtered = as.filter.read(bodyOf(outcome));
     previewLessons = withChoices(lessonsOfPreview(filtered), body);
     previewIssues = issuesOfPreview(filtered);
     previewCounts = countsOfPreview(filtered);
@@ -601,9 +609,10 @@ export async function draftStep(
       const day = await dispatcher.read(
         `/api/timetable/day?date=${at.date}&classId=${at.classId}`,
         as,
+        'GET /api/timetable/day',
       );
       const lesson = findRecord(bodyOf(day), 'id', pathArgs.id);
-      previewLessons = lessonsOfPreview(lesson === undefined ? [] : [filterRead(lesson)]).map(
+      previewLessons = lessonsOfPreview(lesson === undefined ? [] : [as.filter.read(lesson)]).map(
         (one) => ({ ...one, list: 'lesson' }),
       );
     }
@@ -618,7 +627,7 @@ export async function draftStep(
     body: tool.body === undefined ? null : body,
     action: tool.name,
     group: line.group,
-    summary: filterWords(summary).trim().slice(0, SUMMARY_MAX_LENGTH),
+    summary: as.filter.words(summary).trim().slice(0, SUMMARY_MAX_LENGTH),
     records,
     basisIds,
     basis,

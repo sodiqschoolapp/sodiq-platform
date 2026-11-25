@@ -9,6 +9,8 @@ import {
 } from '@sodiq/shared';
 import type { SessionPass } from '../../http/session-cookie.js';
 import { AssistantCalls } from '../access/assistant-calls.js';
+import { AssistantRoutes } from '../access/assistant-routes.check.js';
+import { AssistantSwitches } from './assistant-switches.service.js';
 
 /** How long one read may take, and how much of its answer is read (plan review, should fix 6). */
 export const READ_TIMEOUT_MS = 10_000;
@@ -31,6 +33,8 @@ export class AssistantDispatcher {
   constructor(
     private readonly adapterHost: HttpAdapterHost,
     private readonly calls: AssistantCalls,
+    private readonly routes: AssistantRoutes,
+    private readonly switches: AssistantSwitches,
   ) {}
 
   /** The origin of the server's own address. */
@@ -54,8 +58,9 @@ export class AssistantDispatcher {
   async read(
     url: string,
     as: { pass: SessionPass; branchId: string; role: AssistantRole },
+    route: string,
   ): Promise<ReadOutcome> {
-    return this.send('GET', url, undefined, as);
+    return this.send('GET', url, undefined, as, route);
   }
 
   /**
@@ -67,9 +72,20 @@ export class AssistantDispatcher {
     url: string,
     payload: unknown,
     as: { pass: SessionPass; branchId: string; role: AssistantRole; stepId?: string },
+    route: string,
   ): Promise<ReadOutcome> {
-    if (!url.startsWith('/api/')) {
-      throw new Error('The assistant reads only routes of the API.');
+    if (!url.startsWith('/api/') || !route.startsWith(`${method} `)) {
+      throw new Error('The assistant reads only routes of the API, by their own method.');
+    }
+    // Task 11.20 (plan review 6): the one place the Super Admin's switches are checked, for
+    // every request the assistant sends (a read, a preview, a basis read and a step at
+    // Confirm), read from the tables at this moment. Nothing is sent for an action off.
+    const facts = this.routes.factsOf(route);
+    if (facts === undefined || this.routes.linesOf(as.role)[route] === undefined) {
+      return refusal('assistant_route_closed');
+    }
+    if (!this.switches.isOn(await this.switches.rows(), as.role, route)) {
+      return refusal('assistant_action_off');
     }
     let response: Response;
     try {
@@ -78,7 +94,8 @@ export class AssistantDispatcher {
         headers: {
           Accept: 'application/json',
           Cookie: as.pass.cookieHeader,
-          [BRANCH_HEADER]: as.branchId,
+          // A school-wide route names no branch (`@Requires(…, { branch: 'none' })`).
+          ...(facts.branchNone ? {} : { [BRANCH_HEADER]: as.branchId }),
           ...this.calls.headersFor(as.role),
           ...(payload === undefined ? {} : { 'Content-Type': 'application/json' }),
           ...(as.stepId === undefined
@@ -114,6 +131,11 @@ export class AssistantDispatcher {
     }
     return { status: response.status, body };
   }
+}
+
+/** A refusal of the dispatcher itself, as the guard would answer it; nothing was sent. */
+function refusal(code: 'assistant_route_closed' | 'assistant_action_off'): ReadOutcome {
+  return { status: 403, body: { error: { code, message: 'Not sent by the assistant.' } } };
 }
 
 /** The answer's text, or `undefined` past `READ_MAX_BYTES` (leaving the loop cancels the stream). */

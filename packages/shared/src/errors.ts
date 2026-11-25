@@ -1344,6 +1344,10 @@ export const ERROR_CODES = [
   'assistant_call_invalid',
   /** Task 11.12: the route is not on the assistant's list for the chosen role (`02`: "a list fixed in code for each of the three roles"). */
   'assistant_route_closed',
+  /** Task 11.20: the Super Admin switched this action of the assistant off (`02`, Switches: "refused at Confirm"). */
+  'assistant_action_off',
+  /** Task 11.20: a switch names an area or action that is not on that role's list. */
+  'assistant_action_unknown',
   /** Task 11.13: the proposal was not confirmed within 15 minutes (`02`, Reading and proposing). */
   'assistant_proposal_expired',
   /** Task 11.13: the proposal was already confirmed or declined. */

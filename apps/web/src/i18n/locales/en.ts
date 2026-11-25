@@ -1040,6 +1040,9 @@ export const en = {
     assistant_not_archived: 'This conversation is not archived, so there is nothing to restore.',
     assistant_call_invalid: 'This request is not one the assistant made.',
     assistant_route_closed: 'This page is not open to the assistant.',
+    assistant_action_off:
+      'The Super Admin switched this action of the assistant off. Do it on the screen, or ask the Super Admin to switch it on.',
+    assistant_action_unknown: 'This action is not one of that role’s actions. Reload the page.',
     assistant_proposal_expired:
       'The proposal was not confirmed within 15 minutes. Ask the assistant again for a new one.',
     assistant_proposal_decided: 'This proposal was already confirmed or declined.',

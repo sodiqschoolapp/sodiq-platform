@@ -1057,6 +1057,9 @@ export const uz: Texts<'one' | 'other'> = {
     assistant_not_archived: 'Bu suhbat arxivlanmagan, tiklash uchun hech narsa yoʻq.',
     assistant_call_invalid: 'Bu soʻrov yordamchi tomonidan yuborilmagan.',
     assistant_route_closed: 'Bu sahifa yordamchi uchun ochiq emas.',
+    assistant_action_off:
+      'Super Admin yordamchining bu amalini oʻchirib qoʻygan. Uni ekranda bajaring yoki Super Admindan yoqishni soʻrang.',
+    assistant_action_unknown: 'Bu amal shu rolning amallari orasida yoʻq. Sahifani yangilang.',
     assistant_proposal_expired:
       'Taklif 15 daqiqa ichida tasdiqlanmadi. Yordamchidan yangisini soʻrang.',
     assistant_proposal_decided: 'Bu taklif allaqachon tasdiqlangan yoki rad etilgan.',

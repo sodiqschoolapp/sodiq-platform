@@ -4,12 +4,14 @@ import type { AppConfig } from '../../config/config.js';
 import { AccessModule } from '../access/access.module.js';
 import { AuthModule } from '../auth/auth.module.js';
 import {
+  AssistantActionsController,
   AssistantAdminController,
   AssistantController,
   AssistantSettingsController,
 } from './assistant.controller.js';
 import { ASSISTANT_PRICES, AssistantEngine } from './assistant.engine.js';
 import { AssistantSettingsService } from './assistant-settings.service.js';
+import { AssistantSwitches } from './assistant-switches.service.js';
 import { AssistantConversations } from './assistant.service.js';
 import { AssistantProposals } from './assistant-proposals.service.js';
 import { AssistantDispatcher } from './dispatcher.js';
@@ -25,10 +27,16 @@ import { ScriptedModel } from './scripted-model.js';
  */
 @Module({
   imports: [AccessModule, AuthModule],
-  controllers: [AssistantController, AssistantAdminController, AssistantSettingsController],
+  controllers: [
+    AssistantController,
+    AssistantAdminController,
+    AssistantSettingsController,
+    AssistantActionsController,
+  ],
   providers: [
     AssistantEngine,
     AssistantSettingsService,
+    AssistantSwitches,
     AssistantConversations,
     AssistantProposals,
     AssistantDispatcher,

@@ -364,6 +364,27 @@ export const assistantConversationSchema = assistantConversationSummarySchema.ex
 
 export type AssistantConversation = z.infer<typeof assistantConversationSchema>;
 
+/**
+ * Task 11.20 (`02`, Never, whatever the switches: "An action that gives one out still runs on
+ * Confirm, and the secret is shown to the person in the conversation once, as the screen shows
+ * it, never to the model and never stored in the conversation"): the secrets the steps of a
+ * confirmed proposal gave out (a first-password slip, a key's secret), in this answer only.
+ */
+export const assistantStepSecretSchema = z.object({
+  stepId: z.uuid(),
+  /** Each object of the answer that held a secret, with its plain values (login, password, …). */
+  items: z.array(z.record(z.string(), z.union([z.string(), z.number(), z.boolean(), z.null()]))),
+});
+
+export type AssistantStepSecret = z.infer<typeof assistantStepSecretSchema>;
+
+/** The answer of Confirm: the conversation, and the secrets given out, once. */
+export const assistantConfirmedSchema = assistantConversationSchema.extend({
+  secrets: z.array(assistantStepSecretSchema),
+});
+
+export type AssistantConfirmed = z.infer<typeof assistantConfirmedSchema>;
+
 export const assistantConversationParamsSchema = z.strictObject({ id: z.uuid() });
 
 export type AssistantConversationParams = z.infer<typeof assistantConversationParamsSchema>;

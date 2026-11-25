@@ -85,6 +85,8 @@ export const assistantActionSchema = z.object({
   kind: z.enum(ASSISTANT_ACTION_KINDS),
   on: z.boolean(),
   defaultOn: z.boolean(),
+  /** False for an export, a file or a download: no tool until task 11.22 (plan decision 7). */
+  hasTool: z.boolean(),
 });
 
 export type AssistantAction = z.infer<typeof assistantActionSchema>;

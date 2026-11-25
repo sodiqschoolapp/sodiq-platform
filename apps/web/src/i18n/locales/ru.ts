@@ -1031,6 +1031,9 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
     assistant_not_archived: 'Этот разговор не в архиве, восстанавливать нечего.',
     assistant_call_invalid: 'Этот запрос отправлен не помощником.',
     assistant_route_closed: 'Этот раздел закрыт для помощника.',
+    assistant_action_off:
+      'Супер-администратор выключил это действие помощника. Выполните его на экране или попросите включить.',
+    assistant_action_unknown: 'Этого действия нет у этой роли. Обновите страницу.',
     assistant_proposal_expired:
       'Предложение не подтвердили за 15 минут. Попросите помощника о новом.',
     assistant_proposal_decided: 'Это предложение уже подтверждено или отклонено.',

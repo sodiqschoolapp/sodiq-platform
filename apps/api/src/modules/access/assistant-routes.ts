@@ -404,12 +404,21 @@ export const ASSISTANT_ROUTE_LINES = Symbol('ASSISTANT_ROUTE_LINES');
 /** The prefix of the assistant's own routes. */
 export const ASSISTANT_OWN_PREFIX = '/api/assistant';
 
+/** The assistant's settings, which live under the school settings (task 11.12). */
+export const ASSISTANT_SETTINGS_ROUTES: readonly string[] = [
+  'GET /api/setup/school-settings/assistant',
+  'PUT /api/setup/school-settings/assistant',
+];
+
 /**
  * The routes on no list, whatever the role holds (plan decision 5): the assistant's own (its
  * status, questions, conversations, proposals, settings, switches and conversation restores).
  * `02`, Never, whatever the switches: "The assistant cannot change its own switches or limits".
  */
 export function notThroughAssistant(name: string): boolean {
+  if (ASSISTANT_SETTINGS_ROUTES.includes(name)) {
+    return true;
+  }
   const path = name.slice(name.indexOf(' ') + 1);
   return path === ASSISTANT_OWN_PREFIX || path.startsWith(`${ASSISTANT_OWN_PREFIX}/`);
 }

@@ -1,5 +1,11 @@
 import { Controller, Get, HttpCode, Post, Put } from '@nestjs/common';
 import {
+  assistantConfirmedSchema,
+  type AssistantConfirmed,
+  assistantActionsSchema,
+  assistantSwitchChangesSchema,
+  type AssistantActions,
+  type AssistantSwitchChanges,
   assistantAllConversationsQuerySchema,
   assistantAllConversationsSchema,
   assistantAnswerSchema,
@@ -39,6 +45,7 @@ import { AssistantEngine } from './assistant.engine.js';
 import { AssistantSettingsService } from './assistant-settings.service.js';
 import { AssistantConversations } from './assistant.service.js';
 import { AssistantProposals } from './assistant-proposals.service.js';
+import { AssistantSwitches } from './assistant-switches.service.js';
 
 /**
  * The chat panel of the assistant (`02`, Assistant; task 11.12), for the person in the role
@@ -113,13 +120,13 @@ export class AssistantController {
   @Post('proposals/:id/confirm')
   @HttpCode(200)
   @Requires('assistant', 'view')
-  @Returns(assistantConversationSchema)
+  @Returns(assistantConfirmedSchema)
   confirm(
     @CurrentAccess() access: Access,
     @RequestSessionPass() pass: SessionPass | undefined,
     @ValidParams(assistantConversationParamsSchema) params: AssistantConversationParams,
     @ValidBody(assistantDecisionSchema) decision: AssistantDecision,
-  ): Promise<AssistantConversation> {
+  ): Promise<AssistantConfirmed> {
     if (pass === undefined) {
       throw new ApiException('not_signed_in', 401);
     }
@@ -201,5 +208,33 @@ export class AssistantSettingsController {
     @RequestId() requestId: string,
   ): Promise<AssistantSettings> {
     return this.settings.change(access, record, requestId);
+  }
+}
+
+/**
+ * Task 11.20 (`02`, Assistant, Switches): every action of each of the three roles, by area, and
+ * the Super Admin's switches of them, under `school_settings` as the other settings of the
+ * assistant (plan decision 11). On no list of the assistant (decision 5).
+ */
+@Controller('assistant/actions')
+export class AssistantActionsController {
+  constructor(private readonly switches: AssistantSwitches) {}
+
+  @Get()
+  @Requires('school_settings', 'view', { branch: 'none' })
+  @Returns(assistantActionsSchema)
+  read(): Promise<AssistantActions> {
+    return this.switches.catalogue();
+  }
+
+  @Put()
+  @Requires('school_settings', 'edit', { branch: 'none' })
+  @Returns(assistantActionsSchema)
+  change(
+    @CurrentAccess() access: Access,
+    @ValidBody(assistantSwitchChangesSchema) body: AssistantSwitchChanges,
+    @RequestId() requestId: string,
+  ): Promise<AssistantActions> {
+    return this.switches.change(access, body.changes, requestId);
   }
 }
