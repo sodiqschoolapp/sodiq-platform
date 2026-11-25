@@ -11,7 +11,7 @@ A school management web platform for Sodiq School (Uzbekistan): three branches, 
 ## Rules that are never broken
 
 - **Calculation in one place.** Every percentage, average, result and grade comes from `packages/calc`. No page, report or SQL query calculates a result on its own.
-- **Exact arithmetic.** Results are exact fractions (BigInt numerator and denominator) from typed numbers to the final result, rounded once at the end. The one exception is the year result: the exact mean of the quarter results as published, rounded once more for the year (owner, 15 October 2026; `07`, rule 11). No floating point in calculations. Typed totals are whole numbers; a typed classwork or homework score has at most two decimal places and is read as an exact fraction.
+- **Exact arithmetic.** Results are exact fractions (BigInt numerator and denominator) from typed numbers to the final result, rounded once at the end. The one exception is the year result: the exact mean of the quarter results as published, rounded once more for the year (owner, 15 October 2026; `07`, rule 11). No floating point in calculations. A typed total, classwork score or homework score has at most two decimal places and is read as an exact fraction; the rating exam score is whole.
 - **The database guards the rules.** Double booking of a teacher, room or class, overlapping memberships and duplicate cells are prevented by PostgreSQL constraints listed in `docs/spec/edge-cases/developer-rules.md`, not only by application code. Never weaken or remove one to make a test pass.
 - **Permissions on the server.** Every API route checks role, branch and scope (subjects, class, own lessons). Hiding a button is not a permission check. Every route has allow and refuse tests.
 - **Every change is audited.** Changes to timetable, journal, results, people and settings write to the append-only audit log in the same transaction.
@@ -94,7 +94,7 @@ The whole loop, the review routine and the cloud environment are described in `d
 - Database access through Kysely only. Raw SQL belongs in migrations and in named query files.
 - A migration is a new numbered file. Never edit one that is merged. Changes that could lock a large table are done in two steps.
 - Dates of lessons are stored as moments with time zone; school dates as dates. The branch time zone is a setting.
-- Money, marks and typed totals are integers; a typed classwork or homework score has at most two decimal places and is read as an exact fraction. Percentages shown to users are derived, never stored as typed input.
+- Money, attendance marks and grades are whole numbers; a typed total, classwork score or homework score has at most two decimal places and is read as an exact fraction. Percentages shown to users are derived, never stored as typed input.
 - Each feature folder holds its own components, hooks, API calls and tests. Shared UI goes in `apps/web/src/components`.
 - Commit messages: short imperative subject, task id first, for example `1.3 Add calendar with days off`.
 - No Python on the owner's laptop: a scripted edit uses Node or the Edit tool.

@@ -66,7 +66,7 @@ Every classwork and homework has a total, set by the teacher in the column heade
 | Grade in percent | 100 | 85 | 85% |
 | Give half points | 10 | 7.5 | 75% |
 
-- The total is a whole number, 1 or more. Numbers cannot be typed for a work until its total is set.
+- The total is a number of 1 or more, with up to two digits after the decimal point, for example 30 or 7.5, typed and shown like a score (owner, 25 November 2026). Numbers cannot be typed for a work until its total is set.
 - The number typed is from 0 up to the total. A number above the total is refused.
 - The number typed may have up to two digits after the decimal point, for example 7.5 or 8.25 (owner, 25 November 2026). The decimal separator is a point in every language; a comma is refused. The number is kept exactly as typed, enters every calculation as an exact fraction, and is shown with a point, without trailing zeros (7.50 shows 7.5).
 - The percent is shown as a whole number: 13 out of 30 shows 43%. The exact value is kept and used in every average.

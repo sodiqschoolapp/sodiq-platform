@@ -1,6 +1,6 @@
 # Spec change proposal: decimal totals
 
-Requested by the owner, 25 November 2026 ("can we make it accept decimal numbers as well", of the total a teacher sets for a work). Status: **waiting for the owner's approval**. Nothing under `docs/spec/` is changed yet.
+Requested by the owner, 25 November 2026 ("can we make it accept decimal numbers as well", of the total a teacher sets for a work). Status: **approved by the owner, 25 November 2026 ("do what is good"), and applied** (`docs/spec-changes.md`).
 
 It follows the decimal scores change of the same day, which kept the total whole.
 

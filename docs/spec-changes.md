@@ -2,6 +2,13 @@
 
 The spec in `docs/spec/` was taken from the full spec document on 3 October 2026 (revision 88). Every later change to a spec file is listed here, newest first, with the date, what changed, why, and the files touched. Changes are made only with the `/spec-change` skill and the owner's approval.
 
+## 25 November 2026: decimal totals
+
+- What changed: the total a teacher sets for a classwork or homework may have up to two digits after the decimal point (30, 7.5), typed and shown like a score: a point only, without trailing zeros. It stays from 1 to 1000. A total with decimals enters every calculation as an exact fraction. Before (since the decimal scores change of the same day), the total was a whole number.
+- Why: the owner, 25 November 2026, in chat ("can we make it accept decimal numbers as well"); approved the same day.
+- Not changed: the score is from 0 to the total; a change of total is refused when a score is above the new one; the rating exam score stays whole; the calculation rules and their single rounding.
+- Files: `docs/spec/07-journal.md` (The total), `docs/spec/edge-cases/journal.md` (Entering, "A total of 3000 is typed"), `docs/spec/16-open-questions.md` (row 18), `docs/spec/10-portal-notifications-release-2.md` (Past marks, The rules of a row), `docs/spec/edge-cases/academic-year.md` (Past marks), `docs/spec/13-technology.md` (Database), `docs/spec/edge-cases/developer-rules.md` (Calculation), `docs/spec/14-quality-plan.md` (Rule tests). With the owner's approval, the loop's files: `CLAUDE.md` (Exact arithmetic; Conventions, which now names money, attendance marks and grades as the whole numbers) and `.claude/rules/journal.md`; and `docs/build-plan.md` (11.25 now "Decimal scores and totals", its approval of item 4 for decimal scores and totals; 11.26). Proposal `docs/proposals/spec-change-decimal-totals.md`.
+
 ## 25 November 2026: codes for topics and works
 
 - What changed:

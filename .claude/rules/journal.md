@@ -9,7 +9,7 @@ paths:
 Before changing anything here, read `docs/spec/07-journal.md`, `docs/spec/edge-cases/journal.md`, `docs/spec/edge-cases/exemptions.md` and `docs/spec/edge-cases/00-definitions.md`.
 
 - Journal columns come from dated lessons. A teacher never creates a lesson by hand.
-- Totals are whole numbers; a typed score has at most two digits after the decimal point, held exactly, never as floating point. Percentages and averages come from `packages/calc` only.
+- A typed total or score has at most two digits after the decimal point, held exactly, never as floating point; the rating exam score is whole. Percentages and averages come from `packages/calc` only.
 - Every cell save checks the edit period with the injected clock, the cell version, and the person's rights on the server.
 - Every change to a cell writes a history entry in the same transaction.
 - Nothing a teacher typed may be lost: unsent entries survive reload and are never dropped silently.
