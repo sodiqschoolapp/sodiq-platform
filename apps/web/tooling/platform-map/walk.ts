@@ -382,6 +382,74 @@ function isPanelFile(file: string): boolean {
   return /-(panel|dialog)\.tsx$/.test(file);
 }
 
+/** The expressions of a control that name it: its `label` or `aria-label`, or a child `{x}`. */
+function namingExpressions(node: ts.Node): ts.Expression[] {
+  const out: ts.Expression[] = [];
+  const opening = ts.isJsxElement(node)
+    ? node.openingElement
+    : ts.isJsxSelfClosingElement(node)
+      ? node
+      : undefined;
+  if (opening !== undefined) {
+    for (const name of LABEL_ATTRIBUTES) {
+      const value = attribute(opening, name);
+      if (value !== undefined && !ts.isStringLiteral(value)) out.push(value);
+    }
+  }
+  if (ts.isJsxElement(node)) {
+    for (const child of node.children) {
+      if (ts.isJsxExpression(child) && child.expression !== undefined) out.push(child.expression);
+    }
+  }
+  return out;
+}
+
+/**
+ * The calls of a local helper that draws a control with a label it is handed (review
+ * correction 7: a label the walk can read through the calls): each call's argument read as a
+ * label. `undefined` when the label is not a parameter of a named function of the file, or a
+ * call hands one the walk cannot read.
+ */
+function callsOfHelper(
+  checker: ts.TypeChecker,
+  source: ts.SourceFile,
+  node: ts.Node,
+): Array<{ keys: string[]; node: ts.Node }> | undefined {
+  for (const expression of namingExpressions(node)) {
+    if (!ts.isIdentifier(expression)) continue;
+    const declaration = checker.getSymbolAtLocation(expression)?.valueDeclaration;
+    if (declaration === undefined || !ts.isParameter(declaration)) continue;
+    const fn = declaration.parent;
+    if (!ts.isArrowFunction(fn) && !ts.isFunctionDeclaration(fn) && !ts.isFunctionExpression(fn)) {
+      continue;
+    }
+    const index = fn.parameters.indexOf(declaration);
+    const name = ts.isFunctionDeclaration(fn)
+      ? fn.name?.text
+      : ts.isVariableDeclaration(fn.parent) && ts.isIdentifier(fn.parent.name)
+        ? fn.parent.name.text
+        : undefined;
+    if (name === undefined) continue;
+    const calls: Array<{ keys: string[]; node: ts.Node }> = [];
+    let unread = false;
+    const visit = (inner: ts.Node): void => {
+      if (
+        ts.isCallExpression(inner) &&
+        ts.isIdentifier(inner.expression) &&
+        inner.expression.text === name
+      ) {
+        const label = labelOf(checker, inner.arguments[index]);
+        if (label === null || 'dynamic' in label) unread = true;
+        else calls.push({ keys: label.keys, node: inner });
+      }
+      ts.forEachChild(inner, visit);
+    };
+    visit(source);
+    if (!unread && calls.length > 0) return calls;
+  }
+  return undefined;
+}
+
 /** The controls of one file. */
 function controlsOf(
   checker: ts.TypeChecker,
@@ -424,6 +492,27 @@ function controlsOf(
     label: Label,
     what: string,
   ): string | undefined => {
+    // A label handed in by a local helper (`opens(key, t('…'), …)`): one control per call.
+    if (label !== null && 'dynamic' in label) {
+      const drawn = callsOfHelper(checker, source, node);
+      if (drawn !== undefined) {
+        let first: string | undefined;
+        for (const call of drawn) {
+          const id = idOf(kind, call.keys[0] ?? '');
+          first ??= id;
+          out.push({
+            id,
+            kind,
+            file,
+            keys: call.keys,
+            parent: parentOf(call.node) ?? parentOf(node),
+            shownWith: [...guardsAround(node, guards), ...guardsAround(call.node, guards)],
+            line: lineOf(call.node),
+          });
+        }
+        return first;
+      }
+    }
     if (label === null || 'dynamic' in label) {
       problems.push({
         file,
@@ -503,6 +592,16 @@ function controlsOf(
     }
     if (ts.isPropertyAssignment(node) && ts.isIdentifier(node.name)) {
       const name = node.name.text;
+      // A tab of a panel: `{ key: 'overview', title: t('…') }` in a list of tabs.
+      if (name === 'title' && ts.isObjectLiteralExpression(node.parent)) {
+        const siblings = new Set(
+          node.parent.properties.map((property) => property.name?.getText() ?? ''),
+        );
+        const label = labelOf(checker, node.initializer);
+        if (siblings.has('key') && siblings.size === 2 && label !== null && 'keys' in label) {
+          push(node, 'tab', label, 'The tab');
+        }
+      }
       if (
         (name === 'header' || name === 'headerName') &&
         ts.isObjectLiteralExpression(node.parent)

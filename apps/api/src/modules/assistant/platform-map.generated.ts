@@ -9875,12 +9875,12 @@ export const PLATFORM_MAP_SOURCE: unknown = {
    "description": "The language of the app for this person, Uzbek, Russian or English; the choice is saved to the account."
   },
   {
-   "id": "features/auth/account/photo-section.tsx#button:account.photoChange",
+   "id": "features/auth/account/photo-section.tsx#button:account.photoAdd",
    "kind": "button",
    "label": {
-    "uz": "Suratni almashtirish",
-    "ru": "Изменить фото",
-    "en": "Change photo"
+    "uz": "Surat qoʻshish",
+    "ru": "Добавить фото",
+    "en": "Add photo"
    },
    "pages": [
     "/account"
@@ -17805,6 +17805,46 @@ export const PLATFORM_MAP_SOURCE: unknown = {
    "description": "Merges the two parent records after a confirmation: every student of both is linked to the one that stays, and the other is archived."
   },
   {
+   "id": "features/people/parent-panel.tsx#button:people.relatives.mergeWith",
+   "kind": "button",
+   "label": {
+    "uz": "… bilan birlashtirish",
+    "ru": "Объединить с: …",
+    "en": "Merge with …"
+   },
+   "pages": [
+    "/people/parents"
+   ],
+   "parent": "features/people/parent-panel.tsx#panel",
+   "roles": [
+    "super_admin",
+    "principal",
+    "academic_vice_principal"
+   ],
+   "operation": null,
+   "description": "Chooses to merge this parent with the record that already holds the phone number, so both become one person."
+  },
+  {
+   "id": "features/people/parent-panel.tsx#button:people.relatives.newOwner",
+   "kind": "button",
+   "label": {
+    "uz": "Boshqa odam: raqamning yangi egasi bor",
+    "ru": "Другой человек: у номера новый владелец",
+    "en": "A different person: the number has a new owner"
+   },
+   "pages": [
+    "/people/parents"
+   ],
+   "parent": "features/people/parent-panel.tsx#panel",
+   "roles": [
+    "super_admin",
+    "principal",
+    "academic_vice_principal"
+   ],
+   "operation": null,
+   "description": "Chooses to give the phone number to this parent as its new owner; the other record keeps its name without the number."
+  },
+  {
    "id": "features/people/parent-panel.tsx#button:people.relatives.show",
    "kind": "button",
    "label": {
@@ -21214,6 +21254,33 @@ export const PLATFORM_MAP_SOURCE: unknown = {
    "description": "Holds why the move is undone."
   },
   {
+   "id": "features/people/student-panel.tsx#button:form.edit",
+   "kind": "button",
+   "label": {
+    "uz": "Tahrirlash",
+    "ru": "Изменить",
+    "en": "Edit"
+   },
+   "pages": [
+    "/people/students"
+   ],
+   "parent": "features/people/student-panel.tsx#panel",
+   "roles": [
+    "super_admin",
+    "principal",
+    "academic_vice_principal",
+    "spiritual_vice_principal",
+    "head_tutor",
+    "tutor",
+    "class_teacher",
+    "senior_head_teacher",
+    "head_teacher",
+    "teacher"
+   ],
+   "operation": null,
+   "description": "Opens the student's record form to edit the name, the details and the documents."
+  },
+  {
    "id": "features/people/student-panel.tsx#button:people.students.branchMoves.cancel",
    "kind": "button",
    "label": {
@@ -21239,6 +21306,33 @@ export const PLATFORM_MAP_SOURCE: unknown = {
    ],
    "operation": null,
    "description": "Cancels the release to another branch after a confirmation; the student stays in this branch."
+  },
+  {
+   "id": "features/people/student-panel.tsx#button:people.students.branchMoves.move",
+   "kind": "button",
+   "label": {
+    "uz": "Boshqa filialga oʻtkazish",
+    "ru": "Перевести в другой филиал",
+    "en": "Move to another branch"
+   },
+   "pages": [
+    "/people/students"
+   ],
+   "parent": "features/people/student-panel.tsx#panel",
+   "roles": [
+    "super_admin",
+    "principal",
+    "academic_vice_principal",
+    "spiritual_vice_principal",
+    "head_tutor",
+    "tutor",
+    "class_teacher",
+    "senior_head_teacher",
+    "head_teacher",
+    "teacher"
+   ],
+   "operation": null,
+   "description": "Opens the form to release the student to another branch from a date; the receiving branch then accepts the student and places them in a class."
   },
   {
    "id": "features/people/student-panel.tsx#button:people.students.cancelLeaving",
@@ -21295,6 +21389,87 @@ export const PLATFORM_MAP_SOURCE: unknown = {
    "description": "Cancels the scheduled return after a confirmation; the class booked for next year is released."
   },
   {
+   "id": "features/people/student-panel.tsx#button:people.students.deleteAction",
+   "kind": "button",
+   "label": {
+    "uz": "Oʻchirish",
+    "ru": "Удалить",
+    "en": "Delete"
+   },
+   "pages": [
+    "/people/students"
+   ],
+   "parent": "features/people/student-panel.tsx#panel",
+   "roles": [
+    "super_admin",
+    "principal",
+    "academic_vice_principal",
+    "spiritual_vice_principal",
+    "head_tutor",
+    "tutor",
+    "class_teacher",
+    "senior_head_teacher",
+    "head_teacher",
+    "teacher"
+   ],
+   "operation": null,
+   "description": "Opens the delete of a student record that holds no data, after a confirmation."
+  },
+  {
+   "id": "features/people/student-panel.tsx#button:people.students.leaveTitle",
+   "kind": "button",
+   "label": {
+    "uz": "Maktabdan ketish",
+    "ru": "Выбытие из школы",
+    "en": "Leave school"
+   },
+   "pages": [
+    "/people/students"
+   ],
+   "parent": "features/people/student-panel.tsx#panel",
+   "roles": [
+    "super_admin",
+    "principal",
+    "academic_vice_principal",
+    "spiritual_vice_principal",
+    "head_tutor",
+    "tutor",
+    "class_teacher",
+    "senior_head_teacher",
+    "head_teacher",
+    "teacher"
+   ],
+   "operation": null,
+   "description": "Opens the form for the student's leaving: the date and the reason; the student leaves the class and its journals from that date."
+  },
+  {
+   "id": "features/people/student-panel.tsx#button:people.students.merge.action",
+   "kind": "button",
+   "label": {
+    "uz": "Boshqa yozuv bilan birlashtirish",
+    "ru": "Объединить с другой записью",
+    "en": "Merge with another record"
+   },
+   "pages": [
+    "/people/students"
+   ],
+   "parent": "features/people/student-panel.tsx#panel",
+   "roles": [
+    "super_admin",
+    "principal",
+    "academic_vice_principal",
+    "spiritual_vice_principal",
+    "head_tutor",
+    "tutor",
+    "class_teacher",
+    "senior_head_teacher",
+    "head_teacher",
+    "teacher"
+   ],
+   "operation": null,
+   "description": "Opens the merge of this student record with another record of the same student; one record stays and holds the data of both."
+  },
+  {
    "id": "features/people/student-panel.tsx#button:people.students.moves.cancel",
    "kind": "button",
    "label": {
@@ -21322,6 +21497,141 @@ export const PLATFORM_MAP_SOURCE: unknown = {
    "description": "Cancels the scheduled move to the named class or group after a confirmation; the student stays where they are."
   },
   {
+   "id": "features/people/student-panel.tsx#button:people.students.moves.change",
+   "kind": "button",
+   "label": {
+    "uz": "…ga koʻchirishni oʻzgartirish",
+    "ru": "Изменить перевод в …",
+    "en": "Change the move to …"
+   },
+   "pages": [
+    "/people/students"
+   ],
+   "parent": "features/people/student-panel.tsx#panel",
+   "roles": [
+    "super_admin",
+    "principal",
+    "academic_vice_principal",
+    "spiritual_vice_principal",
+    "head_tutor",
+    "tutor",
+    "class_teacher",
+    "senior_head_teacher",
+    "head_teacher",
+    "teacher"
+   ],
+   "operation": null,
+   "description": "Opens the form to change a scheduled move of the student (its date or its class or group)."
+  },
+  {
+   "id": "features/people/student-panel.tsx#button:people.students.moves.moveClass",
+   "kind": "button",
+   "label": {
+    "uz": "Boshqa sinfga koʻchirish",
+    "ru": "Перевести в другой класс",
+    "en": "Move to another class"
+   },
+   "pages": [
+    "/people/students"
+   ],
+   "parent": "features/people/student-panel.tsx#panel",
+   "roles": [
+    "super_admin",
+    "principal",
+    "academic_vice_principal",
+    "spiritual_vice_principal",
+    "head_tutor",
+    "tutor",
+    "class_teacher",
+    "senior_head_teacher",
+    "head_teacher",
+    "teacher"
+   ],
+   "operation": null,
+   "description": "Opens the form to move the student to another class of the branch from a date."
+  },
+  {
+   "id": "features/people/student-panel.tsx#button:people.students.moves.moveGroup",
+   "kind": "button",
+   "label": {
+    "uz": "Boshqa guruhga koʻchirish",
+    "ru": "Перевести в другую группу",
+    "en": "Move to another group"
+   },
+   "pages": [
+    "/people/students"
+   ],
+   "parent": "features/people/student-panel.tsx#panel",
+   "roles": [
+    "super_admin",
+    "principal",
+    "academic_vice_principal",
+    "spiritual_vice_principal",
+    "head_tutor",
+    "tutor",
+    "class_teacher",
+    "senior_head_teacher",
+    "head_teacher",
+    "teacher"
+   ],
+   "operation": null,
+   "description": "Opens the form to move the student to another group of a subject from a date."
+  },
+  {
+   "id": "features/people/student-panel.tsx#button:people.students.restoreTitle",
+   "kind": "button",
+   "label": {
+    "uz": "Faol holatga tiklash",
+    "ru": "Восстановить как активного",
+    "en": "Restore to active"
+   },
+   "pages": [
+    "/people/students"
+   ],
+   "parent": "features/people/student-panel.tsx#panel",
+   "roles": [
+    "super_admin",
+    "principal",
+    "academic_vice_principal",
+    "spiritual_vice_principal",
+    "head_tutor",
+    "tutor",
+    "class_teacher",
+    "senior_head_teacher",
+    "head_teacher",
+    "teacher"
+   ],
+   "operation": null,
+   "description": "Opens the form to restore an archived student record."
+  },
+  {
+   "id": "features/people/student-panel.tsx#button:people.students.returnTitle",
+   "kind": "button",
+   "label": {
+    "uz": "Maktabga qaytish",
+    "ru": "Возвращение в школу",
+    "en": "Return to school"
+   },
+   "pages": [
+    "/people/students"
+   ],
+   "parent": "features/people/student-panel.tsx#panel",
+   "roles": [
+    "super_admin",
+    "principal",
+    "academic_vice_principal",
+    "spiritual_vice_principal",
+    "head_tutor",
+    "tutor",
+    "class_teacher",
+    "senior_head_teacher",
+    "head_teacher",
+    "teacher"
+   ],
+   "operation": null,
+   "description": "Opens the form for a student who left to return: the date and the class of the return."
+  },
+  {
    "id": "features/people/student-panel.tsx#button:people.students.showIdentity",
    "kind": "button",
    "label": {
@@ -21347,6 +21657,60 @@ export const PLATFORM_MAP_SOURCE: unknown = {
    ],
    "operation": null,
    "description": "Shows the student's hidden documents and date of birth; the showing is logged."
+  },
+  {
+   "id": "features/people/student-panel.tsx#button:people.students.uidTitle",
+   "kind": "button",
+   "label": {
+    "uz": "UIDni tuzatish",
+    "ru": "Исправить UID",
+    "en": "Correct the UID"
+   },
+   "pages": [
+    "/people/students"
+   ],
+   "parent": "features/people/student-panel.tsx#panel",
+   "roles": [
+    "super_admin",
+    "principal",
+    "academic_vice_principal",
+    "spiritual_vice_principal",
+    "head_tutor",
+    "tutor",
+    "class_teacher",
+    "senior_head_teacher",
+    "head_teacher",
+    "teacher"
+   ],
+   "operation": null,
+   "description": "Opens the form to change the student's UID, the school's identifier of the student."
+  },
+  {
+   "id": "features/people/student-panel.tsx#button:people.students.undoTitle",
+   "kind": "button",
+   "label": {
+    "uz": "Ketishni bekor qilish",
+    "ru": "Отменить выбытие",
+    "en": "Undo leaving"
+   },
+   "pages": [
+    "/people/students"
+   ],
+   "parent": "features/people/student-panel.tsx#panel",
+   "roles": [
+    "super_admin",
+    "principal",
+    "academic_vice_principal",
+    "spiritual_vice_principal",
+    "head_tutor",
+    "tutor",
+    "class_teacher",
+    "senior_head_teacher",
+    "head_teacher",
+    "teacher"
+   ],
+   "operation": null,
+   "description": "Opens the form to undo the student's leaving, with a reason; the student is active again in the same class."
   },
   {
    "id": "features/people/student-panel.tsx#field:people.students.reason",
@@ -21426,6 +21790,107 @@ export const PLATFORM_MAP_SOURCE: unknown = {
    "description": "The side panel of a student: the record in tabs (overview, results, attendance, contract, relatives, history) and the actions on the student."
   },
   {
+   "id": "features/people/student-panel.tsx#tab:journal.exemptions.panelTitle",
+   "kind": "tab",
+   "label": {
+    "uz": "Ozod qilishlar",
+    "ru": "Освобождения",
+    "en": "Exemptions"
+   },
+   "pages": [
+    "/people/students"
+   ],
+   "parent": "features/people/student-panel.tsx#panel",
+   "roles": [
+    "super_admin",
+    "principal",
+    "academic_vice_principal"
+   ],
+   "operation": null,
+   "description": "Shows the student's exemptions from subjects or lessons, with their dates."
+  },
+  {
+   "id": "features/people/student-panel.tsx#tab:people.students.tabs.attendance",
+   "kind": "tab",
+   "label": {
+    "uz": "Davomat",
+    "ru": "Посещаемость",
+    "en": "Attendance"
+   },
+   "pages": [
+    "/people/students"
+   ],
+   "parent": "features/people/student-panel.tsx#panel",
+   "roles": [
+    "super_admin",
+    "principal",
+    "academic_vice_principal",
+    "spiritual_vice_principal",
+    "head_tutor",
+    "tutor",
+    "class_teacher",
+    "senior_head_teacher",
+    "head_teacher",
+    "teacher"
+   ],
+   "operation": null,
+   "description": "Shows the student's attendance: absences and lateness by subject and quarter."
+  },
+  {
+   "id": "features/people/student-panel.tsx#tab:people.students.tabs.contract",
+   "kind": "tab",
+   "label": {
+    "uz": "Shartnoma va grant",
+    "ru": "Договор и стипендия",
+    "en": "Contract and scholarship"
+   },
+   "pages": [
+    "/people/students"
+   ],
+   "parent": "features/people/student-panel.tsx#panel",
+   "roles": [
+    "super_admin",
+    "principal",
+    "academic_vice_principal",
+    "spiritual_vice_principal",
+    "head_tutor",
+    "tutor",
+    "class_teacher",
+    "senior_head_teacher",
+    "head_teacher",
+    "teacher"
+   ],
+   "operation": null,
+   "description": "Shows the student's contracts, scholarship and stipend history."
+  },
+  {
+   "id": "features/people/student-panel.tsx#tab:people.students.tabs.history",
+   "kind": "tab",
+   "label": {
+    "uz": "Tarix",
+    "ru": "История",
+    "en": "History"
+   },
+   "pages": [
+    "/people/students"
+   ],
+   "parent": "features/people/student-panel.tsx#panel",
+   "roles": [
+    "super_admin",
+    "principal",
+    "academic_vice_principal",
+    "spiritual_vice_principal",
+    "head_tutor",
+    "tutor",
+    "class_teacher",
+    "senior_head_teacher",
+    "head_teacher",
+    "teacher"
+   ],
+   "operation": null,
+   "description": "Shows the student's history: classes, groups, branch moves, leavings and returns, with dates."
+  },
+  {
    "id": "features/people/student-panel.tsx#tab:people.students.tabs.label",
    "kind": "tab",
    "label": {
@@ -21451,6 +21916,87 @@ export const PLATFORM_MAP_SOURCE: unknown = {
    ],
    "operation": null,
    "description": "The tabs of the student record; switching shows the overview, results, attendance, contract and scholarship, relatives or history."
+  },
+  {
+   "id": "features/people/student-panel.tsx#tab:people.students.tabs.overview",
+   "kind": "tab",
+   "label": {
+    "uz": "Umumiy",
+    "ru": "Обзор",
+    "en": "Overview"
+   },
+   "pages": [
+    "/people/students"
+   ],
+   "parent": "features/people/student-panel.tsx#panel",
+   "roles": [
+    "super_admin",
+    "principal",
+    "academic_vice_principal",
+    "spiritual_vice_principal",
+    "head_tutor",
+    "tutor",
+    "class_teacher",
+    "senior_head_teacher",
+    "head_teacher",
+    "teacher"
+   ],
+   "operation": null,
+   "description": "Shows the student's record: class, groups, status, UID and the main details."
+  },
+  {
+   "id": "features/people/student-panel.tsx#tab:people.students.tabs.relatives",
+   "kind": "tab",
+   "label": {
+    "uz": "Qarindoshlar",
+    "ru": "Родственники",
+    "en": "Relatives"
+   },
+   "pages": [
+    "/people/students"
+   ],
+   "parent": "features/people/student-panel.tsx#panel",
+   "roles": [
+    "super_admin",
+    "principal",
+    "academic_vice_principal",
+    "spiritual_vice_principal",
+    "head_tutor",
+    "tutor",
+    "class_teacher",
+    "senior_head_teacher",
+    "head_teacher",
+    "teacher"
+   ],
+   "operation": null,
+   "description": "Shows the student's relatives and parents with their phones, the main contact and portal access."
+  },
+  {
+   "id": "features/people/student-panel.tsx#tab:people.students.tabs.results",
+   "kind": "tab",
+   "label": {
+    "uz": "Natijalar",
+    "ru": "Результаты",
+    "en": "Results"
+   },
+   "pages": [
+    "/people/students"
+   ],
+   "parent": "features/people/student-panel.tsx#panel",
+   "roles": [
+    "super_admin",
+    "principal",
+    "academic_vice_principal",
+    "spiritual_vice_principal",
+    "head_tutor",
+    "tutor",
+    "class_teacher",
+    "senior_head_teacher",
+    "head_teacher",
+    "teacher"
+   ],
+   "operation": null,
+   "description": "Shows the student's quarter and year results by subject."
   },
   {
    "id": "features/people/student-photo-section.tsx#button:people.staff.photo.add",
@@ -25042,7 +25588,7 @@ export const PLATFORM_MAP_SOURCE: unknown = {
    "pages": [
     "/plans/$journalId"
    ],
-   "parent": "features/plans/plan-outcomes.tsx#panel:plans.outcomes.placeTitle",
+   "parent": "features/plans/plan-outcomes.tsx#panel:plans.outcomes.mergeTitle",
    "roles": [
     "super_admin",
     "principal",
@@ -25088,7 +25634,7 @@ export const PLATFORM_MAP_SOURCE: unknown = {
    "pages": [
     "/plans/$journalId"
    ],
-   "parent": "features/plans/plan-outcomes.tsx#panel:plans.outcomes.placeTitle",
+   "parent": "features/plans/plan-outcomes.tsx#panel:plans.outcomes.mergeTitle",
    "roles": [
     "super_admin",
     "principal",
@@ -25157,7 +25703,7 @@ export const PLATFORM_MAP_SOURCE: unknown = {
    "pages": [
     "/plans/$journalId"
    ],
-   "parent": "features/plans/plan-outcomes.tsx#panel:plans.outcomes.placeTitle",
+   "parent": "features/plans/plan-outcomes.tsx#panel:plans.outcomes.mergeTitle",
    "roles": [
     "super_admin",
     "principal",
@@ -25193,12 +25739,12 @@ export const PLATFORM_MAP_SOURCE: unknown = {
    "description": "The dialog for dropping a not-covered or carried-in item from the plan with a reason."
   },
   {
-   "id": "features/plans/plan-outcomes.tsx#panel:plans.outcomes.placeTitle",
+   "id": "features/plans/plan-outcomes.tsx#panel:plans.outcomes.mergeTitle",
    "kind": "panel",
    "label": {
-    "uz": "«…» bandini darsga qoʻyish",
-    "ru": "Поставить «…» на урок",
-    "en": "Place “…” at a lesson"
+    "uz": "«…» bandini darsga birlashtirish",
+    "ru": "Объединить «…» с уроком",
+    "en": "Merge “…” into a lesson"
    },
    "pages": [
     "/plans/$journalId"

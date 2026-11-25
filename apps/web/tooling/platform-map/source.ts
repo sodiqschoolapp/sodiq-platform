@@ -187,17 +187,9 @@ export const UNREAD_LABELS: Readonly<Record<string, { count: number; reason: str
     count: 1,
     reason: 'One group choice per subject, named by the subject.',
   },
-  'features/people/parent-panel.tsx': {
-    count: 1,
-    reason: 'A choice of the panel is named by its value.',
-  },
   'features/people/relative-form.tsx': {
     count: 1,
     reason: 'A tick named by the relative’s phone.',
-  },
-  'features/people/student-panel.tsx': {
-    count: 1,
-    reason: 'The status buttons are named by the status.',
   },
   'features/people/vacancy-fill-dialog.tsx': {
     count: 1,

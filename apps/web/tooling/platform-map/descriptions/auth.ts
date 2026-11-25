@@ -2,7 +2,7 @@
 export const DESCRIPTIONS: Readonly<Record<string, string>> = {
   'features/auth/account/language-section.tsx#field:language.label':
     'The language of the app for this person, Uzbek, Russian or English; the choice is saved to the account.',
-  'features/auth/account/photo-section.tsx#button:account.photoChange':
+  'features/auth/account/photo-section.tsx#button:account.photoAdd':
     "Opens the file picker to add or replace the person's own photo (JPEG or PNG).",
   'features/auth/account/photo-section.tsx#button:account.photoRemove':
     "Removes the person's own photo after a confirmation; the initials are shown instead.",

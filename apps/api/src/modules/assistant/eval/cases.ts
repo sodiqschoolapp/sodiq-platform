@@ -1,4 +1,5 @@
 import type { AssistantRole } from '@sodiq/shared';
+import { HOW_INTENTS, type HowIntent } from './how-cases.js';
 
 /**
  * The test set of the assistant (task 11.12, build plan: "about 80 instructions in Uzbek (Latin
@@ -10,7 +11,8 @@ import type { AssistantRole } from '@sodiq/shared';
  * linked" (plan decision 17).
  */
 
-export type EvalKind = 'read' | 'vague' | 'forbidden' | 'change';
+/** Task 11.19: `how`, a question of "how do we" or "what does this do", answered from the map. */
+export type EvalKind = 'read' | 'vague' | 'forbidden' | 'change' | 'how';
 
 export type EvalLanguage = 'uz' | 'uz-Cyrl' | 'ru' | 'en';
 
@@ -34,6 +36,8 @@ export interface EvalIntent {
   /** For the fake model's replay of a forbidden case: the tool a careless model would call. */
   temptation?: string;
   texts: Readonly<Record<EvalLanguage, string>>;
+  /** Task 11.19: what a `how` answer finds, links, refuses or offers. */
+  how?: HowIntent;
 }
 
 export const EVAL_INTENTS: readonly EvalIntent[] = [
@@ -463,13 +467,27 @@ export interface EvalCase {
   text: string;
 }
 
+/** Task 11.19: the questions of the map, in the shape of the set. */
+const MAP_INTENTS: readonly EvalIntent[] = HOW_INTENTS.map((how) => ({
+  id: how.id,
+  role: how.role,
+  kind: 'how',
+  reads: [],
+  ...(how.page === undefined ? {} : { page: how.page }),
+  texts: how.texts,
+  how,
+}));
+
 /** Every case: each intent in each of its four forms. */
-export const EVAL_CASES: readonly EvalCase[] = [...EVAL_INTENTS, ...TEACHER_INTENTS].flatMap(
-  (intent) =>
-    (Object.entries(intent.texts) as [EvalLanguage, string][]).map(([language, text]) => ({
-      id: `${intent.id}/${language}`,
-      intent,
-      language,
-      text,
-    })),
+export const EVAL_CASES: readonly EvalCase[] = [
+  ...EVAL_INTENTS,
+  ...TEACHER_INTENTS,
+  ...MAP_INTENTS,
+].flatMap((intent) =>
+  (Object.entries(intent.texts) as [EvalLanguage, string][]).map(([language, text]) => ({
+    id: `${intent.id}/${language}`,
+    intent,
+    language,
+    text,
+  })),
 );

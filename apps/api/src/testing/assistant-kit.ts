@@ -102,7 +102,7 @@ export function send(
   scene: Pick<AssistantScene, 'app'>,
   cookie: string,
   branch: string,
-  body: { text: string; role?: AssistantRole; conversationId?: string },
+  body: { text: string; role?: AssistantRole; conversationId?: string; place?: unknown },
 ) {
   return request(scene.app.getHttpServer() as Parameters<typeof request>[0])
     .post('/api/assistant/questions')
@@ -120,7 +120,7 @@ export async function ask(
   scene: Pick<AssistantScene, 'app'>,
   cookie: string,
   branch: string,
-  body: { text: string; role?: AssistantRole; conversationId?: string },
+  body: { text: string; role?: AssistantRole; conversationId?: string; place?: unknown },
 ): Promise<Awaited<ReturnType<typeof send>>> {
   return settle(scene.app, await send(scene, cookie, branch, body), cookie, branch);
 }

@@ -568,4 +568,46 @@ export const DESCRIPTIONS: Readonly<Record<string, string>> = {
     'Opens the dialog to fill the vacancy with a staff member.',
   'features/people/vacancy-panel.tsx#panel':
     'The side panel of a vacancy: its record, hours, fills and acting teachers.',
+  'features/people/parent-panel.tsx#button:people.relatives.mergeWith':
+    'Chooses to merge this parent with the record that already holds the phone number, so both become one person.',
+  'features/people/parent-panel.tsx#button:people.relatives.newOwner':
+    'Chooses to give the phone number to this parent as its new owner; the other record keeps its name without the number.',
+  'features/people/student-panel.tsx#tab:people.students.tabs.overview':
+    "Shows the student's record: class, groups, status, UID and the main details.",
+  'features/people/student-panel.tsx#tab:people.students.tabs.results':
+    "Shows the student's quarter and year results by subject.",
+  'features/people/student-panel.tsx#tab:people.students.tabs.attendance':
+    "Shows the student's attendance: absences and lateness by subject and quarter.",
+  'features/people/student-panel.tsx#tab:people.students.tabs.relatives':
+    "Shows the student's relatives and parents with their phones, the main contact and portal access.",
+  'features/people/student-panel.tsx#tab:people.students.tabs.contract':
+    "Shows the student's contracts, scholarship and stipend history.",
+  'features/people/student-panel.tsx#tab:people.students.tabs.history':
+    "Shows the student's history: classes, groups, branch moves, leavings and returns, with dates.",
+  'features/people/student-panel.tsx#tab:journal.exemptions.panelTitle':
+    "Shows the student's exemptions from subjects or lessons, with their dates.",
+  'features/people/student-panel.tsx#button:people.students.uidTitle':
+    "Opens the form to change the student's UID, the school's identifier of the student.",
+  'features/people/student-panel.tsx#button:people.students.undoTitle':
+    "Opens the form to undo the student's leaving, with a reason; the student is active again in the same class.",
+  'features/people/student-panel.tsx#button:people.students.returnTitle':
+    'Opens the form for a student who left to return: the date and the class of the return.',
+  'features/people/student-panel.tsx#button:people.students.restoreTitle':
+    'Opens the form to restore an archived student record.',
+  'features/people/student-panel.tsx#button:people.students.moves.moveClass':
+    'Opens the form to move the student to another class of the branch from a date.',
+  'features/people/student-panel.tsx#button:people.students.moves.moveGroup':
+    'Opens the form to move the student to another group of a subject from a date.',
+  'features/people/student-panel.tsx#button:people.students.moves.change':
+    'Opens the form to change a scheduled move of the student (its date or its class or group).',
+  'features/people/student-panel.tsx#button:people.students.branchMoves.move':
+    'Opens the form to release the student to another branch from a date; the receiving branch then accepts the student and places them in a class.',
+  'features/people/student-panel.tsx#button:people.students.merge.action':
+    'Opens the merge of this student record with another record of the same student; one record stays and holds the data of both.',
+  'features/people/student-panel.tsx#button:people.students.leaveTitle':
+    "Opens the form for the student's leaving: the date and the reason; the student leaves the class and its journals from that date.",
+  'features/people/student-panel.tsx#button:people.students.deleteAction':
+    'Opens the delete of a student record that holds no data, after a confirmation.',
+  'features/people/student-panel.tsx#button:form.edit':
+    "Opens the student's record form to edit the name, the details and the documents.",
 };

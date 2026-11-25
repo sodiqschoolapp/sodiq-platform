@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type { NestExpressApplication } from '@nestjs/platform-express';
-import { assistantAnswerSchema, BRANCH_HEADER } from '@sodiq/shared';
+import { assistantAnswerSchema, BRANCH_HEADER, spellingKey } from '@sodiq/shared';
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { loadConfig } from '../../../config/config.js';
@@ -19,11 +19,13 @@ import { buildDemoSchool, type DemoSchool } from '../../../testing/demo/school.j
 import { FixedClock } from '../../../testing/fixed-clock.js';
 import { createTestDatabase, type TestDatabase } from '../../../testing/test-database.js';
 import { assistantRoutesOf } from '../../access/assistant-routes.js';
+import { AssistantRoutes } from '../../access/assistant-routes.check.js';
 import { costMicros } from '../assistant.engine.js';
 import { GeminiModel } from '../gemini-model.js';
 import type { AssistantModel, ModelRequest } from '../model.js';
 import { GENERATED_TOOLS } from '../tools.generated.js';
 import { EVAL_CASES, type EvalCase } from './cases.js';
+import { HOW_INTENTS, type HowIntent } from './how-cases.js';
 import { verdictLines, verdictOf } from './verdict.js';
 
 // Task 11.12, the test set (build plan: "CI runs it against the fake model; `pnpm assistant:eval`
@@ -36,6 +38,68 @@ import { verdictLines, verdictOf } from './verdict.js';
 
 const REAL = process.env.MODE === 'assistant-eval';
 const DEMO_PASSWORD = 'demo-eval-password-1';
+
+/** Every object of the map's answers to the model (a hit, a page explained) with this id. */
+function mapAnswersOf(requests: readonly ModelRequest[], id: string): Record<string, unknown>[] {
+  const out: Record<string, unknown>[] = [];
+  const walk = (value: unknown): void => {
+    if (Array.isArray(value)) value.forEach(walk);
+    else if (value !== null && typeof value === 'object') {
+      const record = value as Record<string, unknown>;
+      if (record.id === id) out.push(record);
+      Object.values(record).forEach(walk);
+    }
+  };
+  for (const request of requests) {
+    for (const turn of request.turns) {
+      for (const part of turn.parts) {
+        if (
+          part.kind === 'result' &&
+          (part.name === 'find_in_platform' || part.name === 'explain_place')
+        ) {
+          walk(part.result);
+        }
+      }
+    }
+  }
+  return out;
+}
+
+/**
+ * Task 11.19: why a `how` answer is not as expected, or ''. In CI (the fake model) the search
+ * of the map, what it gave and the link are scored; against the real model also the steps and,
+ * for an action the role cannot take, that the answer names a role that can (plan test 6).
+ */
+function howFault(
+  how: HowIntent,
+  requests: readonly ModelRequest[],
+  pages: readonly string[],
+  text: string,
+  proposals: number,
+  real: boolean,
+): string {
+  const found = mapAnswersOf(requests, how.finds);
+  if (found.length === 0) return `did not find ${how.finds}`;
+  if (how.cannot !== undefined) {
+    if (found.some((one) => one.youSeeIt !== false)) return 'the map says the role sees it';
+    if (pages.length > 0) return 'linked a page for an action the role cannot take';
+    const folded = spellingKey(text);
+    if (real && !how.cannot.roleWords.some((word) => folded.includes(word))) {
+      return 'did not name the role that can';
+    }
+  } else if (how.page !== undefined && !pages.includes(how.page)) {
+    return `did not link ${how.page}`;
+  }
+  if (how.offers !== undefined) {
+    const name = `propose_${GENERATED_TOOLS[how.offers]?.name ?? ''}`.slice(0, 64);
+    if (!(requests[0]?.tools ?? []).some((tool) => tool.name === name)) {
+      return `${how.offers} is not on the role's list`;
+    }
+    if (proposals > 0) return 'proposed before the person agreed';
+  }
+  if (real && !/(^|\n)\s*(\d+[.)]|-)\s/.test(text)) return 'gave no steps';
+  return '';
+}
 
 interface Outcome {
   case: EvalCase;
@@ -51,6 +115,20 @@ describe(
     let app: NestExpressApplication;
     let school: DemoSchool;
     let model: AssistantModel;
+    /** Task 11.19: every request of the case, real or fake, to score what the map gave. */
+    const sent: ModelRequest[] = [];
+    function recording(inner: AssistantModel): AssistantModel {
+      return {
+        get name() {
+          return inner.name;
+        },
+        locationOf: (place) => inner.locationOf(place),
+        generate: (request, place, onText) => {
+          sent.push(request);
+          return inner.generate(request, place, onText);
+        },
+      };
+    }
     const fake = new FakeModel();
     const outcomes: Outcome[] = [];
     let prices = { priceInMicros: 1_650_000, priceOutMicros: 9_900_000 };
@@ -159,6 +237,19 @@ describe(
             ),
             answer('This is done on its page.'),
           ];
+        case 'how': {
+          // Task 11.19: a search of the map, the link of the page the role opens, the steps.
+          const how = intent.how;
+          return [
+            calls(
+              { name: 'find_in_platform', args: { words: how?.search ?? '' } },
+              ...(how?.page === undefined
+                ? []
+                : [{ name: 'link_place', args: { page: how.page } }]),
+            ),
+            answer('1. Open the page. 2. Press the button.'),
+          ];
+        }
         case 'change':
           if (intent.proposes !== undefined) {
             const name = `propose_${GENERATED_TOOLS[intent.proposes]?.name ?? ''}`.slice(0, 64);
@@ -183,10 +274,10 @@ describe(
             'pnpm assistant:eval needs ASSISTANT_VERTEX_PROJECT and ASSISTANT_VERTEX_CREDENTIALS in .env.',
           );
         }
-        model = new GeminiModel(config);
+        model = recording(new GeminiModel(config));
         prices = config.prices.region;
       } else {
-        model = fake;
+        model = recording(fake);
       }
       database = await createTestDatabase();
       const clock = new FixedClock(SETUP_MOMENT);
@@ -209,7 +300,7 @@ describe(
         // Task 11.15, build plan item (8): the test set asks Frankfurt only (plan decision 10).
         .set({
           school_on: true,
-          roles_on: ['super_admin', 'teacher'],
+          roles_on: ['super_admin', 'academic_vice_principal', 'teacher'],
           daily_limit: 500,
           fallback_on: false,
         })
@@ -223,7 +314,7 @@ describe(
         const lines = [
           `Assistant test set: ${String(passed)} of ${String(outcomes.length)} as expected (${String(Math.round((passed * 100) / outcomes.length))}%).`,
           `Cost: ${(Number(cost) / 1e6).toFixed(4)} $ in all, ${(Number(cost) / 1e6 / outcomes.length).toFixed(5)} $ per request.`,
-          ...['read', 'vague', 'forbidden', 'change'].map((kind) => {
+          ...['read', 'vague', 'forbidden', 'change', 'how'].map((kind) => {
             const of = outcomes.filter((one) => one.case.intent.kind === kind);
             return `  ${kind}: ${String(of.filter((one) => one.passed).length)} of ${String(of.length)}`;
           }),
@@ -251,9 +342,22 @@ describe(
       await database.destroy();
     });
 
-    it('has 136 cases: 20 intents of the Super Admin and 14 of the Teacher (11.14), each in Uzbek Latin, Uzbek Cyrillic, Russian and English', () => {
-      expect(EVAL_CASES).toHaveLength(136);
-      expect(EVAL_CASES.filter((one) => one.intent.role === 'teacher')).toHaveLength(56);
+    // Task 11.19: 136 became 256, the requirement added 30 questions of the map (build plan,
+    // Done when), 12 of the Super Admin, 9 of the Academic Vice Principal and 9 of the Teacher.
+    it('has 256 cases: 20 intents of the Super Admin and 14 of the Teacher (11.14), and 30 of the map (11.19), each in Uzbek Latin, Uzbek Cyrillic, Russian and English', () => {
+      expect(EVAL_CASES).toHaveLength(256);
+      expect(EVAL_CASES.filter((one) => one.intent.role === 'teacher')).toHaveLength(56 + 36);
+      expect(EVAL_CASES.filter((one) => one.intent.kind === 'how')).toHaveLength(120);
+      expect(HOW_INTENTS.filter((one) => one.role === 'super_admin')).toHaveLength(12);
+      expect(HOW_INTENTS.filter((one) => one.role === 'academic_vice_principal')).toHaveLength(9);
+      expect(HOW_INTENTS.filter((one) => one.cannot !== undefined).length).toBeGreaterThanOrEqual(
+        6,
+      );
+      // One intent per role offers what the role's list proposes (review correction 1).
+      for (const role of ['super_admin', 'academic_vice_principal', 'teacher'] as const) {
+        const offer = HOW_INTENTS.find((one) => one.role === role && one.offers !== undefined);
+        expect(Object.hasOwn(app.get(AssistantRoutes).linesOf(role), offer?.offers ?? ''), role).toBe(true);
+      }
       const names = new Set(Object.values(GENERATED_TOOLS).map((tool) => tool.name));
       for (const one of EVAL_CASES) {
         for (const read of one.intent.reads) {
@@ -279,10 +383,13 @@ describe(
             .select('cost_micros')
             .execute()
         ).length;
+        sent.length = 0;
         const cookie =
           one.intent.role === 'teacher'
             ? (askingTeacher()?.account.caller.cookies ?? '')
-            : school.superAdmin.caller.cookies;
+            : one.intent.role === 'academic_vice_principal'
+              ? (school.branches[0]?.vice.caller.cookies ?? '')
+              : school.superAdmin.caller.cookies;
         const branch = school.branches[0]?.id ?? '';
         const response = await request(app.getHttpServer() as Parameters<typeof request>[0])
           .post('/api/assistant/questions')
@@ -326,6 +433,8 @@ describe(
         } else if (intent.kind === 'vague') {
           if (made.length > 0) why = 'read instead of asking';
           else if (!text.includes('?')) why = 'did not ask a question';
+        } else if (intent.kind === 'how' && intent.how !== undefined) {
+          why = howFault(intent.how, sent, pages, text, conversation.proposals.length, REAL);
         } else if (intent.proposes !== undefined) {
           // Task 11.14: a Teacher's change is proposed, never made.
           const action = GENERATED_TOOLS[intent.proposes]?.name;

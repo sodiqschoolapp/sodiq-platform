@@ -133,7 +133,7 @@ export const DESCRIPTIONS: Readonly<Record<string, string>> = {
     'The open lesson of the plan to use, with its number, date and current topic.',
   'features/plans/plan-outcomes.tsx#panel:plans.outcomes.dropTitle':
     'The dialog for dropping a not-covered or carried-in item from the plan with a reason.',
-  'features/plans/plan-outcomes.tsx#panel:plans.outcomes.placeTitle':
+  'features/plans/plan-outcomes.tsx#panel:plans.outcomes.mergeTitle':
     'The dialog for choosing the lesson at which a carried-in item is placed or into which a not-covered item is merged.',
   'features/plans/plan-page.tsx#column:plans.plan.classworks':
     "The titles of the lesson's classworks.",
