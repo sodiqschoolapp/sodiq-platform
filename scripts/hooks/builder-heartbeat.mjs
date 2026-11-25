@@ -16,8 +16,8 @@
 //   this session owns it, the stop is refused twice in a row at most, telling
 //   the builder to go on (a builder that ended its turn while waiting was found
 //   only by the hourly start routine, 45 minutes later);
-// - otherwise the heartbeat says "stopped", so the watchdog resumes at once a
-//   task that needs its builder.
+// - otherwise the heartbeat says "stopped", and when the task still needs its
+//   builder the hook starts the watchdog workflow at once, which resumes it.
 //
 // A hook must never break the session: every error is swallowed and the exit
 // code is 0, except the deliberate block of a second builder.
@@ -123,6 +123,7 @@ function main() {
     return 0; // A second builder may stop; it does not touch the heartbeat.
   }
 
+  let neededAtStop = false;
   if (event === 'Stop') {
     const need = needsBuilder({
       draft: pull.draft,
@@ -131,6 +132,7 @@ function main() {
       comments,
       headChecksFailed: headChecksFailed(pull.head.sha, cwd),
     });
+    neededAtStop = need.needed;
     if (need.needed && (state.stopBlocks ?? 0) < MAX_STOP_BLOCKS) {
       state.stopBlocks = (state.stopBlocks ?? 0) + 1;
       writeFileSync(file, JSON.stringify(state));
@@ -157,6 +159,28 @@ function main() {
   state.branch = branch;
   state.lastBeat = now.getTime();
   writeFileSync(file, JSON.stringify(state));
+  if (neededAtStop) {
+    // The builder ends while its task needs it: start the watchdog now, so the
+    // task is resumed within a minute. GitHub runs this repository's schedules
+    // hours late (the backup of 21:30 ran at 01:52, 04:22 and 05:23), so the
+    // watchdog's five-minute schedule is only a second net.
+    try {
+      run(
+        'gh',
+        [
+          'api',
+          '-X',
+          'POST',
+          `repos/${REPO}/actions/workflows/watchdog.yml/dispatches`,
+          '-f',
+          'ref=main',
+        ],
+        cwd,
+      );
+    } catch {
+      // The hourly start routine and the schedule still find the task.
+    }
+  }
   return 0;
 }
 
