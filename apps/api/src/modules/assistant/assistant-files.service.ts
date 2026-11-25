@@ -152,7 +152,9 @@ export class AssistantFiles {
   /**
    * The uploads a question sends (plan, `POST /api/assistant/questions`): each the person's own
    * of that kind, in this branch (the row filter), sent with no message yet, uploaded at most 24
-   * hours before; anything else 404 `assistant_file_not_found`. At most 14 MB together.
+   * hours before; anything else 404 `assistant_file_not_found`. At most 14 MB together. Two
+   * questions that send the same upload wait on the person's question lock, taken before this
+   * (`refuseWhenClosed`): only the person's own uploads are taken, so the second sees the link.
    */
   async takeForQuestion(
     transaction: Transaction,
@@ -176,8 +178,6 @@ export class AssistantFiles {
         'l.message_id',
       ])
       .where('f.id', 'in', ids)
-      // Two questions sending the same upload at once: the second waits, then sees the link.
-      .forUpdate('f')
       .execute();
     const since = now.getTime() - ASSISTANT_UPLOAD_HOURS * HOUR_MS;
     const take = (id: string, kind: 'attachment' | 'voice'): FileRow => {
