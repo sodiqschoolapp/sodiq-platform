@@ -33,7 +33,9 @@ import {
   ASSISTANT_KEY,
   askAssistant,
   assistantConversationQuery,
+  actionLabelKey,
   decideProposal,
+  undoProposal,
 } from './assistant-api';
 import { placeOf } from './assistant-place';
 import { progressQuery, type QuestionProgress } from './assistant-progress';
@@ -129,18 +131,21 @@ export function AssistantChat({
 
   const router = useRouter();
   const ask = useMutation({
-    mutationFn: (question: string) => {
+    mutationFn: (question: Asked) => {
       const place = withPlace ? placeOf(router.state.matches.at(-1)) : undefined;
       return askAssistant({
         role,
-        text: question,
+        text: question.text,
         ...(conversationId === null ? {} : { conversationId }),
         ...(place === undefined ? {} : { place }),
+        // Task 11.21: Continue of the newest answer, which a limit cut.
+        ...(question.kind === 'continue' ? { continue: true as const } : {}),
       });
     },
     onMutate: (question) => {
-      setSent(question);
-      setText('');
+      setSent(question.kind === 'continue' ? t('assistant.continued') : question.text);
+      // A choice or Continue pressed leaves what is typed in the box (`12`, No lost work).
+      if (question.kind === 'typed') setText('');
     },
     onSuccess: (answer) => {
       setSent(null);
@@ -159,7 +164,7 @@ export function AssistantChat({
     onError: (_error, question) => {
       setSent(null);
       // Refused: the question goes back into the box, unless something new was typed meanwhile.
-      setText((now) => (now === '' ? question : now));
+      if (question.kind === 'typed') setText((now) => (now === '' ? question.text : now));
     },
     onSettled: async () => {
       await queryClient.invalidateQueries({ queryKey: [...ASSISTANT_KEY, 'status'] });
@@ -187,6 +192,24 @@ export function AssistantChat({
     },
   });
 
+  // Task 11.21: Undo of a confirmed proposal; the answer is the conversation with the reverses.
+  const undo = useMutation({
+    mutationFn: (id: string) => undoProposal({ id, role }),
+    onSuccess: (answer) => {
+      queryClient.setQueryData(
+        assistantConversationQuery(answer.conversation.id).queryKey,
+        answer.conversation,
+      );
+      // Its `done` may have come before this answer: the conversation is read again.
+      void queryClient.invalidateQueries({
+        queryKey: assistantConversationQuery(answer.conversation.id).queryKey,
+      });
+    },
+    onError: async () => {
+      await queryClient.invalidateQueries({ queryKey: [...ASSISTANT_KEY, 'conversation'] });
+    },
+  });
+
   const open = conversationId === null ? undefined : conversation.data;
   const working = useWorking(open);
   // A conversation of another branch or role is read only: a question runs in this tab's
@@ -200,6 +223,13 @@ export function AssistantChat({
     event.preventDefault();
     const question = text.trim();
     if (question === '' || busy) return;
+    ask.reset();
+    ask.mutate({ kind: 'typed', text: question });
+  };
+  // Task 11.21: a choice pressed is sent as the person's answer; Continue as the next part.
+  const mayAsk = !busy && !readOnly && (status === undefined || status.available);
+  const press = (question: Asked): void => {
+    if (!mayAsk) return;
     ask.reset();
     ask.mutate(question);
   };
@@ -236,7 +266,21 @@ export function AssistantChat({
                       onDecide: (id: string, which: 'confirm' | 'decline') => {
                         decide.mutate({ id, which });
                       },
+                      onUndo: (id: string) => {
+                        if (!busy) undo.mutate(id);
+                      },
+                      undoing: undo.isPending,
                     })}
+                {...(mayAsk
+                  ? {
+                      onChoose: (option: string) => {
+                        press({ kind: 'typed', text: option });
+                      },
+                      onContinue: () => {
+                        press({ kind: 'continue', text: t('assistant.continue') });
+                      },
+                    }
+                  : {})}
               />
             )}
             {sent !== null && (
@@ -252,6 +296,7 @@ export function AssistantChat({
               />
             )}
             {decide.error !== null && <FailureAlert error={decide.error} />}
+            {undo.error !== null && <FailureAlert error={undo.error} />}
           </>
         )}
       </div>
@@ -342,10 +387,20 @@ export function Messages({
   workingId = null,
   secrets = [],
   onSecretsClosed,
+  onUndo,
+  undoing,
+  onChoose,
+  onContinue,
 }: {
   conversation: AssistantConversation;
   onDecide?: (proposalId: string, which: 'confirm' | 'decline') => void;
   deciding?: boolean;
+  /** Task 11.21: Undo of a confirmed proposal. */
+  onUndo?: (proposalId: string) => void;
+  undoing?: boolean;
+  /** Task 11.21: a choice of the newest answer pressed, and its Continue; only when a question may be sent. */
+  onChoose?: (option: string) => void;
+  onContinue?: () => void;
   workingId?: string | null;
   /** Task 11.20: the secrets of the steps just confirmed, shown once. */
   secrets?: readonly AssistantStepSecret[];
@@ -372,6 +427,17 @@ export function Messages({
     }
   }
   if (open !== null && open !== workingId) unanswered.add(open);
+  // Task 11.21: a proposal with an Undo that waits, was confirmed, or proposed nothing, offers
+  // no Undo again; one whose Undo was declined, expired or superseded does.
+  const undone = new Set<string>();
+  for (const message of conversation.messages) {
+    if (message.kind !== 'question' || message.undoOf === null) continue;
+    const its = conversation.proposals.find((proposal) => proposal.questionId === message.id);
+    if (its === undefined || its.state === 'waiting' || its.state === 'confirmed') {
+      undone.add(message.undoOf);
+    }
+  }
+  const newest = conversation.messages.at(-1);
   const noAnswer = (key: string) => (
     <li key={key} className="text-sm text-muted-foreground" data-assistant-no-answer="">
       {t('assistant.noAnswer')}
@@ -392,7 +458,12 @@ export function Messages({
         : conversation.proposals.filter((proposal) => proposal.questionId === asked);
     items.push(
       <li key={message.id}>
-        <MessageView message={message} />
+        <MessageView
+          message={message}
+          {...(message === newest && onChoose !== undefined && onContinue !== undefined
+            ? { onChoose, onContinue }
+            : {})}
+        />
       </li>,
       ...proposals.map((proposal) => (
         <li key={proposal.id}>
@@ -402,6 +473,14 @@ export function Messages({
               proposal.steps.some((step) => step.id === secret.stepId),
             )}
             {...(onSecretsClosed === undefined ? {} : { onSecretsClosed })}
+            {...(onUndo === undefined || undone.has(proposal.id)
+              ? {}
+              : {
+                  onUndo: () => {
+                    onUndo(proposal.id);
+                  },
+                  undoing: undoing === true,
+                })}
             {...(onDecide === undefined
               ? {}
               : {
@@ -426,19 +505,53 @@ export function Messages({
   );
 }
 
-function MessageView({ message }: { message: AssistantMessage }) {
+function MessageView({
+  message,
+  onChoose,
+  onContinue,
+}: {
+  message: AssistantMessage;
+  onChoose?: (option: string) => void;
+  onContinue?: () => void;
+}) {
   const { t, i18n } = useTranslation();
   switch (message.kind) {
     case 'question':
       return (
         <p className="ml-8 rounded-lg bg-accent px-3 py-2 break-words whitespace-pre-wrap">
-          {message.text}
+          {message.undoOf !== null
+            ? t('assistant.undoAsked')
+            : message.continued
+              ? t('assistant.continued')
+              : message.text}
         </p>
       );
     case 'answer':
       return (
         <div className="grid gap-2">
           <AnswerText text={message.text} />
+          {message.undo !== null && <UndoAnswer undo={message.undo} />}
+          {onChoose !== undefined && message.choices.length > 0 && (
+            <ul className="flex flex-wrap gap-2" aria-label={t('assistant.choices')}>
+              {message.choices.map((choice) => (
+                <li key={choice}>
+                  <Button
+                    variant="secondary"
+                    onClick={() => {
+                      onChoose(choice);
+                    }}
+                  >
+                    {choice}
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          )}
+          {onContinue !== undefined && message.continues && (
+            <div>
+              <Button onClick={onContinue}>{t('assistant.continue')}</Button>
+            </div>
+          )}
           {message.pages.length > 0 && (
             <ul className="flex flex-wrap gap-x-4 gap-y-1">
               {message.pages.map((page) => {
@@ -506,4 +619,48 @@ function MessageView({ message }: { message: AssistantMessage }) {
         <p className="text-sm text-muted-foreground">{t(`assistant.refusals.${message.code}`)}</p>
       );
   }
+}
+
+/** A question sent: typed (or a choice pressed), or Continue of a cut answer (task 11.21). */
+type Asked = { kind: 'typed'; text: string } | { kind: 'continue'; text: string };
+
+/** The reasons an Undo names a change it does not reverse, by their texts. */
+const UNDO_REASONS = [
+  'no_reverse',
+  'no_record',
+  'action_off',
+  'not_on_list',
+  'over_step_limit',
+] as const;
+
+function undoReason(reason: string): (typeof UNDO_REASONS)[number] | undefined {
+  return UNDO_REASONS.find((one) => one === reason);
+}
+
+/**
+ * The answer of an Undo (task 11.21): the reverses are the proposal after it; each change with
+ * none is named with its reason.
+ */
+function UndoAnswer({ undo }: { undo: NonNullable<Extract<AssistantMessage, { kind: 'answer' }>['undo']> }) {
+  const { t } = useTranslation();
+  return (
+    <div className="grid gap-1" data-assistant-undo="">
+      <p>{undo.none.length === 0 ? t('assistant.undo.all') : t('assistant.undo.some')}</p>
+      {undo.none.length > 0 && (
+        <ul className="list-disc space-y-0.5 ps-5">
+          {undo.none.map((one) => (
+            <li key={one.seq}>
+              {t('assistant.undo.none', {
+                seq: one.seq,
+                action: t(actionLabelKey(one.action), { defaultValue: one.summary }),
+                reason: undoReason(one.reason) !== undefined
+                  ? t(`assistant.undo.reasons.${undoReason(one.reason) ?? 'no_reverse'}`)
+                  : t(`errors.${one.reason}`, { defaultValue: t('assistant.undo.reasons.refused') }),
+              })}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
 }

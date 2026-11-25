@@ -67,6 +67,8 @@ export const askAssistant = async (body: {
   conversationId?: string;
   /** Task 11.19: the page the question is asked from; none from the Assistant page. */
   place?: AssistantPlace;
+  /** Task 11.21: Continue of the newest answer, which a limit cut. */
+  continue?: true;
 }) =>
   assistantAnswerSchema.parse(
     await answerOf(
@@ -117,6 +119,20 @@ export const restoreConversation = async (id: string) =>
   assistantAnyConversationDetailSchema.parse(
     await answerOf(
       api.POST('/api/assistant/all-conversations/{id}/restore', { params: { path: { id } } }),
+    ),
+  );
+
+/**
+ * Task 11.21: Undo of a confirmed proposal: the server proposes the reverse of each change made,
+ * as a new proposal of the conversation.
+ */
+export const undoProposal = async (input: { id: string; role: AssistantRole }) =>
+  assistantAnswerSchema.parse(
+    await answerOf(
+      api.POST('/api/assistant/proposals/{id}/undo', {
+        params: { path: { id: input.id }, header: branchHeader() },
+        body: { role: input.role },
+      }),
     ),
   );
 

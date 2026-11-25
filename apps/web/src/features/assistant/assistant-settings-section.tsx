@@ -53,6 +53,9 @@ type Field =
   | 'schoolOn'
   | 'dailyLimit'
   | 'monthlyCapDollars'
+  | 'questionActions'
+  | 'proposalSteps'
+  | 'questionMinutes'
   | 'fallbackOn'
   | `role_${string}`
   | `group_${string}`;
@@ -64,6 +67,9 @@ function AssistantSettingsForm({ settings }: { settings: AssistantSettings }): R
     schoolOn: settings.schoolOn ? CHECKED : '',
     dailyLimit: String(settings.dailyLimit),
     monthlyCapDollars: String(settings.monthlyCapDollars),
+    questionActions: String(settings.questionActions),
+    proposalSteps: String(settings.proposalSteps),
+    questionMinutes: String(settings.questionMinutes),
     fallbackOn: settings.fallbackOn ? CHECKED : '',
   };
   for (const group of ASSISTANT_DATA_GROUPS) {
@@ -84,6 +90,9 @@ function AssistantSettingsForm({ settings }: { settings: AssistantSettings }): R
       ],
       dailyLimit: wholeNumber(typed.dailyLimit),
       monthlyCapDollars: wholeNumber(typed.monthlyCapDollars),
+      questionActions: wholeNumber(typed.questionActions),
+      proposalSteps: wholeNumber(typed.proposalSteps),
+      questionMinutes: wholeNumber(typed.questionMinutes),
       fallbackOn: typed.fallbackOn === CHECKED,
       // Task 11.20: the personal-data groups that reach the model.
       dataGroupsOn: ASSISTANT_DATA_GROUPS.filter((group) => typed[`group_${group}`] === CHECKED),
@@ -113,10 +122,24 @@ function AssistantSettingsForm({ settings }: { settings: AssistantSettings }): R
             {...form.bind(`role_${role}`)}
           />
         ))}
-        <NumberField label={t('assistant.settings.dailyLimit')} {...form.bind('dailyLimit')} />
+        {/* Task 11.21 (`02`, Limits): 0 is no daily limit; the cap is always in force. */}
+        <NumberField
+          label={t('assistant.settings.dailyLimit')}
+          note={t('assistant.settings.dailyLimitNote')}
+          {...form.bind('dailyLimit')}
+        />
         <NumberField
           label={t('assistant.settings.monthlyCap')}
           {...form.bind('monthlyCapDollars')}
+        />
+        <NumberField
+          label={t('assistant.settings.questionActions')}
+          {...form.bind('questionActions')}
+        />
+        <NumberField label={t('assistant.settings.proposalSteps')} {...form.bind('proposalSteps')} />
+        <NumberField
+          label={t('assistant.settings.questionMinutes')}
+          {...form.bind('questionMinutes')}
         />
         {/* Task 11.15 (`02`, Where the model runs): on until switched off. */}
         <CheckboxField

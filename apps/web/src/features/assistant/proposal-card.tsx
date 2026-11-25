@@ -32,10 +32,18 @@ export function ProposalCard({
   deciding,
   secrets = [],
   onSecretsClosed,
+  onUndo,
+  undoing,
 }: {
   proposal: AssistantProposal;
   onDecide?: (which: 'confirm' | 'decline') => void;
   deciding?: boolean;
+  /**
+   * Task 11.21 (`02`, Reading and proposing: "A confirmed proposal can be undone"): given while
+   * the proposal is confirmed with a change made and has no Undo yet.
+   */
+  onUndo?: () => void;
+  undoing?: boolean;
   /** Task 11.20: what a confirmed step gave out once (a first password), never kept. */
   secrets?: readonly AssistantStepSecret[];
   onSecretsClosed?: () => void;
@@ -217,6 +225,15 @@ export function ProposalCard({
           </div>
         </>
       )}
+      {proposal.state === 'confirmed' &&
+        onUndo !== undefined &&
+        proposal.steps.some((step) => step.state === 'done') && (
+          <div className="flex flex-wrap gap-2">
+            <Button variant="secondary" disabled={undoing} onClick={onUndo}>
+              {undoing === true ? t('assistant.proposal.undoing') : t('assistant.proposal.undo')}
+            </Button>
+          </div>
+        )}
     </section>
   );
 }
