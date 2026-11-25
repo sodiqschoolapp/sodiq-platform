@@ -318,11 +318,13 @@ describe('Confirm and Decline: refusals, 404s and the mark of a step', () => {
       .proposals[0];
     const dispatcher = scene.app.get(AssistantDispatcher);
     const send = dispatcher.send.bind(dispatcher);
-    const spy = vi.spyOn(dispatcher, 'send').mockImplementation(async (method, url, body, as, route) => {
-      const outcome = await send(method, url, body, as, route);
-      // The route ran and answered; the answer is lost on the way back.
-      return as.stepId === undefined ? outcome : { status: 0, failure: 'timeout' };
-    });
+    const spy = vi
+      .spyOn(dispatcher, 'send')
+      .mockImplementation(async (method, url, body, as, route) => {
+        const outcome = await send(method, url, body, as, route);
+        // The route ran and answered; the answer is lost on the way back.
+        return as.stepId === undefined ? outcome : { status: 0, failure: 'timeout' };
+      });
     try {
       const confirmed = await decide(
         'confirm',

@@ -208842,6 +208842,10 @@ export interface operations {
                                     name: string;
                                     value: string;
                                 }[];
+                                entries: {
+                                    name: string | null;
+                                    value: string;
+                                }[];
                                 previewLessons: {
                                     list: string;
                                     date: string;
@@ -209317,6 +209321,10 @@ export interface operations {
                                         name: string;
                                         value: string;
                                     }[];
+                                    entries: {
+                                        name: string | null;
+                                        value: string;
+                                    }[];
                                     previewLessons: {
                                         list: string;
                                         date: string;
@@ -209778,6 +209786,10 @@ export interface operations {
                                 }[];
                                 fields: {
                                     name: string;
+                                    value: string;
+                                }[];
+                                entries: {
+                                    name: string | null;
                                     value: string;
                                 }[];
                                 previewLessons: {
@@ -210247,6 +210259,10 @@ export interface operations {
                                 }[];
                                 fields: {
                                     name: string;
+                                    value: string;
+                                }[];
+                                entries: {
+                                    name: string | null;
                                     value: string;
                                 }[];
                                 previewLessons: {
@@ -211018,6 +211034,10 @@ export interface operations {
                                     name: string;
                                     value: string;
                                 }[];
+                                entries: {
+                                    name: string | null;
+                                    value: string;
+                                }[];
                                 previewLessons: {
                                     list: string;
                                     date: string;
@@ -211470,6 +211490,10 @@ export interface operations {
                                 }[];
                                 fields: {
                                     name: string;
+                                    value: string;
+                                }[];
+                                entries: {
+                                    name: string | null;
                                     value: string;
                                 }[];
                                 previewLessons: {

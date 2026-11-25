@@ -7,7 +7,6 @@ import { assistantRoleSchema } from './assistant.js';
  * groups that may reach the model.
  */
 
-
 /** What a route is to the assistant (`routeKindOf` of the API). */
 export const ASSISTANT_ACTION_KINDS = [
   'read',
@@ -129,4 +128,3 @@ export const assistantSwitchChangesSchema = z.strictObject({
 });
 
 export type AssistantSwitchChanges = z.infer<typeof assistantSwitchChangesSchema>;
-

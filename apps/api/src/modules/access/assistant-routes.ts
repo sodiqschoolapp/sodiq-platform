@@ -373,10 +373,7 @@ const TEACHER_READS: Readonly<Record<string, AssistantReadLine>> = {
 
 /** A line: a read, a change proposed and confirmed (11.13), a preview of one, or a file line. */
 export type AssistantRouteLine =
-  | AssistantReadLine
-  | AssistantChangeLine
-  | AssistantPreviewLine
-  | AssistantFileLine;
+  AssistantReadLine | AssistantChangeLine | AssistantPreviewLine | AssistantFileLine;
 
 /** What a route is to the assistant, read from the route itself (`routeKindOf`). */
 export type AssistantRouteKind = 'read' | 'change' | 'preview' | 'export' | 'file' | 'download';

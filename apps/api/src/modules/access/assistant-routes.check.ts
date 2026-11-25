@@ -153,11 +153,9 @@ export class AssistantRoutes implements OnApplicationBootstrap {
       this.ready = true;
       return;
     }
-    for (const name of Object.keys(this.lines)) {
-      if (!found.has(name)) {
-        faults.push(`${name} has a line of the assistant and is not a route`);
-      }
-    }
+    // A line whose route this context does not hold (a controller registered only in some
+    // contexts) is not on a list here; `assistant-routes.test.ts` holds that every line names a
+    // route of the whole application.
     for (const role of ASSISTANT_ROLES) {
       const lines = this.linesOf(role, true);
       for (const [name, line] of Object.entries(lines)) {

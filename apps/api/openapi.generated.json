@@ -1172980,6 +1172980,26 @@
                                     "additionalProperties": false
                                   }
                                 },
+                                "entries": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "name": {
+                                        "nullable": true,
+                                        "type": "string"
+                                      },
+                                      "value": {
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": [
+                                      "name",
+                                      "value"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                },
                                 "previewLessons": {
                                   "type": "array",
                                   "items": {
@@ -1173092,6 +1173112,7 @@
                                 "previewIssues",
                                 "previewCounts",
                                 "fields",
+                                "entries",
                                 "previewLessons",
                                 "previewMore",
                                 "state",
@@ -1175609,6 +1175630,26 @@
                                         "additionalProperties": false
                                       }
                                     },
+                                    "entries": {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "object",
+                                        "properties": {
+                                          "name": {
+                                            "nullable": true,
+                                            "type": "string"
+                                          },
+                                          "value": {
+                                            "type": "string"
+                                          }
+                                        },
+                                        "required": [
+                                          "name",
+                                          "value"
+                                        ],
+                                        "additionalProperties": false
+                                      }
+                                    },
                                     "previewLessons": {
                                       "type": "array",
                                       "items": {
@@ -1175721,6 +1175762,7 @@
                                     "previewIssues",
                                     "previewCounts",
                                     "fields",
+                                    "entries",
                                     "previewLessons",
                                     "previewMore",
                                     "state",
@@ -1178201,6 +1178243,26 @@
                                     "additionalProperties": false
                                   }
                                 },
+                                "entries": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "name": {
+                                        "nullable": true,
+                                        "type": "string"
+                                      },
+                                      "value": {
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": [
+                                      "name",
+                                      "value"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                },
                                 "previewLessons": {
                                   "type": "array",
                                   "items": {
@@ -1178313,6 +1178375,7 @@
                                 "previewIssues",
                                 "previewCounts",
                                 "fields",
+                                "entries",
                                 "previewLessons",
                                 "previewMore",
                                 "state",
@@ -1180832,6 +1180895,26 @@
                                     "additionalProperties": false
                                   }
                                 },
+                                "entries": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "name": {
+                                        "nullable": true,
+                                        "type": "string"
+                                      },
+                                      "value": {
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": [
+                                      "name",
+                                      "value"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                },
                                 "previewLessons": {
                                   "type": "array",
                                   "items": {
@@ -1180944,6 +1181027,7 @@
                                 "previewIssues",
                                 "previewCounts",
                                 "fields",
+                                "entries",
                                 "previewLessons",
                                 "previewMore",
                                 "state",
@@ -1185317,6 +1185401,26 @@
                                     "additionalProperties": false
                                   }
                                 },
+                                "entries": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "name": {
+                                        "nullable": true,
+                                        "type": "string"
+                                      },
+                                      "value": {
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": [
+                                      "name",
+                                      "value"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                },
                                 "previewLessons": {
                                   "type": "array",
                                   "items": {
@@ -1185429,6 +1185533,7 @@
                                 "previewIssues",
                                 "previewCounts",
                                 "fields",
+                                "entries",
                                 "previewLessons",
                                 "previewMore",
                                 "state",
@@ -1187873,6 +1187978,26 @@
                                     "additionalProperties": false
                                   }
                                 },
+                                "entries": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "name": {
+                                        "nullable": true,
+                                        "type": "string"
+                                      },
+                                      "value": {
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": [
+                                      "name",
+                                      "value"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                },
                                 "previewLessons": {
                                   "type": "array",
                                   "items": {
@@ -1187985,6 +1188110,7 @@
                                 "previewIssues",
                                 "previewCounts",
                                 "fields",
+                                "entries",
                                 "previewLessons",
                                 "previewMore",
                                 "state",

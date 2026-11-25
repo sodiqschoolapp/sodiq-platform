@@ -501,7 +501,7 @@ describe('the Super Admin’s switches of the assistant’s actions', () => {
     ShippingLogger.sink = (_level, text) => {
       lines.push(text);
     };
-    let password = '';
+    let password: string;
     try {
       const confirmed = await confirm(proposal?.id ?? '');
       expect(confirmed.status, JSON.stringify(confirmed.body).slice(0, 400)).toBe(200);
@@ -539,6 +539,54 @@ describe('the Super Admin’s switches of the assistant’s actions', () => {
     await asked([], conversation.id);
     expect(JSON.stringify(scene.model.requests)).not.toContain(password);
     await setSwitches([{ role: 'super_admin', area: 'account_access', on: false }]);
+  });
+
+  // Permission review 1: a school-wide change (`{ branch: 'none' }`) runs at Confirm, and the
+  // key's secret is shown once, in the answer of Confirm only.
+  it('creates an integration key, a school-wide change, at Confirm and shows its secret once', async () => {
+    const person = await scene.people.person(scene.north, ['uz'], {
+      first: 'Malika',
+      last: 'Keyova',
+    });
+    await scene.kit.giveRole(person.accountId, { role: 'teacher', branchId: scene.north });
+    expect(
+      (await setSwitches([{ role: 'super_admin', area: 'integration_keys', on: true }])).status,
+    ).toBe(200);
+    const conversation = await asked([
+      {
+        name: propose('POST /api/integration-keys'),
+        args: {
+          body: {
+            name: 'Library platform',
+            staffRecordIds: [person.staffId],
+            endsOn: '2027-06-01',
+          },
+          summary: 'Create the key.',
+        },
+      },
+    ]);
+    const proposal = conversation.proposals.at(-1);
+    expect(proposal?.steps, JSON.stringify(results())).toHaveLength(1);
+    const confirmed = await confirm(proposal?.id ?? '');
+    expect(confirmed.status, JSON.stringify(confirmed.body).slice(0, 400)).toBe(200);
+    const answer_ = assistantConfirmedSchema.parse(confirmed.body);
+    expect(answer_.proposals.at(-1)?.steps.map((step) => [step.state, step.code])).toEqual([
+      ['done', null],
+    ]);
+    const secret = answer_.secrets[0]?.items[0]?.secret;
+    expect(typeof secret === 'string' && secret.length > 20).toBe(true);
+    const stored = JSON.stringify(
+      (
+        await sql`
+          select (select json_agg(m) from assistant_messages m) as messages,
+                 (select json_agg(s) from assistant_proposal_steps s) as steps,
+                 (select json_agg(a) from audit_log_school a) as school
+        `.execute(scene.database.migrator)
+      ).rows,
+    );
+    expect(stored).not.toContain(String(secret));
+    expect(JSON.stringify(scene.model.requests)).not.toContain(String(secret));
+    await setSwitches([{ role: 'super_admin', area: 'integration_keys', on: false }]);
   });
 
   // `edge/people-roles-accounts`, "How do we move a student to another branch?": "Where the

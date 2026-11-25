@@ -276,16 +276,16 @@ export function filterWords(text: string): string {
 }
 
 /**
- * The secrets of a step's answer (plan, "The floor"): each object that holds a secret, with its
- * own plain values (the slip: name, login, password, valid until), for the person only. The
- * answer itself is never stored; `ModelFilter.read` marks them for the model.
- */
-/**
  * The keys of a secret an answer gives out (a slip's password, a key's secret, recovery codes):
  * exact keys, so that a moment such as `passwordValidUntil` is no slip (code review should fix 9).
  */
 const GIVEN_SECRET_KEYS: readonly string[] = ['password', 'secret', 'recoveryCodes', 'token'];
 
+/**
+ * The secrets of a step's answer (plan, "The floor"): each object that holds a secret, with its
+ * own plain values (the slip: name, login, password, valid until), for the person only. The
+ * answer itself is never stored; `ModelFilter.read` marks them for the model.
+ */
 export function secretsOf(value: unknown): Record<string, string | number | boolean | null>[] {
   const found: Record<string, string | number | boolean | null>[] = [];
   const walk = (item: unknown): void => {
@@ -305,7 +305,7 @@ export function secretsOf(value: unknown): Record<string, string | number | bool
               typeof inner === 'number' ||
               typeof inner === 'boolean',
           ),
-        ) as Record<string, string | number | boolean | null>,
+        ),
       );
     }
     for (const [, inner] of entries) walk(inner);
