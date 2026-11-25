@@ -25,7 +25,7 @@ import type { RoleLines } from './tools.js';
 
 const line = { group: 'timetable', description: 'x' } as const;
 const linesOf = (routes: readonly string[]): RoleLines =>
-  Object.fromEntries(routes.map((route) => [route, line])) as unknown as RoleLines;
+  Object.fromEntries(routes.map((route) => [route, line]));
 
 const teacher = (name: string, change: Partial<OfferedTeacher> = {}): OfferedTeacher => ({
   id: `00000000-0000-4000-8000-${String(name.length).padStart(12, '0')}`,
@@ -204,10 +204,12 @@ describe('the briefing digest (task 11.23, plan decision 5)', () => {
       ],
     },
   };
-  const read = async (route: string): Promise<HelperRead> =>
-    route === BRIEFING_READS.earlyWarning
-      ? { ok: false, error: 'action_off' }
-      : { ok: true, body: bodies[route] };
+  const read = (route: string): Promise<HelperRead> =>
+    Promise.resolve(
+      route === BRIEFING_READS.earlyWarning
+        ? { ok: false, error: 'action_off' }
+        : { ok: true, body: bodies[route] },
+    );
   const context: HelperContext = {
     role: 'super_admin',
     language: 'en',
