@@ -1,6 +1,6 @@
 # Spec change proposal: homework is graded at the lesson where it was given
 
-Requested by the owner, 25 November 2026. Status: **waiting for the owner's approval**. Nothing under `docs/spec/` is changed yet.
+Requested by the owner, 25 November 2026. Status: **approved by the owner, 25 November 2026, and applied** (`docs/spec-changes.md`). On question 2 the owner chose the simpler rule, not the recommendation: a student not expected at the lesson where the homework was given does not get it, and a number already saved for them leaves the averages and stays in history. The applied wording, not section 4 below, is the one in force.
 
 ## 1. Every place that states the rule
 

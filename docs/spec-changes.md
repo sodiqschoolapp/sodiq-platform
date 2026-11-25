@@ -2,6 +2,18 @@
 
 The spec in `docs/spec/` was taken from the full spec document on 3 October 2026 (revision 88). Every later change to a spec file is listed here, newest first, with the date, what changed, why, and the files touched. Changes are made only with the `/spec-change` skill and the owner's approval.
 
+## 25 November 2026: homework is graded at the lesson where it was given
+
+- What changed:
+  1. **Graded where given.** Each homework of a lesson's plan item, now called just "Homework" (Uyga vazifa, Домашнее задание), is a homework column of that lesson: the teacher sets its total and types the numbers there. Before, its column was at the next lesson, where the homework was checked.
+  2. **No check lesson.** Removed: the "checked today" line of the lesson card; "not checked" and "check at the next lesson"; the move of homework columns when the check lesson is cancelled; "will not be graded" on the last lesson of the year or of a closing journal; "not checked, group closed"; the warning "will be checked today in slot N" on a double lesson; the rule that the first lesson after the start date has no homework column; the refusal to remove a homework the next lesson holds numbers for; the definition of "previous lesson"; and, in the portal, the homework still to hand in.
+  3. **Quarter and locks.** A homework column follows the edit period, locks and unlocks of its lesson and counts in its quarter: homework given at the last lesson of a quarter belongs to that quarter, and homework given at the last lesson of the year has a column like any other. "Not held" and "not given" stay.
+  4. **Not expected at the lesson.** A student exempt, or not yet in the group, at the lesson where the homework was given does not get it: the cell is closed and no number is entered. Before, that cell was optional and a number typed there counted.
+  5. **Numbers already saved.** Homework numbers saved before 25 November 2026 at a later lesson move once to the lesson where the homework was given, with an audit entry and a history line, and count in that lesson's quarter. A number of a student not expected at that lesson does not move: it leaves the averages and stays in history.
+- Why: the owner, 25 November 2026, in chat. The owner confirmed that no quarter is closed and no lesson is locked yet (the journal started a few days ago; the edit period is 30 days), so the move needs no rule for those cases; the code move refuses to run, and reports, if it finds one. The owner chose the simpler rule for students not expected at the lesson. Proposal `docs/proposals/spec-change-homework-at-its-lesson.md`.
+- Not changed: the calculation rules of `07` (each work counts equally in its quarter); the total and its limits; at most 10 homeworks a lesson; the homework files shown to families from Release 2.
+- Files: `docs/spec/07-journal.md` (Layout, Lessons; Entering data, Classwork and homework, Homework column; Closing a quarter), `docs/spec/09-lesson-plans.md` (What a plan contains, Homework; In the journal), `docs/spec/edge-cases/journal.md` (Entering; Closing and reopening, "My grade disappeared."), `docs/spec/edge-cases/lesson-plans.md` (groups merged; double lesson; approved edit; substitute), `docs/spec/edge-cases/00-definitions.md` (Previous lesson removed), `docs/spec/edge-cases/academic-year.md` (go-live, Journals and plans), `docs/spec/10-portal-notifications-release-2.md` (Today, Homework), `docs/spec/16-open-questions.md` (rows 17 and 36).
+
 ## 25 November 2026: the assistant for everything
 
 - What changed:

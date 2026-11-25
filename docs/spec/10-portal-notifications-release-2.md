@@ -9,9 +9,9 @@ The first version of the portal is for parents only (owner, 6 November 2026). It
 
 | Page | What a parent sees for each child |
 | --- | --- |
-| Today | The child's lessons of the day with the mark of each one marked, or the next school day of the week when the day has none; the homework still to hand in, the nearest first; the latest scores (see Grades). Each part links to its page. It is the first page a parent opens (owner, 19 November 2026). |
+| Today | The child's lessons of the day with the mark of each one marked, or the next school day of the week when the day has none; the latest scores (see Grades). Each part links to its page. It is the first page a parent opens (owner, 19 November 2026). |
 | Timetable | The child's week, with rooms and teachers, and changes marked. |
-| Homework | Tasks by date and subject, with their titles and the files attached to each homework; never the plan item's materials, which are for staff. |
+| Homework | Tasks by the date of the lesson where they were given and by subject, with their titles and the files attached to each homework; never the plan item's materials, which are for staff. |
 | Grades | Each score with the work's name and the lesson date (the Today page lists the scores saved last; the moment of saving orders that list and is not shown); the averages and quarter results of each subject as the staff pages show them, the current quarter marked "provisional" until it is closed; the comments marked "visible to parents". |
 | Attendance | The child's marks by day and lesson. An exempt lesson shows as exempt, never as an absence. |
 

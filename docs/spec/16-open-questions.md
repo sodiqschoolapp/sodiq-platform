@@ -23,7 +23,7 @@ No question is open. The decided ones are kept as a record.
 | 14 | What should be moved from myss.uz? | Nothing now. Import is done later, on request. | Decided |
 | 15 | Which SMS provider does the school use? Is a Telegram bot wanted? | No SMS. The parents' channel is a Telegram bot, with the portal as a mini app inside it (owner, 6 November 2026). | Decided |
 | 16 | Can one class or group have two teachers in the same lesson? | No. One teacher per lesson. Splits into groups cover the cases in the sample timetable. | Decided |
-| 17 | Is the homework score entered on the day the homework is checked, or on the day it is given? | On the day it is checked. | Decided |
+| 17 | Is the homework score entered on the day the homework is checked, or on the day it is given? | On the day it is given, at the lesson where it was given (owner, 25 November 2026; until then, on the day it was checked). | Decided |
 | 18 | Can the number typed for a work have a decimal? | No. Whole numbers only. | Decided |
 | 19 | Do branches and grades use different day templates? | Each branch has its own slot types and templates. Inside a branch, a range of grades can have its own template. | Decided |
 | 20 | Which preferences should the timetable generator follow? | The eight listed under Auto-generation, with weights set by the Academic Vice Principal. | Decided |
@@ -42,7 +42,7 @@ No question is open. The decided ones are kept as a record.
 | 33 | Should a result that rests on attendance alone, or on few lessons for any reason, be flagged for a decision? | Yes, with the outcomes "keep", "Exempt" or "Not assessed". | Decided |
 | 34 | A student moves between branches mid-quarter. Do the old branch's lessons count in the new branch's result? | No. The old branch keeps a "result at leaving"; the new one calculates from its own lessons. | Decided |
 | 35 | Can a day off or a special day apply to some grades only? | Yes. Every calendar entry applies to the whole branch or to a range of grades. | Decided |
-| 36 | Can a lesson have more than one graded classwork? | Yes. Since 11 October 2026 a lesson can have any number of classworks and any number of homeworks given, including none of one kind, at most 10 of each (journal edge cases). Before, one classwork and one homework per lesson. | Decided |
+| 36 | Can a lesson have more than one graded classwork? | Yes. Since 11 October 2026 a lesson can have any number of classworks and any number of homeworks, including none of one kind, at most 10 of each (journal edge cases). Before, one classwork and one homework per lesson. | Decided |
 | 37 | Are the 7 edit days calendar days, counting through vacations? | Yes. | Decided |
 | 38 | How many years after a student leaves is identifying personal data erased? | Never. Data is always kept. | Decided |
 | 39 | When does the school go live: on the first day of a quarter, or on any day? | On any school day, also in the middle of a quarter. The quarter that contains the start date is calculated from that date and labelled. See Edge cases, "The school goes live in the middle of the year". | Decided |
