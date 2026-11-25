@@ -120,6 +120,8 @@ export const DESCRIPTIONS: Readonly<Record<string, string>> = {
     'Shows which day template applies on a date to each weekday and grade, and the settings by level. Here one sets a template from a date for the branch, a weekday or a range of grades, after seeing the changes.',
   'page:/setup/day-templates':
     'Lists the day templates of the branch: a start time and the lesson and break slots in order. Here one adds and edits them and archives or restores them.',
+  'page:/setup/assistant':
+    'The Super Admin\u2019s settings of the assistant: switched on for the school and each role, the limits, which personal data may reach the model, and every action of each role by area, each switched on or off for the assistant. Heavy actions such as publishing, closing, password resets and roles start off.',
   'page:/setup/demo-clock':
     'Moves the demo time of the test environment forward to a chosen date and time. Every rule of the platform then follows demo time. Demo time never moves back.',
   'page:/setup/divisions':

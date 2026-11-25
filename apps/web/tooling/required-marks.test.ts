@@ -42,6 +42,11 @@ const RAW = new Set(['input', 'select', 'textarea', 'Input', 'Select', 'Textarea
  * changes the count here, with its reason.
  */
 const NOT_FORM_FIELDS: Readonly<Record<string, { count: number; reason: string }>> = {
+  'features/assistant/assistant-settings-page.tsx': {
+    count: 3,
+    reason:
+      'Task 11.20: the search of the actions filters the page, and the switch of an area and of an action are saved when pressed; none sends a record a schema checks.',
+  },
   'components/language-chooser.tsx': {
     count: 1,
     reason: 'The language switch of the top bar acts at once; it sends no record a schema checks.',
