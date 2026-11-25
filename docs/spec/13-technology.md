@@ -40,7 +40,7 @@ All result calculations live in one module with no other dependencies. The journ
 - Two-step sign-in for the Super Admin and Academic Vice Principal.
 - Permissions are checked on the server for every request, by role, branch, subjects and own classes. The menu hides what a role cannot use, but the server is what enforces it. The few routes that work without sign-in are listed in Roles and access.
 - Integration keys (Roles and access) are long random secrets, stored only as a hash and sent only over HTTPS in a header. They are limited in requests per minute and checked against the named person's rights on every request.
-- The assistant (Roles and access) runs inside the person's session and reaches the platform only through the actions open to it for the person's role, checked as every other request. The key of the language model is a secret of the server, never sent to a browser. Fields that never go to the model are listed in Roles and access.
+- The assistant (Roles and access) runs inside the person's session and reaches the platform only through the actions of the person's role switched on for it, checked as every other request. The key of the language model is a secret of the server, never sent to a browser. Secrets never go to the model; personal data goes as the Super Admin's switches allow (Roles and access).
 - Every change to timetable, journal, results, people and settings is written to an audit log that cannot be edited: who, when, old value, new value.
 - Personal data is encrypted in transit and at rest. Passport and birth certificate numbers and medical data are shown only to roles that need them, and each viewing is logged.
 - Parents see only their own children.
