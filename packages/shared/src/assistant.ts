@@ -126,6 +126,11 @@ export const ASSISTANT_NOTICES = [
   'assistant_answer_failed',
   /** Task 11.21: the monthly cap was reached while the question was answered. */
   'assistant_cap_reached',
+  /**
+   * Task 11.23 (`02`, Calculation stays here): an explanation of a result quoted a figure that is
+   * not in the platform's breakdown, twice; it is not shown.
+   */
+  'assistant_figures_unchecked',
 ] as const;
 
 export type AssistantNotice = (typeof ASSISTANT_NOTICES)[number];

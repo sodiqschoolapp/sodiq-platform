@@ -1304,6 +1304,8 @@ export const en = {
         'The assistant is busy now. Try again in a minute; every page works as usual.',
       assistant_question_running:
         'A question of yours is still being answered. Wait for its answer, then ask the next one.',
+      assistant_figures_unchecked:
+        'The assistant could not explain this result with the platform’s own figures only, so its answer is not shown. Open the result’s breakdown in the journal, or ask again.',
       assistant_answer_failed:
         'The assistant could not finish this answer. Ask again; every page works as usual.',
     },
