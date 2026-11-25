@@ -175,6 +175,8 @@ export class AssistantProposals {
       let basisRead: ReadOutcome | undefined;
       let previewRead: ReadOutcome | undefined;
       let outcome: { state: AssistantStepState; status: number; code: string | null };
+      // Task 11.21: the id a done step's answer gave (a create's record), kept for its Undo.
+      let recordId: string | null = null;
       if (line?.kind !== 'change') {
         // The route left the role's list since it was proposed.
         outcome = { state: 'refused', status: 403, code: 'assistant_route_closed' };
@@ -229,9 +231,10 @@ export class AssistantProposals {
         if (outcome.state === 'done' && 'body' in sent) {
           const items = secretsOf(sent.body);
           if (items.length > 0) secrets.push({ stepId: step.id, items });
+          recordId = createdIdOf(sent.body);
         }
       }
-      await this.record(proposal, step, outcome);
+      await this.record(proposal, step, outcome, recordId);
       if (outcome.state !== 'done') {
         stopped = true;
       }
@@ -243,6 +246,7 @@ export class AssistantProposals {
     proposal: ProposalRow,
     step: StoredStep,
     outcome: { state: AssistantStepState; status: number; code: string | null },
+    recordId: string | null = null,
   ): Promise<void> {
     if (outcome.state === 'unknown' || outcome.state === 'waiting') {
       // No outcome row: a confirmed step without one is shown "not known: check the page",
@@ -260,6 +264,7 @@ export class AssistantProposals {
           state: outcome.state,
           status: outcome.status,
           code: outcome.code,
+          record_id: recordId,
           created_at: await transactionMoment(transaction),
         })
         .execute();
@@ -302,4 +307,13 @@ function isUniqueViolation(error: unknown): boolean {
     'code' in error &&
     (error as { code?: unknown }).code === '23505'
   );
+}
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Task 11.21: the `id` at the top of a done step's answer, when it is a uuid. */
+export function createdIdOf(body: unknown): string | null {
+  if (body === null || typeof body !== 'object' || Array.isArray(body)) return null;
+  const id = (body as { id?: unknown }).id;
+  return typeof id === 'string' && UUID.test(id) ? id.toLowerCase() : null;
 }

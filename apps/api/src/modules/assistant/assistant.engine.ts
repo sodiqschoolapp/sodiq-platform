@@ -61,9 +61,11 @@ import { AssistantWork } from './assistant-work.js';
 import { Sessions } from '../auth/sessions.service.js';
 import { TextProgress } from './progress.js';
 import { proposalsOf } from './proposal-views.js';
-import { draftStep, targetOf, type StoredStep } from './proposals.js';
+import { draftStep, SUMMARY_MAX_LENGTH, targetOf, type StoredStep } from './proposals.js';
+import { reverseOf } from './reverses.js';
 import {
   BODY_ARGUMENT,
+  SUMMARY_ARGUMENT,
   LESSON_CARD_ROUTE,
   OPEN_LESSON_JOURNAL,
   routeOfTool,
@@ -1081,6 +1083,193 @@ export class AssistantEngine {
    * The journal, quarter and date of one lesson (task 11.14), when the person's own reads of its
    * card and of its journal answer them; the card's journal and date, the quarter of the date.
    */
+  /**
+   * Task 11.21, Undo (`02`, Reading and proposing: "A confirmed proposal can be undone: the
+   * assistant proposes the reverse of each change made, where an action exists that reverses it,
+   * and that new proposal is confirmed like any other"). Built by the server from the stored
+   * steps, newest first (plan decision 11), with no call of the model: neither the daily limit
+   * nor the cap applies (plan decision 9). Each reverse is drafted as any step, as the person, on
+   * the role's switched-on list; a change with none is named with its reason.
+   */
+  async undo(asker: Asker, proposalId: string, role: AssistantRole): Promise<AssistantAnswer> {
+    const { access } = asker;
+    const found = await this.transactions.run(access.branchIds, async (transaction) => {
+      const now = await transactionMoment(transaction);
+      const checked = await this.undoable(transaction, access, proposalId, role, now);
+      const settings = await this.settings.switches(transaction);
+      return {
+        ...checked,
+        filter: new ModelFilter(settings.dataGroupsOn),
+        maxSteps: settings.proposalSteps,
+        switchRows: await this.switches.rowsIn(transaction),
+      };
+    });
+    const { proposal, done } = found;
+    const listed = this.routes.linesOf(role);
+    const on = this.switches.onRoutes(found.switchRows, role);
+    const lines: RoleLines = Object.fromEntries(
+      Object.entries(listed).filter(([route]) => on.has(route)),
+    );
+    const branchId = proposal.branch_id;
+    const steps: StoredStep[] = [];
+    const none: { seq: number; action: string; summary: string; reason: string }[] = [];
+    // The last change undone first (plan decision 11).
+    for (const { step, recordId } of [...done].reverse()) {
+      const named = { seq: step.seq, action: step.action, summary: step.summary };
+      if (steps.length >= found.maxSteps) {
+        none.push({ ...named, reason: 'over_step_limit' });
+        continue;
+      }
+      const made = reverseOf(step, recordId);
+      if ('reason' in made) {
+        none.push({ ...named, reason: made.reason });
+        continue;
+      }
+      const route = made.reverse.route;
+      const line = lines[route];
+      if (line?.kind !== 'change') {
+        none.push({ ...named, reason: Object.hasOwn(listed, route) ? 'action_off' : 'not_on_list' });
+        continue;
+      }
+      const drafted = await draftStep(
+        this.dispatcher,
+        {
+          pass: asker.pass,
+          branchId,
+          role,
+          lines,
+          filter: found.filter,
+          maxSteps: found.maxSteps,
+          lessonDateOf: (lessonId) => this.lessonDate(access, lessonId),
+          studentNamesOf: (lessonId, ids) =>
+            this.studentNames(asker, branchId, role, lessonId, ids),
+        },
+        {
+          route,
+          tool: generatedOf(route),
+          line,
+          args: {
+            ...made.pathArgs,
+            [SUMMARY_ARGUMENT]: `Undo: ${step.summary}`.slice(0, SUMMARY_MAX_LENGTH),
+            ...(made.body === undefined ? {} : { [BODY_ARGUMENT]: made.body }),
+          },
+        },
+        steps,
+      );
+      if (drafted.step === undefined) {
+        const given = drafted.given as { error?: unknown } | null;
+        none.push({
+          ...named,
+          reason: typeof given?.error === 'string' ? given.error : 'refused',
+        });
+        continue;
+      }
+      steps.push({ ...drafted.step, seq: steps.length + 1 });
+    }
+    return this.transactions.run(access.branchIds, async (transaction) => {
+      const now = await transactionMoment(transaction);
+      // Checked again under the person's lock: another tab may have asked or undone meanwhile.
+      await this.undoable(transaction, access, proposalId, role, now);
+      const conversation = {
+        id: proposal.conversation_id,
+        branchId,
+        accountId: proposal.account_id,
+      };
+      const questionId = await appendMessage(
+        transaction,
+        conversation,
+        { kind: 'question', text: '', undoOf: proposal.id },
+        now,
+      );
+      await appendMessage(
+        transaction,
+        conversation,
+        { kind: 'answer', text: '', pages: [], undo: { proposalId: proposal.id, none } },
+        now,
+      );
+      await this.storeProposal(transaction, { conversation, questionId }, role, steps, now);
+      await this.notify(transaction, { conversation, questionId }, { kind: 'done' });
+      const row = await conversationsQuery(transaction)
+        .where('c.id', '=', conversation.id)
+        .executeTakeFirstOrThrow();
+      return { conversation: await conversationOf(transaction, row, now) };
+    });
+  }
+
+  /**
+   * The checks of an Undo (task 11.21), under the person's question lock: the person's own
+   * proposal of a conversation not archived (anything else 404), the role held and the same, the
+   * assistant on, no question running, confirmed with a change made, and no Undo of it yet.
+   */
+  private async undoable(
+    transaction: Transaction,
+    access: Access,
+    proposalId: string,
+    role: AssistantRole,
+    now: Date,
+  ): Promise<{
+    proposal: { id: string; branch_id: string; account_id: string; conversation_id: string };
+    done: { step: StoredStep; recordId: string | null }[];
+  }> {
+    const proposal = await transaction
+      .selectFrom('assistant_proposals')
+      .select(['id', 'branch_id', 'account_id', 'conversation_id', 'role', 'steps'])
+      .where('id', '=', proposalId)
+      .where('account_id', '=', access.accountId)
+      .executeTakeFirst();
+    if (proposal === undefined) throw new ApiException('not_found', 404);
+    const conversation = await conversationsQuery(transaction)
+      .where('c.id', '=', proposal.conversation_id)
+      .executeTakeFirstOrThrow();
+    if (isArchived(new Date(conversation.last_activity_at), now)) {
+      throw new ApiException('not_found', 404);
+    }
+    if (!this.roleHeld(access, role)) throw new ApiException('assistant_role_not_held', 403);
+    if (proposal.role !== role) throw new ApiException('assistant_conversation_other_role', 409);
+    const settings = await this.settings.switches(transaction);
+    if (!settings.schoolOn || !settings.rolesOn.includes(role)) {
+      throw new ApiException('assistant_off', 409);
+    }
+    await lockAccount(transaction, access.accountId);
+    const running = await sql<{ running: boolean }>`
+      select assistant_question_running(${access.accountId}, ${now}) as running
+    `.execute(transaction);
+    if (running.rows[0]?.running === true) {
+      throw new ApiException('assistant_question_running', 409);
+    }
+    const decided = await transaction
+      .selectFrom('assistant_proposal_decisions')
+      .select('decision')
+      .where('proposal_id', '=', proposal.id)
+      .executeTakeFirst();
+    const outcomes = await transaction
+      .selectFrom('assistant_proposal_steps')
+      .select(['step_id', 'state', 'record_id'])
+      .where('proposal_id', '=', proposal.id)
+      .execute();
+    const steps = proposal.steps as unknown as StoredStep[];
+    const done = steps.flatMap((step) => {
+      const outcome = outcomes.find((one) => one.step_id === step.id);
+      return outcome?.state === 'done' ? [{ step, recordId: outcome.record_id }] : [];
+    });
+    if (decided?.decision !== 'confirmed' || done.length === 0) {
+      throw new ApiException('assistant_undo_not_open', 409);
+    }
+    // One Undo of a proposal, unless the earlier one was declined or expired, or superseded.
+    const views = await proposalsOf(transaction, proposal.conversation_id, now);
+    const undone = (await messagesOf(transaction, proposal.conversation_id)).filter(
+      (message) =>
+        message.content.kind === 'question' && message.content.undoOf === proposal.id,
+    );
+    for (const question of undone) {
+      const its = views.find((view) => view.questionId === question.id);
+      if (its === undefined || its.state === 'waiting' || its.state === 'confirmed') {
+        throw new ApiException('assistant_undo_exists', 409);
+      }
+    }
+    return { proposal, done };
+  }
+
   private async lessonLink(
     asker: Asker,
     branchId: string,

@@ -5,7 +5,8 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { answer, calls, lastResults } from '../../testing/assistant-model.js';
 import { ask, assistantScene, send, type AssistantScene } from '../../testing/assistant-kit.js';
 import { MembersKit } from '../../testing/members-kit.js';
-import { MAX_MODEL_CALLS } from './assistant.engine.js';
+import { ASSISTANT_QUESTION_ACTIONS_DEFAULT } from '@sodiq/shared';
+import { modelCallsOf } from './assistant.engine.js';
 import { messageOf } from './conversations.store.js';
 import type { ModelRequest } from './model.js';
 import {
@@ -18,6 +19,10 @@ import {
 } from './platform-map.js';
 import { toolsOf } from './tools.js';
 import { OPEN_FILTER } from './field-filter.js';
+
+/** Task 11.21: the reads and changes of one question at the setting's default (40), and the model calls. */
+const MAX_READS = ASSISTANT_QUESTION_ACTIONS_DEFAULT;
+const MAX_MODEL_CALLS = modelCallsOf(MAX_READS);
 
 // Task 11.19 (`02`, Assistant, "Knows the platform", "Knows where the person is";
 // `edge/people-roles-accounts`, The assistant: "What does the button at the top right of the
@@ -238,6 +243,7 @@ describe('the map of the platform', () => {
     const message = messageOf({
       id: ID,
       seq: 2,
+      answerUntil: null,
       createdAt: new Date('2026-11-20T09:00:00Z'),
       content: { kind: 'answer', text: 'Old.', pages: ['people'] },
     });

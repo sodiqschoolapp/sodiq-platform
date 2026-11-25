@@ -14,6 +14,7 @@ import {
   assistantConversationParamsSchema,
   assistantConversationSchema,
   assistantDecisionSchema,
+  assistantUndoSchema,
   assistantQuestionSchema,
   assistantSettingsRecordSchema,
   assistantSettingsSchema,
@@ -27,6 +28,7 @@ import {
   type AssistantConversationList,
   type AssistantConversationParams,
   type AssistantDecision,
+  type AssistantUndo,
   type AssistantQuestion,
   type AssistantSettings,
   type AssistantSettingsRecord,
@@ -131,6 +133,28 @@ export class AssistantController {
       throw new ApiException('not_signed_in', 401);
     }
     return this.proposals.confirm(access, pass, params.id, decision.role);
+  }
+
+  /**
+   * Task 11.21 (`02`, Reading and proposing: "A confirmed proposal can be undone"): proposes the
+   * reverse of each change of a confirmed proposal, as a new proposal confirmed like any other.
+   * No model call. The area of Confirm and Decline: no role gains a right.
+   */
+  @Post('proposals/:id/undo')
+  @HttpCode(200)
+  @Requires('assistant', 'view')
+  @Returns(assistantAnswerSchema)
+  undo(
+    @CurrentAccess() access: Access,
+    @CurrentSession() session: ActiveSession,
+    @RequestSessionPass() pass: SessionPass | undefined,
+    @ValidParams(assistantConversationParamsSchema) params: AssistantConversationParams,
+    @ValidBody(assistantUndoSchema) undo: AssistantUndo,
+  ): Promise<AssistantAnswer> {
+    if (pass === undefined) {
+      throw new ApiException('not_signed_in', 401);
+    }
+    return this.engine.undo({ access, pass, language: session.language }, params.id, undo.role);
   }
 
   /** Task 11.13: declines a waiting proposal; nothing changes. */

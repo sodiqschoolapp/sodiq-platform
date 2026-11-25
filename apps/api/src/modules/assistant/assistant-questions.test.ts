@@ -10,8 +10,13 @@ import {
   noticeOf,
 } from '../../testing/assistant-kit.js';
 import type { ModelRequest } from './model.js';
-import { MAX_MODEL_CALLS, MAX_READS } from './assistant.engine.js';
+import { ASSISTANT_QUESTION_ACTIONS_DEFAULT } from '@sodiq/shared';
+import { modelCallsOf } from './assistant.engine.js';
 import { AssistantDispatcher } from './dispatcher.js';
+
+/** Task 11.21: the reads and changes of one question at the setting's default (40), and the model calls. */
+const MAX_READS = ASSISTANT_QUESTION_ACTIONS_DEFAULT;
+const MAX_MODEL_CALLS = modelCallsOf(MAX_READS);
 
 // Task 11.12 (pull request #374; the owner's spec change of 21 November 2026). `02`, Assistant:
 // "It reads at once", "only through the platform's own actions, with the person's session and

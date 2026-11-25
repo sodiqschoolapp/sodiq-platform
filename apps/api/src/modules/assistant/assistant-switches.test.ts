@@ -11,12 +11,17 @@ import { ShippingLogger } from '../../monitoring/monitoring.service.js';
 import { ask, assistantScene, type AssistantScene } from '../../testing/assistant-kit.js';
 import { answer, calls, lastResults } from '../../testing/assistant-model.js';
 import { errorCode } from '../../testing/sign-in-kit.js';
-import { MAX_MODEL_CALLS } from './assistant.engine.js';
+import { ASSISTANT_QUESTION_ACTIONS_DEFAULT } from '@sodiq/shared';
+import { modelCallsOf } from './assistant.engine.js';
 import { AssistantDispatcher } from './dispatcher.js';
 import { GENERATED_TOOLS } from './tools.generated.js';
 import { MAX_DECLARED_ACTIONS, declaredActions, toolOf } from './tools.js';
 import { OPEN_FILTER } from './field-filter.js';
 import { AssistantRoutes } from '../access/assistant-routes.check.js';
+
+/** Task 11.21: the reads and changes of one question at the setting's default (40), and the model calls. */
+const MAX_READS = ASSISTANT_QUESTION_ACTIONS_DEFAULT;
+const MAX_MODEL_CALLS = modelCallsOf(MAX_READS);
 
 // Task 11.20. `02`, Assistant, Switches: "the Super Admin sees, for each of the three roles, every
 // action of that role grouped by area … and switches each action, or a whole area, on or off; the
@@ -689,6 +694,9 @@ describe('the Super Admin’s switches of the assistant’s actions', () => {
       rolesOn: body.rolesOn,
       dailyLimit: body.dailyLimit,
       monthlyCapDollars: body.monthlyCapDollars,
+      questionActions: body.questionActions,
+      proposalSteps: body.proposalSteps,
+      questionMinutes: body.questionMinutes,
       fallbackOn: body.fallbackOn,
       dataGroupsOn: ['contact', 'identity', 'financial', 'diagnostic', 'relatives'],
     };
