@@ -83,8 +83,6 @@ const NOT_HEAVY: Readonly<Record<string, string>> = {
   'POST /api/timetable/room-closures/:id/withdraw': 'takes back a room closure',
   'POST /api/people/vacancies/:id/close': 'closes a vacancy, not a quarter or a year',
   'POST /api/people/vacancies/:id/reopen': 'opens a closed vacancy again, not a quarter',
-  'POST /api/people/parents/:relativeId/telegram-unlink':
-    'an area of parent accounts, off at the start with it',
   'POST /api/timetable/versions/:id/load/imports/:importId/preview':
     'not a heavy word: "imports" holds "port"',
 };

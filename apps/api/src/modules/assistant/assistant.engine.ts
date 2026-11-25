@@ -65,11 +65,10 @@ import {
   FIND_ACTIONS,
   FIND_IN_PLATFORM,
   LINK_PLACE,
-  MAX_DECLARED_ACTIONS,
+  declaredActions,
   findActions,
   generatedOf,
   routesOfPage,
-  toolOf,
   toolsOf,
   urlOf,
   type RoleLines,
@@ -370,16 +369,10 @@ export class AssistantEngine {
         : {},
       filter,
     ).filter((tool) => tool.name !== generatedOf(LESSON_CARD_ROUTE).name);
-    const declared = (): ModelTool[] => {
-      const tools: ModelTool[] = [];
-      for (const route of new Set([...[...found].reverse(), ...used, ...page])) {
-        const line = lines[route];
-        const tool = line === undefined ? undefined : toolOf(route, line, filter);
-        if (tool !== undefined) tools.push(tool);
-        if (tools.length >= MAX_DECLARED_ACTIONS) break;
-      }
-      return [...tools, ...always];
-    };
+    const declared = (): ModelTool[] => [
+      ...declaredActions(lines, filter, { found, used, page }),
+      ...always,
+    ];
     // Task 11.13: the steps the model proposes in this question, stored as one proposal with
     // the answer; nothing is changed here.
     const steps: StoredStep[] = [];
@@ -544,7 +537,8 @@ export class AssistantEngine {
               lines,
               filter,
               lessonDateOf: (lessonId) => this.lessonDate(asker.access, lessonId),
-              studentNamesOf: (lessonId, ids) => this.studentNames(asker.access, lessonId, ids),
+              studentNamesOf: (lessonId, ids) =>
+                this.studentNames(asker, start.conversation.branchId, role, lessonId, ids),
             },
             { route: named.route, tool: named.tool, line: named.line, args: call.args },
             steps,
@@ -888,16 +882,34 @@ export class AssistantEngine {
   }
 
   /**
-   * Task 11.20: the names of the students of one lesson of the branch of the request (the row
-   * filter) among the ids of a step, for the panel's grouped list only.
+   * Task 11.20: the names of the students of one lesson among the ids of a step, for the panel's
+   * grouped list only, and only when the person's own read of the lesson's journal answers (the
+   * lesson card, as `lessonLink` proves a lesson; permission review 2): a lesson outside the
+   * person's scope names nobody.
    */
   private async studentNames(
-    access: Access,
+    asker: Asker,
+    branchId: string,
+    role: AssistantRole,
     lessonId: string,
     ids: string[],
   ): Promise<ReadonlyMap<string, string>> {
-    if (ids.length === 0) return new Map();
-    return this.transactions.run(access.branchIds, async (transaction) => {
+    if (ids.length === 0 || !/^[0-9a-f-]{36}$/i.test(lessonId)) return new Map();
+    const card = await this.dispatcher.read(
+      `/api/journal/lessons/${lessonId}/card`,
+      { pass: asker.pass, branchId, role },
+      LESSON_CARD_ROUTE,
+    );
+    if (card.failure !== undefined || card.status !== 200) return new Map();
+    const parsed = lessonCardSchema.safeParse(card.body);
+    if (!parsed.success) return new Map();
+    const journal = await this.dispatcher.read(
+      `/api/journal/journals/${parsed.data.journalId}`,
+      { pass: asker.pass, branchId, role },
+      'GET /api/journal/journals/:journalId',
+    );
+    if (journal.failure !== undefined || journal.status !== 200) return new Map();
+    return this.transactions.run(asker.access.branchIds, async (transaction) => {
       const rows = await transaction
         .selectFrom('students')
         .select(['id', 'first_name', 'last_name'])

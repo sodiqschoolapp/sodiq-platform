@@ -1368,6 +1368,7 @@ export const uz: Texts<'one' | 'other'> = {
       secret_validUntil: 'Amal qilish muddati',
       secretOnce:
         'Hozir yozib oling yoki chop eting: u suhbatda saqlanmaydi va qayta koʻrsatilmaydi.',
+      secretPrint: 'Chop etish',
       secretClose: 'Yozib oldim',
       title: 'Taklif',
       note: 'Siz «Tasdiqlash»ni bosmaguningizcha hech narsa oʻzgarmaydi. Oʻzgarishlar oʻz sahifasidagidek, tartib bilan bajariladi; birinchi rad etilgani qolganlarini toʻxtatadi.',

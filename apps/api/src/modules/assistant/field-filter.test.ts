@@ -196,6 +196,7 @@ describe('the fields of the groups switched off', () => {
     const sample = {
       name: 'Kamola',
       phone: '+998901234567',
+      address: 'Sentinel street 7',
       email: 'someone@example.com',
       jshshir: '31234567890123',
       birthDate: '2012-04-01',
@@ -207,7 +208,7 @@ describe('the fields of the groups switched off', () => {
       password: 'sentinel-secret-1',
     };
     const GROUP_SAMPLE: Readonly<Record<AssistantDataGroup, string>> = {
-      contact: '+998901234567',
+      contact: 'Sentinel street 7',
       identity: '31234567890123',
       financial: 'CTR-1',
       diagnostic: '87',
@@ -228,7 +229,6 @@ describe('the fields of the groups switched off', () => {
         const read = JSON.stringify(filter.read({ ...sample, note: '' }));
         expect(read, off).not.toContain(GROUP_SAMPLE[off]);
         for (const other of ASSISTANT_DATA_GROUPS.filter((group) => group !== off)) {
-          if (other === 'identity' && off === 'contact') continue;
           expect(read, `${off} off, ${other}`).toContain(GROUP_SAMPLE[other]);
         }
       }
@@ -250,6 +250,28 @@ describe('the fields of the groups switched off', () => {
       });
     });
 
+    // Code review must fix 1: `02`, "contact (phones, emails, addresses)".
+    it('keeps the address with Contact: Contact alone off removes it, Identity alone off keeps it', () => {
+      const noContact = new ModelFilter(
+        ASSISTANT_DATA_GROUPS.filter((group) => group !== 'contact'),
+      );
+      const noIdentity = new ModelFilter(
+        ASSISTANT_DATA_GROUPS.filter((group) => group !== 'identity'),
+      );
+      const read = {
+        name: 'Kamola',
+        address: 'Sentinel street 7',
+        region: 'khorezm',
+        jshshir: '31234567890123',
+      };
+      expect(noContact.read(read)).toEqual({ name: 'Kamola', jshshir: '31234567890123' });
+      expect(noIdentity.read(read)).toEqual({
+        name: 'Kamola',
+        address: 'Sentinel street 7',
+        region: 'khorezm',
+      });
+    });
+
     it('takes the secrets of an answer out for the person, each with its slip', () => {
       const slip = {
         firstName: 'Dilnoza',
@@ -260,6 +282,8 @@ describe('the fields of the groups switched off', () => {
       };
       expect(secretsOf({ record: { id: 'x' }, slip })).toEqual([slip]);
       expect(secretsOf({ slip: null, slips: [] })).toEqual([]);
+      // A moment of a password is no slip (code review should fix 9).
+      expect(secretsOf({ login: 'x', passwordValidUntil: '2026-11-26T09:00:00Z' })).toEqual([]);
     });
   });
 });

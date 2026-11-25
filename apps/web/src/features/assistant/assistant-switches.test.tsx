@@ -248,7 +248,7 @@ describe('a proposal of many entries, and a secret shown once', () => {
           ],
         }),
     });
-    renderApp('/', 'en');
+    const shell = renderApp('/', 'en');
     fireEvent.click(await screen.findByRole('button', { name: en.assistant.open }));
     const panel = within(await screen.findByRole('complementary', { name: en.assistant.title }));
     fireEvent.click(await panel.findByRole('button', { name: /Reset and mark/ }));
@@ -266,6 +266,20 @@ describe('a proposal of many entries, and a secret shown once', () => {
     fireEvent.click(secret.getByRole('button', { name: en.assistant.proposal.secretClose }));
     await waitFor(() => {
       expect(panel.queryByText('Sentinel-Pass-77')).toBeNull();
+    });
+    // `.claude/rules/web.md`, a secret an answer holds once: no query or mutation keeps it.
+    await waitFor(() => {
+      const kept = JSON.stringify([
+        shell.queryClient
+          .getMutationCache()
+          .getAll()
+          .map((one) => [one.state.data, one.state.variables]),
+        shell.queryClient
+          .getQueryCache()
+          .getAll()
+          .map((one) => one.state.data),
+      ]);
+      expect(kept).not.toContain('Sentinel-Pass-77');
     });
   });
 });

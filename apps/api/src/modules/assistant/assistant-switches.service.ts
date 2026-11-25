@@ -149,8 +149,10 @@ export class AssistantSwitches {
         .select('id')
         .forUpdate()
         .executeTakeFirstOrThrow();
-      const before = await this.rowsIn(transaction);
       for (const change of changes) {
+        // Read again for each change, so that two changes of one area in a save audit what each
+        // found (permission review 6).
+        const before = await this.rowsIn(transaction);
         const routes =
           change.route === undefined
             ? Object.keys(this.routes.linesOf(change.role)).filter(
@@ -161,6 +163,11 @@ export class AssistantSwitches {
           change.route === undefined
             ? this.areaOn(before, change.role, change.area)
             : this.isOn(before, change.role, change.route);
+        // Each action whose state the change flips, the actions of an area included (code review
+        // must fix 2: "Each change of a switch is in the audit log").
+        const flipped = routes.filter(
+          (route) => this.isOn(before, change.role, route) !== change.on,
+        );
         if (change.route === undefined) {
           await transaction
             .insertInto('assistant_area_switches')
@@ -199,26 +206,21 @@ export class AssistantSwitches {
             )
             .execute();
         }
-        if (wasOn !== change.on || change.route === undefined) {
-          await this.audit.record(transaction, {
+        const entry = (route: string | null, old: boolean) =>
+          this.audit.record(transaction, {
             branchId: null,
             actorId: access.accountId,
             assignmentId: access.assignmentId,
             action: 'assistant_switch.change',
-            oldValue: {
-              role: change.role,
-              area: change.area,
-              route: change.route ?? null,
-              on: wasOn,
-            },
-            newValue: {
-              role: change.role,
-              area: change.area,
-              route: change.route ?? null,
-              on: change.on,
-            },
+            oldValue: { role: change.role, area: change.area, route, on: old },
+            newValue: { role: change.role, area: change.area, route, on: change.on },
             requestId,
           });
+        if (change.route === undefined) {
+          await entry(null, wasOn);
+        }
+        for (const route of flipped) {
+          await entry(route, !change.on);
         }
       }
     });

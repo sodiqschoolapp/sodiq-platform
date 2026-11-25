@@ -267,13 +267,22 @@ function SecretShown({
         </dl>
       ))}
       <p className="text-sm text-muted-foreground">{t('assistant.proposal.secretOnce')}</p>
-      {onClose !== undefined && (
-        <div>
+      <div className="flex flex-wrap gap-2">
+        {/* As the screen's slip is printed (code review 5). */}
+        <Button
+          variant="secondary"
+          onClick={() => {
+            window.print();
+          }}
+        >
+          {t('assistant.proposal.secretPrint')}
+        </Button>
+        {onClose !== undefined && (
           <Button variant="secondary" onClick={onClose}>
             {t('assistant.proposal.secretClose')}
           </Button>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }

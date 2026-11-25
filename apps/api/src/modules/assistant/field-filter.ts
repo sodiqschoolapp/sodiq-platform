@@ -71,6 +71,9 @@ const exportColumns = (group: string): string[] =>
     .filter(([, of]) => of === group)
     .map(([column]) => column);
 
+/** A person's address and its region: Contact in `02`. */
+const ADDRESS_KEYS: readonly string[] = ['address', 'region'];
+
 /** The relatives' keys of a student's record and export (plan decision 9). */
 const RELATIVE_KEYS = [
   'relatives',
@@ -90,20 +93,25 @@ const RELATIVE_KEYS = [
  * plan review, must fix 3), so that a field added to a group is removed without a change here.
  */
 export const GROUP_KEYS: Readonly<Record<AssistantDataGroup, ReadonlySet<string>>> = {
+  // `02`: "contact (phones, emails, addresses)": the address and its region are Contact here,
+  // though the student record files them under Identity (code review must fix 1).
   contact: lower([
     ...Object.keys(studentContactSchema.shape),
+    ...ADDRESS_KEYS,
     ...exportColumns('contact').filter((key) => !RELATIVE_KEYS.includes(key)),
     'contact',
     'phones',
     'extraPhones',
     'emails',
   ]),
-  identity: lower([
-    ...Object.keys(studentIdentitySchema.shape),
-    ...Object.keys(staffIdentitySchema.shape),
-    ...exportColumns('identity'),
-    'identity',
-  ]),
+  identity: lower(
+    [
+      ...Object.keys(studentIdentitySchema.shape),
+      ...Object.keys(staffIdentitySchema.shape),
+      ...exportColumns('identity'),
+      'identity',
+    ].filter((key) => !ADDRESS_KEYS.includes(key)),
+  ),
   financial: lower([
     ...Object.keys(studentFinancialSchema.shape),
     ...exportColumns('financial'),
@@ -272,6 +280,12 @@ export function filterWords(text: string): string {
  * own plain values (the slip: name, login, password, valid until), for the person only. The
  * answer itself is never stored; `ModelFilter.read` marks them for the model.
  */
+/**
+ * The keys of a secret an answer gives out (a slip's password, a key's secret, recovery codes):
+ * exact keys, so that a moment such as `passwordValidUntil` is no slip (code review should fix 9).
+ */
+const GIVEN_SECRET_KEYS: readonly string[] = ['password', 'secret', 'recoveryCodes', 'token'];
+
 export function secretsOf(value: unknown): Record<string, string | number | boolean | null>[] {
   const found: Record<string, string | number | boolean | null>[] = [];
   const walk = (item: unknown): void => {
@@ -281,7 +295,7 @@ export function secretsOf(value: unknown): Record<string, string | number | bool
     }
     if (item === null || typeof item !== 'object') return;
     const entries = Object.entries(item);
-    if (entries.some(([key, inner]) => isSecretKey(key) && inner !== null)) {
+    if (entries.some(([key, inner]) => GIVEN_SECRET_KEYS.includes(key) && inner !== null)) {
       found.push(
         Object.fromEntries(
           entries.filter(

@@ -92,6 +92,8 @@ describe('the dispatcher of the assistant’s reads', () => {
       failure: 'too_large',
     });
     await expect(dispatcher.read('http://example.com/api/x', as, 'GET /api/ok')).rejects.toThrow();
+    // A URL that is not the route's own path is never sent (review 5: the switch is the one sent).
+    await expect(dispatcher.read('/api/large', as, 'GET /api/ok')).rejects.toThrow();
     // A route named by another method than the one sent is never sent.
     await expect(dispatcher.send('POST', '/api/ok', {}, as, 'GET /api/ok')).rejects.toThrow();
   }, 30_000);

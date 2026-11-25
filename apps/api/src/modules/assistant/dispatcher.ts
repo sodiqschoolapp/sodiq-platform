@@ -84,6 +84,10 @@ export class AssistantDispatcher {
     if (facts === undefined || this.routes.linesOf(as.role)[route] === undefined) {
       return refusal('assistant_route_closed');
     }
+    // Review 5: the URL is the route's own path, so the switch checked is the one sent.
+    if (!pathFits(url, route.slice(route.indexOf(' ') + 1))) {
+      throw new Error('The assistant sends a route only to its own path.');
+    }
     if (!this.switches.isOn(await this.switches.rows(), as.role, route)) {
       return refusal('assistant_action_off');
     }
@@ -95,7 +99,9 @@ export class AssistantDispatcher {
           Accept: 'application/json',
           Cookie: as.pass.cookieHeader,
           // A school-wide route names no branch (`@Requires(…, { branch: 'none' })`).
-          ...(facts.branchNone ? {} : { [BRANCH_HEADER]: as.branchId }),
+          // A school-wide read or preview names no branch (`@Requires(…, { branch: 'none' })`);
+          // a step always carries it, which the guard compares with the step's (review 1).
+          ...(facts.branchNone && as.stepId === undefined ? {} : { [BRANCH_HEADER]: as.branchId }),
           ...this.calls.headersFor(as.role),
           ...(payload === undefined ? {} : { 'Content-Type': 'application/json' }),
           ...(as.stepId === undefined
@@ -131,6 +137,19 @@ export class AssistantDispatcher {
     }
     return { status: response.status, body };
   }
+}
+
+/** Whether the path of a URL is the route's template with its values (`[A-Za-z0-9_-]+`). */
+function pathFits(url: string, template: string): boolean {
+  const given = (url.split('?')[0] ?? '').split('/');
+  const wanted = template.split('/');
+  return (
+    given.length === wanted.length &&
+    wanted.every((part, index) => {
+      const value = given[index] ?? '';
+      return part.startsWith(':') ? /^[A-Za-z0-9_-]+$/.test(value) : part === value;
+    })
+  );
 }
 
 /** A refusal of the dispatcher itself, as the guard would answer it; nothing was sent. */

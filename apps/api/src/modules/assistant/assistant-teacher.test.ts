@@ -369,10 +369,63 @@ describe('the assistant for teachers (task 11.14)', () => {
     expect(locked.steps).toEqual([['waiting', null]]);
     const outcome = await stepsAfter(locked.id);
     expect(outcome[0]?.[0]).toBe('refused');
-    expect(outcome[0]?.[1]).toMatch(/lock/);
+    expect(outcome[0]?.[1]).toBe('journal_locked');
     expect(await cellsOf(lessons[0] ?? '')).toEqual([]);
     const after = await everyRow();
     expect(after.journal_cells).toEqual(before.journal_cells);
+  });
+
+  // Code review 4a, 4b and permission review 2: a cell saved by another person between the
+  // proposal and Confirm makes the step outdated (the journal's own version refusal); a lesson
+  // of a colleague names none of its students in the card; a route of another role is no tool.
+  it('finds "mark everyone present" outdated when a cell was saved since, names nobody of a colleague’s lesson, and runs no route of another role', async () => {
+    const members = new MembersKit(t.database.migrator, await load.classes.account());
+    const pupil = await members.student(scene.branch);
+    await members.member({
+      branch: scene.branch,
+      classId: scene.classId,
+      studentId: pupil,
+      from: '2026-09-01',
+    });
+    const saves = [{ studentId: pupil, mark: 1, version: null }];
+    let conversation = await asked([
+      { name: ATTENDANCE, args: { lessonId: lessons[2], body: { saves }, summary: 'Present.' } },
+    ]);
+    const waiting = proposalOf(conversation);
+    expect(waiting.steps).toEqual([['waiting', null]]);
+    // The same cell saved on the screen meanwhile.
+    const screen = await request(server())
+      .post(`/api/journal/lessons/${lessons[2] ?? ''}/attendance`)
+      .set('Cookie', owner.cookie)
+      .set(BRANCH_HEADER, scene.branch)
+      .set(REQUEST_KEY_HEADER, randomUUID())
+      .send({ saves: [{ studentId: pupil, mark: 0, version: null }] });
+    expect(screen.status, JSON.stringify(screen.body)).toBe(200);
+    expect((await stepsAfter(waiting.id))[0]?.[0]).toBe('outdated');
+    const cell = await t.database.migrator
+      .selectFrom('journal_cells')
+      .select('mark')
+      .where('lesson_id', '=', lessons[2] ?? '')
+      .where('student_id', '=', pupil)
+      .where('work_id', 'is', null)
+      .executeTakeFirstOrThrow();
+    expect(cell.mark).toBe(0);
+    // A colleague's lesson: the step may be drafted, but no student of it is named.
+    conversation = await asked([
+      {
+        name: ATTENDANCE,
+        args: { lessonId: otherLessons[2], body: { saves }, summary: 'Present.' },
+      },
+    ]);
+    const theirs = conversation.proposals.at(-1);
+    for (const step of theirs?.steps ?? []) {
+      expect(step.entries.every((entry) => entry.name === null)).toBe(true);
+    }
+    // A route the Teacher does not hold is no tool: refused before anything is sent.
+    await asked([
+      { name: `propose_${GENERATED_TOOLS['PUT /api/setup/rooms/:id']?.name ?? ''}`.slice(0, 64) },
+    ]);
+    expect(results()).toEqual([{ error: 'not_on_list' }]);
   });
 
   // The lesson's journal column is still linked when the person would rather enter it there.

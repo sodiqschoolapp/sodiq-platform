@@ -314,11 +314,7 @@ function stripSchema(
   }
   const properties: Record<string, unknown> = {};
   for (const [key, property] of Object.entries(schema.properties)) {
-    if (
-      filter.removesKey(key) ||
-      (top && !keep(key)) ||
-      (!top && WARNING_FLAGS.includes(key))
-    ) {
+    if (filter.removesKey(key) || (top && !keep(key)) || (!top && WARNING_FLAGS.includes(key))) {
       continue;
     }
     properties[key] = stripSchema(property, keep, false, filter);
@@ -670,4 +666,24 @@ export function routesOfPage(lines: RoleLines, page: string | undefined): string
     const generated = GENERATED_TOOLS[route];
     return generated !== undefined && operations.has(generated.name);
   });
+}
+
+/**
+ * The action declarations of one call of the model (plan decision 10, review 13): the actions
+ * found in this question, newest first, then those of the conversation's earlier proposals,
+ * then those of the page open, each once, at most `MAX_DECLARED_ACTIONS` with a tool.
+ */
+export function declaredActions(
+  lines: RoleLines,
+  filter: ModelFilter,
+  from: { found: readonly string[]; used: readonly string[]; page: readonly string[] },
+): ModelTool[] {
+  const tools: ModelTool[] = [];
+  for (const route of new Set([...[...from.found].reverse(), ...from.used, ...from.page])) {
+    const line = lines[route];
+    const tool = line === undefined ? undefined : toolOf(route, line, filter);
+    if (tool !== undefined) tools.push(tool);
+    if (tools.length >= MAX_DECLARED_ACTIONS) break;
+  }
+  return tools;
 }

@@ -7003,6 +7003,38 @@ export const PLATFORM_MAP_SOURCE: unknown = {
    "description": "Closes the one-time password or secret a confirmed step gave out; it is shown once and is not kept in the conversation."
   },
   {
+   "id": "features/assistant/proposal-card.tsx#button:assistant.proposal.secretPrint",
+   "kind": "button",
+   "label": {
+    "uz": "Chop etish",
+    "ru": "Печать",
+    "en": "Print"
+   },
+   "pages": [
+    "*"
+   ],
+   "parent": null,
+   "roles": [
+    "super_admin",
+    "principal",
+    "academic_vice_principal",
+    "spiritual_vice_principal",
+    "head_tutor",
+    "tutor",
+    "class_teacher",
+    "senior_head_teacher",
+    "head_teacher",
+    "teacher",
+    "hr",
+    "nurse",
+    "psychologist",
+    "librarian"
+   ],
+   "operations": [],
+   "opens": null,
+   "description": "Prints the one-time password or secret a confirmed step gave out, as its screen prints the slip."
+  },
+  {
    "id": "features/audit/audit-page.tsx#button:audit.clear",
    "kind": "button",
    "label": {

@@ -14,6 +14,9 @@ import { errorCode } from '../../testing/sign-in-kit.js';
 import { MAX_MODEL_CALLS } from './assistant.engine.js';
 import { AssistantDispatcher } from './dispatcher.js';
 import { GENERATED_TOOLS } from './tools.generated.js';
+import { MAX_DECLARED_ACTIONS, declaredActions, toolOf } from './tools.js';
+import { OPEN_FILTER } from './field-filter.js';
+import { AssistantRoutes } from '../access/assistant-routes.check.js';
 
 // Task 11.20. `02`, Assistant, Switches: "the Super Admin sees, for each of the three roles, every
 // action of that role grouped by area … and switches each action, or a whole area, on or off; the
@@ -33,6 +36,7 @@ const ROOM_EDIT = propose('PUT /api/setup/rooms/:id');
 const CLASS_ARCHIVE = propose('POST /api/classes/:id/archive');
 const RESET = propose('POST /api/people/staff/:id/account/password-reset');
 const BRANCH_MOVE = propose('POST /api/people/students/:id/branch-move');
+const STUDENT_CREATE = propose('POST /api/people/students');
 
 describe('the Super Admin’s switches of the assistant’s actions', () => {
   let scene: AssistantScene;
@@ -214,6 +218,30 @@ describe('the Super Admin’s switches of the assistant’s actions', () => {
     );
     catalogue = assistantActionsSchema.parse((await switches()).body);
     expect(rooms()?.actions.every((action) => action.on)).toBe(true);
+    // An area switched on turns on its heavy actions too, each audited (code review must fix 2).
+    const audits = async () =>
+      scene.database.migrator
+        .selectFrom('audit_log_school')
+        .select(['new_value'])
+        .where('action', '=', 'assistant_switch.change')
+        .execute();
+    const count = (await audits()).length;
+    expect((await setSwitches([{ role: 'super_admin', area: 'timetable', on: true }])).status).toBe(
+      200,
+    );
+    const added = (await audits())
+      .slice(count)
+      .map((one) => one.new_value as { route: string | null });
+    expect(added.map((one) => one.route)).toEqual(
+      expect.arrayContaining([
+        null,
+        'POST /api/timetable/versions/:id/publish',
+        'POST /api/timetable/versions/:id/withdraw',
+      ]),
+    );
+    // Only what flipped: an action that was on already is not audited again.
+    expect(added.map((one) => one.route)).not.toContain('POST /api/timetable/bulk-cancels');
+    catalogue = assistantActionsSchema.parse((await switches()).body);
     // The Academic Vice Principal's own switches are untouched by the Super Admin's.
     expect(
       catalogue.roles
@@ -297,9 +325,119 @@ describe('the Super Admin’s switches of the assistant’s actions', () => {
     expect(confirmed.proposals.at(-1)?.steps.map((step) => [step.state, step.code])).toEqual([
       ['refused', 'assistant_action_off'],
     ]);
+    // Nothing was sent: the room keeps its name (code review 4c).
+    const kept = await scene.database.migrator
+      .selectFrom('rooms')
+      .select('name')
+      .where('id', '=', target.id)
+      .executeTakeFirstOrThrow();
+    expect(kept.name).not.toBe('Basis off');
     await setSwitches([
       { role: 'super_admin', area: 'rooms', route: 'GET /api/setup/rooms', on: true },
     ]);
+  });
+
+  // Code review 4c (plan test 4; plan review 6): the preview of a waiting step, switched off since.
+  it('refuses at Confirm a step whose preview was switched off since, and creates nothing', async () => {
+    const klass = await scene.people.schoolClass(scene.north, scene.northYear, {
+      name: 'Oxford P',
+    });
+    const body = {
+      uid: '2607111',
+      firstName: 'Nodira',
+      lastName: 'Previewova',
+      paternalName: '',
+      sex: 'female',
+      birthDate: '2013-03-03',
+      grade: 7,
+      startsOn: '2026-09-02',
+      classId: klass,
+      documentType: 'birth_certificate',
+      documentNumber: 'I-TN 7654320',
+      jshshir: '31999999999990',
+      phone: null,
+      email: null,
+      address: 'Previewstreet 1',
+      region: 'khorezm',
+      previousSchool: null,
+      diagnosticScore: null,
+      scholarship: { type: 'none', coverage: null, amount: null },
+      consentSignedOn: null,
+      contract: null,
+      relatives: [
+        {
+          kind: 'new',
+          relative: {
+            fullName: 'Previewova Mother',
+            phone: '+998901110099',
+            workplace: '',
+            email: '',
+            extraPhones: [],
+          },
+          relationship: 'mother',
+          mainContact: true,
+          portalAccess: false,
+          receivesNotices: false,
+        },
+      ],
+    };
+    const conversation = await asked([
+      { name: STUDENT_CREATE, args: { body, summary: 'Add the student.' } },
+    ]);
+    const proposal = conversation.proposals.at(-1);
+    expect(proposal?.steps, JSON.stringify(results())).toHaveLength(1);
+    await setSwitches([
+      {
+        role: 'super_admin',
+        area: 'students',
+        route: 'POST /api/people/students/check',
+        on: false,
+      },
+    ]);
+    const confirmed = assistantConfirmedSchema.parse((await confirm(proposal?.id ?? '')).body);
+    expect(confirmed.proposals.at(-1)?.steps.map((step) => [step.state, step.code])).toEqual([
+      ['refused', 'assistant_action_off'],
+    ]);
+    const created = await scene.database.migrator
+      .selectFrom('students')
+      .select('id')
+      .where('last_name', '=', 'Previewova')
+      .execute();
+    expect(created).toEqual([]);
+    await setSwitches([
+      { role: 'super_admin', area: 'students', route: 'POST /api/people/students/check', on: true },
+    ]);
+  });
+
+  // Plan decision 6 (code review should fix 7): an action with no stored row follows its area.
+  it('follows its area for an action the Super Admin never set', async () => {
+    await scene.database.migrator
+      .insertInto('assistant_area_switches')
+      .values({
+        role: 'teacher',
+        area: 'plan_requests',
+        is_on: false,
+        changed_at: new Date(),
+        changed_by: scene.adminAccount,
+      })
+      .execute();
+    const catalogue = assistantActionsSchema.parse((await switches()).body);
+    const area = catalogue.roles
+      .find((one) => one.role === 'teacher')
+      ?.areas.find((one) => one.area === 'plan_requests');
+    expect(area?.on).toBe(false);
+    expect(area?.actions.length).toBeGreaterThan(0);
+    expect(area?.actions.every((action) => !action.on && action.defaultOn)).toBe(true);
+    const stored = await scene.database.migrator
+      .selectFrom('assistant_action_switches')
+      .select('route')
+      .where('role', '=', 'teacher')
+      .execute();
+    expect(stored).toEqual([]);
+    await scene.database.migrator
+      .deleteFrom('assistant_area_switches')
+      .where('role', '=', 'teacher')
+      .execute();
   });
 
   // `edge/people-roles-accounts`: "The Super Admin asks the assistant to reset a teacher's
@@ -436,6 +574,48 @@ describe('the Super Admin’s switches of the assistant’s actions', () => {
         on: true,
       },
     ]);
+  });
+
+  // Plan test 7 (code review 4f): the declarations of a question.
+  it('declares the actions of the page open, finds actions by words of the three languages, and declares at most 64', async () => {
+    const GROUP_ARCHIVE = propose('POST /api/groups/:id/archive');
+    scene.model.script(answer('Here.'));
+    const fromPage = await ask(scene, scene.admin, scene.north, {
+      text: 'What can I do here?',
+      place: { page: '/groups', params: {}, search: {} },
+    });
+    expect(fromPage.status).toBe(202);
+    expect((scene.model.requests.at(-1)?.tools ?? []).map((tool) => tool.name)).toContain(
+      GROUP_ARCHIVE,
+    );
+    for (const words of ['Группы', 'Guruhlar', 'groups']) {
+      await asked([{ name: 'find_actions', args: { words } }]);
+      expect(JSON.stringify(results()), words).toContain('GroupsController');
+    }
+    // The cap and its order, over every action of the Super Admin's list.
+    const lines = scene.app.get(AssistantRoutes).linesOf('super_admin');
+    const all = Object.keys(lines);
+    const declared = declaredActions(lines, OPEN_FILTER, {
+      found: all.slice(0, 100),
+      used: [all[150] ?? ''],
+      page: [all[151] ?? ''],
+    });
+    expect(declared).toHaveLength(MAX_DECLARED_ACTIONS);
+    expect(MAX_DECLARED_ACTIONS).toBe(64);
+    // The newest found first; the earlier proposals' and the page's after the found ones.
+    const names = declared.map((tool) => tool.name);
+    const lastFound =
+      all
+        .slice(0, 100)
+        .reverse()
+        .find((route) => toolOf(route, lines[route] as never, OPEN_FILTER) !== undefined) ?? '';
+    expect(names[0]).toBe(toolOf(lastFound, lines[lastFound] as never, OPEN_FILTER)?.name);
+    const few = declaredActions(lines, OPEN_FILTER, {
+      found: [],
+      used: [all[150] ?? ''],
+      page: [all[151] ?? ''],
+    });
+    expect(few.length).toBeLessThanOrEqual(2);
   });
 
   // `.claude/rules/api.md`: a loop that calls a paid outside service bounds its calls, every

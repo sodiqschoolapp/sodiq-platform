@@ -1346,6 +1346,7 @@ export const en = {
       secret_validUntil: 'Valid until',
       secretOnce:
         'Write it down or print it now: it is not kept in the conversation and is not shown again.',
+      secretPrint: 'Print',
       secretClose: 'I have written it down',
       title: 'Proposal',
       note: 'Nothing changes until you press Confirm. Each change runs as on its page, in order; the first one refused stops the rest.',
