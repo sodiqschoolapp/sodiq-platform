@@ -149,3 +149,19 @@ test('the fires on one head count the workflow comments after the head commit on
   ];
   assert.equal(firesOnHead(comments, '2026-11-25T09:00:00Z'), 1);
 });
+
+test('a call to the owner resets the count, so removing needs-owner gives three fires again', () => {
+  const bot = (body, at) => by(body, at, 'github-actions[bot]');
+  const comments = [
+    bot('Watchdog: the builder is gone (x)', '2026-11-25T09:10:00Z'),
+    bot('Watchdog: the builder is gone (x)', '2026-11-25T09:20:00Z'),
+    bot('Watchdog: the builder is gone (x)', '2026-11-25T09:30:00Z'),
+  ];
+  assert.equal(firesOnHead(comments, '2026-11-25T09:00:00Z'), 3);
+  comments.push(
+    bot('@abbosc The watchdog resumed this task 3 times on abc1234', '2026-11-25T09:40:00Z'),
+  );
+  assert.equal(firesOnHead(comments, '2026-11-25T09:00:00Z'), 0);
+  comments.push(bot('Watchdog: the builder is gone (x)', '2026-11-25T10:40:00Z'));
+  assert.equal(firesOnHead(comments, '2026-11-25T09:00:00Z'), 1);
+});

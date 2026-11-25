@@ -11,6 +11,7 @@
 // `--dry-run` prints the decisions and fires nothing.
 import {
   builderGone,
+  CAP_COMMENT_START,
   firesOnHead,
   MAX_FIRES_PER_HEAD,
   needsBuilder,
@@ -113,7 +114,7 @@ for (const pull of pulls) {
       await gh(`repos/${repo}/issues/${pull.number}/comments`, {
         method: 'POST',
         body: JSON.stringify({
-          body: `@abbosc The watchdog resumed this task ${fires} times on ${pull.head.sha.slice(0, 7)} and no builder pushed anything (${why}). It stops firing; the task waits for you (label needs-owner). Remove the label to let the loop go on.`,
+          body: `${CAP_COMMENT_START} ${fires} times on ${pull.head.sha.slice(0, 7)} and no builder pushed anything (${why}). It stops firing; the task waits for you (label needs-owner). Remove the label to let the loop go on.`,
         }),
       });
       await gh(`repos/${repo}/issues/${pull.number}/labels`, {

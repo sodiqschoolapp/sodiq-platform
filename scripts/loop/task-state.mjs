@@ -141,14 +141,27 @@ export function recentlyResumed(comments, now, withinMs = 10 * 60_000) {
 /** After this many fires on one head with no new commit, the watchdog calls the owner instead. */
 export const MAX_FIRES_PER_HEAD = 3;
 
-/** The watchdog's fires on the head commit: its comments after the head was committed. */
+/** The first words of the watchdog's comment when it calls the owner instead of firing. */
+export const CAP_COMMENT_START = '@abbosc The watchdog resumed this task';
+
+/**
+ * The watchdog's fires that count toward the cap: its comments after the head
+ * was committed and after its newest call to the owner, so that the owner who
+ * removes `needs-owner` gives the task three fires again.
+ */
 export function firesOnHead(comments, headCommitAt) {
-  const since = Date.parse(headCommitAt);
-  return comments.filter(
+  const ours = comments.filter(
+    (one) => one.user?.login === WATCHDOG_ACCOUNT && typeof one.body === 'string',
+  );
+  const lastCap = Math.max(
+    0,
+    ...ours
+      .filter((one) => one.body.startsWith(CAP_COMMENT_START))
+      .map((one) => Date.parse(one.created_at)),
+  );
+  const since = Math.max(Date.parse(headCommitAt), lastCap);
+  return ours.filter(
     (one) =>
-      one.user?.login === WATCHDOG_ACCOUNT &&
-      typeof one.body === 'string' &&
-      one.body.startsWith('Watchdog: the builder is gone') &&
-      Date.parse(one.created_at) >= since,
+      one.body.startsWith('Watchdog: the builder is gone') && Date.parse(one.created_at) > since,
   ).length;
 }
