@@ -7,6 +7,7 @@ import {
   assistantProgressSchema,
   NOTIFICATION_MESSAGES,
   NOTIFICATION_SOCKET_PATH,
+  type AssistantAnswer,
   type AssistantConversation,
   type AssistantProgress,
 } from '@sodiq/shared';
@@ -691,18 +692,24 @@ describe('the assistant while it works: the question at once, the progress live,
     expect(LIVE_CHUNK).toBe(100);
   });
 
-  it('never offers the Assistant page as a page to link (plan, test 11)', async () => {
-    scene.model.script(answer('Here.'));
-    await settle(
+  it('never links the Assistant page (plan of 11.16, test 11; task 11.19: link_place)', async () => {
+    scene.model.script(
+      calls({ name: 'link_place', args: { page: '/assistant' } }),
+      answer('Here.'),
+    );
+    const reply = await settle(
       scene.app,
       await send(scene, scene.admin, scene.north, { text: 'Which pages?' }),
       scene.admin,
       scene.north,
     );
-    const suggest = scene.model.requests[0]?.tools.find((tool) => tool.name === 'suggest_page');
-    const pages = suggest?.parameters.properties.page?.enum ?? [];
-    expect(pages.length).toBeGreaterThan(0);
-    expect(pages).not.toContain('assistant');
+    const last = (reply.body as AssistantAnswer).conversation.messages.at(-1);
+    expect(last?.kind === 'answer' ? last.links : null).toEqual([]);
+    expect(
+      lastResults(scene.model.requests[1] ?? { system: '', turns: [], tools: [] }).map(
+        (one) => one.result,
+      ),
+    ).toEqual([{ error: 'not_a_page' }]);
   });
 
   it('waits for an answer being written before the process stops', async () => {

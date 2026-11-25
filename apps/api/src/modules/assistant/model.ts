@@ -27,7 +27,7 @@ export interface ToolArgumentsSchema {
   required: string[];
 }
 
-/** One tool the model may call: a route of the role's list, or `suggest_page`. */
+/** One tool the model may call: a route of the role's list, or a tool of the map (task 11.19). */
 export interface ModelTool {
   name: string;
   description: string;

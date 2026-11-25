@@ -208738,6 +208738,24 @@ export interface operations {
                             kind: "answer";
                             text: string;
                             pages: ("home" | "setup" | "people" | "classes" | "timetable" | "journal" | "results" | "plans" | "requests" | "audit_log" | "assistant")[];
+                            /** @default [] */
+                            links: {
+                                nodeId: string;
+                                to: string;
+                                params: {
+                                    [key: string]: string;
+                                };
+                                search: {
+                                    [key: string]: string | {
+                                        [key: string]: string;
+                                    };
+                                };
+                                label: {
+                                    uz: string;
+                                    ru: string;
+                                    en: string;
+                                };
+                            }[];
                             lessons: {
                                 /** Format: uuid */
                                 journalId: string;
@@ -209139,6 +209157,17 @@ export interface operations {
                     /** Format: uuid */
                     conversationId?: string;
                     text: string;
+                    place?: {
+                        page: string;
+                        params?: {
+                            [key: string]: string;
+                        };
+                        search?: {
+                            [key: string]: string | {
+                                [key: string]: string;
+                            };
+                        };
+                    };
                 };
             };
         };
@@ -209184,6 +209213,24 @@ export interface operations {
                                 kind: "answer";
                                 text: string;
                                 pages: ("home" | "setup" | "people" | "classes" | "timetable" | "journal" | "results" | "plans" | "requests" | "audit_log" | "assistant")[];
+                                /** @default [] */
+                                links: {
+                                    nodeId: string;
+                                    to: string;
+                                    params: {
+                                        [key: string]: string;
+                                    };
+                                    search: {
+                                        [key: string]: string | {
+                                            [key: string]: string;
+                                        };
+                                    };
+                                    label: {
+                                        uz: string;
+                                        ru: string;
+                                        en: string;
+                                    };
+                                }[];
                                 lessons: {
                                     /** Format: uuid */
                                     journalId: string;
@@ -209629,6 +209676,24 @@ export interface operations {
                             kind: "answer";
                             text: string;
                             pages: ("home" | "setup" | "people" | "classes" | "timetable" | "journal" | "results" | "plans" | "requests" | "audit_log" | "assistant")[];
+                            /** @default [] */
+                            links: {
+                                nodeId: string;
+                                to: string;
+                                params: {
+                                    [key: string]: string;
+                                };
+                                search: {
+                                    [key: string]: string | {
+                                        [key: string]: string;
+                                    };
+                                };
+                                label: {
+                                    uz: string;
+                                    ru: string;
+                                    en: string;
+                                };
+                            }[];
                             lessons: {
                                 /** Format: uuid */
                                 journalId: string;
@@ -210073,6 +210138,24 @@ export interface operations {
                             kind: "answer";
                             text: string;
                             pages: ("home" | "setup" | "people" | "classes" | "timetable" | "journal" | "results" | "plans" | "requests" | "audit_log" | "assistant")[];
+                            /** @default [] */
+                            links: {
+                                nodeId: string;
+                                to: string;
+                                params: {
+                                    [key: string]: string;
+                                };
+                                search: {
+                                    [key: string]: string | {
+                                        [key: string]: string;
+                                    };
+                                };
+                                label: {
+                                    uz: string;
+                                    ru: string;
+                                    en: string;
+                                };
+                            }[];
                             lessons: {
                                 /** Format: uuid */
                                 journalId: string;
@@ -210824,6 +210907,24 @@ export interface operations {
                             kind: "answer";
                             text: string;
                             pages: ("home" | "setup" | "people" | "classes" | "timetable" | "journal" | "results" | "plans" | "requests" | "audit_log" | "assistant")[];
+                            /** @default [] */
+                            links: {
+                                nodeId: string;
+                                to: string;
+                                params: {
+                                    [key: string]: string;
+                                };
+                                search: {
+                                    [key: string]: string | {
+                                        [key: string]: string;
+                                    };
+                                };
+                                label: {
+                                    uz: string;
+                                    ru: string;
+                                    en: string;
+                                };
+                            }[];
                             lessons: {
                                 /** Format: uuid */
                                 journalId: string;
@@ -211260,6 +211361,24 @@ export interface operations {
                             kind: "answer";
                             text: string;
                             pages: ("home" | "setup" | "people" | "classes" | "timetable" | "journal" | "results" | "plans" | "requests" | "audit_log" | "assistant")[];
+                            /** @default [] */
+                            links: {
+                                nodeId: string;
+                                to: string;
+                                params: {
+                                    [key: string]: string;
+                                };
+                                search: {
+                                    [key: string]: string | {
+                                        [key: string]: string;
+                                    };
+                                };
+                                label: {
+                                    uz: string;
+                                    ru: string;
+                                    en: string;
+                                };
+                            }[];
                             lessons: {
                                 /** Format: uuid */
                                 journalId: string;

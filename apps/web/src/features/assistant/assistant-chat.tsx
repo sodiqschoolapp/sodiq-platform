@@ -6,7 +6,7 @@ import {
   type AssistantStatus,
 } from '@sodiq/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Link } from '@tanstack/react-router';
+import { Link, useRouter, type LinkProps } from '@tanstack/react-router';
 import {
   useEffect,
   useState,
@@ -26,6 +26,7 @@ import { BUILT_PAGES } from '@/features/access/menu-pages';
 import { useView } from '@/features/access/use-view';
 import { appNow } from '@/lib/app-now';
 import { schoolDateText } from '@/lib/dates';
+import { languageOf } from '@/i18n/i18n';
 import { AnswerText } from './answer-text';
 import {
   ASSISTANT_KEY,
@@ -33,6 +34,7 @@ import {
   assistantConversationQuery,
   decideProposal,
 } from './assistant-api';
+import { placeOf } from './assistant-place';
 import { progressQuery, type QuestionProgress } from './assistant-progress';
 import { ProposalCard } from './proposal-card';
 
@@ -92,6 +94,11 @@ interface ChatProps {
   empty: ReactNode;
   /** Shown above the conversation (the status's failure). */
   top?: ReactNode;
+  /**
+   * Task 11.19: the panel sends the page it is beside with each question; the Assistant page,
+   * which is beside no page, sends none.
+   */
+  withPlace?: boolean;
 }
 
 /**
@@ -109,6 +116,7 @@ export function AssistantChat({
   onTextChange: setText,
   empty,
   top,
+  withPlace = false,
 }: ChatProps) {
   const { t } = useTranslation();
   const { branchId } = useView();
@@ -118,13 +126,17 @@ export function AssistantChat({
   // The question sent and not yet taken by the server: shown at once (`02`, While it works).
   const [sent, setSent] = useState<string | null>(null);
 
+  const router = useRouter();
   const ask = useMutation({
-    mutationFn: (question: string) =>
-      askAssistant({
+    mutationFn: (question: string) => {
+      const place = withPlace ? placeOf(router.state.matches.at(-1)) : undefined;
+      return askAssistant({
         role,
         text: question,
         ...(conversationId === null ? {} : { conversationId }),
-      }),
+        ...(place === undefined ? {} : { place }),
+      });
+    },
     onMutate: (question) => {
       setSent(question);
       setText('');
@@ -418,6 +430,24 @@ function MessageView({ message }: { message: AssistantMessage }) {
                   </li>
                 );
               })}
+            </ul>
+          )}
+          {message.links.length > 0 && (
+            <ul className="flex flex-wrap gap-x-4 gap-y-1">
+              {message.links.map((link) => (
+                <li key={JSON.stringify([link.nodeId, link.params, link.search])}>
+                  <Link
+                    // The server stores only a link that `link_place` checked against the map of
+                    // the platform, which is generated from this router's own routes, so its
+                    // template, parameters and search values are the route's own.
+                    {...({ to: link.to, params: link.params, search: link.search } as LinkProps)}
+                    className="text-link font-semibold hover:underline"
+                    data-place={link.to}
+                  >
+                    {link.label[languageOf(i18n)]}
+                  </Link>
+                </li>
+              ))}
             </ul>
           )}
           {message.lessons.length > 0 && (

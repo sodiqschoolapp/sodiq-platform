@@ -6,6 +6,7 @@ import {
   assistantConversationSchema,
   assistantSettingsSchema,
   assistantStatusSchema,
+  type AssistantPlace,
   type AssistantRole,
   type AssistantSettingsRecord,
 } from '@sodiq/shared';
@@ -61,6 +62,8 @@ export const askAssistant = async (body: {
   role: AssistantRole;
   text: string;
   conversationId?: string;
+  /** Task 11.19: the page the question is asked from; none from the Assistant page. */
+  place?: AssistantPlace;
 }) =>
   assistantAnswerSchema.parse(
     await answerOf(

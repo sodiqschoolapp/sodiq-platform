@@ -7,6 +7,7 @@ import {
   type AssistantLessonLink,
   type AssistantMessage,
   type AssistantNotice,
+  type AssistantPlaceLink,
   type AssistantReadGroup,
   type AssistantRole,
   type MenuItem,
@@ -21,8 +22,23 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 
 /** The content of each kind of message as stored in `assistant_messages.content` (0178). */
 export type StoredContent =
-  | { kind: 'question'; text: string }
-  | { kind: 'answer'; text: string; pages: MenuItem[]; lessons?: AssistantLessonLink[] }
+  | {
+      kind: 'question';
+      text: string;
+      /**
+       * Task 11.19: where it was asked from, as the model was told (only what the map of the
+       * platform knows of the page; its free texts filtered as the question's words).
+       */
+      place?: StoredPlace;
+    }
+  | {
+      kind: 'answer';
+      text: string;
+      pages: MenuItem[];
+      lessons?: AssistantLessonLink[];
+      /** Task 11.19: the places linked; none in an answer stored before 11.19. */
+      links?: AssistantPlaceLink[];
+    }
   | {
       kind: 'read';
       tool: string;
@@ -36,6 +52,13 @@ export type StoredContent =
       result: unknown;
     }
   | { kind: 'notice'; code: AssistantNotice };
+
+/** A question's place as stored and replayed (task 11.19). */
+export interface StoredPlace {
+  page: string;
+  params: Record<string, string>;
+  search: Record<string, string | Record<string, string>>;
+}
 
 export interface ConversationRow {
   id: string;
@@ -136,6 +159,7 @@ export function messageOf(row: MessageRow): AssistantMessage {
         text: content.text,
         pages: content.pages,
         lessons: content.lessons ?? [],
+        links: content.links ?? [],
       };
     case 'read':
       return assistantMessageSchema.parse({

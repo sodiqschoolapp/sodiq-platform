@@ -141,6 +141,50 @@ describe('the assistant in the top bar', () => {
     expect(calls.find((call) => call.route === 'POST /api/assistant/questions')?.body).toEqual({
       role: 'teacher',
       text: 'Mark everyone present.',
+      // Task 11.19: the panel sends the page it is beside.
+      place: { page: '/' },
+    });
+  });
+
+  it('sends the page, its values and the record open in the panel with the question, and draws the answer’s links to the exact place (task 11.19)', async () => {
+    const student = uid(9);
+    const answered = conversation([
+      message(1, { kind: 'question', text: 'What class is this student in?' }),
+      message(2, {
+        kind: 'answer',
+        text: 'Open the record here.',
+        pages: [],
+        lessons: [],
+        links: [
+          {
+            nodeId: 'page:/people/students',
+            to: '/people/students',
+            params: {},
+            search: { open: student },
+            label: { uz: 'Oʻquvchilar', ru: 'Ученики', en: 'Students' },
+          },
+        ],
+      }),
+    ]);
+    const calls = fakeApi({
+      'GET /api/auth/session': () => json(admin()),
+      'GET /api/assistant/status': () => json(ON),
+      'GET /api/assistant/conversations': () => json({ conversations: [] }),
+      'POST /api/assistant/questions': () => json({ conversation: answered }),
+      [`GET /api/assistant/conversations/${uid(1)}`]: () => json(answered),
+    });
+    renderApp(`/people/students?open=${student}&q=Oxford`, 'en');
+    const panel = await openPanel();
+    fireEvent.change(panel.getByLabelText(en.assistant.question), {
+      target: { value: 'What class is this student in?' },
+    });
+    fireEvent.click(panel.getByRole('button', { name: en.assistant.send }));
+    const link = await panel.findByRole('link', { name: 'Students' });
+    expect(link.getAttribute('href')).toBe(`/people/students?open=${student}`);
+    expect(calls.find((call) => call.route === 'POST /api/assistant/questions')?.body).toEqual({
+      role: 'super_admin',
+      text: 'What class is this student in?',
+      place: { page: '/people/students', search: { open: student, q: 'Oxford' } },
     });
   });
 
@@ -200,6 +244,7 @@ describe('the assistant in the top bar', () => {
     expect(calls.find((call) => call.route === 'POST /api/assistant/questions')?.body).toEqual({
       role: 'super_admin',
       text: 'Which classes have no Tutor?',
+      place: { page: '/' },
     });
     // The typed question is cleared once the server took it.
     expect(panel.getByLabelText<HTMLTextAreaElement>(en.assistant.question).value).toBe('');

@@ -1,4 +1,3 @@
-import { MENU_ITEMS } from '@sodiq/shared';
 import { WARNING_FLAGS, type AssistantChangeLine } from '../access/assistant-change-routes.js';
 import type { AssistantRouteLine } from '../access/assistant-routes.js';
 import { isRemovedKey } from './field-filter.js';
@@ -36,8 +35,64 @@ export const PROPOSE = 'propose_';
 export const BODY_ARGUMENT = 'body';
 export const SUMMARY_ARGUMENT = 'summary';
 
-/** The virtual tool that names a page of the menu (plan decision 16). */
-export const SUGGEST_PAGE = 'suggest_page';
+/**
+ * Task 11.19: the three tools of the map of the platform (`platform-map.ts`), open to the three
+ * roles with no switch; they read only the map, never data, and link only a page the role opens.
+ * `link_place` replaces the menu-only `suggest_page` of 11.12 (plan decision 6).
+ */
+export const FIND_IN_PLATFORM = 'find_in_platform';
+export const EXPLAIN_PLACE = 'explain_place';
+export const LINK_PLACE = 'link_place';
+
+export const MAP_TOOLS: readonly string[] = [FIND_IN_PLATFORM, EXPLAIN_PLACE, LINK_PLACE];
+
+const NAME_VALUE: ToolParameterSchema = {
+  type: 'array',
+  items: {
+    type: 'object',
+    properties: { name: { type: 'string' }, value: { type: 'string' } },
+    required: ['name', 'value'],
+  },
+};
+
+/** The map's tools, as the model is given them. */
+export const MAP_TOOL_DEFINITIONS: readonly ModelTool[] = [
+  {
+    name: FIND_IN_PLATFORM,
+    description:
+      'Searches the map of the platform: every page and each tab, panel, button, field and column on it, with its name on the screen in the person\u2019s language, what it does, the roles that see it and where it is. Words in Uzbek, Russian or English. Use it before saying the platform cannot do something, and to answer "where is", "what is" and "how do we".',
+    parameters: {
+      type: 'object',
+      properties: { words: { type: 'string', description: 'The words to look for.' } },
+      required: ['words'],
+    },
+  },
+  {
+    name: EXPLAIN_PLACE,
+    description:
+      'Gives one page, panel or control of the map in full: what it does, the roles that see it, and what is on it (the tabs, panels, buttons, fields and columns). Take the id from find_in_platform, or a page path such as /people/students.',
+    parameters: {
+      type: 'object',
+      properties: { id: { type: 'string', description: 'A map id or a page path.' } },
+      required: ['id'],
+    },
+  },
+  {
+    name: LINK_PLACE,
+    description:
+      'Links the exact place for the person: a page of the map, with the values of its path (a journal\u2019s id) and of its address (open = the id of the record to open in the side panel, q = a search, tab, a date, f.<key> = a filter of a list). Only a page the person\u2019s role opens; only the parameters the map gives for that page.',
+    parameters: {
+      type: 'object',
+      properties: {
+        page: { type: 'string', description: 'The page path, such as /journal/$journalId.' },
+        node: { type: 'string', description: 'The map id of the control or panel meant, if one.' },
+        params: { ...NAME_VALUE, description: 'The path parameters, as name and value.' },
+        search: { ...NAME_VALUE, description: 'The address values, as name and value.' },
+      },
+      required: ['page'],
+    },
+  },
+];
 
 /**
  * Task 11.14 (plan decision 1): the link to one lesson's journal column, for a step the
@@ -270,7 +325,7 @@ export function requiredFieldsWithheld(route: string): string[] {
 }
 
 /** The tools of the chosen role: its reads and proposals, and `suggest_page` with its pages. */
-export function toolsOf(lines: RoleLines, pages: readonly string[]): ModelTool[] {
+export function toolsOf(lines: RoleLines): ModelTool[] {
   const tools: ModelTool[] = [];
   for (const [route, line] of Object.entries(lines)) {
     const generated = generatedOf(route);
@@ -334,21 +389,7 @@ export function toolsOf(lines: RoleLines, pages: readonly string[]): ModelTool[]
       },
     });
   }
-  tools.push({
-    name: SUGGEST_PAGE,
-    description:
-      'Links a page of the platform for the person, for a step the assistant does not take (an export, a change, a password).',
-    parameters: {
-      type: 'object',
-      properties: {
-        page: {
-          type: 'string',
-          enum: pages.filter((page) => MENU_ITEMS.some((item) => item === page)),
-        },
-      },
-      required: ['page'],
-    },
-  });
+  tools.push(...MAP_TOOL_DEFINITIONS);
   return tools;
 }
 

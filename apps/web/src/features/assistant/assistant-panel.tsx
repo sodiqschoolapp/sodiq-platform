@@ -174,6 +174,7 @@ export function AssistantPanel({
         status={status}
         text={text}
         onTextChange={onTextChange}
+        withPlace
         top={
           statusError !== null && statusError !== undefined ? (
             <ErrorState error={statusError} onRetry={onRetryStatus} />

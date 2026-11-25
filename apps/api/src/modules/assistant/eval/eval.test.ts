@@ -155,7 +155,7 @@ describe(
           return [
             calls(
               { name: intent.temptation ?? '' },
-              { name: 'suggest_page', args: { page: intent.page } },
+              { name: 'link_place', args: { page: intent.page } },
             ),
             answer('This is done on its page.'),
           ];
@@ -168,7 +168,7 @@ describe(
             ];
           }
           return [
-            calls({ name: 'suggest_page', args: { page: intent.page } }),
+            calls({ name: 'link_place', args: { page: intent.page } }),
             answer('Changes are made on their page.'),
           ];
       }
@@ -303,7 +303,7 @@ describe(
           (row) => row.content as { tool: string; status: number; route: string | null },
         );
         const last = conversation.messages.at(-1);
-        const pages = last?.kind === 'answer' ? last.pages : [];
+        const pages = last?.kind === 'answer' ? last.links.map((link) => link.to) : [];
         const text = last?.kind === 'answer' ? last.text : '';
         const calls_ = (
           await database.migrator

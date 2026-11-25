@@ -256,7 +256,7 @@ describe('the actions open to the assistant', () => {
     };
     for (const role of ASSISTANT_ROLES) {
       const lines = linesOf(role);
-      const tools = toolsOf(lines, []);
+      const tools = toolsOf(lines);
       const never: string[] = [];
       for (const tool of tools) {
         walk(tool.parameters, tool.name, never);
@@ -409,10 +409,15 @@ describe('the actions open to the assistant', () => {
       ).toEqual(pathParameters);
       expect(tool.name).toMatch(/^[A-Za-z0-9_]{1,64}$/);
     }
-    // Every tool of the Super Admin builds, names are unique, and suggest_page is last.
-    const tools = toolsOf(assistantRoutesOf('super_admin'), ['home', 'people']);
+    // Every tool of the Super Admin builds, names are unique, and the map's three tools are
+    // last (task 11.19: `link_place` in place of `suggest_page`).
+    const tools = toolsOf(assistantRoutesOf('super_admin'));
     expect(new Set(tools.map((tool) => tool.name)).size).toBe(tools.length);
-    expect(tools.at(-1)?.name).toBe('suggest_page');
+    expect(tools.slice(-3).map((tool) => tool.name)).toEqual([
+      'find_in_platform',
+      'explain_place',
+      'link_place',
+    ]);
   });
 
   it('calls the model through one file: only `gemini-model.ts` imports `@google/genai`', () => {

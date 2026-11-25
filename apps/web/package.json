@@ -12,6 +12,7 @@
     "test": "vitest run",
     "test:changed": "vitest run --changed origin/main",
     "test:e2e": "playwright test",
+    "assistant:map": "vitest run --mode assistant-map tooling/platform-map.test.ts",
     "api:types": "openapi-typescript ../api/openapi.generated.json --output src/api/schema.generated.ts"
   },
   "dependencies": {
