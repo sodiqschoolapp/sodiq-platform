@@ -34,6 +34,8 @@ export type StoredContent =
       continued?: boolean;
       /** Task 11.21: an Undo of this proposal (not counted in the daily limit, 0184). */
       undoOf?: string;
+      /** Task 11.22: the text is the written-out recording of the question. */
+      voice?: boolean;
     }
   | {
       kind: 'answer';
@@ -63,6 +65,12 @@ export type StoredContent =
       fault?: string;
       /** What the model was given: the filtered result, cut to its bound. */
       result: unknown;
+      /**
+       * Task 11.22: the run mark of an import upload or an export sent as the person; the audit
+       * entries the route wrote name it (`assistant_step_id`), and the audit log reads the
+       * question from here.
+       */
+      runId?: string;
     }
   | { kind: 'notice'; code: AssistantNotice };
 
@@ -161,8 +169,44 @@ export async function messagesOf(
   }));
 }
 
+/** Task 11.22: a file of a message, as the conversation shows it. */
+export type MessageFile = Extract<AssistantMessage, { kind: 'question' }>['files'][number];
+
+/** Task 11.22: the files of each message of a conversation, in the order they were attached. */
+export async function filesOfMessages(
+  transaction: Transaction,
+  conversationId: string,
+): Promise<Map<string, MessageFile[]>> {
+  const rows = await transaction
+    .selectFrom('assistant_message_files as l')
+    .innerJoin('assistant_messages as m', (join) =>
+      join.onRef('m.id', '=', 'l.message_id').onRef('m.branch_id', '=', 'l.branch_id'),
+    )
+    .innerJoin('assistant_files as f', (join) =>
+      join.onRef('f.id', '=', 'l.file_id').onRef('f.branch_id', '=', 'l.branch_id'),
+    )
+    .select(['l.message_id', 'f.id', 'f.kind', 'f.name', 'f.media_type', 'f.size_bytes'])
+    .where('m.conversation_id', '=', conversationId)
+    .orderBy('l.message_id')
+    .orderBy('l.position')
+    .execute();
+  const files = new Map<string, MessageFile[]>();
+  for (const row of rows) {
+    const list = files.get(row.message_id) ?? [];
+    list.push({
+      id: row.id,
+      kind: row.kind as MessageFile['kind'],
+      name: row.name,
+      mediaType: row.media_type,
+      size: row.size_bytes,
+    });
+    files.set(row.message_id, list);
+  }
+  return files;
+}
+
 /** A message as the person and the Super Admin read it: never the filtered result of a read. */
-export function messageOf(row: MessageRow): AssistantMessage {
+export function messageOf(row: MessageRow, files: readonly MessageFile[] = []): AssistantMessage {
   const base = { id: row.id, seq: row.seq, at: row.createdAt.toISOString() };
   const content = row.content;
   switch (content.kind) {
@@ -173,6 +217,8 @@ export function messageOf(row: MessageRow): AssistantMessage {
         text: content.text,
         continued: content.continued === true,
         undoOf: content.undoOf ?? null,
+        files: [...files],
+        voice: content.voice === true,
       };
     case 'answer':
       return {
@@ -185,6 +231,7 @@ export function messageOf(row: MessageRow): AssistantMessage {
         continues: content.continues === true,
         choices: content.choices ?? [],
         undo: content.undo ?? null,
+        files: [...files],
       };
     case 'read':
       return assistantMessageSchema.parse({
@@ -205,11 +252,12 @@ export async function conversationOf(
 ): Promise<AssistantConversation> {
   const last = new Date(row.last_activity_at);
   const messages = await messagesOf(transaction, row.id);
+  const files = await filesOfMessages(transaction, row.id);
   return {
     ...summaryOf(row),
     archived: isArchived(last, now),
     archivesAt: archivesAt(last).toISOString(),
-    messages: messages.map(messageOf),
+    messages: messages.map((message) => messageOf(message, files.get(message.id))),
     proposals: await proposalsOf(transaction, row.id, now),
     working: workingOf(messages, now),
   };

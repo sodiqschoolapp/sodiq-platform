@@ -214,7 +214,8 @@ export class PermissionGuard implements CanActivate {
    * that role's list, a staff session, and the assignments of that role only. Task 11.13: a
    * route listed as a preview may be sent with any method; a change only for the step Confirm is
    * sending now, of this account, branch, role and route (`AssistantCalls.stepOf`), and the audit
-   * entries it writes name that step ("via assistant").
+   * entries it writes name that step ("via assistant"). Task 11.22: a file, download or export
+   * line only with the single-use run mark of that one request (`AssistantCalls.takeRun`).
    */
   private async assistantCall(
     context: ExecutionContext,
@@ -236,7 +237,27 @@ export class PermissionGuard implements CanActivate {
     const name = this.assistantRoutes.nameOf(handler);
     const line = name === undefined ? undefined : this.assistantRoutes.linesOf(role)[name];
     let stepId: string | undefined;
-    if (request.method !== 'GET') {
+    const kind = line?.kind ?? 'read';
+    if (kind === 'file' || kind === 'download' || kind === 'export') {
+      // Task 11.22 (approved by the owner on 25 November 2026, stop-list item 5): an import
+      // upload, a file answer or an export, of any method, only with the run mark the assistant
+      // issued for this one request, of this account, role, route and branch, taken here so it
+      // is never accepted twice (review of the plan, correction 1). `decide` below still runs
+      // with the chosen role's assignments only: no role gains a right.
+      const run = this.assistantCalls.takeRun(request.headers);
+      const branch = request.headers[BRANCH_HEADER.toLowerCase()];
+      if (
+        run === undefined ||
+        run.accountId !== session.accountId ||
+        run.role !== role ||
+        run.route !== name ||
+        typeof branch !== 'string' ||
+        run.branchId !== branch.toLowerCase()
+      ) {
+        throw new ApiException('assistant_step_invalid', 403);
+      }
+      stepId = run.stepId;
+    } else if (request.method !== 'GET') {
       if (line?.kind === 'change') {
         const step = this.assistantCalls.stepOf(request.headers);
         const branch = request.headers[BRANCH_HEADER.toLowerCase()];

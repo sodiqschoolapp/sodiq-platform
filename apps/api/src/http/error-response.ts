@@ -737,6 +737,11 @@ const MESSAGE: Record<ErrorCode, string> = {
   assistant_step_outdated: 'The data this change was proposed on has changed since.',
   assistant_step_same_record: 'A proposal holds one change per record.',
   assistant_step_invalid: 'This change names no step of the assistant that is running now.',
+  assistant_files_not_configured: 'No store for files is configured on this server.',
+  assistant_files_unavailable: 'The store of files did not answer.',
+  assistant_file_too_large: 'The file is larger than its type allows.',
+  assistant_files_too_large: 'The files of one question are more than 14 MB together.',
+  assistant_file_not_found: 'The file is not an upload of yours that can be sent.',
 };
 
 function codeOfStatus(status: number): ErrorCode {

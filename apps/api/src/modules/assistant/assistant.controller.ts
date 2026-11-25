@@ -1,5 +1,14 @@
 import { Controller, Get, HttpCode, Post, Put } from '@nestjs/common';
 import {
+  ASSISTANT_UPLOAD_TYPES,
+  assistantAnyFileParamsSchema,
+  assistantFileParamsSchema,
+  assistantFileSchema,
+  assistantFileUploadQuerySchema,
+  type AssistantAnyFileParams,
+  type AssistantFile,
+  type AssistantFileParams,
+  type AssistantFileUploadQuery,
   assistantConfirmedSchema,
   type AssistantConfirmed,
   assistantActionsSchema,
@@ -37,7 +46,9 @@ import {
 } from '@sodiq/shared';
 import { ApiException } from '../../http/api-exception.js';
 import { RequestId } from '../../http/request-id.js';
-import { Returns, ValidBody, ValidParams, ValidQuery } from '../../http/schemas.js';
+import { ASSISTANT_FILE_ROUTE, type UploadedFile } from '../../http/file-routes.js';
+import { Returns, ValidBody, ValidFile, ValidParams, ValidQuery } from '../../http/schemas.js';
+import { ReturnsStoredFile, type StoredFile } from '../../http/stored-file.js';
 import { RequestSessionPass, type SessionPass } from '../../http/session-cookie.js';
 import { Requires } from '../access/access.decorators.js';
 import { CurrentAccess, type Access } from '../access/permission.guard.js';
@@ -48,6 +59,7 @@ import { AssistantSettingsService } from './assistant-settings.service.js';
 import { AssistantConversations } from './assistant.service.js';
 import { AssistantProposals } from './assistant-proposals.service.js';
 import { AssistantSwitches } from './assistant-switches.service.js';
+import { AssistantFiles } from './assistant-files.service.js';
 
 /**
  * The chat panel of the assistant (`02`, Assistant; task 11.12), for the person in the role
@@ -60,7 +72,43 @@ export class AssistantController {
     private readonly engine: AssistantEngine,
     private readonly conversations: AssistantConversations,
     private readonly proposals: AssistantProposals,
+    private readonly files: AssistantFiles,
   ) {}
+
+  /**
+   * Task 11.22 (`02`, Files, photos and voice): a file attached to a question, or a recorded
+   * question, before the question is sent. A declared file route (plan decision 1, Look first).
+   */
+  @Put('files')
+  @Requires('assistant', 'view')
+  @Returns(assistantFileSchema)
+  upload(
+    @CurrentAccess() access: Access,
+    @ValidQuery(assistantFileUploadQuerySchema) query: AssistantFileUploadQuery,
+    @ValidFile(ASSISTANT_FILE_ROUTE) file: UploadedFile | null,
+    @RequestId() requestId: string,
+  ): Promise<AssistantFile> {
+    return this.files.upload(
+      access,
+      (role) => this.engine.roleHeld(access, role),
+      query,
+      file,
+      requestId,
+    );
+  }
+
+  /** Task 11.22: a file of the person's own conversation (an attachment, a recording, an export). */
+  @Get('files/:id')
+  @Requires('assistant', 'view')
+  @ReturnsStoredFile(ASSISTANT_UPLOAD_TYPES)
+  file(
+    @CurrentAccess() access: Access,
+    @CurrentSession() session: ActiveSession,
+    @ValidParams(assistantFileParamsSchema) params: AssistantFileParams,
+    @RequestId() requestId: string,
+  ): Promise<StoredFile> {
+    return this.conversations.ownFile(access, session.assignments, params.id, requestId);
+  }
 
   @Get('status')
   @Requires('assistant', 'view')
@@ -196,6 +244,18 @@ export class AssistantAdminController {
     @ValidParams(assistantConversationParamsSchema) params: AssistantConversationParams,
   ): Promise<AssistantAnyConversationDetail> {
     return this.conversations.any(params.id);
+  }
+
+  /** Task 11.22 (review of the plan, correction 3): a file of a conversation the Super Admin reads. */
+  @Get(':id/files/:fileId')
+  @Requires('monitoring', 'view', { branch: 'none' })
+  @ReturnsStoredFile(ASSISTANT_UPLOAD_TYPES)
+  file(
+    @CurrentAccess() access: Access,
+    @ValidParams(assistantAnyFileParamsSchema) params: AssistantAnyFileParams,
+    @RequestId() requestId: string,
+  ): Promise<StoredFile> {
+    return this.conversations.anyFile(access, params.id, params.fileId, requestId);
   }
 
   @Post(':id/restore')

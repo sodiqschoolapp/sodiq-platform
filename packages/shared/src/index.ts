@@ -2694,6 +2694,7 @@ export {
   type IntegrationKeyState,
 } from './integration-keys.js';
 export * from './assistant.js';
+export * from './assistant-files.js';
 export * from './assistant-switches.js';
 export * from './platform-map.js';
 export * from './required-when.js';

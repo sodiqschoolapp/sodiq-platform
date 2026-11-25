@@ -3,6 +3,7 @@ import { Injectable } from '@nestjs/common';
 import {
   ASSISTANT_CALL_HEADER,
   ASSISTANT_ROLE_HEADER,
+  ASSISTANT_RUN_HEADER,
   ASSISTANT_STEP_HEADER,
   INTEGRATION_KEY_HEADER,
   isAssistantRole,
@@ -38,6 +39,33 @@ export class AssistantCalls {
    * route. Held in memory: the request comes back to this same process.
    */
   private readonly running = new Map<string, RunningStep>();
+
+  /**
+   * Task 11.22 (approved by the owner on 25 November 2026, stop-list item 5): the run marks of an
+   * import upload or an export the assistant sends as the person, by id. A mark is issued for one
+   * request and taken by the guard the first time it accepts it (review of the plan, correction
+   * 1): a second request with the same mark is refused, even while the first is still running.
+   */
+  private readonly runs = new Map<string, RunningStep>();
+
+  /** Issues a run mark while `work` sends its one request; removed afterwards, whatever happens. */
+  async whileRun<T>(run: RunningStep, work: () => Promise<T>): Promise<T> {
+    this.runs.set(run.stepId, run);
+    try {
+      return await work();
+    } finally {
+      this.runs.delete(run.stepId);
+    }
+  }
+
+  /** The run mark a request names, taken: it is no longer valid for any other request. */
+  takeRun(headers: IncomingHttpHeaders): RunningStep | undefined {
+    const value = headers[ASSISTANT_RUN_HEADER.toLowerCase()];
+    if (typeof value !== 'string') return undefined;
+    const run = this.runs.get(value);
+    this.runs.delete(value);
+    return run;
+  }
 
   /** Registers a step while `work` sends it; removed afterwards, whatever happens. */
   async whileRunning<T>(step: RunningStep, work: () => Promise<T>): Promise<T> {

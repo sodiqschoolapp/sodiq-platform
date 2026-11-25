@@ -19,6 +19,8 @@ import { GeminiModel } from './gemini-model.js';
 import { ASSISTANT_MODEL } from './model.js';
 import { ASSISTANT_WAIT, ModelCaller, REAL_WAIT, type AssistantWait } from './model-caller.js';
 import { AssistantWork } from './assistant-work.js';
+import { AssistantFiles } from './assistant-files.service.js';
+import { PHOTO_STORE, photoStoreOf } from '../people/photo-store.js';
 import { ScriptedModel } from './scripted-model.js';
 
 /**
@@ -40,6 +42,12 @@ import { ScriptedModel } from './scripted-model.js';
     AssistantConversations,
     AssistantProposals,
     AssistantDispatcher,
+    AssistantFiles,
+    {
+      provide: PHOTO_STORE,
+      useFactory: (config: AppConfig) => photoStoreOf(config.photos),
+      inject: [CONFIG],
+    },
     {
       provide: ASSISTANT_MODEL,
       useFactory: (config: AppConfig, wait: AssistantWait) =>

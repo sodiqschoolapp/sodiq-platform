@@ -142,6 +142,8 @@ export const assistantStatusSchema = z.object({
   refusal: z.enum(ASSISTANT_REFUSALS).nullable(),
   /** Questions the person may still ask today, every branch together; `null`: no daily limit. */
   questionsLeftToday: z.int().nonnegative().nullable(),
+  /** Task 11.22: a store for files is configured; without one the paperclip and microphone are hidden. */
+  files: z.boolean(),
 });
 
 export type AssistantStatus = z.infer<typeof assistantStatusSchema>;
@@ -179,7 +181,16 @@ export const assistantQuestionSchema = z
     role: assistantRoleSchema,
     /** Left out: a new conversation. */
     conversationId: z.uuid().optional(),
-    text: z.string().trim().min(1).max(ASSISTANT_QUESTION_MAX_LENGTH),
+    /** Task 11.22: empty only with a recording, whose written-out words become the text. */
+    text: z.string().trim().max(ASSISTANT_QUESTION_MAX_LENGTH),
+    /** Task 11.22: the files attached, each the person’s own upload not sent yet. */
+    files: z
+      .array(z.uuid())
+      .max(5)
+      .refine((ids) => new Set(ids).size === ids.length, { message: 'Each file once.' })
+      .optional(),
+    /** Task 11.22: the recording of the question (a phone’s microphone). */
+    voice: z.uuid().optional(),
     /** Task 11.19: the page the question is asked from; none from the Assistant page. */
     place: assistantPlaceSchema.optional(),
     /**
@@ -191,11 +202,29 @@ export const assistantQuestionSchema = z
   .refine((question) => question.continue !== true || question.conversationId !== undefined, {
     message: 'Continue goes on in a conversation.',
     path: ['conversationId'],
-  });
+  })
+  .refine((question) => question.text !== '' || question.voice !== undefined, {
+    message: 'A question has words, or a recording.',
+    path: ['text'],
+  })
+  .refine(
+    (question) =>
+      question.continue !== true || (question.files === undefined && question.voice === undefined),
+    { message: 'Continue carries no files.', path: ['files'] },
+  );
 
 export type AssistantQuestion = z.infer<typeof assistantQuestionSchema>;
 
 const messageBase = { id: z.uuid(), seq: z.int().positive(), at: moment };
+
+/** Task 11.22: a file of a message, as the conversation shows it (name, type, size). */
+const messageFileSchema = z.object({
+  id: z.uuid(),
+  kind: z.enum(['attachment', 'voice', 'export']),
+  name: z.string(),
+  mediaType: z.string(),
+  size: z.int().positive(),
+});
 
 /**
  * Task 11.14 (plan decision 1, Look first): a link to the journal column of one lesson
@@ -240,6 +269,10 @@ export const assistantMessageSchema = z.discriminatedUnion('kind', [
     continued: z.boolean().default(false),
     /** Task 11.21: an Undo of this proposal, asked with its button. */
     undoOf: z.uuid().nullable().default(null),
+    /** Task 11.22: the files attached, and the recording; none before 11.22. */
+    files: z.array(messageFileSchema).default([]),
+    /** Task 11.22: the text is the written-out recording. */
+    voice: z.boolean().default(false),
   }),
   z.object({
     ...messageBase,
@@ -274,6 +307,8 @@ export const assistantMessageSchema = z.discriminatedUnion('kind', [
       })
       .nullable()
       .default(null),
+    /** Task 11.22: the export files the answer links, to download. */
+    files: z.array(messageFileSchema).default([]),
   }),
   z.object({
     ...messageBase,
@@ -309,6 +344,12 @@ export type AssistantConversationList = z.infer<typeof assistantConversationList
 
 /** Task 11.13: the header naming the step of a proposal that a change runs for. */
 export const ASSISTANT_STEP_HEADER = 'X-Assistant-Step';
+
+/**
+ * Task 11.22 (approved by the owner on 25 November 2026, stop-list item 5): the header naming the
+ * single-use run mark of an import upload or an export the assistant runs as the person.
+ */
+export const ASSISTANT_RUN_HEADER = 'X-Assistant-Run';
 
 /** How long a proposal may be confirmed (`02`: "not confirmed within 15 minutes expires"). */
 export const ASSISTANT_PROPOSAL_MINUTES = 15;

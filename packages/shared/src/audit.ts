@@ -489,6 +489,10 @@ export const AUDIT_ACTION_GROUPS = {
     'assistant_settings.change',
     'assistant_conversation.restore',
     'assistant_switch.change',
+    // Task 11.22: a file attached or recorded, and the download of a file the assistant keeps
+    // (an export it made, or a file of a conversation the Super Admin reads).
+    'assistant_file.upload',
+    'assistant_file.download',
   ],
   shows: [
     // Task 8.9: the support view of a student, journal and date (decision 14).
