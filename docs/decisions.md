@@ -65,6 +65,28 @@ The owner's answers to the decided-ahead questions for Phase 10, given in chat o
 19. Production deploys only after 18:00 or at the weekend, Tashkent time.
 20. The test environment stays after go-live; every change is tried there first.
 
+## 25 November 2026: fewer limits, and answers that are easier to use (task 11.21)
+
+Plan approved on pull request #388 with corrections 1 (the step bounds 1 to 200 everywhere) and 2 (the array check kept beside the wider length). Approved by the owner in chat on 25 November 2026 (stop-list item 1): larger questions may spend more of the monthly cap, which stays always in force. Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first.** The checks of 0178 and 0179 on the daily limit (1..500), the steps of a proposal and their seq (1..10) are replaced in 0184 by 0..500 and 1..200, the array check kept | The requirement changed (`02`, Limits, 25 November 2026); decision 1, corrections 1 and 2 |
+| **Look first.** The tests that pinned 6 reads, 8 model calls, 10 steps, a daily limit of at least 1 and 240 s are rewritten to the settings | The requirement changed; decision 2 |
+| **Look first.** The stored settings row is not changed: every database keeps its daily limit (30); the column default is 0, the demo seed sets 0, the Super Admin sets 0 on the page | Stop-list item 3; `02`: "none at the start"; decision 3 |
+| **Look first.** Undo calls no model: not counted in the daily limit and open when the cap is reached, refused while the assistant is off | A button of a card already shown, like Confirm; decision 9 |
+| Bounds: 1–200 actions, 1–200 steps, 1–30 minutes, 0–500 per day | Decision 4; a Confirm of 200 steps ran in under 20 s |
+| The window is the time limit and 30 s, stored with the question (`answer_until`); before 0184, 270 s | Decision 5 |
+| Model calls = actions + 2; attempts = twice that | Decision 6 |
+| Reads and changes count together; the map's tools, `find_actions`, `link_place` and `ask_choice` are model calls only | Decision 7 |
+| Continue is a question of its own; only the newest answer cut by a limit continues; `already_proposed` held by the server on the step's target within the chain of parts | Decision 8; review must fix 4 |
+| A reverse is an action that undoes the change by itself; an edit of fields has none | Decision 10 |
+| Reverses newest first | Decision 11 |
+| Choices 2 to 8 of at most 80 characters, under the newest answer only | Decision 12 |
+| Tables in pipe form, at most 8 columns | Decision 13 |
+| A turn with tools is sent only with room for a last call without tools (two calls' timeouts, the attempts of two turns); the answer of a cut question stores the steps drafted | Review must fix 3 |
+| A step of a waiting proposal is not "taken": the next part supersedes it, so its steps may be proposed again | Found in the build: a waiting part 1 is superseded by part 2 (11.13's rule), and nothing may be lost |
+
 ## 25 November 2026: every action of the role open to the assistant, with the Super Admin's switches (task 11.20)
 
 Plan approved on pull request #387 with corrections 1 (the update grant of `data_groups_off`), 2 (the heavy routes by route: `POST /api/people/staff` and the status change stay on) and 3 (the 11.14 line on the Teacher's own plans marked superseded). Approved by the owner in chat on 25 November 2026 (stop-list item 5): no role gains a right; the permission table and the guard do not change. Flagged on issue #42.
