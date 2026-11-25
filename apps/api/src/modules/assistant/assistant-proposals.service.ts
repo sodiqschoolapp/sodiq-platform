@@ -16,7 +16,7 @@ import { AssistantEngine } from './assistant.engine.js';
 import { AssistantSettingsService } from './assistant-settings.service.js';
 import { fingerprintOf } from './canonical.js';
 import { conversationOf, conversationsQuery, isArchived } from './conversations.store.js';
-import { AssistantDispatcher } from './dispatcher.js';
+import { AssistantDispatcher, type ReadOutcome } from './dispatcher.js';
 import { secretsOf } from './field-filter.js';
 import { basisStill, stateOfOutcome, type StoredStep } from './proposals.js';
 
@@ -172,6 +172,8 @@ export class AssistantProposals {
         continue;
       }
       const line = lines[step.route];
+      let basisRead: ReadOutcome | undefined;
+      let previewRead: ReadOutcome | undefined;
       let outcome: { state: AssistantStepState; status: number; code: string | null };
       if (line?.kind !== 'change') {
         // The route left the role's list since it was proposed.
@@ -179,16 +181,32 @@ export class AssistantProposals {
       } else if (
         step.basis.kind === 'read' &&
         line.basis.kind === 'read' &&
-        !basisStill(step.basis, await this.dispatcher.read(step.basis.url, as, line.basis.route))
+        !basisStill(
+          step.basis,
+          (basisRead = await this.dispatcher.read(step.basis.url, as, line.basis.route)),
+        )
       ) {
-        outcome = { state: 'outdated', status: 409, code: 'assistant_step_outdated' };
+        // Task 11.20 (plan review 6): a basis read switched off since refuses the step.
+        outcome = switchedOff(basisRead)
+          ? { state: 'refused', status: 403, code: 'assistant_action_off' }
+          : { state: 'outdated', status: 409, code: 'assistant_step_outdated' };
       } else if (
         step.preview !== null &&
         line.preview !== undefined &&
-        !(await this.previewStill(step.preview, line.preview.route, as))
+        (previewRead = await this.dispatcher.send(
+          'POST',
+          step.preview.url,
+          step.preview.body,
+          as,
+          line.preview.route,
+        )) !== undefined &&
+        !previewStill(step.preview, previewRead)
       ) {
-        // A lesson that began, a new warning, another lesson with data (review should fix 5).
-        outcome = { state: 'outdated', status: 409, code: 'assistant_step_outdated' };
+        // A lesson that began, a new warning, another lesson with data (review should fix 5);
+        // task 11.20: a preview switched off since refuses the step.
+        outcome = switchedOff(previewRead)
+          ? { state: 'refused', status: 403, code: 'assistant_action_off' }
+          : { state: 'outdated', status: 409, code: 'assistant_step_outdated' };
       } else {
         const sent = await this.calls.whileRunning(
           {
@@ -219,19 +237,6 @@ export class AssistantProposals {
       }
     }
     return { ...(await this.conversation(access, proposal.conversation_id)), secrets };
-  }
-
-  private async previewStill(
-    preview: NonNullable<StoredStep['preview']>,
-    route: string,
-    as: { pass: SessionPass; branchId: string; role: AssistantRole },
-  ): Promise<boolean> {
-    const outcome = await this.dispatcher.send('POST', preview.url, preview.body, as, route);
-    return (
-      !('failure' in outcome && outcome.failure !== undefined) &&
-      outcome.status < 400 &&
-      fingerprintOf(outcome.body) === preview.fingerprint
-    );
   }
 
   private async record(
@@ -270,6 +275,24 @@ export class AssistantProposals {
       return conversationOf(transaction, row, now);
     });
   }
+}
+
+/** Whether a preview sent again at Confirm answers as it did at the proposal. */
+function previewStill(preview: NonNullable<StoredStep['preview']>, outcome: ReadOutcome): boolean {
+  return (
+    !('failure' in outcome && outcome.failure !== undefined) &&
+    outcome.status < 400 &&
+    fingerprintOf(outcome.body) === preview.fingerprint
+  );
+}
+
+/** Whether the dispatcher refused a request because its action is switched off (task 11.20). */
+function switchedOff(outcome: ReadOutcome | undefined): boolean {
+  return (
+    outcome !== undefined &&
+    outcome.status === 403 &&
+    (outcome.body as { error?: { code?: unknown } } | null)?.error?.code === 'assistant_action_off'
+  );
 }
 
 function isUniqueViolation(error: unknown): boolean {

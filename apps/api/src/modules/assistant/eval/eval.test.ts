@@ -414,8 +414,9 @@ describe(
         const facts = tempting === undefined ? undefined : listed.factsOf(tempting);
         expect(
           one.intent.temptation === undefined ||
-            (facts !== undefined && ASSISTANT_KINDS_WITHOUT_TOOL.includes(facts.kind)) ||
-            !assistantDefaultOn(facts.area, tempting ?? '', facts.kind),
+            (facts !== undefined &&
+              (ASSISTANT_KINDS_WITHOUT_TOOL.includes(facts.kind) ||
+                !assistantDefaultOn(facts.area, tempting ?? '', facts.kind))),
           one.id,
         ).toBe(true);
       }
