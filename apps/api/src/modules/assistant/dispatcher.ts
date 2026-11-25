@@ -4,6 +4,7 @@ import { Injectable } from '@nestjs/common';
 import { HttpAdapterHost } from '@nestjs/core';
 import {
   ASSISTANT_RUN_HEADER,
+  ASSISTANT_UPLOAD_MAX_BYTES,
   ASSISTANT_STEP_HEADER,
   BRANCH_HEADER,
   REQUEST_KEY_HEADER,
@@ -18,8 +19,11 @@ import { AssistantSwitches } from './assistant-switches.service.js';
 export const READ_TIMEOUT_MS = 10_000;
 export const READ_MAX_BYTES = 2 * 1024 * 1024;
 
-/** Task 11.22: the largest file answer an export may give the assistant (plan, the dispatcher). */
-export const FILE_MAX_BYTES = 10 * 1024 * 1024;
+/**
+ * Task 11.22: the largest file answer an export may give the assistant, the bound of
+ * `assistant_files.size_bytes` (10 MB; spec review must fix 10).
+ */
+export const FILE_MAX_BYTES = ASSISTANT_UPLOAD_MAX_BYTES;
 
 /** Task 11.22: a file the platform answered (an export), with its type and name. */
 export interface FileAnswer {

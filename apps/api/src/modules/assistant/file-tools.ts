@@ -106,7 +106,8 @@ export const EXPORT_FILE_DEFINITION: ModelTool = {
       },
       path: {
         type: 'string',
-        description: 'The path with its values, such as /api/people/students/export.',
+        description:
+          'The path with its values, and the query the route needs (an import template: ?language=uz, ru or en), such as /api/people/students/export.',
       },
       body: { type: 'object', description: 'The JSON body of a POST, as the screen sends it.' },
     },

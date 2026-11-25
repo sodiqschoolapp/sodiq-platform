@@ -1329,6 +1329,18 @@ export const en = {
     noAnswer: 'No answer came. Ask again.',
     continue: 'Continue',
     files: {
+      fields: {
+        kind: 'Kind',
+        name: 'File name',
+        mediaType: 'Type',
+        size: 'Size, bytes',
+        conversation: 'Conversation',
+      },
+      kinds: {
+        attachment: 'Attached file',
+        voice: 'Recorded question',
+        export: 'Export',
+      },
       attach: 'Attach a file',
       attached: 'Files attached',
       remove: 'Remove {{name}}',
@@ -4996,6 +5008,7 @@ export const en = {
       feedback_report: 'Feedback report',
       integration_key: 'Integration key',
       assistant_conversation: 'Assistant conversation',
+      assistant_file: 'File of the assistant',
     },
     actions: {
       auth: {

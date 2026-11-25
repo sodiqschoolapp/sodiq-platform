@@ -2033,10 +2033,21 @@ function attachedNote(files: readonly MessageFile[]): string {
     .join('; ')}]`;
 }
 
-/** Whether an export's path is its route's template with its values (as the dispatcher checks). */
+/**
+ * Whether an export's path is its route's template with its values (as the dispatcher checks), with
+ * at most a query of plain names and values.
+ */
 function exportPathFits(path: string, template: string): boolean {
-  if (!path.startsWith('/api/') || path.includes('?')) return false;
-  const given = path.split('/');
+  // Spec review must fix 9: a query of plain values (an import template's ?language=en).
+  const [bare = '', query, ...more] = path.split('?');
+  if (!bare.startsWith('/api/') || more.length > 0) return false;
+  if (
+    query !== undefined &&
+    !/^[A-Za-z0-9_.-]+=[A-Za-z0-9_.-]*(&[A-Za-z0-9_.-]+=[A-Za-z0-9_.-]*)*$/.test(query)
+  ) {
+    return false;
+  }
+  const given = bare.split('/');
   const wanted = template.split('/');
   return (
     given.length === wanted.length &&

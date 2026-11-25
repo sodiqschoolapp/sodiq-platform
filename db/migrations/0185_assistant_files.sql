@@ -41,16 +41,15 @@ create table assistant_files (
   size_bytes integer not null constraint assistant_files_size_check check (
     size_bytes between 1 and 10000000
   ),
-  -- assistant/<id> in the photo store; a key is never reused.
-  store_key text not null constraint assistant_files_store_key_key unique,
+  -- assistant/<id> in the photo store: the check below pins it to the id, so a key is never
+  -- reused.
+  store_key text not null,
   constraint assistant_files_store_key_check check (store_key = 'assistant/' || id::text),
   -- From the injected clock (the transaction's moment), never now().
   created_at timestamptz not null,
   -- Review of the plan, correction 4: a link names a file of its own branch.
   constraint assistant_files_id_branch_key unique (id, branch_id)
 );
-
-create index assistant_files_account_idx on assistant_files (account_id, created_at);
 
 alter table assistant_files enable row level security;
 create policy branch_filter on assistant_files for all to sodiq_app
@@ -65,7 +64,7 @@ grant select, insert on assistant_files to sodiq_app;
 -- changes none.
 create table assistant_message_files (
   message_id uuid not null,
-  file_id uuid not null constraint assistant_message_files_file_key unique,
+  file_id uuid not null,
   branch_id uuid not null references branches (id),
   constraint assistant_message_files_message_fkey foreign key (message_id, branch_id)
     references assistant_messages (id, branch_id),
@@ -75,10 +74,10 @@ create table assistant_message_files (
   position smallint not null constraint assistant_message_files_position_check check (
     position between 1 and 5
   ),
-  primary key (message_id, file_id)
+  primary key (message_id, file_id),
+  -- A file belongs to one message (with its branch, as every unique of a branch table).
+  constraint assistant_message_files_file_key unique (file_id, branch_id)
 );
-
-create index assistant_message_files_message_idx on assistant_message_files (message_id);
 
 alter table assistant_message_files enable row level security;
 create policy branch_filter on assistant_message_files for all to sodiq_app

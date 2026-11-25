@@ -1332,6 +1332,18 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
     noAnswer: 'Ответ не пришёл. Спросите ещё раз.',
     continue: 'Продолжить',
     files: {
+      fields: {
+        kind: 'Вид',
+        name: 'Имя файла',
+        mediaType: 'Формат',
+        size: 'Размер, байт',
+        conversation: 'Разговор',
+      },
+      kinds: {
+        attachment: 'Прикреплённый файл',
+        voice: 'Голосовой вопрос',
+        export: 'Экспорт',
+      },
       attach: 'Прикрепить файл',
       attached: 'Прикреплённые файлы',
       remove: 'Убрать {{name}}',
@@ -5216,6 +5228,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       feedback_report: 'Отзыв',
       integration_key: 'Ключ интеграции',
       assistant_conversation: 'Разговор с помощником',
+      assistant_file: 'Файл помощника',
     },
     actions: {
       auth: {

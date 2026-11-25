@@ -49,10 +49,8 @@ async function openPanel() {
   return within(await screen.findByRole('complementary', { name: en.assistant.title }));
 }
 
-function choose(panel: ReturnType<typeof within>, files: File[]): void {
-  const input = panel
-    .getByRole('button', { name: en.assistant.files.attach })
-    .parentElement?.querySelector('input[type="file"]');
+function choose(_panel: unknown, files: File[]): void {
+  const input = document.querySelector('input[data-assistant-file-input]');
   if (!(input instanceof HTMLInputElement)) throw new Error('The paperclip has its input.');
   fireEvent.change(input, { target: { files } });
 }

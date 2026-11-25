@@ -375,8 +375,11 @@ describe('the assistant: the routes of files', () => {
       branch_id: scene.north,
       new_value: { conversationId: teachers.conversation },
     });
+    // A file of another conversation of the same branch.
+    const sameBranch = await stored({ branch: scene.north, account: scene.adminAccount });
     const before = await rows();
     expect((await get(teachers.conversation, another.file)).status).toBe(404);
+    expect((await get(teachers.conversation, sameBranch.file)).status).toBe(404);
     expect((await get(teachers.conversation, UNKNOWN)).status).toBe(404);
     expect((await get(UNKNOWN, teachers.file)).status).toBe(404);
     expect(await rows()).toEqual(before);
@@ -465,8 +468,10 @@ describe('the assistant: the routes of files', () => {
     const before = await rows();
     const sixth = await send(scene, scene.admin, scene.north, { text: 'All six.', files: ids });
     expect(sixth.status).toBe(400);
+    expect(errorCode(sixth)).toBe('validation_failed');
     const empty = await send(scene, scene.admin, scene.north, { text: '' });
     expect(empty.status).toBe(400);
+    expect(errorCode(empty)).toBe('validation_failed');
     const big = [];
     for (let index = 0; index < 2; index += 1) {
       big.push(

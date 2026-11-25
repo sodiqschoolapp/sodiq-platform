@@ -1353,6 +1353,18 @@ export const uz: Texts<'one' | 'other'> = {
     noAnswer: 'Javob kelmadi. Qayta soʻrang.',
     continue: 'Davom ettirish',
     files: {
+      fields: {
+        kind: 'Turi',
+        name: 'Fayl nomi',
+        mediaType: 'Format',
+        size: 'Hajmi, bayt',
+        conversation: 'Suhbat',
+      },
+      kinds: {
+        attachment: 'Biriktirilgan fayl',
+        voice: 'Ovozli savol',
+        export: 'Eksport',
+      },
       attach: 'Fayl biriktirish',
       attached: 'Biriktirilgan fayllar',
       remove: '{{name}} ni olib tashlash',
@@ -5047,6 +5059,7 @@ export const uz: Texts<'one' | 'other'> = {
       feedback_report: 'Fikr-mulohaza',
       integration_key: 'Integratsiya kaliti',
       assistant_conversation: 'Yordamchi suhbati',
+      assistant_file: 'Yordamchi fayli',
     },
     actions: {
       auth: {

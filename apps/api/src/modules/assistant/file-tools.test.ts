@@ -26,13 +26,15 @@ describe('the tools of files', () => {
   it('read a workbook as text, sheet by sheet, cells as shown', async () => {
     const text = await workbook({
       Absent: [
-        ['Name', 'Class', 'Days'],
-        ['Aziza Karimova', '7B', 2],
+        ['Name', 'Class', 'Days', 'From'],
+        ['Aziza Karimova', '7B', 2, new Date(Date.UTC(2026, 10, 20))],
       ],
       Notes: [['Bring the forms.']],
     });
     expect(await workbookText(text)).toBe(
-      'Sheet: Absent\nName | Class | Days\nAziza Karimova | 7B | 2\nSheet: Notes\nBring the forms.',
+      'Sheet: Absent\nName | Class | Days | From\nAziza Karimova | 7B | 2 | ' +
+        new Date(Date.UTC(2026, 10, 20)).toString() +
+        '\nSheet: Notes\nBring the forms.',
     );
   });
 
