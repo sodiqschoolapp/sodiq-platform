@@ -65,6 +65,24 @@ The owner's answers to the decided-ahead questions for Phase 10, given in chat o
 19. Production deploys only after 18:00 or at the weekend, Tashkent time.
 20. The test environment stays after go-live; every change is tried there first.
 
+## 25 November 2026: the assistant knows the platform (task 11.19)
+
+Plan approved on pull request #386 with corrections 1 (offer what the role's list can do, an eval intent per role), 2 (the place's free texts filtered), 3 (one link shape), 4 (the panel's record is `search.open`), 5 (only the newest place is "now"), 6 (the map ships with the API) and 7 (no silent gaps in the walk). Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first.** The test "against the app as it runs" is a walk of the app's code with the TypeScript compiler, compared with the committed map; no page is rendered | A rendered walk needs data for every panel and a sign-in per role; the code walk sees every control whatever the data (decision 1) |
+| **Look first.** A closed list `COMMON_ACTIONS` may give one description to a common key; it is empty, because every node got its own | Decision 2, review: a closed list; nothing widened it |
+| **Look first.** Only the staff pages are in the map (sign-in, the parent portal and `/dev/patterns` are not); proposed `/spec-change` of `02`, Knows the platform: "The assistant knows every page of the staff platform (sign-in and the parent portal are left out) …" | Only the three staff roles have the assistant (decision 10) |
+| The map is a generated `.ts` module (`platform-map.generated.ts`), so `nest build` carries it into `dist`; the web package's test writes it | Correction 6; decision 3 |
+| A control's roles are its page's, narrowed by a `permits(...)` or `useMayView(...)` around it in the same component; a check through props or the server's answer is not read (`SHOWN_WITH` is empty) | Decision 4 |
+| The map's tools are not reads and count as model calls; `link_place` replaces `suggest_page`; `open_lesson_journal` stays | Decisions 5, 6 |
+| `link_place` takes the path values and search values as lists of name and value, a list's filter as `f.<key>` | Gemini's function declarations take no object of free keys |
+| A place's page unknown to the map, or one the role does not open, is left out; a value that does not fit the page's record is dropped | Decisions 7, 8; review note 8 |
+| The walk reads a label through a constant of the component and through each call of a local helper that draws the control; a panel's tabs are `{ key, title: t(…) }`; what it still cannot read is in `UNREAD_LABELS` with its count and reason | Correction 7 (found in the build: the student panel's status buttons and tabs) |
+| The 30 questions are 30 intents in the four forms (120 cases); the set has 256; the Academic Vice Principal asks as the demo branch's Vice Principal; its offer intent is a day off (the calendar), the class move being not on its list today | Decision 9; correction 1 |
+| The browser test asks from a class's panel on the Classes page (the browser test's assistant branch has classes and no students); the API test asks from a student's panel | Build plan, Done when: "a question sent from a student's panel resolves 'this student'; a link opens the named record" |
+
 ## 24 November 2026: the red asterisk comes from the schema (task 11.18)
 
 | Decision | Reason |

@@ -69,7 +69,9 @@ describe('the build of the map', () => {
   };
 
   it('names a control with no description, and a description of no control', () => {
-    const { 'features/setup/rooms-page.tsx#button:rooms.add': _left, ...rest } = all;
+    const rest = Object.fromEntries(
+      Object.entries(all).filter(([id]) => id !== 'features/setup/rooms-page.tsx#button:rooms.add'),
+    );
     expect(problemsOf({ ...rest, 'features/gone.tsx#button:x': 'Gone.' })).toEqual(
       expect.arrayContaining([
         'features/setup/rooms-page.tsx#button:rooms.add has no description',

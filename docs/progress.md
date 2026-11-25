@@ -2,6 +2,20 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 25 November 2026: task 11.19, the assistant knows the platform
+
+- **The map**: `apps/web/tooling/platform-map/` walks the web app with the TypeScript compiler (81 staff pages; about 1,470 tabs, panels, buttons, fields and columns), takes labels in three languages from the locale files, roles from the permission table and the API calls of each page, and writes `apps/api/src/modules/assistant/platform-map.generated.ts` (`pnpm assistant:map`). Every node has an English description in `descriptions/`; `tooling/platform-map.test.ts` fails on a stale map, a node without a description or a description of no node.
+- **The tools**: `find_in_platform`, `explain_place` and `link_place` (in place of `suggest_page`) for the three roles, reading only the map; they count as model calls, never as reads.
+- **The place**: the panel sends the page, its path values and search values with each question; the engine keeps only what the map records for that page, filters free texts, and tells only the newest place as "where the person is now". Answers carry `links` drawn with the router's `Link`.
+
+Left out: nothing of the task. The actions the assistant cannot take yet are 11.20's.
+
+The next sessions must know:
+
+- A new control fails `tooling/platform-map.test.ts` until it has a description in `tooling/platform-map/descriptions/<feature>.ts` and `pnpm assistant:map` has run. A label the walk cannot read goes into `UNREAD_LABELS` with its count and reason; a search key that is a plain text into `SEARCH_KINDS`.
+- A control's roles are its page's, narrowed by a `permits(...)` in the same component; a check the walk cannot see goes into `SHOWN_WITH` (`controls.ts`).
+- The eval set has 256 cases; the 30 of the map are in `eval/how-cases.ts`.
+
 ## 24 November 2026: task 11.18, a red asterisk on every required field
 
 - **The mark**: every field a form's schema needs shows a red asterisk after its label (`RequiredMark`, `--destructive` in both themes, hidden from screen readers) and `aria-required`; a group (`CheckboxGroupField`, `OrderedListField`, the new `RequiredGroup` for hand-drawn radios and ticks) says "Required field" through `aria-describedby`. Never the native `required`.

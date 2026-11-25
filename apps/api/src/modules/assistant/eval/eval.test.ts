@@ -356,7 +356,10 @@ describe(
       // One intent per role offers what the role's list proposes (review correction 1).
       for (const role of ['super_admin', 'academic_vice_principal', 'teacher'] as const) {
         const offer = HOW_INTENTS.find((one) => one.role === role && one.offers !== undefined);
-        expect(Object.hasOwn(app.get(AssistantRoutes).linesOf(role), offer?.offers ?? ''), role).toBe(true);
+        expect(
+          Object.hasOwn(app.get(AssistantRoutes).linesOf(role), offer?.offers ?? ''),
+          role,
+        ).toBe(true);
       }
       const names = new Set(Object.values(GENERATED_TOOLS).map((tool) => tool.name));
       for (const one of EVAL_CASES) {

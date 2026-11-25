@@ -45,6 +45,7 @@ export async function askTheAssistant(page: Page): Promise<void> {
   ).toBeVisible();
   await panel.getByRole('button', { name: en.assistant.close, exact: true }).click();
 
+  await theOpenRecord(page);
   await whileItWorks(page);
 
   // Every conversation, for the Super Admin.
@@ -53,6 +54,37 @@ export async function askTheAssistant(page: Page): Promise<void> {
   await expect(
     page.getByRole('row').filter({ hasText: 'Which classes have no Tutor?' }),
   ).toBeVisible();
+}
+
+/**
+ * Task 11.19 (build plan, Done when: "a question sent from a student's panel resolves 'this
+ * student'; a link opens the named record"; `02`, Knows where the person is): from a record
+ * open in its side panel, here a class, the question carries the page and the record; the
+ * scripted model reads the class open there through the platform's own route, links its
+ * record and names it. The link of the answer opens that record again.
+ */
+async function theOpenRecord(page: Page): Promise<void> {
+  await page.goto('/classes');
+  await page
+    .getByRole('button', { name: /Assistant A/ })
+    .first()
+    .click();
+  await expect(page).toHaveURL(/[?&]open=[0-9a-f-]{36}/);
+  const opened = new URL(page.url()).searchParams.get('open');
+  await page.getByRole('button', { name: en.assistant.open, exact: true }).click();
+  const panel = page.getByRole('complementary', { name: en.assistant.title });
+  await panel.getByLabel(en.assistant.question, { exact: true }).fill('Which class is this?');
+  await panel.getByRole('button', { name: en.assistant.send, exact: true }).click();
+  await expect(panel.getByText('This is Assistant A.', { exact: true })).toBeVisible();
+
+  // The link opens the named record: away from it first, then back through the link.
+  await page.goto('/classes');
+  await expect(page).not.toHaveURL(/open=/);
+  await page.getByRole('button', { name: en.assistant.open, exact: true }).click();
+  await panel.getByRole('link', { name: 'Classes', exact: true }).last().click();
+  await expect(page).toHaveURL(new RegExp(`[?&]open=${opened ?? ''}`));
+  await expect(page.getByRole('heading', { name: /Assistant A/ }).first()).toBeVisible();
+  await panel.getByRole('button', { name: en.assistant.close, exact: true }).click();
 }
 
 /**

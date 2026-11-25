@@ -19,17 +19,17 @@ const MAX_SEARCH = 12;
 export function placeOf(match: PlaceMatch | undefined): AssistantPlace | undefined {
   if (match === undefined || match.fullPath === '' || match.fullPath.length > 200) return undefined;
   const params: Record<string, string> = {};
-  for (const [name, value] of Object.entries(match.params)) {
+  for (const [name, value] of Object.entries(match.params as Record<string, unknown>)) {
     if (Object.keys(params).length >= MAX_PARAMS) break;
     if (typeof value === 'string' && name.length <= 40 && value.length <= 100) params[name] = value;
   }
   const search: Record<string, string | Record<string, string>> = {};
-  for (const [name, value] of Object.entries(match.search)) {
+  for (const [name, value] of Object.entries(match.search as Record<string, unknown>)) {
     if (Object.keys(search).length >= MAX_SEARCH || name.length > 40) continue;
     if (typeof value === 'string' && value.length <= 200) search[name] = value;
     else if (typeof value === 'number' || typeof value === 'boolean') search[name] = String(value);
     else if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
-      const filters = Object.entries(value).filter(
+      const filters = Object.entries(value as Record<string, unknown>).filter(
         (entry): entry is [string, string] =>
           typeof entry[1] === 'string' && entry[0].length <= 40 && entry[1].length <= 100,
       );
