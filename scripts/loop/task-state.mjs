@@ -57,6 +57,14 @@ export function needsBuilder(pr) {
   if (pr.draft && verdict.kind === 'approved')
     return { needed: true, why: 'the approved plan is being built' };
   if (verdict.kind === 'changes needed' && verdict.sha === pr.headSha) {
+    // A CI red verdict whose head has since passed on a re-run waits for the
+    // reviewer (finish-task step 9; review-pr step 1), not for the builder.
+    if (verdict.ciRed && !pr.headChecksFailed) {
+      return {
+        needed: false,
+        why: 'a CI red verdict whose checks passed since: waits for the reviewer',
+      };
+    }
     return {
       needed: true,
       why: verdict.ciRed ? 'a CI red verdict at the head' : 'changes needed at the head',
@@ -112,12 +120,35 @@ export function builderGone({ comments, headCommitAt }, now) {
   return { gone: now.getTime() - last >= SILENCE_STALL_MS, beat: null };
 }
 
-/** Whether the start routine was fired or resumed the task within `withinMs` before `now`. */
+/** The author of the watchdog's comments: the workflow's `github.token`. */
+export const WATCHDOG_ACCOUNT = 'github-actions[bot]';
+
+/**
+ * Whether the start routine resumed the task, or the watchdog fired for it,
+ * within `withinMs` before `now`. Only the loop's own authors count: the
+ * repository is public, and anyone's "Watchdog: " must not hold a dead task.
+ */
 export function recentlyResumed(comments, now, withinMs = 10 * 60_000) {
   return comments.some(
     (one) =>
       typeof one.body === 'string' &&
-      (one.body.startsWith('Resumed by the start routine.') || one.body.startsWith('Watchdog: ')) &&
+      ((one.user?.login === LOOP_ACCOUNT && one.body.startsWith('Resumed by the start routine.')) ||
+        (one.user?.login === WATCHDOG_ACCOUNT && one.body.startsWith('Watchdog: '))) &&
       now.getTime() - Date.parse(one.created_at) < withinMs,
   );
+}
+
+/** After this many fires on one head with no new commit, the watchdog calls the owner instead. */
+export const MAX_FIRES_PER_HEAD = 3;
+
+/** The watchdog's fires on the head commit: its comments after the head was committed. */
+export function firesOnHead(comments, headCommitAt) {
+  const since = Date.parse(headCommitAt);
+  return comments.filter(
+    (one) =>
+      one.user?.login === WATCHDOG_ACCOUNT &&
+      typeof one.body === 'string' &&
+      one.body.startsWith('Watchdog: the builder is gone') &&
+      Date.parse(one.created_at) >= since,
+  ).length;
 }

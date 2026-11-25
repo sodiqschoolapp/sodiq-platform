@@ -9,7 +9,13 @@
 //
 // Reads GITHUB_TOKEN, GITHUB_REPOSITORY, START_ROUTINE_URL, START_ROUTINE_TOKEN.
 // `--dry-run` prints the decisions and fires nothing.
-import { builderGone, needsBuilder, recentlyResumed } from './task-state.mjs';
+import {
+  builderGone,
+  firesOnHead,
+  MAX_FIRES_PER_HEAD,
+  needsBuilder,
+  recentlyResumed,
+} from './task-state.mjs';
 
 const dryRun = process.argv.includes('--dry-run');
 const repo = process.env.GITHUB_REPOSITORY ?? 'sodiqschoolapp/sodiq-platform';
@@ -98,6 +104,24 @@ for (const pull of pulls) {
     }
     const why = `${need.why}; ${seen}`;
     console.log(`#${pull.number}: stalled (${why})`);
+    const fires = firesOnHead(list, commit.commit.committer.date);
+    if (fires >= MAX_FIRES_PER_HEAD) {
+      console.log(
+        `#${pull.number}: ${fires} fires on this head with no new commit; calling the owner`,
+      );
+      if (dryRun) continue;
+      await gh(`repos/${repo}/issues/${pull.number}/comments`, {
+        method: 'POST',
+        body: JSON.stringify({
+          body: `@abbosc The watchdog resumed this task ${fires} times on ${pull.head.sha.slice(0, 7)} and no builder pushed anything (${why}). It stops firing; the task waits for you (label needs-owner). Remove the label to let the loop go on.`,
+        }),
+      });
+      await gh(`repos/${repo}/issues/${pull.number}/labels`, {
+        method: 'POST',
+        body: JSON.stringify({ labels: ['needs-owner'] }),
+      });
+      continue;
+    }
     if (dryRun) continue;
     await gh(`repos/${repo}/issues/${pull.number}/comments`, {
       method: 'POST',

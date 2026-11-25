@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
   builderGone,
+  firesOnHead,
   heartbeatAlive,
   heartbeatBody,
   needsBuilder,
@@ -114,4 +115,37 @@ test('a resume or a watchdog fire within ten minutes holds the next fire', () =>
     recentlyResumed([by('Watchdog: fired', '2026-11-25T09:49:00Z', 'github-actions[bot]')], now),
     false,
   );
+});
+
+test('a CI red verdict whose head passed on a re-run waits for the reviewer, not the builder', () => {
+  const red = [by(`[review] changes needed at ${HEAD}: CI red (e2e)`)];
+  assert.equal(needsBuilder(pr(red, { headChecksFailed: true })).needed, true);
+  assert.equal(needsBuilder(pr(red, { headChecksFailed: false })).needed, false);
+});
+
+test('only the loop account resumes and only the workflow fires: another author holds nothing', () => {
+  const now = new Date('2026-11-25T10:00:00Z');
+  const at = '2026-11-25T09:58:00Z';
+  assert.equal(
+    recentlyResumed([by('Watchdog: the builder is gone', at, 'github-actions[bot]')], now),
+    true,
+  );
+  assert.equal(recentlyResumed([by('Watchdog: x', at, 'someone-else')], now), false);
+  assert.equal(
+    recentlyResumed([by('Resumed by the start routine.', at, 'someone-else')], now),
+    false,
+  );
+  assert.equal(
+    recentlyResumed([by('Resumed by the start routine.', at, 'github-actions[bot]')], now),
+    false,
+  );
+});
+
+test('the fires on one head count the workflow comments after the head commit only', () => {
+  const comments = [
+    by('Watchdog: the builder is gone (x)', '2026-11-25T08:00:00Z', 'github-actions[bot]'),
+    by('Watchdog: the builder is gone (x)', '2026-11-25T09:10:00Z', 'github-actions[bot]'),
+    by('Watchdog: the builder is gone (x)', '2026-11-25T09:20:00Z', 'someone-else'),
+  ];
+  assert.equal(firesOnHead(comments, '2026-11-25T09:00:00Z'), 1);
 });
