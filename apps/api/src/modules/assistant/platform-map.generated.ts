@@ -161,7 +161,16 @@ export const PLATFORM_MAP_SOURCE: unknown = {
      "kind": "text"
     },
     "f": {
-     "kind": "record"
+     "kind": "record",
+     "keys": {
+      "status": {
+       "kind": "enum",
+       "values": [
+        "active",
+        "archived"
+       ]
+      }
+     }
     },
     "open": {
      "kind": "id"
@@ -212,7 +221,16 @@ export const PLATFORM_MAP_SOURCE: unknown = {
      "kind": "text"
     },
     "f": {
-     "kind": "record"
+     "kind": "record",
+     "keys": {
+      "state": {
+       "kind": "enum",
+       "values": [
+        "active",
+        "archived"
+       ]
+      }
+     }
     },
     "open": {
      "kind": "id"
@@ -245,7 +263,8 @@ export const PLATFORM_MAP_SOURCE: unknown = {
      "kind": "text"
     },
     "f": {
-     "kind": "record"
+     "kind": "record",
+     "keys": {}
     },
     "open": {
      "kind": "id"
@@ -334,7 +353,50 @@ export const PLATFORM_MAP_SOURCE: unknown = {
      "kind": "text"
     },
     "f": {
-     "kind": "record"
+     "kind": "record",
+     "keys": {
+      "grade": {
+       "kind": "enum",
+       "values": [
+        "0",
+        "1",
+        "10",
+        "11",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6",
+        "7",
+        "8",
+        "9"
+       ]
+      },
+      "language": {
+       "kind": "enum",
+       "values": [
+        "ru",
+        "uz"
+       ]
+      },
+      "status": {
+       "kind": "enum",
+       "values": [
+        "active",
+        "archived"
+       ]
+      },
+      "tutor": {
+       "kind": "enum",
+       "values": [
+        "none",
+        "some"
+       ]
+      },
+      "year": {
+       "kind": "id"
+      }
+     }
     },
     "open": {
      "kind": "id"
@@ -365,7 +427,37 @@ export const PLATFORM_MAP_SOURCE: unknown = {
      "kind": "text"
     },
     "f": {
-     "kind": "record"
+     "kind": "record",
+     "keys": {
+      "role": {
+       "kind": "enum",
+       "values": [
+        "academic_vice_principal",
+        "class_teacher",
+        "head_teacher",
+        "head_tutor",
+        "hr",
+        "librarian",
+        "nurse",
+        "parent",
+        "principal",
+        "psychologist",
+        "senior_head_teacher",
+        "spiritual_vice_principal",
+        "student",
+        "super_admin",
+        "teacher",
+        "tutor"
+       ]
+      },
+      "state": {
+       "kind": "enum",
+       "values": [
+        "handled",
+        "new"
+       ]
+      }
+     }
     },
     "open": {
      "kind": "id"
@@ -397,7 +489,17 @@ export const PLATFORM_MAP_SOURCE: unknown = {
      "kind": "text"
     },
     "f": {
-     "kind": "record"
+     "kind": "record",
+     "keys": {
+      "state": {
+       "kind": "enum",
+       "values": [
+        "expired",
+        "restorable",
+        "restored"
+       ]
+      }
+     }
     },
     "open": {
      "kind": "id"
@@ -436,7 +538,46 @@ export const PLATFORM_MAP_SOURCE: unknown = {
      "kind": "text"
     },
     "f": {
-     "kind": "record"
+     "kind": "record",
+     "keys": {
+      "grade": {
+       "kind": "enum",
+       "values": [
+        "0",
+        "1",
+        "10",
+        "11",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6",
+        "7",
+        "8",
+        "9"
+       ]
+      },
+      "language": {
+       "kind": "enum",
+       "values": [
+        "ru",
+        "uz"
+       ]
+      },
+      "status": {
+       "kind": "enum",
+       "values": [
+        "active",
+        "archived"
+       ]
+      },
+      "subject": {
+       "kind": "id"
+      },
+      "year": {
+       "kind": "id"
+      }
+     }
     },
     "open": {
      "kind": "id"
@@ -471,7 +612,8 @@ export const PLATFORM_MAP_SOURCE: unknown = {
      "kind": "text"
     },
     "f": {
-     "kind": "record"
+     "kind": "record",
+     "keys": {}
     },
     "open": {
      "kind": "id"
@@ -502,7 +644,17 @@ export const PLATFORM_MAP_SOURCE: unknown = {
      "kind": "text"
     },
     "f": {
-     "kind": "record"
+     "kind": "record",
+     "keys": {
+      "state": {
+       "kind": "enum",
+       "values": [
+        "active",
+        "ended",
+        "revoked"
+       ]
+      }
+     }
     },
     "open": {
      "kind": "id"
@@ -552,7 +704,12 @@ export const PLATFORM_MAP_SOURCE: unknown = {
      "kind": "text"
     },
     "f": {
-     "kind": "record"
+     "kind": "record",
+     "keys": {
+      "subject": {
+       "kind": "id"
+      }
+     }
     },
     "open": {
      "kind": "id"
@@ -652,7 +809,8 @@ export const PLATFORM_MAP_SOURCE: unknown = {
      "kind": "text"
     },
     "f": {
-     "kind": "record"
+     "kind": "record",
+     "keys": {}
     },
     "open": {
      "kind": "id"
@@ -692,7 +850,32 @@ export const PLATFORM_MAP_SOURCE: unknown = {
      "kind": "text"
     },
     "f": {
-     "kind": "record"
+     "kind": "record",
+     "keys": {
+      "class": {
+       "kind": "text"
+      },
+      "kind": {
+       "kind": "enum",
+       "values": [
+        "full",
+        "temporary"
+       ]
+      },
+      "state": {
+       "kind": "enum",
+       "values": [
+        "coming",
+        "ended",
+        "ending_this_week",
+        "in_force",
+        "voided"
+       ]
+      },
+      "subject": {
+       "kind": "id"
+      }
+     }
     },
     "open": {
      "kind": "id"
@@ -753,7 +936,8 @@ export const PLATFORM_MAP_SOURCE: unknown = {
      "kind": "text"
     },
     "f": {
-     "kind": "record"
+     "kind": "record",
+     "keys": {}
     },
     "open": {
      "kind": "id"
@@ -787,7 +971,8 @@ export const PLATFORM_MAP_SOURCE: unknown = {
      "kind": "text"
     },
     "f": {
-     "kind": "record"
+     "kind": "record",
+     "keys": {}
     },
     "open": {
      "kind": "id"
@@ -824,7 +1009,20 @@ export const PLATFORM_MAP_SOURCE: unknown = {
      "kind": "text"
     },
     "f": {
-     "kind": "record"
+     "kind": "record",
+     "keys": {
+      "category": {
+       "kind": "enum",
+       "values": [
+        "family",
+        "illness",
+        "none",
+        "school_permitted",
+        "unexcused",
+        "unknown"
+       ]
+      }
+     }
     },
     "open": {
      "kind": "id"
@@ -900,7 +1098,8 @@ export const PLATFORM_MAP_SOURCE: unknown = {
      "kind": "text"
     },
     "f": {
-     "kind": "record"
+     "kind": "record",
+     "keys": {}
     },
     "open": {
      "kind": "id"
@@ -969,7 +1168,8 @@ export const PLATFORM_MAP_SOURCE: unknown = {
      "kind": "text"
     },
     "f": {
-     "kind": "record"
+     "kind": "record",
+     "keys": {}
     },
     "open": {
      "kind": "id"
@@ -1000,7 +1200,8 @@ export const PLATFORM_MAP_SOURCE: unknown = {
      "kind": "text"
     },
     "f": {
-     "kind": "record"
+     "kind": "record",
+     "keys": {}
     },
     "open": {
      "kind": "id"
@@ -1033,7 +1234,16 @@ export const PLATFORM_MAP_SOURCE: unknown = {
      "kind": "text"
     },
     "f": {
-     "kind": "record"
+     "kind": "record",
+     "keys": {
+      "role": {
+       "kind": "enum",
+       "values": [
+        "head_teacher",
+        "senior_head_teacher"
+       ]
+      }
+     }
     },
     "open": {
      "kind": "id"
@@ -1064,7 +1274,16 @@ export const PLATFORM_MAP_SOURCE: unknown = {
      "kind": "text"
     },
     "f": {
-     "kind": "record"
+     "kind": "record",
+     "keys": {
+      "password": {
+       "kind": "enum",
+       "values": [
+        "expired",
+        "valid"
+       ]
+      }
+     }
     },
     "open": {
      "kind": "id"
@@ -1094,7 +1313,15 @@ export const PLATFORM_MAP_SOURCE: unknown = {
      "kind": "text"
     },
     "f": {
-     "kind": "record"
+     "kind": "record",
+     "keys": {
+      "expired": {
+       "kind": "enum",
+       "values": [
+        "yes"
+       ]
+      }
+     }
     },
     "open": {
      "kind": "id"
@@ -1125,7 +1352,15 @@ export const PLATFORM_MAP_SOURCE: unknown = {
      "kind": "text"
     },
     "f": {
-     "kind": "record"
+     "kind": "record",
+     "keys": {
+      "phone": {
+       "kind": "enum",
+       "values": [
+        "no_valid_phone"
+       ]
+      }
+     }
     },
     "open": {
      "kind": "id"
@@ -1189,7 +1424,8 @@ export const PLATFORM_MAP_SOURCE: unknown = {
      "kind": "text"
     },
     "f": {
-     "kind": "record"
+     "kind": "record",
+     "keys": {}
     },
     "open": {
      "kind": "id"
@@ -1226,7 +1462,65 @@ export const PLATFORM_MAP_SOURCE: unknown = {
      "kind": "text"
     },
     "f": {
-     "kind": "record"
+     "kind": "record",
+     "keys": {
+      "category": {
+       "kind": "enum",
+       "values": [
+        "academic_vice_principal",
+        "class_teacher",
+        "head_teacher",
+        "head_tutor",
+        "principal",
+        "senior_head_teacher",
+        "spiritual_vice_principal",
+        "super_admin",
+        "teacher",
+        "tutor"
+       ]
+      },
+      "department": {
+       "kind": "id"
+      },
+      "division": {
+       "kind": "id"
+      },
+      "grade": {
+       "kind": "enum",
+       "values": [
+        "0",
+        "1",
+        "10",
+        "11",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6",
+        "7",
+        "8",
+        "9"
+       ]
+      },
+      "language": {
+       "kind": "enum",
+       "values": [
+        "ru",
+        "uz"
+       ]
+      },
+      "status": {
+       "kind": "enum",
+       "values": [
+        "active",
+        "inactive",
+        "left"
+       ]
+      },
+      "subject": {
+       "kind": "id"
+      }
+     }
     },
     "open": {
      "kind": "id"
@@ -1263,7 +1557,8 @@ export const PLATFORM_MAP_SOURCE: unknown = {
      "kind": "text"
     },
     "f": {
-     "kind": "record"
+     "kind": "record",
+     "keys": {}
     },
     "open": {
      "kind": "id"
@@ -1304,7 +1599,56 @@ export const PLATFORM_MAP_SOURCE: unknown = {
      "kind": "text"
     },
     "f": {
-     "kind": "record"
+     "kind": "record",
+     "keys": {
+      "class": {
+       "kind": "idOrEnum",
+       "values": [
+        "none"
+       ]
+      },
+      "consent": {
+       "kind": "enum",
+       "values": [
+        "missing"
+       ]
+      },
+      "grade": {
+       "kind": "enum",
+       "values": [
+        "0",
+        "1",
+        "10",
+        "11",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6",
+        "7",
+        "8",
+        "9"
+       ]
+      },
+      "group": {
+       "kind": "id"
+      },
+      "language": {
+       "kind": "enum",
+       "values": [
+        "ru",
+        "uz"
+       ]
+      },
+      "status": {
+       "kind": "enum",
+       "values": [
+        "active",
+        "graduated",
+        "inactive"
+       ]
+      }
+     }
     },
     "open": {
      "kind": "id"
@@ -1356,7 +1700,8 @@ export const PLATFORM_MAP_SOURCE: unknown = {
      "kind": "text"
     },
     "f": {
-     "kind": "record"
+     "kind": "record",
+     "keys": {}
     },
     "open": {
      "kind": "id"
@@ -1390,7 +1735,46 @@ export const PLATFORM_MAP_SOURCE: unknown = {
      "kind": "text"
     },
     "f": {
-     "kind": "record"
+     "kind": "record",
+     "keys": {
+      "department": {
+       "kind": "id"
+      },
+      "grade": {
+       "kind": "enum",
+       "values": [
+        "0",
+        "1",
+        "10",
+        "11",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6",
+        "7",
+        "8",
+        "9"
+       ]
+      },
+      "language": {
+       "kind": "enum",
+       "values": [
+        "ru",
+        "uz"
+       ]
+      },
+      "status": {
+       "kind": "enum",
+       "values": [
+        "closed",
+        "open"
+       ]
+      },
+      "subject": {
+       "kind": "id"
+      }
+     }
     },
     "open": {
      "kind": "id"
@@ -1443,7 +1827,31 @@ export const PLATFORM_MAP_SOURCE: unknown = {
      "kind": "text"
     },
     "f": {
-     "kind": "record"
+     "kind": "record",
+     "keys": {
+      "grade": {
+       "kind": "number"
+      },
+      "quarter": {
+       "kind": "enum",
+       "values": [
+        "1",
+        "2",
+        "3",
+        "4"
+       ]
+      },
+      "state": {
+       "kind": "enum",
+       "values": [
+        "active",
+        "archived"
+       ]
+      },
+      "subject": {
+       "kind": "id"
+      }
+     }
     },
     "open": {
      "kind": "id"
@@ -1484,7 +1892,8 @@ export const PLATFORM_MAP_SOURCE: unknown = {
      "kind": "text"
     },
     "f": {
-     "kind": "record"
+     "kind": "record",
+     "keys": {}
     },
     "open": {
      "kind": "id"
@@ -1545,7 +1954,31 @@ export const PLATFORM_MAP_SOURCE: unknown = {
      "kind": "text"
     },
     "f": {
-     "kind": "record"
+     "kind": "record",
+     "keys": {
+      "grade": {
+       "kind": "number"
+      },
+      "quarter": {
+       "kind": "enum",
+       "values": [
+        "1",
+        "2",
+        "3",
+        "4"
+       ]
+      },
+      "state": {
+       "kind": "enum",
+       "values": [
+        "active",
+        "archived"
+       ]
+      },
+      "subject": {
+       "kind": "id"
+      }
+     }
     },
     "open": {
      "kind": "id"
@@ -1583,7 +2016,8 @@ export const PLATFORM_MAP_SOURCE: unknown = {
      "kind": "text"
     },
     "f": {
-     "kind": "record"
+     "kind": "record",
+     "keys": {}
     },
     "open": {
      "kind": "id"
@@ -1663,7 +2097,8 @@ export const PLATFORM_MAP_SOURCE: unknown = {
      "kind": "text"
     },
     "f": {
-     "kind": "record"
+     "kind": "record",
+     "keys": {}
     },
     "open": {
      "kind": "id"
@@ -1697,7 +2132,8 @@ export const PLATFORM_MAP_SOURCE: unknown = {
      "kind": "text"
     },
     "f": {
-     "kind": "record"
+     "kind": "record",
+     "keys": {}
     },
     "open": {
      "kind": "id"
@@ -1789,7 +2225,8 @@ export const PLATFORM_MAP_SOURCE: unknown = {
      "kind": "text"
     },
     "f": {
-     "kind": "record"
+     "kind": "record",
+     "keys": {}
     },
     "open": {
      "kind": "id"
@@ -1820,7 +2257,8 @@ export const PLATFORM_MAP_SOURCE: unknown = {
      "kind": "text"
     },
     "f": {
-     "kind": "record"
+     "kind": "record",
+     "keys": {}
     },
     "open": {
      "kind": "id"
@@ -1871,7 +2309,18 @@ export const PLATFORM_MAP_SOURCE: unknown = {
      "kind": "text"
     },
     "f": {
-     "kind": "record"
+     "kind": "record",
+     "keys": {
+      "reason": {
+       "kind": "enum",
+       "values": [
+        "absences_in_row",
+        "low_attendance",
+        "low_result",
+        "result_drop"
+       ]
+      }
+     }
     },
     "open": {
      "kind": "id"
@@ -1918,7 +2367,8 @@ export const PLATFORM_MAP_SOURCE: unknown = {
      "kind": "text"
     },
     "f": {
-     "kind": "record"
+     "kind": "record",
+     "keys": {}
     },
     "open": {
      "kind": "id"
@@ -1969,7 +2419,8 @@ export const PLATFORM_MAP_SOURCE: unknown = {
      "kind": "text"
     },
     "f": {
-     "kind": "record"
+     "kind": "record",
+     "keys": {}
     },
     "open": {
      "kind": "id"
@@ -2036,7 +2487,8 @@ export const PLATFORM_MAP_SOURCE: unknown = {
      "kind": "text"
     },
     "f": {
-     "kind": "record"
+     "kind": "record",
+     "keys": {}
     },
     "open": {
      "kind": "id"
@@ -2104,7 +2556,8 @@ export const PLATFORM_MAP_SOURCE: unknown = {
      "kind": "text"
     },
     "f": {
-     "kind": "record"
+     "kind": "record",
+     "keys": {}
     },
     "open": {
      "kind": "id"
@@ -2169,7 +2622,8 @@ export const PLATFORM_MAP_SOURCE: unknown = {
      "kind": "text"
     },
     "f": {
-     "kind": "record"
+     "kind": "record",
+     "keys": {}
     },
     "open": {
      "kind": "id"
@@ -2200,7 +2654,16 @@ export const PLATFORM_MAP_SOURCE: unknown = {
      "kind": "text"
     },
     "f": {
-     "kind": "record"
+     "kind": "record",
+     "keys": {
+      "status": {
+       "kind": "enum",
+       "values": [
+        "active",
+        "archived"
+       ]
+      }
+     }
     },
     "open": {
      "kind": "id"
@@ -2231,7 +2694,30 @@ export const PLATFORM_MAP_SOURCE: unknown = {
      "kind": "text"
     },
     "f": {
-     "kind": "record"
+     "kind": "record",
+     "keys": {
+      "kind": {
+       "kind": "enum",
+       "values": [
+        "day_off",
+        "special_day"
+       ]
+      },
+      "state": {
+       "kind": "enum",
+       "values": [
+        "active",
+        "archived"
+       ]
+      },
+      "when": {
+       "kind": "enum",
+       "values": [
+        "coming",
+        "past"
+       ]
+      }
+     }
     },
     "open": {
      "kind": "id"
@@ -2265,7 +2751,18 @@ export const PLATFORM_MAP_SOURCE: unknown = {
      "kind": "text"
     },
     "f": {
-     "kind": "record"
+     "kind": "record",
+     "keys": {
+      "level": {
+       "kind": "enum",
+       "values": [
+        "default",
+        "grades",
+        "weekday",
+        "weekday_grades"
+       ]
+      }
+     }
     },
     "open": {
      "kind": "id"
@@ -2296,7 +2793,16 @@ export const PLATFORM_MAP_SOURCE: unknown = {
      "kind": "text"
     },
     "f": {
-     "kind": "record"
+     "kind": "record",
+     "keys": {
+      "state": {
+       "kind": "enum",
+       "values": [
+        "active",
+        "archived"
+       ]
+      }
+     }
     },
     "open": {
      "kind": "id"
@@ -2349,7 +2855,16 @@ export const PLATFORM_MAP_SOURCE: unknown = {
      "kind": "text"
     },
     "f": {
-     "kind": "record"
+     "kind": "record",
+     "keys": {
+      "status": {
+       "kind": "enum",
+       "values": [
+        "active",
+        "archived"
+       ]
+      }
+     }
     },
     "open": {
      "kind": "id"
@@ -2392,7 +2907,33 @@ export const PLATFORM_MAP_SOURCE: unknown = {
      "kind": "text"
     },
     "f": {
-     "kind": "record"
+     "kind": "record",
+     "keys": {
+      "building": {
+       "kind": "id"
+      },
+      "floor": {
+       "kind": "id"
+      },
+      "status": {
+       "kind": "enum",
+       "values": [
+        "closed",
+        "in_use",
+        "under_repair"
+       ]
+      },
+      "type": {
+       "kind": "enum",
+       "values": [
+        "classroom",
+        "hall",
+        "laboratory",
+        "other",
+        "sports_hall"
+       ]
+      }
+     }
     },
     "open": {
      "kind": "id"
@@ -2441,7 +2982,23 @@ export const PLATFORM_MAP_SOURCE: unknown = {
      "kind": "text"
     },
     "f": {
-     "kind": "record"
+     "kind": "record",
+     "keys": {
+      "kind": {
+       "kind": "enum",
+       "values": [
+        "break",
+        "lesson"
+       ]
+      },
+      "state": {
+       "kind": "enum",
+       "values": [
+        "active",
+        "archived"
+       ]
+      }
+     }
     },
     "open": {
      "kind": "id"
@@ -2475,7 +3032,43 @@ export const PLATFORM_MAP_SOURCE: unknown = {
      "kind": "text"
     },
     "f": {
-     "kind": "record"
+     "kind": "record",
+     "keys": {
+      "department": {
+       "kind": "id"
+      },
+      "grade": {
+       "kind": "enum",
+       "values": [
+        "0",
+        "1",
+        "10",
+        "11",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6",
+        "7",
+        "8",
+        "9"
+       ]
+      },
+      "journalType": {
+       "kind": "enum",
+       "values": [
+        "attendance_only",
+        "graded"
+       ]
+      },
+      "status": {
+       "kind": "enum",
+       "values": [
+        "active",
+        "archived"
+       ]
+      }
+     }
     },
     "open": {
      "kind": "id"
@@ -2509,7 +3102,8 @@ export const PLATFORM_MAP_SOURCE: unknown = {
      "kind": "text"
     },
     "f": {
-     "kind": "record"
+     "kind": "record",
+     "keys": {}
     },
     "open": {
      "kind": "id"
@@ -2561,7 +3155,17 @@ export const PLATFORM_MAP_SOURCE: unknown = {
      "kind": "text"
     },
     "f": {
-     "kind": "record"
+     "kind": "record",
+     "keys": {
+      "status": {
+       "kind": "enum",
+       "values": [
+        "closed",
+        "current",
+        "planned"
+       ]
+      }
+     }
     },
     "open": {
      "kind": "id"
@@ -2636,7 +3240,18 @@ export const PLATFORM_MAP_SOURCE: unknown = {
      "kind": "text"
     },
     "f": {
-     "kind": "record"
+     "kind": "record",
+     "keys": {
+      "state": {
+       "kind": "enum",
+       "values": [
+        "current",
+        "ended",
+        "planned",
+        "withdrawn"
+       ]
+      }
+     }
     },
     "open": {
      "kind": "id"
@@ -2759,7 +3374,8 @@ export const PLATFORM_MAP_SOURCE: unknown = {
      "kind": "text"
     },
     "f": {
-     "kind": "record"
+     "kind": "record",
+     "keys": {}
     },
     "open": {
      "kind": "id"
@@ -2798,7 +3414,25 @@ export const PLATFORM_MAP_SOURCE: unknown = {
      "kind": "text"
     },
     "f": {
-     "kind": "record"
+     "kind": "record",
+     "keys": {
+      "problems": {
+       "kind": "enum",
+       "values": [
+        "with",
+        "without"
+       ]
+      },
+      "subject": {
+       "kind": "id"
+      },
+      "teacher": {
+       "kind": "id"
+      },
+      "unit": {
+       "kind": "id"
+      }
+     }
     },
     "open": {
      "kind": "id"
@@ -2835,7 +3469,8 @@ export const PLATFORM_MAP_SOURCE: unknown = {
      "kind": "text"
     },
     "f": {
-     "kind": "record"
+     "kind": "record",
+     "keys": {}
     },
     "open": {
      "kind": "id"
@@ -2872,7 +3507,8 @@ export const PLATFORM_MAP_SOURCE: unknown = {
      "kind": "text"
     },
     "f": {
-     "kind": "record"
+     "kind": "record",
+     "keys": {}
     },
     "open": {
      "kind": "id"
@@ -2906,7 +3542,18 @@ export const PLATFORM_MAP_SOURCE: unknown = {
      "kind": "text"
     },
     "f": {
-     "kind": "record"
+     "kind": "record",
+     "keys": {
+      "state": {
+       "kind": "enum",
+       "values": [
+        "current",
+        "ended",
+        "planned",
+        "withdrawn"
+       ]
+      }
+     }
     },
     "open": {
      "kind": "id"
@@ -2939,7 +3586,8 @@ export const PLATFORM_MAP_SOURCE: unknown = {
      "kind": "text"
     },
     "f": {
-     "kind": "record"
+     "kind": "record",
+     "keys": {}
     },
     "open": {
      "kind": "id"

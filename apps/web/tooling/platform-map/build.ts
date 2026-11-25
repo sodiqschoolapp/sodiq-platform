@@ -1,3 +1,4 @@
+import * as SHARED from '@sodiq/shared';
 import {
   MENU_ITEMS,
   PERMISSIONS,
@@ -11,6 +12,7 @@ import {
   type PlatformMapLabel,
   type PlatformMapNode,
   type PlatformMapPage,
+  type PlatformFilterKind,
   type PlatformValueKind,
   type Role,
 } from '@sodiq/shared';
@@ -22,6 +24,7 @@ import {
   PRIMITIVES,
   SEARCH_KINDS,
   SHARED_PARTS,
+  UNREAD_FILTERS,
   UNREAD_LABELS,
   type PageGuard,
 } from './source';
@@ -78,6 +81,19 @@ export function baseId(id: string): string {
 }
 
 const SORT = (a: string, b: string): number => a.localeCompare(b);
+
+/** The values of a constant of `@sodiq/shared` the options of a filter are made from. */
+function sharedValues(name: string): string[] | undefined {
+  const value: unknown = (SHARED as Record<string, unknown>)[name];
+  if (!Array.isArray(value)) return undefined;
+  const out: string[] = [];
+  for (const one of value as unknown[]) {
+    if (typeof one === 'string') out.push(one);
+    else if (typeof one === 'number' && Number.isInteger(one)) out.push(String(one));
+    else return undefined;
+  }
+  return out;
+}
 
 export function buildMap(inputs: MapInputs): { map: PlatformMap; problems: WalkProblem[] } {
   const { walk, locales } = inputs;
@@ -187,6 +203,76 @@ export function buildMap(inputs: MapInputs): { map: PlatformMap; problems: WalkP
     );
   };
 
+  // The filters of the lists a page draws (review of #386, must fix 1): each key with the
+  // values its options offer; a filter the walk cannot read is in `UNREAD_FILTERS`.
+  const unreadUsed = new Set<string>();
+  function filtersOf(files: readonly string[]): Record<string, PlatformFilterKind> {
+    const out: Record<string, { values: Set<string>; ids: boolean; hand?: PlatformFilterKind }> =
+      {};
+    for (const file of files) {
+      for (const filter of walk.filters[file] ?? []) {
+        const id = `${file}#${filter.key}`;
+        const one = (out[filter.key] ??= { values: new Set(), ids: false });
+        if (filter.unread) {
+          const hand = UNREAD_FILTERS[id];
+          if (hand === undefined) {
+            problem(
+              file,
+              filter.line,
+              `The options of the filter ${id} cannot be read; add it to UNREAD_FILTERS`,
+            );
+            continue;
+          }
+          unreadUsed.add(id);
+          one.hand = { kind: hand.kind };
+          continue;
+        }
+        if (Object.hasOwn(UNREAD_FILTERS, id)) {
+          unreadUsed.add(id);
+          problem(
+            'tooling/platform-map/source.ts',
+            0,
+            `UNREAD_FILTERS names ${id}, whose options the walk reads`,
+          );
+        }
+        for (const value of filter.values) one.values.add(value);
+        one.ids ||= filter.ids;
+        for (const name of filter.constants) {
+          const values = sharedValues(name);
+          if (values === undefined) {
+            problem(
+              file,
+              filter.line,
+              `${name} of @sodiq/shared is not a list of texts or whole numbers`,
+            );
+            continue;
+          }
+          for (const value of values) one.values.add(value);
+        }
+      }
+    }
+    const kinds: Record<string, PlatformFilterKind> = {};
+    for (const key of Object.keys(out).sort(SORT)) {
+      const one = out[key];
+      if (one === undefined) continue;
+      const values = [...one.values].sort(SORT);
+      if (one.hand !== undefined) {
+        if (values.length > 0 || one.ids) {
+          problem(
+            'tooling/platform-map/source.ts',
+            0,
+            `The filter ${key} is read in one file and not in another`,
+          );
+        }
+        kinds[key] = one.hand;
+      } else if (one.ids)
+        kinds[key] = values.length > 0 ? { kind: 'idOrEnum', values } : { kind: 'id' };
+      else if (values.length > 0) kinds[key] = { kind: 'enum', values };
+      else problem('tooling/platform-map/source.ts', 0, `The filter ${key} offers no value`);
+    }
+    return kinds;
+  }
+
   const pages: PlatformMapPage[] = [];
   const pagesOfFile = new Map<string, string[]>();
   const rolesOfPage = new Map<string, Role[]>();
@@ -227,8 +313,10 @@ export function buildMap(inputs: MapInputs): { map: PlatformMap; problems: WalkP
     const search: Record<string, PlatformValueKind> = {};
     for (const [name, type] of Object.entries(page.search)) {
       if (type.kind === 'enum') search[name] = { kind: 'enum', values: type.values };
-      else if (type.kind === 'number' || type.kind === 'boolean' || type.kind === 'record')
+      else if (type.kind === 'number' || type.kind === 'boolean')
         search[name] = { kind: type.kind };
+      else if (type.kind === 'record')
+        search[name] = { kind: 'record', keys: filtersOf(page.files) };
       else {
         const kind = SEARCH_KINDS[name];
         if (kind === undefined)
@@ -336,6 +424,14 @@ export function buildMap(inputs: MapInputs): { map: PlatformMap; problems: WalkP
   for (const id of [...Object.keys(inputs.shownWith), ...Object.keys(inputs.calls)]) {
     if (!ids.has(id))
       problem('tooling/platform-map/source.ts', 0, `${id} names no node of the map`);
+  }
+  for (const id of Object.keys(UNREAD_FILTERS)) {
+    if (!unreadUsed.has(id))
+      problem(
+        'tooling/platform-map/source.ts',
+        0,
+        `UNREAD_FILTERS names ${id}, which is no filter of a page`,
+      );
   }
   for (const key of Object.keys(inputs.commonActions)) {
     if (label(key, 'tooling/platform-map/descriptions', 0) === null) continue;

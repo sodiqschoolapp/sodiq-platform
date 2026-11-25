@@ -101,6 +101,22 @@ describe('the walk of the code', () => {
     ]);
   });
 
+  it('reads the key of each filter of a list and the values its options offer, and names one it cannot read (review of #386, must fix 1)', () => {
+    expect(
+      walk.filters['features/things/things-page.tsx']?.map(({ key, values, ids, unread }) => ({
+        key,
+        values,
+        ids,
+        unread,
+      })),
+    ).toEqual([
+      { key: 'state', values: ['open', 'shut'], ids: false, unread: false },
+      { key: 'level', values: ['5', '6'], ids: false, unread: false },
+      { key: 'place', values: ['none'], ids: true, unread: false },
+      { key: 'odd', values: [], ids: false, unread: true },
+    ]);
+  });
+
   it('names a control whose label is not a key it can read (correction 7)', () => {
     expect(walk.problems).toEqual([
       expect.objectContaining({

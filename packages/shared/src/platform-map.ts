@@ -18,6 +18,20 @@ const labelSchema = z.strictObject({ uz: z.string(), ru: z.string(), en: z.strin
 
 export type PlatformMapLabel = z.infer<typeof labelSchema>;
 
+/**
+ * How the value of one filter of a list is checked (review of #386, must fix 1): one of its
+ * constant options, a record's id where its options are records read from a query, or both.
+ */
+export const platformFilterKindSchema = z.discriminatedUnion('kind', [
+  z.strictObject({ kind: z.literal('id') }),
+  z.strictObject({ kind: z.literal('text') }),
+  z.strictObject({ kind: z.literal('number') }),
+  z.strictObject({ kind: z.literal('enum'), values: z.array(z.string()).min(1) }),
+  z.strictObject({ kind: z.literal('idOrEnum'), values: z.array(z.string()).min(1) }),
+]);
+
+export type PlatformFilterKind = z.infer<typeof platformFilterKindSchema>;
+
 /** How a path parameter or a search value of an address is checked. */
 export const platformValueKindSchema = z.discriminatedUnion('kind', [
   z.strictObject({ kind: z.literal('id') }),
@@ -26,7 +40,11 @@ export const platformValueKindSchema = z.discriminatedUnion('kind', [
   z.strictObject({ kind: z.literal('text') }),
   z.strictObject({ kind: z.literal('number') }),
   z.strictObject({ kind: z.literal('boolean') }),
-  z.strictObject({ kind: z.literal('record') }),
+  /** The filters of a list (`f`): each key the list has, with the kind of its value. */
+  z.strictObject({
+    kind: z.literal('record'),
+    keys: z.record(z.string(), platformFilterKindSchema),
+  }),
   z.strictObject({ kind: z.literal('enum'), values: z.array(z.string()).min(1) }),
 ]);
 

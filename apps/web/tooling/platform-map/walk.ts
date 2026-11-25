@@ -60,6 +60,22 @@ export interface WalkedControl {
   line: number;
 }
 
+/**
+ * A filter of a list (`Filter` of `components/list/list-state.ts`) as the walk reads it in a
+ * file: its key and the values its options offer (review of #386, must fix 1). `values` are
+ * the constant values, `ids` that some options are records of a query (a class's id); a filter
+ * whose options the walk cannot read is `unread`, and its kind is written by hand.
+ */
+export interface WalkedFilter {
+  key: string;
+  values: string[];
+  ids: boolean;
+  /** Constants of `@sodiq/shared` the options are made from, whose values the build reads. */
+  constants: string[];
+  unread: boolean;
+  line: number;
+}
+
 export interface WalkProblem {
   file: string;
   line: number;
@@ -73,6 +89,8 @@ export interface Walk {
   controls: WalkedControl[];
   /** The API calls each file makes, as `METHOD /api/path`. */
   calls: Record<string, string[]>;
+  /** The filters of the lists each file draws, by file. */
+  filters: Record<string, WalkedFilter[]>;
   /** The files under `components/` that call `t()` in a control. */
   componentFilesWithControls: string[];
   problems: WalkProblem[];
@@ -872,6 +890,388 @@ function controlsOf(
 }
 
 /** The API calls of a file, `api.POST('/api/…')`, as `POST /api/…`. */
+/** What the options of a filter offer, as far as the walk reads them. */
+interface Offered {
+  values: Set<string>;
+  ids: boolean;
+  unread: boolean;
+  /** Constants of `@sodiq/shared` whose type holds no literal (`GRADES`), read by the build. */
+  constants: Set<string>;
+}
+
+const ID_NAME = /^(id|[A-Za-z]+Id)$/;
+
+/** The constant values a type holds: string literals, or number literals as text. */
+function constantsOf(type: ts.Type): string[] | undefined {
+  const parts = type.isUnion() ? type.types : [type];
+  const out: string[] = [];
+  for (const part of parts) {
+    if (part.isStringLiteral()) out.push(part.value);
+    else if (part.isNumberLiteral()) out.push(String(part.value));
+    else if (part.flags & ts.TypeFlags.Undefined) continue;
+    else return undefined;
+  }
+  return out.length > 0 && out.length <= 60 ? out : undefined;
+}
+
+function unwrap(expression: ts.Expression): ts.Expression {
+  let value = expression;
+  while (
+    ts.isAsExpression(value) ||
+    ts.isSatisfiesExpression(value) ||
+    ts.isParenthesizedExpression(value) ||
+    ts.isNonNullExpression(value)
+  ) {
+    value = value.expression;
+  }
+  return value;
+}
+
+/** The value of one option: a constant, a number turned to text, or a record's id. */
+function optionValue(checker: ts.TypeChecker, expression: ts.Expression, into: Offered): void {
+  const value = unwrap(expression);
+  // `String(grade)` and `${grade}`: the values of what is turned to text.
+  let inner: ts.Expression = value;
+  if (
+    ts.isCallExpression(value) &&
+    ts.isIdentifier(value.expression) &&
+    value.expression.text === 'String' &&
+    value.arguments.length === 1 &&
+    value.arguments[0] !== undefined
+  ) {
+    inner = value.arguments[0];
+  } else if (
+    ts.isTemplateExpression(value) &&
+    value.head.text === '' &&
+    value.templateSpans.length === 1 &&
+    value.templateSpans[0]?.literal.text === ''
+  ) {
+    inner = value.templateSpans[0].expression;
+  }
+  const constants = constantsOf(checker.getTypeAtLocation(inner));
+  if (constants !== undefined) {
+    for (const one of constants) into.values.add(one);
+    return;
+  }
+  if (ts.isPropertyAccessExpression(inner) && ID_NAME.test(inner.name.text)) {
+    into.ids = true;
+    return;
+  }
+  into.unread = true;
+}
+
+/** The object a callback returns: `(x) => ({ … })` or `(x) => { return { … }; }`. */
+function returnedObject(callback: ts.Expression): ts.ObjectLiteralExpression | undefined {
+  const fn = unwrap(callback);
+  if (!ts.isArrowFunction(fn) && !ts.isFunctionExpression(fn)) return undefined;
+  if (!ts.isBlock(fn.body)) {
+    const body = unwrap(fn.body);
+    return ts.isObjectLiteralExpression(body) ? body : undefined;
+  }
+  const last = fn.body.statements[fn.body.statements.length - 1];
+  if (last !== undefined && ts.isReturnStatement(last) && last.expression !== undefined) {
+    const body = unwrap(last.expression);
+    return ts.isObjectLiteralExpression(body) ? body : undefined;
+  }
+  return undefined;
+}
+
+function propertyValue(
+  element: ts.ObjectLiteralExpression,
+  name: string,
+): ts.Expression | undefined {
+  for (const one of element.properties) {
+    if (ts.isPropertyAssignment(one) && one.name.getText() === name) return one.initializer;
+    if (ts.isShorthandPropertyAssignment(one) && one.name.text === name) return one.name;
+  }
+  return undefined;
+}
+
+/** What an expression of options offers: a list, a `.map` of one, a constant of the file. */
+function offeredBy(
+  checker: ts.TypeChecker,
+  expression: ts.Expression,
+  into: Offered,
+  depth = 0,
+): void {
+  const value = unwrap(expression);
+  if (depth > 6) {
+    into.unread = true;
+    return;
+  }
+  if (ts.isArrayLiteralExpression(value)) {
+    for (const element of value.elements) {
+      if (ts.isSpreadElement(element)) offeredBy(checker, element.expression, into, depth + 1);
+      else {
+        const item = unwrap(element);
+        const option = ts.isObjectLiteralExpression(item)
+          ? propertyValue(item, 'value')
+          : undefined;
+        if (option === undefined) into.unread = true;
+        else optionValue(checker, option, into);
+      }
+    }
+    return;
+  }
+  if (ts.isConditionalExpression(value)) {
+    offeredBy(checker, value.whenTrue, into, depth + 1);
+    offeredBy(checker, value.whenFalse, into, depth + 1);
+    return;
+  }
+  if (ts.isIdentifier(value)) {
+    const initializer = localInitializer(checker, value) ?? moduleInitializer(checker, value);
+    if (initializer === undefined) into.unread = true;
+    else offeredBy(checker, initializer, into, depth + 1);
+    return;
+  }
+  if (ts.isCallExpression(value) && ts.isPropertyAccessExpression(value.expression)) {
+    const method = value.expression.name.text;
+    // `.sort(…)`, `.filter(…)`, `.slice(…)` keep the options they are given.
+    if (method === 'sort' || method === 'filter' || method === 'slice' || method === 'toSorted') {
+      offeredBy(checker, value.expression.expression, into, depth + 1);
+      return;
+    }
+    const callback = value.arguments[0];
+    if (method === 'map' && callback !== undefined) {
+      const returned = returnedObject(callback);
+      const option = returned === undefined ? undefined : propertyValue(returned, 'value');
+      if (option === undefined) into.unread = true;
+      else mappedValue(checker, option, callback, value.expression.expression, into, depth);
+      return;
+    }
+  }
+  into.unread = true;
+}
+
+/** The parameter of a callback, `(x) =>` or `([x, y]) =>`. */
+function parameterOf(callback: ts.Expression): ts.ParameterDeclaration | undefined {
+  const fn = unwrap(callback);
+  return ts.isArrowFunction(fn) || ts.isFunctionExpression(fn) ? fn.parameters[0] : undefined;
+}
+
+/** The name an expression of a value is: `grade` of `String(grade)`, `value`. */
+function plainName(expression: ts.Expression): ts.Identifier | undefined {
+  let value = unwrap(expression);
+  if (
+    ts.isCallExpression(value) &&
+    ts.isIdentifier(value.expression) &&
+    value.expression.text === 'String' &&
+    value.arguments[0] !== undefined
+  ) {
+    value = unwrap(value.arguments[0]);
+  }
+  return ts.isIdentifier(value) ? value : undefined;
+}
+
+/**
+ * The value of an option made by `.map` over a list: its type's constants when it has them;
+ * else, when it is the callback's element (`(grade) => String(grade)`) or the first of its pair
+ * (`([value, label]) =>`), what the list holds there.
+ */
+function mappedValue(
+  checker: ts.TypeChecker,
+  option: ts.Expression,
+  callback: ts.Expression,
+  list: ts.Expression,
+  into: Offered,
+  depth: number,
+): void {
+  const probe: Offered = { values: new Set(), ids: false, unread: false, constants: new Set() };
+  optionValue(checker, option, probe);
+  if (!probe.unread) {
+    merge(into, probe);
+    return;
+  }
+  const name = plainName(option);
+  const parameter = parameterOf(callback);
+  if (name === undefined || parameter === undefined) {
+    into.unread = true;
+    return;
+  }
+  if (ts.isIdentifier(parameter.name) && parameter.name.text === name.text) {
+    elementsOffered(checker, list, 'element', into, depth + 1);
+    return;
+  }
+  const first = ts.isArrayBindingPattern(parameter.name) ? parameter.name.elements[0] : undefined;
+  if (
+    first !== undefined &&
+    ts.isBindingElement(first) &&
+    ts.isIdentifier(first.name) &&
+    first.name.text === name.text
+  ) {
+    elementsOffered(checker, list, 'key', into, depth + 1);
+    return;
+  }
+  into.unread = true;
+}
+
+function merge(into: Offered, from: Offered): void {
+  for (const one of from.values) into.values.add(one);
+  for (const one of from.constants) into.constants.add(one);
+  into.ids ||= from.ids;
+  into.unread ||= from.unread;
+}
+
+/** Is a name imported from `@sodiq/shared`? */
+function fromShared(name: ts.Identifier): boolean {
+  return name
+    .getSourceFile()
+    .statements.some(
+      (statement) =>
+        ts.isImportDeclaration(statement) &&
+        ts.isStringLiteral(statement.moduleSpecifier) &&
+        statement.moduleSpecifier.text === '@sodiq/shared' &&
+        importedNames(statement).includes(name.text),
+    );
+}
+
+/**
+ * What a list of a page holds as its elements (`element`) or as the first of each pair
+ * (`key`): an array, a `Map` or `Set` of one, `.map` and `.flatMap` of one, a constant.
+ */
+function elementsOffered(
+  checker: ts.TypeChecker,
+  expression: ts.Expression,
+  mode: 'element' | 'key',
+  into: Offered,
+  depth: number,
+): void {
+  const value = unwrap(expression);
+  if (depth > 10) {
+    into.unread = true;
+    return;
+  }
+  const element = (item: ts.Expression): void => {
+    const one = unwrap(item);
+    if (mode === 'key') {
+      const first = ts.isArrayLiteralExpression(one) ? one.elements[0] : undefined;
+      if (first === undefined || ts.isSpreadElement(first)) into.unread = true;
+      else optionValue(checker, first, into);
+    } else optionValue(checker, one, into);
+  };
+  if (
+    ts.isBinaryExpression(value) &&
+    value.operatorToken.kind === ts.SyntaxKind.QuestionQuestionToken
+  ) {
+    // `(list.data?.rows ?? [])`: the rows.
+    elementsOffered(checker, value.left, mode, into, depth + 1);
+    return;
+  }
+  if (ts.isArrayLiteralExpression(value)) {
+    for (const item of value.elements) {
+      if (ts.isSpreadElement(item))
+        elementsOffered(checker, item.expression, mode, into, depth + 1);
+      else element(item);
+    }
+    return;
+  }
+  if (
+    ts.isNewExpression(value) &&
+    ts.isIdentifier(value.expression) &&
+    (value.expression.text === 'Map' || value.expression.text === 'Set') &&
+    value.arguments?.[0] !== undefined
+  ) {
+    // A Map's entries are its pairs: the keys are the first of the pairs it is made from.
+    elementsOffered(checker, value.arguments[0], mode, into, depth + 1);
+    return;
+  }
+  if (ts.isIdentifier(value)) {
+    const initializer = localInitializer(checker, value) ?? moduleInitializer(checker, value);
+    if (initializer !== undefined) {
+      elementsOffered(checker, initializer, mode, into, depth + 1);
+      return;
+    }
+    const constants =
+      mode === 'element' ? constantsOf(checker.getTypeAtLocation(value)) : undefined;
+    if (constants !== undefined) for (const one of constants) into.values.add(one);
+    else if (mode === 'element' && fromShared(value)) into.constants.add(value.text);
+    else into.unread = true;
+    return;
+  }
+  if (ts.isCallExpression(value)) {
+    const callee = value.expression;
+    // `useMemo(() => …)`: what the callback returns.
+    if (ts.isIdentifier(callee) && callee.text === 'useMemo' && value.arguments[0] !== undefined) {
+      const returned = returnedExpression(value.arguments[0]);
+      if (returned === undefined) into.unread = true;
+      else elementsOffered(checker, returned, mode, into, depth + 1);
+      return;
+    }
+    if (ts.isPropertyAccessExpression(callee)) {
+      const method = callee.name.text;
+      if (
+        method === 'sort' ||
+        method === 'filter' ||
+        method === 'slice' ||
+        method === 'toSorted' ||
+        method === 'entries'
+      ) {
+        elementsOffered(checker, callee.expression, mode, into, depth + 1);
+        return;
+      }
+      const callback = value.arguments[0];
+      const returned = callback === undefined ? undefined : returnedExpression(callback);
+      if (method === 'map' && returned !== undefined) {
+        element(returned);
+        return;
+      }
+      if (method === 'flatMap' && returned !== undefined) {
+        const inner = unwrap(returned);
+        if (ts.isPropertyAccessExpression(inner)) {
+          // `.flatMap((division) => division.departments)`: the list's elements, then on.
+          into.unread = true;
+          return;
+        }
+        elementsOffered(checker, inner, mode, into, depth + 1);
+        return;
+      }
+    }
+  }
+  into.unread = true;
+}
+
+/** The expression a callback returns: an arrow's body or a block's last `return`. */
+function returnedExpression(callback: ts.Expression): ts.Expression | undefined {
+  const fn = unwrap(callback);
+  if (!ts.isArrowFunction(fn) && !ts.isFunctionExpression(fn)) return undefined;
+  if (!ts.isBlock(fn.body)) return fn.body;
+  const last = fn.body.statements[fn.body.statements.length - 1];
+  return last !== undefined && ts.isReturnStatement(last) ? last.expression : undefined;
+}
+
+/** The filters of the lists a file draws: each object literal with a key, options and matches. */
+function filtersOf(checker: ts.TypeChecker, source: ts.SourceFile): WalkedFilter[] {
+  const out: WalkedFilter[] = [];
+  const visit = (node: ts.Node): void => {
+    if (ts.isObjectLiteralExpression(node)) {
+      const key = propertyValue(node, 'key');
+      const options = propertyValue(node, 'options');
+      const matches = propertyValue(node, 'matches');
+      if (key !== undefined && options !== undefined && matches !== undefined) {
+        const keyValue = unwrap(key);
+        const into: Offered = {
+          values: new Set(),
+          ids: false,
+          unread: false,
+          constants: new Set(),
+        };
+        offeredBy(checker, options, into);
+        out.push({
+          key: ts.isStringLiteral(keyValue) ? keyValue.text : '',
+          values: [...into.values].sort(),
+          ids: into.ids,
+          constants: [...into.constants].sort(),
+          unread: into.unread || !ts.isStringLiteral(keyValue),
+          line: lineOf(node),
+        });
+      }
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(source);
+  return out;
+}
+
 function callsOf(source: ts.SourceFile): string[] {
   const out = new Set<string>();
   const visit = (node: ts.Node): void => {
@@ -1193,12 +1593,15 @@ export function walkApp(options: WalkOptions): Walk {
   const allFiles = new Set<string>([...shellFiles, ...pages.flatMap((page) => page.files)]);
   const controls: WalkedControl[] = [];
   const calls: Record<string, string[]> = {};
+  const filters: Record<string, WalkedFilter[]> = {};
   for (const file of [...allFiles].sort()) {
     const source = program.getSourceFile(path.join(options.src, file));
     if (source === undefined) continue;
     controls.push(...controlsOf(checker, source, file, problems));
     const made = callsOf(source);
     if (made.length > 0) calls[file] = made;
+    const offered = filtersOf(checker, source);
+    if (offered.length > 0) filters[file] = offered;
   }
 
   // Every file of `components/` with a control: a shared part, or named as a primitive.
@@ -1217,6 +1620,7 @@ export function walkApp(options: WalkOptions): Walk {
     shellFiles,
     controls,
     calls,
+    filters,
     componentFilesWithControls: componentFilesWithControls.sort(),
     problems,
   };

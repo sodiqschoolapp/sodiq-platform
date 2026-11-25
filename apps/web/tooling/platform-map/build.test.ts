@@ -1,4 +1,5 @@
 // @vitest-environment node
+import { GRADES } from '@sodiq/shared';
 import { describe, expect, it } from 'vitest';
 import { buildMap } from './build';
 import type { Walk } from './walk';
@@ -45,6 +46,7 @@ const walk: Walk = {
     },
   ],
   calls: { 'features/setup/rooms-page.tsx': ['POST /api/setup/rooms'] },
+  filters: {},
   componentFilesWithControls: [],
   problems: [],
 };
@@ -86,7 +88,9 @@ describe('the build of the map', () => {
 
   it('names a label key without a text in every language, and a search key of no kind', () => {
     // The app's own UNREAD_LABELS and SHARED_PARTS lines do not meet this walk of one page.
-    expect(problemsOf(all).filter((one) => !/^(UNREAD_LABELS|SHARED_PARTS)/.test(one))).toEqual([
+    expect(
+      problemsOf(all).filter((one) => !/^(UNREAD_LABELS|UNREAD_FILTERS|SHARED_PARTS)/.test(one)),
+    ).toEqual([
       'The search key odd of /setup/rooms has no kind in SEARCH_KINDS',
       'The label key rooms.missing has no text in every language',
     ]);
@@ -124,6 +128,47 @@ describe('the build of the map', () => {
         'No area no_such_area in the permission table',
         'features/setup/rooms-page.tsx#button:rooms.missing calls NoSuchController_run, which is no operation of the API',
       ]),
+    );
+  });
+
+  it('gives a list page its filter keys with the values their options offer, and names a filter it cannot read (review of #386, must fix 1)', () => {
+    const page = walk.pages[0];
+    if (page === undefined) throw new Error('the walk has a page');
+    const { map, problems } = buildMap({
+      ...inputs,
+      descriptions: all,
+      walk: {
+        ...walk,
+        pages: [{ ...page, search: { open: { kind: 'string' }, f: { kind: 'record' } } }],
+        filters: {
+          'features/setup/rooms-page.tsx': [
+            {
+              key: 'type',
+              values: ['hall', 'other'],
+              ids: false,
+              constants: [],
+              unread: false,
+              line: 1,
+            },
+            { key: 'floor', values: [], ids: true, constants: [], unread: false, line: 2 },
+            { key: 'class', values: ['none'], ids: true, constants: [], unread: false, line: 3 },
+            { key: 'grade', values: [], ids: false, constants: ['GRADES'], unread: false, line: 4 },
+            { key: 'odd', values: [], ids: false, constants: [], unread: true, line: 5 },
+          ],
+        },
+      },
+    });
+    expect(map.pages[0]?.search.f).toEqual({
+      kind: 'record',
+      keys: {
+        class: { kind: 'idOrEnum', values: ['none'] },
+        floor: { kind: 'id' },
+        grade: { kind: 'enum', values: GRADES.map(String).sort((a, b) => a.localeCompare(b)) },
+        type: { kind: 'enum', values: ['hall', 'other'] },
+      },
+    });
+    expect(problems.map((one) => one.problem)).toContain(
+      'The options of the filter features/setup/rooms-page.tsx#odd cannot be read; add it to UNREAD_FILTERS',
     );
   });
 });

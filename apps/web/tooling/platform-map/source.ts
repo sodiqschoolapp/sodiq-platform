@@ -80,7 +80,6 @@ export type ValueKind =
   | { kind: 'text' }
   | { kind: 'number' }
   | { kind: 'boolean' }
-  | { kind: 'record' }
   | { kind: 'enum'; values: readonly string[] };
 
 /** A path parameter that is not an id, with its values. */
@@ -118,6 +117,40 @@ export const SEARCH_KINDS: Readonly<Record<string, ValueKind>> = {
   floor: { kind: 'id' },
   version: { kind: 'id' },
   id: { kind: 'id' },
+};
+
+/**
+ * Filters of a list whose options the walk cannot read (review of #386, must fix 1; no silent
+ * gaps, as `UNREAD_LABELS`): by `file#key`, the kind of the value and why. Every other filter
+ * of a list is read from its `options`, and `link_place` takes only its keys and values.
+ */
+export const UNREAD_FILTERS: Readonly<
+  Record<string, { kind: 'id' | 'text' | 'number'; reason: string }>
+> = {
+  'features/journal/exemptions-page.tsx#class': {
+    kind: 'text',
+    reason: "The options are the class names of the rows read (a class's name, not its id).",
+  },
+  'features/plans/plan-masters-page.tsx#grade': {
+    kind: 'number',
+    reason: 'The options are the grades of the master plans read.',
+  },
+  'features/setup/subjects-page.tsx#department': {
+    kind: 'id',
+    reason: "The options are the departments of the branch's divisions, read through a memo.",
+  },
+  'features/timetable/load-page.tsx#unit': {
+    kind: 'id',
+    reason: 'The options are made by a local helper of the page from the load rows read.',
+  },
+  'features/timetable/load-page.tsx#subject': {
+    kind: 'id',
+    reason: 'The options are made by a local helper of the page from the load rows read.',
+  },
+  'features/timetable/load-page.tsx#teacher': {
+    kind: 'id',
+    reason: 'The options are made by a local helper of the page from the load rows read.',
+  },
 };
 
 /**

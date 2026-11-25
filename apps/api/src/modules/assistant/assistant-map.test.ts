@@ -148,6 +148,32 @@ describe('the map of the platform', () => {
       open: ID,
       f: { status: 'active' },
     });
+    // A class of the list by its id, or "No class" (review of #386, must fix 1).
+    for (const value of [ID, 'none']) {
+      expect(
+        'link' in
+          linkOf('super_admin', {
+            page: '/people/students',
+            search: [{ name: 'f.class', value }],
+          }),
+      ).toBe(true);
+    }
+    // A filter key the list does not have, or a value its options do not offer, would open the
+    // list unfiltered: refused (review of #386, must fix 1).
+    for (const pair of [
+      { name: 'f.colour', value: 'red' },
+      { name: 'f.status', value: 'nonsense' },
+      { name: 'f.grade', value: '99' },
+      { name: 'f.class', value: 'not-an-id' },
+    ]) {
+      expect(linkOf('super_admin', { page: '/people/students', search: [pair] })).toEqual({
+        error: 'not_a_place_value',
+      });
+    }
+    // A list page with no filter of its own takes none.
+    expect(
+      linkOf('super_admin', { page: '/audit', search: [{ name: 'f.status', value: 'active' }] }),
+    ).toEqual({ error: 'not_a_place_value' });
   });
 
   it('names in a link only a control the role sees; for another, the page (review should fix 7)', () => {
@@ -169,6 +195,20 @@ describe('the map of the platform', () => {
         search: { tab: 'other', q: 'Call +998 90 123 45 67', open: 'not-an-id', year: ID },
       }),
     ).toEqual({ page: '/journal', params: {}, search: { q: 'Call [removed]', year: ID } });
+    // A filter key the list does not have and a value it does not offer are dropped, each
+    // alone (review of #386, must fix 1).
+    expect(
+      placeOf('super_admin', {
+        page: '/people/students',
+        search: { f: { status: 'active', colour: 'red', grade: '99' } },
+      }),
+    ).toEqual({ page: '/people/students', params: {}, search: { f: { status: 'active' } } });
+    expect(
+      placeOf('super_admin', {
+        page: '/people/students',
+        search: { f: { status: 'nonsense' } },
+      }),
+    ).toEqual({ page: '/people/students', params: {}, search: {} });
     expect(placeOf('super_admin', { page: '/no-such-page' })).toBeUndefined();
     expect(placeOf('teacher', { page: '/setup/branches' })).toBeUndefined();
     expect(

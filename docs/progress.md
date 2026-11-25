@@ -13,6 +13,7 @@ Left out: the API call of a control is found for 162 of 526 buttons (its `onClic
 The next sessions must know:
 
 - A new control fails `tooling/platform-map.test.ts` until it has a description in `tooling/platform-map/descriptions/<feature>.ts` and `pnpm assistant:map` has run. A label the walk cannot read goes into `UNREAD_LABELS` with its count and reason; a search key that is a plain text into `SEARCH_KINDS`.
+- A list's filter keys and values are read from its `Filter` objects (`key`, `options`); a filter whose options the walk cannot read goes into `UNREAD_FILTERS` with its kind and reason, and `link_place` takes only those keys and values.
 - A control's roles are its page's, narrowed by a `permits(...)` in the same component; a check the walk cannot see goes into `SHOWN_WITH` (`controls.ts`).
 - The eval set has 256 cases; the 30 of the map are in `eval/how-cases.ts`.
 - Never run `prettier --write` from a package folder over `*.generated.ts`: the root `.prettierignore` applies only from the root (`pnpm format`); the map and the tools file are compared as written.

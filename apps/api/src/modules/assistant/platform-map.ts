@@ -9,6 +9,7 @@ import {
   type PlatformMapLabel,
   type PlatformMapNode,
   type PlatformMapPage,
+  type PlatformFilterKind,
   type PlatformValueKind,
   type Role,
 } from '@sodiq/shared';
@@ -38,19 +39,49 @@ export const CHILDREN_LIMIT = 60;
 
 const UUID = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
 
-/** Is a value of an address one its kind takes? */
+/**
+ * Is a value of one filter of a list one the list offers (review of #386, must fix 1)? A key
+ * the list does not have, or a value it does not offer, the list passes over (`matchingRows`),
+ * so the link would open the list unfiltered.
+ */
+function filterFits(kind: PlatformFilterKind | undefined, value: unknown): boolean {
+  if (kind === undefined || typeof value !== 'string' || value.length > 100) return false;
+  switch (kind.kind) {
+    case 'id':
+      return UUID.test(value);
+    case 'number':
+      return /^-?\d{1,9}$/.test(value);
+    case 'text':
+      return value.trim() !== '';
+    case 'enum':
+      return kind.values.includes(value);
+    case 'idOrEnum':
+      return kind.values.includes(value) || UUID.test(value);
+  }
+}
+
+/** The filters of a list that fit: each key the list has, with a value it offers. */
+export function filtersThatFit(
+  kind: Extract<PlatformValueKind, { kind: 'record' }>,
+  value: unknown,
+): Record<string, string> {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) return {};
+  const out: Record<string, string> = {};
+  for (const [key, item] of Object.entries(value)) {
+    const own = Object.hasOwn(kind.keys, key) ? kind.keys[key] : undefined;
+    if (filterFits(own, item)) out[key] = item as string;
+  }
+  return out;
+}
+
+/** Is a value of an address one its kind takes? A list's filters: every one of them. */
 export function valueFits(kind: PlatformValueKind, value: unknown): boolean {
   if (kind.kind === 'record') {
     return (
       value !== null &&
       typeof value === 'object' &&
       !Array.isArray(value) &&
-      Object.entries(value).every(
-        ([key, item]) =>
-          /^[A-Za-z][A-Za-z0-9_-]{0,39}$/.test(key) &&
-          typeof item === 'string' &&
-          item.length <= 100,
-      )
+      Object.keys(filtersThatFit(kind, value)).length === Object.keys(value).length
     );
   }
   if (typeof value !== 'string' || value.length > 200) return false;
@@ -103,8 +134,14 @@ export function placeOf(role: Role, place: AssistantPlace | undefined): StoredPl
   const search: Record<string, string | Record<string, string>> = {};
   for (const [name, value] of Object.entries(place.search ?? {})) {
     const kind = Object.hasOwn(page.search, name) ? page.search[name] : undefined;
+    if (kind?.kind === 'record') {
+      // A filter key the list does not have, or a value it does not offer, is dropped alone.
+      const fits = filtersThatFit(kind, value);
+      if (Object.keys(fits).length > 0) search[name] = filtered(fits);
+      continue;
+    }
     if (kind === undefined || !valueFits(kind, value)) continue;
-    search[name] = kind.kind === 'text' || kind.kind === 'record' ? filtered(value) : value;
+    search[name] = kind.kind === 'text' ? filtered(value) : value;
   }
   return { page: page.path, params, search };
 }
