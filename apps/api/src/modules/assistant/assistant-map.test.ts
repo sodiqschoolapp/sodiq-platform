@@ -210,12 +210,28 @@ describe('the assistant: where the person is, and the map in a question', () => 
   let scene: AssistantScene;
   let northStudent: string;
   let southStudent: string;
+  let vice: string;
+  let teacher: string;
 
   beforeAll(async () => {
     scene = await assistantScene();
     const members = new MembersKit(scene.database.migrator, scene.adminAccount);
     northStudent = await members.student(scene.north);
     southStudent = await members.student(scene.south);
+    // Permission review, should fix 5: the two roles held in one branch.
+    const viceSession = await scene.kit.completeSession('Gulnora', 'Viceova');
+    await scene.kit.giveRole(viceSession.account.id, {
+      role: 'academic_vice_principal',
+      branchId: scene.north,
+    });
+    vice = viceSession.cookie;
+    const teacherSession = await scene.kit.completeSession('Sardor', 'Teacherov');
+    await scene.kit.giveRole(teacherSession.account.id, { role: 'teacher', branchId: scene.north });
+    teacher = teacherSession.cookie;
+    await scene.database.migrator
+      .updateTable('assistant_settings')
+      .set({ school_on: true, roles_on: ['super_admin', 'academic_vice_principal', 'teacher'] })
+      .execute();
   }, 120_000);
 
   afterAll(async () => {
@@ -260,6 +276,56 @@ describe('the assistant: where the person is, and the map in a question', () => 
     );
     const [result] = lastResults(scene.model.requests[1] as ModelRequest);
     expect(result?.result).toEqual({ status: 404, error: 'not_found' });
+  });
+
+  it('reads another branch’s student of a place with the screen’s refusal, as the Academic Vice Principal of one branch (permission review, should fix 5)', async () => {
+    scene.model.script(
+      calls({ name: STUDENT_DETAIL, args: { id: southStudent } }),
+      answer('That record is not open to you.'),
+    );
+    answered(
+      await ask(scene, vice, scene.north, {
+        role: 'academic_vice_principal',
+        text: 'Which class is this student in?',
+        place: { page: '/people/students', search: { open: southStudent } },
+      }),
+    );
+    const [result] = lastResults(scene.model.requests[1] as ModelRequest);
+    expect(result?.result).toEqual({ status: 404, error: 'not_found' });
+  });
+
+  it('refuses a Teacher the journal a place names when it is not the Teacher’s own (permission review, should fix 5)', async () => {
+    scene.model.script(
+      calls({ name: 'JournalsController_grid', args: { journalId: ID } }),
+      answer('That journal is not open to you.'),
+    );
+    answered(
+      await ask(scene, teacher, scene.north, {
+        role: 'teacher',
+        text: 'Who is absent in this journal?',
+        place: { page: JOURNAL, params: { journalId: ID } },
+      }),
+    );
+    expect(personText(scene.model.requests[0]).at(-1)).toContain(`journalId = ${ID}`);
+    const [result] = lastResults(scene.model.requests[1] as ModelRequest);
+    const given = result?.result as { status?: number; error?: string; data?: unknown };
+    expect(given.data).toBeUndefined();
+    expect(given.status ?? 0).toBeGreaterThanOrEqual(400);
+  });
+
+  it('links nothing for a Teacher who asks for a page the Teacher does not open (permission review, should fix 6)', async () => {
+    scene.model.script(
+      calls({ name: 'link_place', args: { page: '/setup/branches' } }),
+      answer('That page is not open to you.'),
+    );
+    const reply = answered(
+      await ask(scene, teacher, scene.north, { role: 'teacher', text: 'Open the branches.' }),
+    );
+    expect(lastResults(scene.model.requests[1] as ModelRequest).map((one) => one.result)).toEqual([
+      { error: 'not_a_page' },
+    ]);
+    const last = reply.conversation.messages.at(-1);
+    expect(last?.kind === 'answer' ? last.links : null).toEqual([]);
   });
 
   it('knows which journal and which lesson are open (`edge`, "it knows which journal is meant")', async () => {

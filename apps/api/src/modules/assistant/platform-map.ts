@@ -102,7 +102,7 @@ export function placeOf(role: Role, place: AssistantPlace | undefined): StoredPl
   }
   const search: Record<string, string | Record<string, string>> = {};
   for (const [name, value] of Object.entries(place.search ?? {})) {
-    const kind = page.search[name];
+    const kind = Object.hasOwn(page.search, name) ? page.search[name] : undefined;
     if (kind === undefined || !valueFits(kind, value)) continue;
     search[name] = kind.kind === 'text' || kind.kind === 'record' ? filtered(value) : value;
   }
@@ -342,7 +342,7 @@ export function linkOf(
   }
   const search: Record<string, string | Record<string, string>> = {};
   for (const [name, value] of Object.entries(searchGiven)) {
-    const kind = page.search[name];
+    const kind = Object.hasOwn(page.search, name) ? page.search[name] : undefined;
     if (kind === undefined || !valueFits(kind, value)) return { error: 'not_a_place_value' };
     search[name] = value as string | Record<string, string>;
   }
