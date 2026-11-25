@@ -89,6 +89,10 @@ Plan approved on pull request #387 with corrections 1 (the update grant of `data
 | "Mark everyone present" is one step of the journal's bulk save `POST /api/journal/lessons/:lessonId/attendance` with one entry and version per student; a step whose body is a list of students' entries shows them as one list, each named from the lesson's own students | Plan review 1; build plan |
 | An operation id that ends like a plural form (`ExamsController_one`) has its name under `assistant.actions.<id>_op` | i18next would read it as a plural form |
 | `ASSISTANT_MAX_STEPS` stays 10 | The limits are 11.21's; decision 14 |
+| The address and the region are Contact for the model, though the student record files them under Identity | `02`: "contact (phones, emails, addresses)"; code review must fix 1 |
+| The names in a step's grouped list are given only when the person's own read of the lesson's card and journal answers | Permission review 2 |
+| A school-wide step carries the branch at Confirm (the guard compares it); a school-wide read or preview names none; the dispatcher sends a route only to its own path | Permission review 1 and 5 |
+| An area switch audits each action whose state it flips, beside the area's own entry | Code review must fix 2 |
 
 ## 25 November 2026: the assistant knows the platform (task 11.19)
 
