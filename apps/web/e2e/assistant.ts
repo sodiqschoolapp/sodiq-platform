@@ -180,10 +180,11 @@ async function theSwitches(page: Page): Promise<void> {
     { exact: true },
   );
   await expect(whole).toBeChecked();
-  await whole.uncheck();
+  // Saved when pressed: the box shows the server's answer once it comes.
+  await whole.click();
   await expect(whole).not.toBeChecked();
   await expect(area.getByText(/^0 of \d+ on$/)).toBeVisible();
-  await whole.check();
+  await whole.click();
   await expect(whole).toBeChecked();
   // The heavy actions start off (`02`, Switches): a password reset says so.
   const access = actions.locator('details').filter({ hasText: en.assistant.areas.account_access });
