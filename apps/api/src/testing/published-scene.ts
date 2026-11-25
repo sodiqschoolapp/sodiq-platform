@@ -142,6 +142,11 @@ export async function publishedScene(
     startsOn?: string;
     /** Task 5.19: the dates of the four quarters, `QUARTERS` unless said. */
     quarters?: readonly (readonly [string, string])[];
+    /**
+     * Task 11.23: the length of the lesson slots, 45 minutes unless said (two branches whose
+     * lessons of other lengths meet at clock time).
+     */
+    lessonMinutes?: number;
   } = {},
 ) {
   const grade = input.grade ?? 7;
@@ -155,7 +160,7 @@ export async function publishedScene(
       .where('number', '=', index + 1)
       .execute();
   }
-  const lesson = await t.createSlotType(branch, 'Lesson', 'lesson', 45);
+  const lesson = await t.createSlotType(branch, 'Lesson', 'lesson', input.lessonMinutes ?? 45);
   const pause = await t.createSlotType(branch, 'Break', 'break', 10);
   const regular = await t.createTemplate(
     branch,

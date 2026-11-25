@@ -665,12 +665,17 @@ export async function explainResult(
   }
   const quarter = quarters.find((one) => one.id === row.quarterId);
   const unit = isRecord(row.unit) ? row.unit : {};
-  const journalId = typeof unit.journalId === 'string' ? unit.journalId : undefined;
   const trace = await context.read(EXPLAIN_READS.lessons, {
     id: studentId,
     subjectId,
     quarterId: row.quarterId,
   });
+  // The journal of the student's last lesson of the quarter, as the trace names it.
+  const lastUnit = trace.ok
+    ? [...listOf(trace.body, 'lessons')].reverse().find((lesson) => isRecord(lesson.unit))?.unit
+    : undefined;
+  const journalId =
+    isRecord(lastUnit) && typeof lastUnit.journalId === 'string' ? lastUnit.journalId : undefined;
   let weights: unknown = null;
   let weightsNote: string | undefined;
   if (journalId !== undefined && Object.hasOwn(context.lines, EXPLAIN_READS.journal)) {
