@@ -71,7 +71,7 @@ No other role sees the page.
 
 ## The assistant
 
-<!-- Sources: spec 02 (Assistant; Accounts and sign-in: build order), 13 (Security; Running cost), edge/people-roles-accounts (The assistant; Personal data and the audit log), 06 (Changes after publishing), edge/time-dates-calendar, 09, edge/lesson-plans; docs/spec-changes.md, 21 and 24 November 2026; tasks 11.12, 11.13, 11.14, 11.15 and 11.16 -->
+<!-- Sources: spec 02 (Assistant; Accounts and sign-in: build order), 13 (Security; Running cost), edge/people-roles-accounts (The assistant; Personal data and the audit log), 06 (Changes after publishing), edge/time-dates-calendar, 09, edge/lesson-plans; docs/spec-changes.md, 21, 24 and 25 November 2026; tasks 11.12, 11.13, 11.14, 11.15, 11.16 and 11.19 -->
 
 **What it is.** The assistant lets a person ask in plain words, in Uzbek, Russian or English, and answers from what the platform holds: "which classes have no Tutor", "what does 5A have on Tuesday", "who is on the early-warning list". It reads at once. A change is only proposed: the person sees every step and presses **Confirm** (**Tasdiqlash**); nothing changes before. It uses Google's Gemini language model.
 
@@ -95,12 +95,14 @@ No other role sees the assistant. A Head Teacher, a Senior Head Teacher, a Tutor
 2. The chat button (**Assistant**, **Yordamchi**) appears in the top bar. Press it: the panel opens beside the page. On a phone it fills the screen.
 3. Type the question and press **Send** (**Yuborish**), or Enter. The question shows at once and the box is empty again. While the assistant works, the conversation shows what it is reading ("Reading: Classes and groups", **Oʻqimoqda: Sinflar va guruhlar**) and the answer as it is written, with the line **The assistant is working…** (**Yordamchi ishlamoqda…**). Then the answer stays, with what was read ("Read: Classes and groups").
 4. The person can close the panel or go to another page meanwhile: the work goes on, and the answer is in the conversation when it is opened again. A second question can be sent once the first is answered.
-5. When the answer needs a step the assistant does not take, it links the page where the person takes it.
-6. When the person asks for a change, the answer ends with a **Proposal** (**Taklif**): each step with the action's name, the record, the lessons it touches (class, date, time and subject), what is sent, and the assistant's own sentence. Press **Confirm** to run the steps, or **Decline** (**Rad etish**). A proposal is valid for 15 minutes.
-7. After Confirm each step shows **Done**, **Refused** with the reason, **Outdated** or **Not run**.
-8. **New conversation** (**Yangi suhbat**) starts a new one; the panel lists the person's earlier conversations of the branches and roles they hold now.
-9. The page **Assistant** (**Yordamchi**), in the menu of the three roles while the assistant is on for the role chosen, shows the same conversations: the list on the left with **New conversation**, the chat beside it. The panel's button **Open the Assistant page** (**Yordamchi sahifasini ochish**) opens it. On a phone the list and the chat are two steps; **Back to the conversations** (**Suhbatlarga qaytish**) returns to the list.
-10. School setup → **Assistant conversations** (**Yordamchi suhbatlari**) lists every conversation of the school, with the person, the role, the branch and the last activity. Open one to read it; an archived one has **Restore** (**Tiklash**).
+5. When the answer needs a step the assistant does not take, it gives the steps with the names on the screen and links the place where the person takes it: the page, and where it knows them the record, the tab or the filter. Pressing the link opens it, the record in its side panel.
+6. **What is this, where is it, how do we.** The assistant knows every page of the staff platform and each tab, panel, button, field and column on it: its name in Uzbek, Russian and English, what it does and which roles see it. Ask "what does the Bulk cancel button do?", "where do I create an exemption?" or "how do we move a student to another branch?": it answers in steps with the names the person sees. When the person's role does not see the control, it says so and names the roles that do. When it can do the thing itself, it offers to.
+7. **Where the person is.** A question asked from the panel carries the page beside it, the record open in its side panel and the journal or lesson open, so "this student", "this class" or "this lesson" need no more words. The assistant still reads the record with the person's own rights. The Assistant page sends no place.
+8. When the person asks for a change, the answer ends with a **Proposal** (**Taklif**): each step with the action's name, the record, the lessons it touches (class, date, time and subject), what is sent, and the assistant's own sentence. Press **Confirm** to run the steps, or **Decline** (**Rad etish**). A proposal is valid for 15 minutes.
+9. After Confirm each step shows **Done**, **Refused** with the reason, **Outdated** or **Not run**.
+10. **New conversation** (**Yangi suhbat**) starts a new one; the panel lists the person's earlier conversations of the branches and roles they hold now.
+11. The page **Assistant** (**Yordamchi**), in the menu of the three roles while the assistant is on for the role chosen, shows the same conversations: the list on the left with **New conversation**, the chat beside it. The panel's button **Open the Assistant page** (**Yordamchi sahifasini ochish**) opens it. On a phone the list and the chat are two steps; **Back to the conversations** (**Suhbatlarga qaytish**) returns to the list.
+12. School setup → **Assistant conversations** (**Yordamchi suhbatlari**) lists every conversation of the school, with the person, the role, the branch and the last activity. Open one to read it; an archived one has **Restore** (**Tiklash**).
 
 **Rules.**
 

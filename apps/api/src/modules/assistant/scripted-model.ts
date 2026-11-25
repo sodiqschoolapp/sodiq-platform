@@ -2,6 +2,20 @@ import type { AssistantModel, ModelReply, ModelRequest, ModelPlace, TextSink } f
 import type { AssistantWait } from './model-caller.js';
 
 const CLASSES = 'ClassesController_list';
+const CLASS = 'ClassesController_detail';
+
+/** Task 11.19: the class open in the panel of the Classes page, from the question's place. */
+function openClassOf(request: ModelRequest): string | undefined {
+  const question = [...request.turns]
+    .reverse()
+    .find((turn) => turn.role === 'person' && turn.parts.some((part) => part.kind === 'text'));
+  const text = question?.parts.find((part) => part.kind === 'text');
+  if (text === undefined || text.kind !== 'text') return undefined;
+  const now = /\[Where the person is now[^\]]*, \/classes\)[^\]]*open = ([0-9a-f-]{36})/.exec(
+    text.text,
+  );
+  return now?.[1];
+}
 
 /**
  * The model of the browser tests (task 11.12, `ASSISTANT_SCRIPTED_MODEL=1`, refused by the
@@ -13,6 +27,8 @@ const CLASSES = 'ClassesController_list';
  */
 export class ScriptedModel implements AssistantModel {
   readonly name = 'scripted';
+  /** The name of the class read for the place, between the read and the answer. */
+  private openName = '';
 
   constructor(
     private readonly wait: AssistantWait = () => Promise.resolve(),
@@ -29,6 +45,35 @@ export class ScriptedModel implements AssistantModel {
     onText?: TextSink,
   ): Promise<ModelReply> {
     const last = request.turns.at(-1);
+    // Task 11.19: "which class is this?" from a class's panel: it reads the class open there,
+    // links its record, and names it.
+    const open = openClassOf(request);
+    if (open !== undefined && request.tools.some((tool) => tool.name === CLASS)) {
+      const read = last?.parts.find((part) => part.kind === 'result' && part.name === CLASS);
+      const linked = last?.parts.find(
+        (part) => part.kind === 'result' && part.name === 'link_place',
+      );
+      const reply = (calls: ModelReply['calls'], text = ''): ModelReply => ({
+        text,
+        calls,
+        tokensIn: 0,
+        tokensOut: 0,
+        model: this.name,
+      });
+      if (read === undefined && linked === undefined) {
+        return reply([{ name: CLASS, args: { id: open } }]);
+      }
+      if (read !== undefined && read.kind === 'result') {
+        this.openName = (read.result as { data?: { name?: string } }).data?.name ?? '';
+        return reply([
+          {
+            name: 'link_place',
+            args: { page: '/classes', search: [{ name: 'open', value: open }] },
+          },
+        ]);
+      }
+      return reply([], `This is ${this.openName}.`);
+    }
     const result = last?.parts.find((part) => part.kind === 'result' && part.name === CLASSES);
     if (result === undefined || result.kind !== 'result') {
       const canRead = request.tools.some((tool) => tool.name === CLASSES);

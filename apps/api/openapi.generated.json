@@ -1171572,6 +1171572,71 @@
                                   ]
                                 }
                               },
+                              "links": {
+                                "default": [],
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "nodeId": {
+                                      "type": "string"
+                                    },
+                                    "to": {
+                                      "type": "string"
+                                    },
+                                    "params": {
+                                      "type": "object",
+                                      "additionalProperties": {
+                                        "type": "string"
+                                      }
+                                    },
+                                    "search": {
+                                      "type": "object",
+                                      "additionalProperties": {
+                                        "anyOf": [
+                                          {
+                                            "type": "string"
+                                          },
+                                          {
+                                            "type": "object",
+                                            "additionalProperties": {
+                                              "type": "string"
+                                            }
+                                          }
+                                        ]
+                                      }
+                                    },
+                                    "label": {
+                                      "type": "object",
+                                      "properties": {
+                                        "uz": {
+                                          "type": "string"
+                                        },
+                                        "ru": {
+                                          "type": "string"
+                                        },
+                                        "en": {
+                                          "type": "string"
+                                        }
+                                      },
+                                      "required": [
+                                        "uz",
+                                        "ru",
+                                        "en"
+                                      ],
+                                      "additionalProperties": false
+                                    }
+                                  },
+                                  "required": [
+                                    "nodeId",
+                                    "to",
+                                    "params",
+                                    "search",
+                                    "label"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              },
                               "lessons": {
                                 "type": "array",
                                 "items": {
@@ -1171609,6 +1171674,7 @@
                               "kind",
                               "text",
                               "pages",
+                              "links",
                               "lessons"
                             ],
                             "additionalProperties": false
@@ -1173941,6 +1174007,45 @@
                     "type": "string",
                     "minLength": 1,
                     "maxLength": 2000
+                  },
+                  "place": {
+                    "type": "object",
+                    "properties": {
+                      "page": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 200
+                      },
+                      "params": {
+                        "type": "object",
+                        "additionalProperties": {
+                          "type": "string",
+                          "maxLength": 100
+                        }
+                      },
+                      "search": {
+                        "type": "object",
+                        "additionalProperties": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "maxLength": 200
+                            },
+                            {
+                              "type": "object",
+                              "additionalProperties": {
+                                "type": "string",
+                                "maxLength": 100
+                              }
+                            }
+                          ]
+                        }
+                      }
+                    },
+                    "required": [
+                      "page"
+                    ],
+                    "additionalProperties": false
                   }
                 },
                 "required": [
@@ -1174094,6 +1174199,71 @@
                                       ]
                                     }
                                   },
+                                  "links": {
+                                    "default": [],
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "nodeId": {
+                                          "type": "string"
+                                        },
+                                        "to": {
+                                          "type": "string"
+                                        },
+                                        "params": {
+                                          "type": "object",
+                                          "additionalProperties": {
+                                            "type": "string"
+                                          }
+                                        },
+                                        "search": {
+                                          "type": "object",
+                                          "additionalProperties": {
+                                            "anyOf": [
+                                              {
+                                                "type": "string"
+                                              },
+                                              {
+                                                "type": "object",
+                                                "additionalProperties": {
+                                                  "type": "string"
+                                                }
+                                              }
+                                            ]
+                                          }
+                                        },
+                                        "label": {
+                                          "type": "object",
+                                          "properties": {
+                                            "uz": {
+                                              "type": "string"
+                                            },
+                                            "ru": {
+                                              "type": "string"
+                                            },
+                                            "en": {
+                                              "type": "string"
+                                            }
+                                          },
+                                          "required": [
+                                            "uz",
+                                            "ru",
+                                            "en"
+                                          ],
+                                          "additionalProperties": false
+                                        }
+                                      },
+                                      "required": [
+                                        "nodeId",
+                                        "to",
+                                        "params",
+                                        "search",
+                                        "label"
+                                      ],
+                                      "additionalProperties": false
+                                    }
+                                  },
                                   "lessons": {
                                     "type": "array",
                                     "items": {
@@ -1174131,6 +1174301,7 @@
                                   "kind",
                                   "text",
                                   "pages",
+                                  "links",
                                   "lessons"
                                 ],
                                 "additionalProperties": false
@@ -1176618,6 +1176789,71 @@
                                   ]
                                 }
                               },
+                              "links": {
+                                "default": [],
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "nodeId": {
+                                      "type": "string"
+                                    },
+                                    "to": {
+                                      "type": "string"
+                                    },
+                                    "params": {
+                                      "type": "object",
+                                      "additionalProperties": {
+                                        "type": "string"
+                                      }
+                                    },
+                                    "search": {
+                                      "type": "object",
+                                      "additionalProperties": {
+                                        "anyOf": [
+                                          {
+                                            "type": "string"
+                                          },
+                                          {
+                                            "type": "object",
+                                            "additionalProperties": {
+                                              "type": "string"
+                                            }
+                                          }
+                                        ]
+                                      }
+                                    },
+                                    "label": {
+                                      "type": "object",
+                                      "properties": {
+                                        "uz": {
+                                          "type": "string"
+                                        },
+                                        "ru": {
+                                          "type": "string"
+                                        },
+                                        "en": {
+                                          "type": "string"
+                                        }
+                                      },
+                                      "required": [
+                                        "uz",
+                                        "ru",
+                                        "en"
+                                      ],
+                                      "additionalProperties": false
+                                    }
+                                  },
+                                  "required": [
+                                    "nodeId",
+                                    "to",
+                                    "params",
+                                    "search",
+                                    "label"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              },
                               "lessons": {
                                 "type": "array",
                                 "items": {
@@ -1176655,6 +1176891,7 @@
                               "kind",
                               "text",
                               "pages",
+                              "links",
                               "lessons"
                             ],
                             "additionalProperties": false
@@ -1179136,6 +1179373,71 @@
                                   ]
                                 }
                               },
+                              "links": {
+                                "default": [],
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "nodeId": {
+                                      "type": "string"
+                                    },
+                                    "to": {
+                                      "type": "string"
+                                    },
+                                    "params": {
+                                      "type": "object",
+                                      "additionalProperties": {
+                                        "type": "string"
+                                      }
+                                    },
+                                    "search": {
+                                      "type": "object",
+                                      "additionalProperties": {
+                                        "anyOf": [
+                                          {
+                                            "type": "string"
+                                          },
+                                          {
+                                            "type": "object",
+                                            "additionalProperties": {
+                                              "type": "string"
+                                            }
+                                          }
+                                        ]
+                                      }
+                                    },
+                                    "label": {
+                                      "type": "object",
+                                      "properties": {
+                                        "uz": {
+                                          "type": "string"
+                                        },
+                                        "ru": {
+                                          "type": "string"
+                                        },
+                                        "en": {
+                                          "type": "string"
+                                        }
+                                      },
+                                      "required": [
+                                        "uz",
+                                        "ru",
+                                        "en"
+                                      ],
+                                      "additionalProperties": false
+                                    }
+                                  },
+                                  "required": [
+                                    "nodeId",
+                                    "to",
+                                    "params",
+                                    "search",
+                                    "label"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              },
                               "lessons": {
                                 "type": "array",
                                 "items": {
@@ -1179173,6 +1179475,7 @@
                               "kind",
                               "text",
                               "pages",
+                              "links",
                               "lessons"
                             ],
                             "additionalProperties": false
@@ -1183551,6 +1183854,71 @@
                                   ]
                                 }
                               },
+                              "links": {
+                                "default": [],
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "nodeId": {
+                                      "type": "string"
+                                    },
+                                    "to": {
+                                      "type": "string"
+                                    },
+                                    "params": {
+                                      "type": "object",
+                                      "additionalProperties": {
+                                        "type": "string"
+                                      }
+                                    },
+                                    "search": {
+                                      "type": "object",
+                                      "additionalProperties": {
+                                        "anyOf": [
+                                          {
+                                            "type": "string"
+                                          },
+                                          {
+                                            "type": "object",
+                                            "additionalProperties": {
+                                              "type": "string"
+                                            }
+                                          }
+                                        ]
+                                      }
+                                    },
+                                    "label": {
+                                      "type": "object",
+                                      "properties": {
+                                        "uz": {
+                                          "type": "string"
+                                        },
+                                        "ru": {
+                                          "type": "string"
+                                        },
+                                        "en": {
+                                          "type": "string"
+                                        }
+                                      },
+                                      "required": [
+                                        "uz",
+                                        "ru",
+                                        "en"
+                                      ],
+                                      "additionalProperties": false
+                                    }
+                                  },
+                                  "required": [
+                                    "nodeId",
+                                    "to",
+                                    "params",
+                                    "search",
+                                    "label"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              },
                               "lessons": {
                                 "type": "array",
                                 "items": {
@@ -1183588,6 +1183956,7 @@
                               "kind",
                               "text",
                               "pages",
+                              "links",
                               "lessons"
                             ],
                             "additionalProperties": false
@@ -1186039,6 +1186408,71 @@
                                   ]
                                 }
                               },
+                              "links": {
+                                "default": [],
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "nodeId": {
+                                      "type": "string"
+                                    },
+                                    "to": {
+                                      "type": "string"
+                                    },
+                                    "params": {
+                                      "type": "object",
+                                      "additionalProperties": {
+                                        "type": "string"
+                                      }
+                                    },
+                                    "search": {
+                                      "type": "object",
+                                      "additionalProperties": {
+                                        "anyOf": [
+                                          {
+                                            "type": "string"
+                                          },
+                                          {
+                                            "type": "object",
+                                            "additionalProperties": {
+                                              "type": "string"
+                                            }
+                                          }
+                                        ]
+                                      }
+                                    },
+                                    "label": {
+                                      "type": "object",
+                                      "properties": {
+                                        "uz": {
+                                          "type": "string"
+                                        },
+                                        "ru": {
+                                          "type": "string"
+                                        },
+                                        "en": {
+                                          "type": "string"
+                                        }
+                                      },
+                                      "required": [
+                                        "uz",
+                                        "ru",
+                                        "en"
+                                      ],
+                                      "additionalProperties": false
+                                    }
+                                  },
+                                  "required": [
+                                    "nodeId",
+                                    "to",
+                                    "params",
+                                    "search",
+                                    "label"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              },
                               "lessons": {
                                 "type": "array",
                                 "items": {
@@ -1186076,6 +1186510,7 @@
                               "kind",
                               "text",
                               "pages",
+                              "links",
                               "lessons"
                             ],
                             "additionalProperties": false

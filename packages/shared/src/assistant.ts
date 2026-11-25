@@ -120,11 +120,41 @@ export const assistantStatusSchema = z.object({
 
 export type AssistantStatus = z.infer<typeof assistantStatusSchema>;
 
+/** A search value of an address: a text, or the filters of a list (`f`, a key to a value). */
+const placeValueSchema = z.union([
+  z.string().max(200),
+  z
+    .record(z.string().max(40), z.string().max(100))
+    .refine((value) => Object.keys(value).length <= 12),
+]);
+
+/**
+ * Task 11.19 (`02`, Assistant, "Knows where the person is"): the page the person asks from, as
+ * the router names it (`/journal/$journalId`), with its path parameters and search values. The
+ * engine keeps only what the map of the platform records for that page (plan, review must fix 1;
+ * note 8); a page it does not know is left out (plan decision 7).
+ */
+export const assistantPlaceSchema = z.strictObject({
+  page: z.string().min(1).max(200),
+  params: z
+    .record(z.string().max(40), z.string().max(100))
+    .refine((value) => Object.keys(value).length <= 4)
+    .optional(),
+  search: z
+    .record(z.string().max(40), placeValueSchema)
+    .refine((value) => Object.keys(value).length <= 12)
+    .optional(),
+});
+
+export type AssistantPlace = z.infer<typeof assistantPlaceSchema>;
+
 export const assistantQuestionSchema = z.strictObject({
   role: assistantRoleSchema,
   /** Left out: a new conversation. */
   conversationId: z.uuid().optional(),
   text: z.string().trim().min(1).max(ASSISTANT_QUESTION_MAX_LENGTH),
+  /** Task 11.19: the page the question is asked from; none from the Assistant page. */
+  place: assistantPlaceSchema.optional(),
 });
 
 export type AssistantQuestion = z.infer<typeof assistantQuestionSchema>;
@@ -145,6 +175,25 @@ export const assistantLessonLinkSchema = z.object({
 
 export type AssistantLessonLink = z.infer<typeof assistantLessonLinkSchema>;
 
+/**
+ * Task 11.19 (build plan item 4; plan review, correction 3): a link of an answer to the exact
+ * place, a page of the map with its path parameters and search values, each checked by
+ * `link_place` against the map before it is stored. The web draws it with the router's `Link`
+ * (`to`, `params`, `search`), never as a typed address.
+ */
+export const assistantPlaceLinkSchema = z.object({
+  /** The map's id of the page or control linked. */
+  nodeId: z.string(),
+  /** The route's template, `/people/students`. */
+  to: z.string(),
+  params: z.record(z.string(), z.string()),
+  search: z.record(z.string(), z.union([z.string(), z.record(z.string(), z.string())])),
+  /** The name the link shows: the page's title, or the control's label, in three languages. */
+  label: z.object({ uz: z.string(), ru: z.string(), en: z.string() }),
+});
+
+export type AssistantPlaceLink = z.infer<typeof assistantPlaceLinkSchema>;
+
 /** One message of a conversation, as the person and the Super Admin read it. */
 export const assistantMessageSchema = z.discriminatedUnion('kind', [
   z.object({ ...messageBase, kind: z.literal('question'), text: z.string() }),
@@ -152,8 +201,10 @@ export const assistantMessageSchema = z.discriminatedUnion('kind', [
     ...messageBase,
     kind: z.literal('answer'),
     text: z.string(),
-    /** Pages the answer links: menu items of the conversation's role. */
+    /** Pages the answer links: menu items of the conversation's role (11.12 to 11.18). */
     pages: z.array(z.enum(MENU_ITEMS)),
+    /** Task 11.19: the places the answer links; none in an answer stored before 11.19. */
+    links: z.array(assistantPlaceLinkSchema).default([]),
     /** Lessons whose journal column the answer opens (task 11.14); none before 11.14. */
     lessons: z.array(assistantLessonLinkSchema),
   }),

@@ -165,7 +165,7 @@ describe('the assistant: questions, reads and answers', () => {
 
   it(`calls the model at most ${String(MAX_MODEL_CALLS)} times for a question, whatever it asks for (spec review of the code, must fix 5)`, async () => {
     const pages = Array.from({ length: MAX_MODEL_CALLS + 3 }, () =>
-      calls({ name: 'suggest_page', args: { page: 'people' } }),
+      calls({ name: 'link_place', args: { page: '/people' } }),
     );
     scene.model.script(...pages);
     answered(await ask(scene, scene.admin, scene.north, { text: 'Link a page, again and again.' }));
@@ -269,22 +269,35 @@ describe('the assistant: questions, reads and answers', () => {
     expect(question?.kind === 'question' ? question.text : '').toContain('+998 90 123 45 67');
   });
 
-  it('links a page of the role’s menu, and nothing else, with suggest_page (plan decision 16)', async () => {
+  it('links a page of the map the role opens, and nothing else, with link_place (task 11.19)', async () => {
+    const id = '00000000-0000-4000-8000-000000000001';
     scene.model.script(
       calls(
-        { name: 'suggest_page', args: { page: 'people' } },
-        { name: 'suggest_page', args: { page: 'nowhere' } },
+        {
+          name: 'link_place',
+          args: { page: '/people/students', search: [{ name: 'open', value: id }] },
+        },
+        { name: 'link_place', args: { page: '/nowhere' } },
+        {
+          name: 'link_place',
+          args: { page: '/people/students', search: [{ name: 'open', value: 'x' }] },
+        },
       ),
-      answer('Export it on the People page.'),
+      answer('Export it on the Students page.'),
     );
     const reply = answered(
       await ask(scene, scene.admin, scene.north, { text: 'Export the students.' }),
     );
     const last = reply.conversation.messages.at(-1);
-    expect(last?.kind === 'answer' ? last.pages : null).toEqual(['people']);
-    const tool = scene.model.requests[0]?.tools.find((one) => one.name === 'suggest_page');
-    expect(tool?.parameters.properties.page?.enum).toContain('people');
-    expect(tool?.parameters.properties.page?.enum).not.toContain('nowhere');
+    expect(
+      last?.kind === 'answer' ? last.links.map((link) => [link.to, link.search]) : null,
+    ).toEqual([['/people/students', { open: id }]]);
+    expect(last?.kind === 'answer' ? last.pages : null).toEqual([]);
+    expect(lastResults(scene.model.requests[1] as ModelRequest).map((one) => one.result)).toEqual([
+      { linked: '/people/students' },
+      { error: 'not_a_page' },
+      { error: 'not_a_place_value' },
+    ]);
   });
 
   it('writes nothing but its own conversation: no table of the school changes through a question', async () => {
