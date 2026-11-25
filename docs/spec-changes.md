@@ -2,6 +2,18 @@
 
 The spec in `docs/spec/` was taken from the full spec document on 3 October 2026 (revision 88). Every later change to a spec file is listed here, newest first, with the date, what changed, why, and the files touched. Changes are made only with the `/spec-change` skill and the owner's approval.
 
+## 25 November 2026: the assistant for everything
+
+- What changed:
+  1. **Every action of the chosen role** is open to the assistant, reading and changing, the journal, closing, publishing, imports and exports included, under the Super Admin's switches per role, area and action. Everything is on at the start except the heaviest areas (publishing a timetable, closing and starting a year or a quarter, recalculating closed results, force delete, accounts, roles and appointments, integration keys), which start off. The assistant still has no rights of its own and every change waits for Confirm.
+  2. **Secrets never reach the model**, whatever the switches. Personal data does, with a switch per group, all on at the start; before, it never went to the model.
+  3. **A map of the platform** from the app's code: the assistant answers "what is this", "where is X" and "how do we do X" with steps and a link, and knows the page and record open.
+  4. **Limits as settings**: no daily limit, 40 reads and changes in one question, 100 changes in one proposal, 10 minutes, with Continue; the monthly cap stays the one limit always in force.
+  5. **Answers, files and helpers**: tables, choices as buttons, Undo; files, photos and voice; the day's briefing, ranked substitutes, a unit of plans, why a result is what it is.
+- Why: the owner, 25 November 2026, in chat: the assistant should know every feature and page, do as many actions as possible, switched on and off by the Super Admin, and be limited less ("forget about restricting student data"). Proposal `docs/proposals/spec-change-assistant-for-everything.md`.
+- Not changed: the permission table and the guard (no role gains a right); Confirm before every change; results calculated only by `packages/calc`; the monthly spending cap; the audit of every change "via assistant"; text inside data is never an instruction.
+- Files: `docs/spec/02-roles-and-access.md` (Assistant; Accounts and sign-in: build order), `docs/spec/edge-cases/people-roles-accounts.md` (The assistant), `docs/spec/06-timetable.md` (Changes after publishing, the assistant's line), `docs/spec/13-technology.md` (Security).
+
 ## 24 November 2026: a student's contract is optional, and its number may repeat
 
 - What changed:
