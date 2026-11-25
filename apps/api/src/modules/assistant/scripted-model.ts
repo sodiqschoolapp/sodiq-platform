@@ -91,6 +91,61 @@ export class ScriptedModel implements AssistantModel {
       }
       return reply([], `This is ${this.openName}.`);
     }
+    // Task 11.22: a question with an attached file names it; "… in Excel" reads the classes and
+    // exports them through export_file, the file linked in the answer.
+    const attached = /\[Attached: "([^"]+)"/.exec(newestQuestion(request))?.[1];
+    if (attached !== undefined) {
+      return {
+        text: `I see the file ${attached}.`,
+        calls: [],
+        tokensIn: 0,
+        tokensOut: 0,
+        model: this.name,
+      };
+    }
+    if (/in Excel/i.test(newestQuestion(request)) && offered(request, 'export_file')) {
+      const exported = last?.parts.find(
+        (part) => part.kind === 'result' && part.name === 'export_file',
+      );
+      if (exported !== undefined) {
+        return {
+          text: 'The file is ready.',
+          calls: [],
+          tokensIn: 0,
+          tokensOut: 0,
+          model: this.name,
+        };
+      }
+      const classes = last?.parts.find((part) => part.kind === 'result' && part.name === CLASSES);
+      if (classes === undefined || classes.kind !== 'result') {
+        return {
+          text: '',
+          calls: [{ name: CLASSES, args: {} }],
+          tokensIn: 0,
+          tokensOut: 0,
+          model: this.name,
+        };
+      }
+      const ids = (
+        (classes.result as { data?: { classes?: { id: string }[] } }).data?.classes ?? []
+      ).map((one) => one.id);
+      return {
+        text: '',
+        calls: [
+          {
+            name: 'export_file',
+            args: {
+              route: 'POST /api/classes/export',
+              path: '/api/classes/export',
+              body: { ids, columns: ['name'], selection: 'ticked', search: '', filters: {} },
+            },
+          },
+        ],
+        tokensIn: 0,
+        tokensOut: 0,
+        model: this.name,
+      };
+    }
     // Task 11.21: "… as a table": it reads the classes and offers them as choices, then answers
     // with a table of the classes and their Tutors.
     const asked = newestQuestion(request);
