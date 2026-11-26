@@ -877,6 +877,7 @@ export const en = {
     work_total_missing: 'Set the total of the work first, then type the numbers.',
     score_above_total:
       'The number is above the total of the work. Type a number from 0 to the total.',
+    score_decimals: 'A number may have at most two digits after the point.',
     work_not_held: 'This work is marked "not held". Undo the mark to type numbers.',
     numbers_keep_or_clear: 'This student has numbers in this lesson. Choose to keep or clear them.',
     restore_works_full:
@@ -8485,6 +8486,12 @@ export const en = {
       total: '{{work}}: total {{total}}',
       setTotal: '{{work}}: set the total',
     },
+    refusals: {
+      comma: 'Use a point, not a comma.',
+      decimals: 'At most two digits after the point.',
+      notNumber: 'Type digits and a point only.',
+      point: 'Type a point',
+    },
     works: {
       noPlan: 'No plan',
       titleLabel: 'Title',
@@ -8524,7 +8531,8 @@ export const en = {
       keep: 'Keep numbers',
       clear: 'Clear numbers',
       aboveTotal: 'Above the new total: {{names}}',
-      wholeNumber: 'Type a whole number from 0 to {{total}}.',
+      amount: 'Type a number from 0 to {{total}}, with at most two digits after the point.',
+      totalAmount: 'Type a number from 1 to 1000, with at most two digits after the point.',
       onAbsent: 'score on an absent student',
       historyTotal: 'Total of {{work}}',
       historyNotHeld: '"Not held" of {{work}}',

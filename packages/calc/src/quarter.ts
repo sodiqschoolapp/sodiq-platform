@@ -7,7 +7,7 @@
  *   (decision 1).
  * - The classwork and homework averages count each work once over the quarter
  *   (rule 6), never the lesson's parts. Works of a lesson with mark 4 or 5 are
- *   left out, the homeworks checked at it included, and a number there is a
+ *   left out, the homeworks given at it included, and a number there is a
  *   fault (07, Effect on totals; decision 4). An empty number is left out, a 0
  *   counts (rule 4).
  * - The rating exam: a score counts as itself, "did not sit" counts 0, "exempt"
@@ -51,7 +51,7 @@ export interface QuarterLesson {
   readonly mark: AttendanceMark | null;
   /** The lesson's classworks. */
   readonly classworks: readonly Work[];
-  /** The homeworks checked at the lesson. */
+  /** The homeworks of the lesson: graded at the lesson where they were given (task 11.24). */
   readonly homeworks: readonly Work[];
 }
 

@@ -581,6 +581,7 @@ const MESSAGE: Record<ErrorCode, string> = {
   journal_work_title_required: 'A work added by hand needs a title of at most 60 characters.',
   work_total_missing: 'The work has no total yet.',
   score_above_total: 'The number is above the total.',
+  score_decimals: 'The number has more than two digits after the point.',
   work_not_held: 'The work is marked not held.',
   numbers_keep_or_clear: 'Keep or clear the numbers of these students.',
   plan_work_has_data: 'The work has data in the journal.',

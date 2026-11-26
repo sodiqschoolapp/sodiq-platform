@@ -34,6 +34,9 @@ const SOURCE_HASHES: readonly string[] = [
   // 8: task 11.17, the lesson score and its daily weights removed (`lessonScore`), the type `Work`
   // moved to `work.ts`; no other formula changes.
   '6276951e4455d0d9462fbd0b204a8c5aa804e9e4d7296a721e1e463594e7538f',
+  // 9: task 11.25b, decimal scores and totals (`workAmount`: a score or a total read from its decimal
+  // text as an exact fraction); a whole number gives the same fraction as version 8.
+  'cacd89642d597a99c6edf3fa26cdef8d694db378ab8921f6f10903cc1767b515',
 ];
 
 const directory = new URL('./', import.meta.url);

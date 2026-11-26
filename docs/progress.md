@@ -2,6 +2,21 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 26 November 2026: task 11.25b, decimal scores and totals: the switch
+
+- **0189**: the mirrors and the old integer columns of 0188 are dropped; the twins and their checks take the old names (metadata only). `forced_store_cells`/`forced_store_works` return `work_amount`, `execute` for `sodiq_app` only. Every PL/pgSQL function of `public` is compiled again in every session (`alter function … cost`), or the running version's pooled connections fail their next journal write.
+- **`packages/calc` 9**: `workAmount` reads a score or a total from its decimal text as an exact fraction (7.55 is 755/100); more than two decimals is `more_than_two_decimals`; every other refusal keeps its code. A whole number gives the fraction of version 8.
+- **Entry**: one parser (`work-amount.ts` of the journal) for the grid, lesson mode and the total field: a point only, at most two decimals, "8." is 8, each refusal with its reason; a **.** key of its own beside the lesson-mode field and the total field. The rating exam stays whole.
+- **API**: the score and total schemas take `workAmountSchema`; a number with three decimals reaches the database and is refused `409 score_decimals`, recorded as sent; the support view reads `value_sent` as text. OpenAPI, the client, the integration guide and the assistant's tools follow.
+- **Display**: `String` everywhere (a point, no trailing zeros); Excel writes number cells.
+
+Left out: closing the demo school to compare stored records of version 8 (the demo enters no rating exam); the comparison of a quarter closed on version 8 is in `closing.test.ts`.
+
+The next sessions must know:
+
+- From the first decimal saved on production, 11.25b cannot be taken back: the code of 11.25a refuses a decimal. Fix forward.
+- A refused value as sent (`journal_save_refusals.value_sent`) is plain `numeric` and may not read back as a JS number: read it as text.
+
 ## 26 November 2026: task 11.25a, decimal scores and totals: the exact columns beside the old ones
 
 - 11.25 split (pull request #395, decision 1, Look first) because of the deploy rule: 11.25a now, an owner gate line, then 11.25b.

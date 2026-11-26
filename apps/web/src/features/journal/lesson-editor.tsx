@@ -11,12 +11,11 @@ import {
   type JournalWork,
 } from '@sodiq/shared';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { cn } from 'cn';
 import { FailureAlert } from '@/components/failure-alert';
 import { Field } from '@/components/field';
-import { wholeNumber } from '@/components/form/form-messages';
 import { requiredOf } from '@/components/form/use-record-form';
 import { DeleteIcon, EditIcon } from '@/components/icons';
 import { Button } from '@/components/ui/button';
@@ -33,6 +32,7 @@ import { downloadPlanFile } from '@/features/plans/plans-api';
 import { schoolDateText } from '@/lib/dates';
 import { lessonCardQuery } from './journal-api';
 import { WorkKindTag } from './work-kind-tag';
+import { readWorkAmount, refusalText, withPoint } from './work-amount';
 
 /**
  * One place to edit a lesson in the journal (the owner, 20 November 2026: "'Bu dars rejasini
@@ -334,12 +334,16 @@ function WorkRow({
   const shown = work.total === null ? '' : String(work.total);
   const [typed, setTyped] = useState<{ from: string; text: string } | null>(null);
   const text = typed !== null && typed.from === shown ? typed.text : shown;
-  const read = wholeNumber(text);
-  const valid = typeof read === 'number' && read >= WORK_TOTAL_MIN && read <= WORK_TOTAL_MAX;
+  // A total takes the rule of a score, from 1 to 1000 (task 11.25b; `edge/journal`, "A total
+  // of 3000 is typed").
+  const read = readWorkAmount(text, WORK_TOTAL_MIN, WORK_TOTAL_MAX);
+  const value = read.kind === 'value' ? read.value : null;
+  const valid = value !== null;
+  const field = useRef<HTMLInputElement>(null);
   const send = () => {
-    if (!valid || read === work.total) return;
+    if (value === null || value === work.total) return;
     setTyped(null);
-    onTotal(read);
+    onTotal(value);
   };
   const renamable = work.planWorkId !== null || (work.unplanned && work.id !== null);
   return (
@@ -351,6 +355,7 @@ function WorkRow({
         <label className="flex items-center gap-1.5">
           <span className="text-muted-foreground">{t('journal.editor.total')}</span>
           <input
+            ref={field}
             className={cn(FIELD, 'w-20 text-center')}
             inputMode="numeric"
             autoComplete="off"
@@ -362,8 +367,8 @@ function WorkRow({
             aria-label={t('journal.editor.totalOf', { name })}
             aria-invalid={text !== '' && !valid ? true : undefined}
             title={
-              text !== '' && !valid
-                ? t('journal.works.wholeNumber', { total: WORK_TOTAL_MAX })
+              read.kind === 'refused'
+                ? refusalText(t, { reason: read.reason, min: WORK_TOTAL_MIN, max: WORK_TOTAL_MAX })
                 : undefined
             }
             onChange={(event) => {
@@ -376,6 +381,30 @@ function WorkRow({
               send();
             }}
           />
+          {/* A point of its own (task 11.25b, review correction 1): a keypad may give a comma. */}
+          {enter && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="font-semibold"
+              data-editor-total-point="true"
+              aria-label={t('journal.refusals.point')}
+              title={t('journal.refusals.point')}
+              disabled={busy}
+              // The field keeps the focus: its blur would send the total before the point.
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => {
+                const input = field.current;
+                if (input === null) return;
+                const at = (input.selectionStart ?? input.value.length) + 1;
+                setTyped({ from: shown, text: withPoint(input) });
+                input.focus();
+                requestAnimationFrame(() => input.setSelectionRange(at, at));
+              }}
+            >
+              .
+            </Button>
+          )}
         </label>
         {enter && renamable && (
           <Button

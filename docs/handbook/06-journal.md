@@ -42,7 +42,7 @@ There is no lesson score column (Oʻrt / Ср. / Avg) and a subject has no daily
 1. The arrows beside the lesson's date go to the lesson before and after. Today's lesson says **Bugun** in place of the weekday.
 2. A lesson with classwork or homework is entered one column at a time, in this order: attendance, then each classwork, then each homework. The buttons above the list choose the column: **Davomat**, then each work by its tag and title.
 3. In **Davomat**, each student has the four large buttons 1, 0, 2 and 3, and **Hammasi keldi** marks every student not yet marked. A mark being saved makes only that student's buttons wait; the next student can be marked at once.
-4. In a work's column, each student has one large number field, with the student's attendance mark under the name and the percent beside the field once it is saved. The button above the list shows the work's total and opens the work to set or change it. The keyboard's **Next** (Enter) saves the number and goes to the next student. A number above the total, or not whole, stays in its field outlined in red and is not saved until it is corrected.
+4. In a work's column, each student has one large number field, with the student's attendance mark under the name and the percent beside the field once it is saved. The button above the list shows the work's total and opens the work to set or change it. The keyboard's **Next** (Enter) saves the number and goes to the next student. A number may have up to two digits after a point, for example 7.5 or 8.25. A phone's number pad may have no point, or a comma in its place, so the small **.** button beside the field types a point. A number above the total, with a comma, with more than two digits after the point, or with letters stays in its field outlined in red, with the reason, and is not saved until it is corrected.
 5. **Keyingisi: …** at the end of the list goes on to the next column.
 6. A lesson the person may only read shows each student's mark and numbers on one row.
 
@@ -82,6 +82,30 @@ There is no lesson score column (Oʻrt / Ср. / Avg) and a subject has no daily
 | Numbers are typed before attendance | The lesson stays In progress until attendance is marked. |
 | Every student of the lesson is exempt | The lesson is Complete: there is nothing to mark. |
 | A total is set and nothing else | The lesson is In progress. |
+
+## Numbers with decimals
+
+<!-- Sources: spec 07 (Entering data, Keyboard; The total), edge/journal (Entering), edge/calculation (a score with decimals); spec changes of 25 November 2026 (decimal scores, decimal totals); task 11.25b -->
+
+**What it is.** A classwork or homework number, and a work's total, may have up to two digits after a point: a teacher can give half points (7.5 out of 10 is 75%) or use a total of 7.5. The point is the same in every language; a comma is refused. A number is kept exactly as typed and shown without trailing zeros (7.50 shows 7.5), on screen, in the cell's history, in the support view, in printed and exported journals and on the parents' pages and messages. Every percent and result is worked out exactly and rounded once, at the end, as before. The rating exam score stays a whole number from 0 to 100.
+
+**Who can use it.** Whoever may type numbers and totals in the lesson.
+
+**How it works.**
+
+1. Type the number with a point: 7.5, 8.25. "8." is read as 8.
+2. In lesson mode on a phone, and in the total of a work, the small **.** button beside the field types a point: a phone's number pad may have none, or a comma in its place.
+3. A number with a comma, with three or more digits after the point, with letters, or above the total stays in its cell outlined in red with the reason, and is not saved until it is corrected.
+
+**Edge cases.**
+
+| Case | What happens |
+| --- | --- |
+| 7,5 is typed | Refused in the cell: "Use a point, not a comma." |
+| 7.555 is typed | Refused in the cell: "At most two digits after the point." If it still reaches the server, it is refused and the support view shows it as sent. |
+| 6 out of a total of 7.5 | 80%. |
+| The total is changed to 9 while a student has 9.5 | Refused, and that student is listed. |
+| A rating exam score of 7.5 | Refused: whole numbers only. |
 
 ## Not graded
 
@@ -199,7 +223,7 @@ There is no lesson score column (Oʻrt / Ср. / Avg) and a subject has no daily
 **What the teacher can do.**
 
 - **Topic**: type it and press **Save topic**. It is written into the lesson's row of the plan (the plan and its row are made if there is none).
-- **Classwork**: **+ Add classwork**, type a title (at most 60 characters), **Add**. Type its total in **Soni** and press Enter. Rename with the pencil, delete with the bin.
+- **Classwork**: **+ Add classwork**, type a title (at most 60 characters), **Add**. Type its total in **Soni** and press Enter. A total is from 1 to 1000 and may have up to two digits after a point (7.5); the **.** button beside the field types a point. Rename with the pencil, delete with the bin.
 - **Homework** (**Uyga vazifa**): **+ Add homework**, type a title (at most 60 characters), **Add**. It is a column of this lesson and is graded here, like a classwork: type its total in **Soni**, then the numbers. Rename with the pencil, delete with the bin.
 - As many works as needed, up to 10 of each kind per lesson.
 
@@ -234,7 +258,7 @@ There is no lesson score column (Oʻrt / Ср. / Avg) and a subject has no daily
 - Every file says "Provisional" with the date and time it was read. ("Final" comes with the closing of quarters.)
 - A Tutor's file has the rows of their own class only; the Vice Principal for Spiritual and Moral Education and the Head Tutor get attendance only.
 - An exempt student's cell shows 4 or 5. The reason, the category and the document of the exemption are never in a file. Comments and reasons of absence are not in the file either.
-- Excel cells hold real numbers and dates: the number typed and its percent are two columns.
+- Excel cells hold real numbers and dates: the number typed and its percent are two columns. A number with decimals is a number cell too (7.5).
 - A teacher who only substituted a lesson, or completes an orphan lesson, cannot export that journal.
 - One export of the branch at a time per person. Its link works for 24 hours after the file is ready, and the server checks again at the download that the person still may export the branch.
 - Every export and every download is written to the audit log.

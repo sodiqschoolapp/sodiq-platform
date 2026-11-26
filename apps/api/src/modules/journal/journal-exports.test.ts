@@ -489,6 +489,41 @@ describe('journal exports', () => {
       t.clock.set(START);
     });
 
+    // Task 11.25b, Done when: "the Excel export holds 7.5 as a number" (`edge/system-behaviour`:
+    // "Excel exports contain real numbers and dates"); its percent from `packages/calc`.
+    it('writes a score of 7.5 to Excel as the number 7.5, with its percent', async () => {
+      const principal = await account();
+      const x = await scene();
+      await give(principal, [{ role: 'principal', branchId: x.s.branch }]);
+      // The number 12 of the scene made 7.5, as a fixture (the cell's guards are not the test).
+      await t.database.migrator.transaction().execute(async (transaction) => {
+        await sql`alter table journal_cells disable trigger user`.execute(transaction);
+        const changed = await transaction
+          .updateTable('journal_cells')
+          .set({ score: 7.5 })
+          .where('branch_id', '=', x.s.branch)
+          .where('score', '=', 12)
+          .returning('id')
+          .execute();
+        expect(changed.length).toBeGreaterThan(0);
+        await sql`alter table journal_cells enable trigger user`.execute(transaction);
+      });
+      await at(principal, MOMENT);
+      const answer = await exportOf(principal, x.s.branch, x.journal, {
+        format: 'xlsx',
+        quarterId: x.q1,
+      });
+      expect(answer.status, codeOf(answer)).toBe(200);
+      const [sheet] = await sheetsOf(answer.body as Buffer);
+      if (sheet === undefined) throw new Error('One sheet.');
+      const headings = (sheet.rows[4]?.values ?? []).map(String);
+      const cwColumn = headings.findIndex((one) => one.includes('CW1') && one.includes('of 30'));
+      const zokirov = sheet.rows.map((row) => row.values).find((row) => row[1] === 'Zokirov Ali');
+      expect(zokirov?.[cwColumn]).toBe(7.5);
+      expect(zokirov?.[cwColumn + 1]).toBe(25);
+      t.clock.set(START);
+    });
+
     it('writes the PDF with a number and its percent in one cell, in the language of the account, with subject names in it and class names as entered', async () => {
       const vice = await account('ru');
       const x = await scene();

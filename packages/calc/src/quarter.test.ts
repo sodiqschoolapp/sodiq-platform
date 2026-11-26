@@ -538,6 +538,24 @@ const quarter = fc
     value.weights.ratingExam === null ? { ...value, ratingExam: null } : value,
   );
 
+// edge/calculation, "A score with decimals: 8.25 out of 11, and 7.5 and 9.75 out of 10 in one
+// quarter." (the owner's spec change of 25 November 2026; task 11.25b).
+describe('edge/calculation: a score with decimals', () => {
+  it('reads 8.25 out of 11 as exactly 75, and averages 7.5 and 9.75 out of 10 to exactly 86.25', () => {
+    const result = resultOf(
+      input({
+        weights: NO_RATING,
+        lessons: [lesson(1, [[8.25, 11]], [[7.5, 10]]), lesson(1, [], [[9.75, 10]])],
+      }),
+    );
+    expectExactly(result.averages.classwork, 75n);
+    expectExactly(result.averages.homework, 345n, 4n);
+    // (20 x 100 + 30 x 75 + 50 x 86.25) / 100 = 85.625: nothing is rounded before the end.
+    expectExactly(result.value, 685n, 8n);
+    expect(result.shown).toBe(86n);
+  });
+});
+
 describe('quarterResult against an independent reference', () => {
   it('equals the cross-multiplied weighted mean of the parts with data, between 0 and 100', () => {
     fc.assert(

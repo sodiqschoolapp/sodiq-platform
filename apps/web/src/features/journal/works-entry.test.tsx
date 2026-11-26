@@ -271,17 +271,54 @@ describe('classwork and homework in the grid', () => {
     });
   });
 
-  it('refuses a total that is not a whole number from 1 to 1000 in the field', async () => {
+  // Task 11.25b (Look first, decision 1: until then this test refused 2.5): a total is from 1
+  // to 1000 with at most two digits after the point (`07`, The total; `edge/journal`, "A total of
+  // 3000 is typed"), each refusal with its reason (review correction 2).
+  it('refuses a total out of 1 to 1000, with a comma or with three decimals, with its reason', async () => {
     const calls = open();
     fireEvent.click(await screen.findByRole('button', { name: 'Work: Test' }));
     const dialog = await screen.findByRole('dialog');
     const field = within(dialog).getByLabelText(totalOf('Test'));
-    for (const value of ['1001', '0', '2.5']) {
+    for (const [value, reason] of [
+      ['1001', en.journal.works.totalAmount],
+      ['0', en.journal.works.totalAmount],
+      ['0.5', en.journal.works.totalAmount],
+      ['2,5', en.journal.refusals.comma],
+      ['2.555', en.journal.refusals.decimals],
+      ['abc', en.journal.refusals.notNumber],
+    ] as const) {
       fireEvent.change(field, { target: { value } });
       fireEvent.keyDown(field, { key: 'Enter' });
       expect(field.getAttribute('aria-invalid')).toBe('true');
+      expect(field.getAttribute('title')).toBe(reason);
     }
     expect(sent(calls, `PUT /api/journal/lessons/${PLANNED}/works/total`)).toEqual([]);
+  });
+
+  // Task 11.25b, review correction 1: the total field has a point key of its own and takes 7.5.
+  it('types a point in the total with its own key and sends a total of 7.5', async () => {
+    const calls = open({
+      [`PUT /api/journal/lessons/${PLANNED}/works/total`]: () => json(SAVED),
+    });
+    fireEvent.click(await screen.findByRole('button', { name: 'Work: Test' }));
+    const dialog = await screen.findByRole('dialog');
+    const field = within(dialog).getByLabelText<HTMLInputElement>(totalOf('Test'));
+    fireEvent.change(field, { target: { value: '7' } });
+    field.setSelectionRange(1, 1);
+    fireEvent.click(within(dialog).getByRole('button', { name: en.journal.refusals.point }));
+    expect(field.value).toBe('7.');
+    fireEvent.change(field, { target: { value: '7.5' } });
+    fireEvent.keyDown(field, { key: 'Enter' });
+    await waitFor(() => {
+      expect(sent(calls, `PUT /api/journal/lessons/${PLANNED}/works/total`)).toEqual([
+        {
+          column: { planWorkId: uid(70), sourceLessonId: PLANNED },
+          total: 7.5,
+          version: null,
+          confirm: false,
+        },
+      ]);
+    });
   });
 
   it('saves the topic of the lesson on the topic read', async () => {
@@ -386,6 +423,126 @@ describe('classwork and homework in the grid', () => {
       ).toBe(true);
     });
     expect(screen.queryByRole('alertdialog')).toBeNull();
+  });
+
+  // Task 11.25b (`07`, The total: "shown with a point, without trailing zeros (7.50 shows 7.5)";
+  // the spec change: "a point in every language"): no number format of the language turns it into
+  // 7,5 in Russian or Uzbek.
+  it.each(['ru', 'uz', 'en'] as const)(
+    'shows a score of 7.5 and a total of 7.5 with a point in %s',
+    async (language) => {
+      const grid: JournalGrid = {
+        ...GRID,
+        lessons: GRID.lessons.map((one, index) =>
+          index > 0
+            ? one
+            : {
+                ...one,
+                works: one.works.map((work) => ({ ...work, id: uid(80), total: 7.5 })),
+              },
+        ),
+        students: GRID.students.map((one, index) =>
+          index > 0
+            ? one
+            : {
+                ...one,
+                cells: [
+                  {
+                    ...(one.cells[0] as JournalStudent['cells'][number]),
+                    works: [
+                      {
+                        score: 7.5,
+                        percent: 100,
+                        version: 1,
+                        onAbsent: false,
+                        marker: null,
+                        notGraded: false,
+                      },
+                    ],
+                  },
+                  one.cells[1] as JournalStudent['cells'][number],
+                ],
+              },
+        ),
+      };
+      fakeApi({
+        'GET /api/auth/session': () =>
+          json(sessionOf({ assignments: [{ role: 'teacher', branchId: NORTH.id }] })),
+        [`GET /api/journal/journals/${JOURNAL}`]: () => json(grid),
+      });
+      renderApp(`/journal/${JOURNAL}`, language);
+      const score = await waitFor(() => {
+        const found = document.querySelector<HTMLElement>(`[row-id="${uid(101)}"] [data-score]`);
+        expect(found).not.toBeNull();
+        return found as HTMLElement;
+      });
+      expect(score.firstChild?.textContent).toBe('7.5');
+      expect(score.textContent).toBe('7.5100%');
+      const header = document.querySelector(
+        `[col-id="${PLANNED}:${uid(80)}"][role="columnheader"]`,
+      );
+      expect(header?.textContent ?? '').toContain('7.5');
+      expect(header?.textContent ?? '').not.toContain('7,5');
+    },
+  );
+
+  // Task 11.25b (`edge/journal`, "The teacher types "1" then "2" for 12.": "Letters, a comma, …
+  // and more than two digits after the point are refused in the cell"): the grid's cell names the
+  // reason, and a number with a point is sent as typed.
+  it('refuses 7,5 and 7.555 typed in a grid cell with their reasons, and sends 7.5', async () => {
+    const grid: JournalGrid = {
+      ...GRID,
+      lessons: GRID.lessons.map((one, index) =>
+        index > 0
+          ? one
+          : { ...one, works: one.works.map((work) => ({ ...work, id: uid(80), total: 10 })) },
+      ),
+    };
+    const calls = fakeApi({
+      'GET /api/auth/session': () =>
+        json(sessionOf({ assignments: [{ role: 'teacher', branchId: NORTH.id }] })),
+      [`GET /api/journal/journals/${JOURNAL}`]: () => json(grid),
+    });
+    renderApp(`/journal/${JOURNAL}`);
+    const type = async (text: string) => {
+      const cell = await waitFor(() => {
+        const found = document.querySelector<HTMLElement>(
+          `[row-id="${uid(101)}"] [col-id="${PLANNED}:${uid(80)}"]`,
+        );
+        expect(found).not.toBeNull();
+        return found as HTMLElement;
+      });
+      fireEvent.click(cell);
+      fireEvent.keyDown(cell, { key: 'Enter', code: 'Enter' });
+      const input = await waitFor(() => {
+        const found = cell.querySelector<HTMLInputElement>('input');
+        expect(found).not.toBeNull();
+        return found as HTMLInputElement;
+      });
+      // The grid's editor reads its value from the input event.
+      fireEvent.input(input, { target: { value: text } });
+      fireEvent.keyDown(input, { key: 'Enter', code: 'Enter' });
+    };
+    await type('7,5');
+    expect((await screen.findByRole('alert')).textContent).toBe(en.journal.refusals.comma);
+    await type('7.555');
+    await waitFor(() => {
+      expect(document.querySelector('[data-refused-number]')?.textContent).toBe(
+        en.journal.refusals.decimals,
+      );
+    });
+    expect(
+      calls.filter((call) => call.route === `POST /api/journal/lessons/${PLANNED}/scores`),
+    ).toEqual([]);
+    await type('7.5');
+    await waitFor(() => {
+      expect(
+        calls.filter((call) => call.route === `POST /api/journal/lessons/${PLANNED}/scores`)[0]
+          ?.body,
+      ).toMatchObject({
+        saves: [{ studentId: uid(101), column: { workId: uid(80) }, score: 7.5, version: null }],
+      });
+    });
   });
 
   it('asks before deleting a work with numbers, naming the count, and keeps it out of the journal with its numbers in the history', async () => {
@@ -605,8 +762,27 @@ describe('classwork and homework in the grid', () => {
     }
     expect(typedWorkEntry('12', 30)).toBe(12);
     expect(typedWorkEntry('', 30)).toBeNull();
-    expect(typedWorkEntry('--', 30)).toBeUndefined();
-    expect(typedWorkEntry('-1', 30)).toBeUndefined();
+    // Task 11.25b: a refused entry gives its reason in place of `undefined`.
+    expect(typedWorkEntry('--', 30)).toEqual({ reason: 'notNumber', min: 0, max: 30 });
+    expect(typedWorkEntry('-1', 30)).toEqual({ reason: 'notNumber', min: 0, max: 30 });
+  });
+
+  // Task 11.25b; `07`, The total; `edge/journal`, "The teacher types "1" then "2" for 12.";
+  // `14`, Rule tests ("scores and totals with one and two decimals (7.5 and 8.25) and a comma
+  // refused").
+  it('reads up to two digits after a point in the cell of a work, and refuses a comma, three decimals and letters', () => {
+    expect(typedWorkEntry('7.5', 10)).toBe(7.5);
+    expect(typedWorkEntry('8.25', 11)).toBe(8.25);
+    expect(typedWorkEntry('8.', 10)).toBe(8);
+    expect(typedWorkEntry(' 10 ', 10)).toBe(10);
+    expect(typedWorkEntry('0.01', 10)).toBe(0.01);
+    expect(typedWorkEntry('7,5', 10)).toEqual({ reason: 'comma', min: 0, max: 10 });
+    expect(typedWorkEntry('7.555', 10)).toEqual({ reason: 'decimals', min: 0, max: 10 });
+    expect(typedWorkEntry('abc', 10)).toEqual({ reason: 'notNumber', min: 0, max: 10 });
+    expect(typedWorkEntry('1.2.3', 10)).toEqual({ reason: 'notNumber', min: 0, max: 10 });
+    expect(typedWorkEntry('.5', 10)).toEqual({ reason: 'notNumber', min: 0, max: 10 });
+    expect(typedWorkEntry('10.01', 10)).toEqual({ reason: 'range', min: 0, max: 10 });
+    expect(typedWorkEntry('6', 7.5)).toBe(6);
   });
 
   it('folds the journal’s reminders under their title, with the count of each kind (task 8.7, 07: "A panel on the journal")', async () => {

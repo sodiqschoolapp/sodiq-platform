@@ -889,6 +889,7 @@ export const uz: Texts<'one' | 'other'> = {
     journal_work_title_required: 'Ish nomini kiriting, koʻpi bilan 60 ta belgi.',
     work_total_missing: 'Avval ishning jamini belgilang, soʻng sonlarni kiriting.',
     score_above_total: 'Son ishning jamidan katta. 0 dan jamigacha son kiriting.',
+    score_decimals: 'Sonda nuqtadan keyin koʻpi bilan ikki raqam boʻladi.',
     work_not_held:
       'Bu ish «oʻtkazilmadi» deb belgilangan. Son kiritish uchun belgini bekor qiling.',
     numbers_keep_or_clear:
@@ -8561,6 +8562,12 @@ export const uz: Texts<'one' | 'other'> = {
       total: '{{work}}: jami {{total}}',
       setTotal: '{{work}}: jamini belgilang',
     },
+    refusals: {
+      comma: 'Vergul emas, nuqta qoʻying.',
+      decimals: 'Nuqtadan keyin koʻpi bilan ikki raqam.',
+      notNumber: 'Faqat raqam va nuqta kiriting.',
+      point: 'Nuqta qoʻyish',
+    },
     works: {
       noPlan: 'Reja yoʻq',
       titleLabel: 'Nomi',
@@ -8600,7 +8607,8 @@ export const uz: Texts<'one' | 'other'> = {
       keep: 'Sonlarni qoldirish',
       clear: 'Sonlarni tozalash',
       aboveTotal: 'Yangi jamidan katta: {{names}}',
-      wholeNumber: '0 dan {{total}} gacha butun son kiriting.',
+      amount: '0 dan {{total}} gacha son kiriting, nuqtadan keyin koʻpi bilan ikki raqam.',
+      totalAmount: '1 dan 1000 gacha son kiriting, nuqtadan keyin koʻpi bilan ikki raqam.',
       onAbsent: 'yoʻq oʻquvchiga qoʻyilgan son',
       historyTotal: '{{work}} jamisi',
       historyNotHeld: '{{work}}: «oʻtkazilmadi»',

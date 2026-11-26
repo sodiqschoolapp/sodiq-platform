@@ -125,8 +125,11 @@ const CALCULATION: readonly Row[] = [
   {
     case: 'A score with decimals: 8.25 out of 11, and 7.5 and 9.75 out of 10 in one quarter.',
     rule: '2cf8d73c4b04dc40',
-    tests: [],
-    tasks: ['11.25'],
+    tests: [
+      ['quarter.test.ts', 'edge/calculation: a score with decimals'],
+      ['work.test.ts', 'scores and totals with decimals'],
+    ],
+    tasks: ['11.25b'],
   },
   {
     case: 'Which value gives the grade?',

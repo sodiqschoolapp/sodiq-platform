@@ -663,6 +663,41 @@ describe('the portal grades and attendance', () => {
     }
   });
 
+  // Task 11.25b (`07`, The total: "shown with a point, without trailing zeros"; `10`, What
+  // parents see): a score with decimals reaches the Grades page exactly, its percent from
+  // `packages/calc` (7.5 of 30 is 25%).
+  it('sends a score of 7.5 as 7.5 with its percent', async () => {
+    const cell = () =>
+      t.database.migrator
+        .selectFrom('journal_cells')
+        .select('version')
+        .where('lesson_id', '=', lessons.l12)
+        .where('student_id', '=', child)
+        .where('work_id', '=', works.cw12)
+        .executeTakeFirstOrThrow();
+    const resave = async (value: number, time: string) => {
+      const { version } = await cell();
+      await saveOn(
+        '2026-10-26',
+        [{ lessonId: lessons.l12, studentId: child, workId: works.cw12, value, version }],
+        time,
+      );
+    };
+    await resave(7.5, '09:40:00');
+    try {
+      const answer = await get(parent, `/api/portal/children/${child}/grades`);
+      expect(JSON.stringify(answer.body)).toContain('"score":7.5,');
+      const maths = (await gradesOf(child)).subjects.find((one) => one.subject.id === s.subject);
+      expect(maths?.scores.find((one) => one.date === '2026-10-12')).toMatchObject({
+        score: 7.5,
+        total: 30,
+        percent: 25,
+      });
+    } finally {
+      await resave(12, '09:41:00');
+    }
+  });
+
   it('never sends a staff-only comment, another student’s, an exemption’s reason or a Tutor’s reason', async () => {
     const bodies = [
       JSON.stringify((await get(parent, `/api/portal/children/${child}/grades`)).body),

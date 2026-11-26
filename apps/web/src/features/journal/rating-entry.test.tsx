@@ -243,6 +243,29 @@ describe('the rating exam and comments in the grid', () => {
     });
   });
 
+  // Task 11.25b (`edge/journal`: "A rating exam score takes whole numbers only"): 7.5 typed in the
+  // rating cell is refused with the rating's own reason, while a work's cell takes decimals.
+  it('refuses 7.5 typed in the rating cell, naming whole numbers, and sends nothing', async () => {
+    const calls = open();
+    const cell = await cellOf(uid(102), 'ratingExam');
+    fireEvent.click(cell);
+    fireEvent.keyDown(cell, { key: 'Enter', code: 'Enter' });
+    const input = await waitFor(() => {
+      const found = cell.querySelector<HTMLInputElement>('input');
+      expect(found).not.toBeNull();
+      return found as HTMLInputElement;
+    });
+    // The grid's editor reads its value from the input event.
+    fireEvent.input(input, { target: { value: '7.5' } });
+    fireEvent.keyDown(input, { key: 'Enter', code: 'Enter' });
+    await waitFor(() => {
+      expect(document.querySelector('[data-refused-number]')?.textContent).toBe(
+        en.journal.rating.wholeNumber.replace('{{max}}', '100'),
+      );
+    });
+    expect(sent(calls, ENTRIES)).toEqual([]);
+  });
+
   it('sends "did not sit" for a student with no entry, with no reason', async () => {
     const calls = open();
     const cell = await cellOf(uid(102), 'ratingExam');

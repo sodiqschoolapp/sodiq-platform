@@ -2005,6 +2005,7 @@ export {
   type WorkSaved,
   type WorkTotal,
 } from './journal-works.js';
+export { isWorkAmount, workAmountSchema, workTotalAmountSchema } from './work-amount.js';
 export {
   COMMENT_MAX_LENGTH,
   COMMENT_VISIBILITIES,

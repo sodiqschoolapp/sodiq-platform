@@ -260,9 +260,51 @@ describe('the numbers of works in lesson mode', () => {
     fireEvent.change(field, { target: { value: '12' } });
     fireEvent.keyDown(field, { key: 'Enter' });
     expect(
-      await screen.findByText(en.journal.works.wholeNumber.replace('{{total}}', '10')),
+      await screen.findByText(en.journal.works.amount.replace('{{total}}', '10')),
     ).not.toBeNull();
     expect(calls.filter((call) => call.route === SCORES)).toEqual([]);
+  });
+
+  // Task 11.25b; `07`, The total ("a comma is refused"); `edge/journal`, "The teacher types "1"
+  // then "2" for 12." ("Letters, a comma, … and more than two digits after the point are refused in
+  // the cell").
+  it.each([
+    ['7,5', en.journal.refusals.comma],
+    ['7.555', en.journal.refusals.decimals],
+    ['7a', en.journal.refusals.notNumber],
+  ])('refuses %s with its reason and sends nothing', async (typed, reason) => {
+    const calls = open('2026-10-27');
+    await rowOf();
+    chooseWork();
+    const row = await rowOf();
+    const field = within(row).getByRole('textbox', { name: fieldName });
+    fireEvent.change(field, { target: { value: typed } });
+    fireEvent.keyDown(field, { key: 'Enter' });
+    expect(await screen.findByText(reason)).not.toBeNull();
+    expect(field.getAttribute('aria-invalid')).toBe('true');
+    expect(field.getAttribute('title')).toBe(reason);
+    expect(calls.filter((call) => call.route === SCORES)).toEqual([]);
+  });
+
+  // Task 11.25b, decision 11: the point key beside the field types a point (the keypad's own
+  // decimal key may be a comma), and 7.5 is sent as 7.5; "8." is read as 8.
+  it('types a point with its own key and sends 7.5', async () => {
+    const calls = open('2026-10-27');
+    await rowOf();
+    chooseWork();
+    const row = await rowOf();
+    const field = within(row).getByRole<HTMLInputElement>('textbox', { name: fieldName });
+    fireEvent.change(field, { target: { value: '7' } });
+    field.setSelectionRange(1, 1);
+    fireEvent.click(within(row).getByRole('button', { name: en.journal.refusals.point }));
+    expect(field.value).toBe('7.');
+    fireEvent.change(field, { target: { value: '7.5' } });
+    fireEvent.blur(field);
+    await waitFor(() => {
+      expect(calls.filter((call) => call.route === SCORES)[0]?.body).toMatchObject({
+        saves: [{ studentId: uid(101), column: { workId: WORK }, score: 7.5, version: null }],
+      });
+    });
   });
 
   it('asks for the total first: no field, a button that opens the work', async () => {

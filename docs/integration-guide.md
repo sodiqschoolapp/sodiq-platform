@@ -142,6 +142,7 @@ Every error has this shape:
 | `403 permission_denied` and the scope codes of each operation | The person may not do this, exactly as in the platform (another teacher's lesson, another subject, another branch). |
 | `404 not_found` | The record does not exist, or belongs to another branch. |
 | `409 score_above_total` | A number is above the work's total. |
+| `409 score_decimals` | A number has more than two digits after the point. |
 | `409 cell_stale` | A cell changed since you read it (section 5). |
 | `409 journal_locked` | The lesson is past its edit period. The Teacher sends an unlock request. |
 
@@ -238,8 +239,8 @@ Suppose the teacher changed Nilufar's mark in the platform after you read the gr
 
 1. Add the work: `POST /api/journal/lessons/{lessonId}/works` with `{ "kind": "classwork", "title": "Unit 4 vocabulary" }`. The answer gives its `planWorkId`.
 2. Read the grid again. The lesson's `works` now hold the new work: by `id` once it has one, otherwise by `planWorkId` with `sourceLessonId`.
-3. Set its total: `PUT /api/journal/lessons/{lessonId}/works/total` with `{ "column": { "workId": "…" }, "total": 30, "version": null }`, or with `"column": { "planWorkId": "…", "sourceLessonId": "…" }` when the work has no `id` yet. `version` is the work's `version` as read.
-4. Enter the numbers:
+3. Set its total: `PUT /api/journal/lessons/{lessonId}/works/total` with `{ "column": { "workId": "…" }, "total": 30, "version": null }`, or with `"column": { "planWorkId": "…", "sourceLessonId": "…" }` when the work has no `id` yet. `version` is the work's `version` as read. A total is from 1 to 1000 with at most two digits after the point (`7.5`).
+4. Enter the numbers. A number is from 0 to the work's total, with at most two digits after the point (`27`, `7.5`, `8.25`), sent as a JSON number:
 
 ```bash
 curl -X POST https://app.sodiqschool.uz/api/journal/lessons/0193a7c4-3333-7eee-8fff-000000000003/scores \
@@ -257,7 +258,7 @@ curl -X POST https://app.sodiqschool.uz/api/journal/lessons/0193a7c4-3333-7eee-8
   }'
 ```
 
-The answer gives each cell's number, the percent the platform calculated, and the new `version`. A number above the work's total is refused with `409 score_above_total`.
+The answer gives each cell's number, the percent the platform calculated, and the new `version`. A number above the work's total is refused with `409 score_above_total`, and one with more than two digits after the point (`7.555`) with `409 score_decimals`. Numbers come back as JSON numbers without trailing zeros (`7.5`, never `7.50`).
 
 ### 9.7 A locked lesson
 
@@ -884,7 +885,7 @@ Answer `200`:
       position: integer;  // min 1
       title: string | null;
       unplanned: boolean;
-      total: integer | null;  // min 1, max 1000
+      total: number | null;  // min 1, max 1000
       notHeld: boolean;
       version: integer | null;  // min 1
     }[];
@@ -916,7 +917,7 @@ Answer `200`:
       position: integer;  // min 1
       title: string | null;
       unplanned: boolean;
-      total: integer | null;  // min 1, max 1000
+      total: number | null;  // min 1, max 1000
       notHeld: boolean;
       version: integer | null;  // min 1
     }[];
@@ -1009,7 +1010,7 @@ Answer `200`:
       };
       open: boolean;
       works: {
-        score: integer | null;  // min 0
+        score: number | null;  // min 0, max 1000
         percent: integer | null;  // min 0, max 100
         version: integer | null;  // min 1
         onAbsent: boolean;
@@ -1092,7 +1093,7 @@ Answer `200`:
     leftSubjectOn: date | null;
     atLeaving: date | null;
   }[];
-  lastTotal: integer | null;  // min 1, max 1000
+  lastTotal: number | null;  // min 1, max 1000
   bottom: {
     quarter: {
       attendance: integer | null;  // min 0, max 100
@@ -1362,8 +1363,8 @@ Answer `200`:
       kind: "classwork" | "homework";
     } | null;
     version: integer;  // min 1
-    before: integer | null;
-    after: integer | null;
+    before: number | null;  // min 0, max 1000
+    after: number | null;  // min 0, max 1000
     changedBy: {
       accountId: uuid;
       login: string | null;
@@ -1391,8 +1392,8 @@ Answer `200`:
       taughtTo: string;
       cancelled: boolean;
     } | null;
-    totalBefore: integer | null;
-    totalAfter: integer | null;
+    totalBefore: number | null;  // min 1, max 1000
+    totalAfter: number | null;  // min 1, max 1000
     notHeldBefore: boolean | null;
     notHeldAfter: boolean | null;
     titleBefore: string | null;
@@ -1546,7 +1547,7 @@ Answer `200`:
 {
   id: uuid;
   kind: "classwork" | "homework";
-  total: integer | null;  // min 1, max 1000
+  total: number | null;  // min 1, max 1000
   notHeld: boolean;
   title: string | null;
   version: integer;  // min 1
@@ -1586,7 +1587,7 @@ Request body (`application/json`):
     planWorkId: uuid;
     sourceLessonId: uuid;
   };
-  total: integer;  // min 1, max 1000
+  total: number;  // min 1, max 1000
   version: integer | null;  // min 1
   confirm?: boolean;
   correction?: {
@@ -1601,7 +1602,7 @@ Answer `200`:
 {
   id: uuid;
   kind: "classwork" | "homework";
-  total: integer | null;  // min 1, max 1000
+  total: number | null;  // min 1, max 1000
   notHeld: boolean;
   title: string | null;
   version: integer;  // min 1
@@ -1643,7 +1644,7 @@ Answer `200`:
 {
   id: uuid;
   kind: "classwork" | "homework";
-  total: integer | null;  // min 1, max 1000
+  total: number | null;  // min 1, max 1000
   notHeld: boolean;
   title: string | null;
   version: integer;  // min 1
@@ -1672,7 +1673,7 @@ Request body (`application/json`):
       planWorkId: uuid;
       sourceLessonId: uuid;
     };
-    score: integer | null;  // min 0, max 1000
+    score: number | null;  // min 0, max 1000
     notGraded?: true;
     version: integer | null;  // min 1
   }[];  // items ≥ 1, items ≤ 600
@@ -1689,7 +1690,7 @@ Answer `200`:
   cells: {
     studentId: uuid;
     workId: uuid;
-    score: integer | null;  // min 0
+    score: number | null;  // min 0, max 1000
     percent: integer | null;  // min 0, max 100
     notGraded: boolean;
     version: integer;  // min 1
@@ -1697,7 +1698,7 @@ Answer `200`:
   works: {
     id: uuid;
     kind: "classwork" | "homework";
-    total: integer | null;  // min 1, max 1000
+    total: number | null;  // min 1, max 1000
     notHeld: boolean;
     title: string | null;
     version: integer;  // min 1

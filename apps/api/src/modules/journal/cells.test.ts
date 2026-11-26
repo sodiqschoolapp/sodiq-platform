@@ -358,7 +358,7 @@ describe('saveCells', () => {
       const { lesson, students } = await scene();
       for (const value of [4, -1, 1.5]) {
         await expect(save([attendance(lesson, students[0] ?? '', value, null)])).rejects.toThrow(
-          'A mark is 0 to 3',
+          'A mark is a whole number from 0 to 3',
         );
       }
     });

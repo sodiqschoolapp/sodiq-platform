@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { workAmountSchema, workTotalAmountSchema } from './work-amount.js';
 import { schoolDateSchema } from './academic-year.js';
 import { AUDIT_MAX_RANGE_DAYS } from './audit.js';
 import { COMMENT_VISIBILITIES, ratingEntryValueSchema } from './journal-rating.js';
@@ -72,8 +73,9 @@ export const cellLineSchema = z.strictObject({
   attendance: z.boolean(),
   /** The work's kind; `null` for the attendance cell and for a work a forced delete removed. */
   workKind: cellWorkKindSchema.nullable(),
-  before: z.int().nullable(),
-  after: z.int().nullable(),
+  /** A mark or a work's number (up to two decimals, task 11.25b). */
+  before: workAmountSchema.nullable(),
+  after: workAmountSchema.nullable(),
   changedHow: cellChangeSchema,
 });
 
@@ -109,8 +111,8 @@ export const workLineSchema = z.strictObject({
   workKind: cellWorkKindSchema,
   changedAt: z.iso.datetime(),
   lesson: cellLessonSchema,
-  totalBefore: z.int().nullable(),
-  totalAfter: z.int().nullable(),
+  totalBefore: workTotalAmountSchema.nullable(),
+  totalAfter: workTotalAmountSchema.nullable(),
   notHeldBefore: z.boolean().nullable(),
   notHeldAfter: z.boolean().nullable(),
   /** Task 10.6: the title of a work added by hand before and after (a rename, a takeover). */

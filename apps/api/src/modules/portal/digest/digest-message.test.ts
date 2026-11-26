@@ -193,6 +193,32 @@ describe('the text of the digest', () => {
 
   // Owner, 19 November 2026: a title alone ("10-mashq") does not say whether the work was done
   // in class or at home.
+  // Task 11.25b (`07`, The total: "shown with a point, without trailing zeros"; the spec change:
+  // "a point in every language"): 7.5 out of 8.25 is written 7.5/8.25 in each language.
+  it('writes a score and a total with decimals with a point in every language', () => {
+    const decimal: ChildPart = {
+      ...part,
+      marks: [],
+      comments: [],
+      scores: [
+        {
+          date: '2026-11-17',
+          subject: maths,
+          work: { kind: 'classwork', position: 1, title: null },
+          score: 7.5,
+          total: 8.25,
+          state: 'new',
+        },
+      ],
+    };
+    for (const language of ['uz', 'ru', 'en'] as const) {
+      const row = childText(language, decimal)
+        .split('\n')
+        .find((one) => one.startsWith('• '));
+      expect(row, language).toContain('<b>7.5/8.25</b>');
+    }
+  });
+
   it('names the kind of every work, a titled one too, in each language', () => {
     const titled = (kind: 'classwork' | 'homework', title: string | null): ChildPart => ({
       ...part,

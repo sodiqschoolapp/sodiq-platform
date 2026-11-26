@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { workAmountSchema, workTotalAmountSchema } from './work-amount.js';
 import { schoolDateSchema } from './academic-year.js';
 import { JOURNAL_PARTS } from './journal.js';
 import { planFileSchema } from './plans.js';
@@ -213,8 +214,8 @@ export const portalScoreSchema = z.strictObject({
   /** The work's title; `null` for a work without one, shown "Classwork n" or "Homework n". */
   title: z.string().nullable(),
   position: z.int().min(1),
-  score: z.int().min(0),
-  total: z.int().min(1),
+  score: workAmountSchema,
+  total: workTotalAmountSchema,
   percent: z.int().min(0).max(100),
   /** The comment "visible to parents" on this score, or `null` (decision 8). */
   comment: z.string().nullable(),

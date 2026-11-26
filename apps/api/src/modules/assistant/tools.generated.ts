@@ -7576,7 +7576,7 @@ export const GENERATED_TOOLS: Readonly<Record<string, GeneratedTool>> = {
               },
               "score": {
                 "nullable": true,
-                "type": "integer",
+                "type": "number",
                 "minimum": 0,
                 "maximum": 1000
               },
@@ -21237,9 +21237,10 @@ export const GENERATED_TOOLS: Readonly<Record<string, GeneratedTool>> = {
           ]
         },
         "total": {
-          "type": "integer",
+          "type": "number",
           "minimum": 1,
-          "maximum": 1000
+          "maximum": 1000,
+          "multipleOf": 0.01
         },
         "version": {
           "nullable": true,

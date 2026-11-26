@@ -13,6 +13,9 @@ export const CELL_REFUSALS: Readonly<Record<string, ErrorCode>> = {
   // Task 8.1 (0119): the rules of a number.
   journal_cell_no_total: 'work_total_missing',
   journal_cell_above_total: 'score_above_total',
+  // Task 11.25b, decision 5: a number with more than two digits after the point, refused by the
+  // domain of the score (0188) and answered inside the route's recording of refusals.
+  work_amount_check: 'score_decimals',
   journal_cell_not_held: 'work_not_held',
   // Task 8.4 (0122): the guard of the edit period, which the routes decide first.
   journal_locked: 'journal_locked',
@@ -101,9 +104,13 @@ export async function saveCells(
     const { value } = save;
     if (
       value !== null &&
-      (!Number.isInteger(value) || value < 0 || (save.workId === null && value > 3))
+      (!Number.isFinite(value) ||
+        value < 0 ||
+        (save.workId === null && (!Number.isInteger(value) || value > 3)))
     ) {
-      throw new Error('A mark is 0 to 3 and a number a whole number from 0.');
+      // A work's number goes to the database as sent: its domain refuses more than two
+      // digits after the point (`score_decimals`, task 11.25b).
+      throw new Error('A mark is a whole number from 0 to 3 and a number is 0 or more.');
     }
     if (save.notGraded === true && (save.workId === null || value !== null)) {
       throw new Error('"Not graded" is the cell of a work with no number.');

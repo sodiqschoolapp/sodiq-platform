@@ -197,6 +197,17 @@ test('a teacher opens the journal from today’s lesson on the home page and rea
   await expect(workCell(ids[2] ?? '')).toContainText('40%');
   await expect(page.getByRole('dialog')).toHaveCount(0);
 
+  // Task 11.25b (07, The total: "a comma is refused"; edge/journal: "… are refused in the cell"):
+  // 7,5 is refused in the cell with its reason, and 7.5 is saved: 7.5 out of 20 shows 38%.
+  await workCell(ids[0] ?? '').click();
+  await page.keyboard.type('7,5\n');
+  await expect(page.locator('[data-refused-number]')).toHaveText(en.journal.refusals.comma);
+  await expect(workCell(ids[0] ?? '')).toContainText('35%');
+  await workCell(ids[0] ?? '').click();
+  await page.keyboard.type('7.5\n');
+  await expect(workCell(ids[0] ?? '')).toContainText('7.5');
+  await expect(workCell(ids[0] ?? '')).toContainText('38%');
+
   // On a phone (owner, 20 November 2026): lesson mode with the selectors folded, today's lessons
   // as cards on the home page, and neither page scrolls sideways.
   const sideways = 'document.documentElement.scrollWidth - document.documentElement.clientWidth';

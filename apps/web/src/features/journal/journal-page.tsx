@@ -47,6 +47,7 @@ import { useAttendanceEntry, type AttendanceEntry } from './attendance-entry';
 import { useUndo } from './cell-saves';
 import { useComments } from './comment-dialog';
 import { useRatingEntry } from './rating-entry';
+import { refusalText, type NumberRefusal } from './work-amount';
 import { WorkKindTag, useWorkLabel } from './work-kind-tag';
 import { useWorkName, useWorksEntry, workKey, type WorksEntry } from './works-entry';
 import { LessonModeScore } from './lesson-mode-score';
@@ -242,7 +243,7 @@ function JournalLoaded({
       ? ratingCorrectionOf(correcting)
       : correctionOf(correcting)(cell.lessonId),
   );
-  const [refusedNumber, setRefusedNumber] = useState<number | null>(null);
+  const [refusedNumber, setRefusedNumber] = useState<NumberRefusal | null>(null);
   const month =
     search.month !== undefined && data.months.includes(search.month) ? search.month : null;
   const subject = nameOf(data.journal.subject.names, language);
@@ -340,7 +341,7 @@ function JournalLoaded({
       {undo.notice}
       {refusedNumber !== null && (
         <p role="alert" className="text-sm text-destructive" data-refused-number="true">
-          {t('journal.works.wholeNumber', { total: refusedNumber })}
+          {refusalText(t, refusedNumber)}
         </p>
       )}
     </>
@@ -705,7 +706,7 @@ function LessonMode({
   students: readonly JournalStudent[];
   entry: AttendanceEntry;
   works: WorksEntry;
-  onRefusedNumber: (total: number) => void;
+  onRefusedNumber: (refusal: NumberRefusal) => void;
 }) {
   const { t, i18n } = useTranslation();
   const language = i18n.language;
