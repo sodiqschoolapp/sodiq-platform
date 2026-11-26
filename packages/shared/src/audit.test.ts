@@ -5,6 +5,7 @@ import {
   auditCursorSchema,
   auditQuerySchema,
   hideIdentity,
+  isAuditAction,
   SIGN_IN_HISTORY_ACTIONS,
   type HideableEntry,
 } from './audit.js';
@@ -24,6 +25,12 @@ const entryOf = (values: Partial<HideableEntry>): HideableEntry => ({
 // Task 2.6a, pull request #75: decision 6 (fail closed), decision 5 (search),
 // decision 10 (the own history). All values are invented.
 describe('the audit log in packages/shared', () => {
+  // Task 11.24 (review round 1, finding 3): the action 0186 writes is a named action.
+  it('names the homework move of 0186 as an action of the journal', () => {
+    expect(isAuditAction('journal.homework_move')).toBe(true);
+    expect(AUDIT_ACTIONS).toContain('journal.homework_move');
+  });
+
   describe('hideIdentity', () => {
     it('hides the Identity of a student entry and keeps the other groups', () => {
       const hidden = hideIdentity(

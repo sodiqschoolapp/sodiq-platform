@@ -72,7 +72,6 @@ export function PlanRowPanel({ plan, row }: { plan: Plan; row: PlanRow }) {
   const item = row.item;
   const index = plan.rows.findIndex((one) => one.lessonId === row.lessonId);
   const previous = index > 0 ? plan.rows[index - 1] : undefined;
-  const next = plan.rows[index + 1];
   // Task 7.2: the window or an open period opens the row (`row.open`); the server decides.
   const editable = plan.canEdit && row.open !== 'none';
   const slotText = (slot: number) => t('plans.plan.slot', { number: slot });
@@ -117,13 +116,6 @@ export function PlanRowPanel({ plan, row }: { plan: Plan; row: PlanRow }) {
     mutationFn: ({ id, name }: { id: string; name: string }) => downloadPlanFile(id, name),
   });
 
-  // A homework given at the first of two same-day lessons is checked at the second
-  // (edge/lesson-plans, "A double lesson").
-  const checkedToday =
-    next !== undefined && next.date === row.date && next.slot !== null
-      ? t('plans.panel.checkedToday', { slot: next.slot })
-      : undefined;
-
   const works = (kind: WorkKind) => {
     const list = item === null ? [] : kind === 'classwork' ? item.classworks : item.homeworks;
     return list;
@@ -148,7 +140,6 @@ export function PlanRowPanel({ plan, row }: { plan: Plan; row: PlanRow }) {
           previous.item !== null
             ? { sameTopic: previous.item.topic }
             : {})}
-          {...(checkedToday === undefined ? {} : { checkedToday })}
           onSaved={(_saved, notSent) => {
             setFailed(notSent);
             panel.stop({ saved: true, key: 'item' });
@@ -231,9 +222,6 @@ export function PlanRowPanel({ plan, row }: { plan: Plan; row: PlanRow }) {
                       </li>
                     ))}
                   </ol>
-                  {kind === 'homework' && checkedToday !== undefined && (
-                    <p className="text-sm text-muted-foreground">{checkedToday}</p>
-                  )}
                 </dd>
               </div>
             ),

@@ -3,7 +3,7 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { useNavigate, useParams, useSearch } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { FailureAlert } from '@/components/failure-alert';
-import { AttachFileIcon, EventIcon } from '@/components/icons';
+import { AttachFileIcon } from '@/components/icons';
 import { EmptyState, ErrorState, LoadingOutline } from '@/components/states';
 import { Button } from '@/components/ui/button';
 import { PANEL, SECTION_TITLE } from '@/components/ui/control';
@@ -80,7 +80,7 @@ export function PortalHomeworkPage(): React.JSX.Element {
             <ul>
               {week.data.homework
                 .filter((one) => one.givenOn === given)
-                // `10`: "Tasks by date and subject".
+                // `10`: "Tasks by the date of the lesson where they were given and by subject".
                 .sort(
                   (a, b) =>
                     a.subject.names[language].localeCompare(b.subject.names[language], language) ||
@@ -91,7 +91,6 @@ export function PortalHomeworkPage(): React.JSX.Element {
                     key={`${one.subject.id}-${String(one.number)}-${one.title ?? ''}`}
                     homework={one}
                     language={language}
-                    today={today}
                     pending={download.isPending}
                     onFile={(id, name) => {
                       download.mutate({ id, name });
@@ -109,13 +108,11 @@ export function PortalHomeworkPage(): React.JSX.Element {
 function HomeworkRow({
   homework,
   language,
-  today,
   pending,
   onFile,
 }: {
   homework: PortalHomework;
   language: Language;
-  today: string;
   pending: boolean;
   onFile: (id: string, name: string) => void;
 }): React.JSX.Element {
@@ -134,19 +131,6 @@ function HomeworkRow({
       </span>
       {homework.description !== null && (
         <p className="whitespace-pre-line">{homework.description}</p>
-      )}
-      {homework.dueOn !== null && (
-        <span
-          className={cn(
-            'flex items-center gap-1.5 text-sm',
-            homework.dueOn === today ? 'font-semibold' : 'text-muted-foreground',
-          )}
-        >
-          <EventIcon aria-hidden className="size-4 shrink-0" />
-          {homework.dueOn === today
-            ? t('portal.today.dueToday')
-            : t('portal.homework.dueOn', { date: dayText(homework.dueOn, language) })}
-        </span>
       )}
       {homework.files.length > 0 && (
         <ul className="mt-1 flex flex-wrap gap-2">

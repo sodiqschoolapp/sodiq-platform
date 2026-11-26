@@ -232,7 +232,8 @@ export const commentHistorySchema = z.object({
       visibilityBefore: z.enum(COMMENT_VISIBILITIES).nullable(),
       visibilityAfter: z.enum(COMMENT_VISIBILITIES).nullable(),
       changedBy: z.string().nullable(),
-      changedHow: z.enum(['entry', 'restored', 'forced_delete']),
+      /** `homework_move`: cleared by the homework move of 25 November 2026 (0186). */
+      changedHow: z.enum(['entry', 'restored', 'forced_delete', 'homework_move']),
       changedAt: z.iso.datetime(),
       /** Task 10.10: the integration key the change was made through ("via <key name>"). */
       viaKey: z.object({ name: z.string() }).nullable(),

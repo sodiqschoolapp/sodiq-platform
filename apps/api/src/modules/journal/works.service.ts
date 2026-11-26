@@ -8,7 +8,6 @@ import {
   type LessonTopic,
   type LessonTopicSaved,
   lessonTopicSavedSchema,
-  type WorkCarry,
   type WorkColumn,
   type PlanWorkRename,
   type WorkAdded,
@@ -33,13 +32,12 @@ import {
   enterableLesson,
   entryAssignment,
   journalFactsOf,
-  ownStaffOf,
   type EntryLesson,
 } from './attendance-entry.js';
 import { CELL_REFUSALS, saveCells, type SavedCell } from './cells.js';
 import { Notifications } from '../notifications/notifications.service.js';
 import { noticeCellCorrections, noticeLessonCorrection } from './corrections.js';
-import { decideWrite, writeAssignment, writeDetails, type WriteHow } from './edit-window.js';
+import { writeAssignment, writeDetails, type WriteHow } from './edit-window.js';
 import { attendanceOnlyOn, journalRows, type JournalRow } from './journal-grid.query.js';
 import { journalColumns, type JournalColumns } from './journal-works.query.js';
 import { columnAt, type Column } from './lesson-columns.js';
@@ -53,12 +51,12 @@ import { removePlanWork } from './plan-work-remove.js';
 /**
  * Classwork and homework (task 8.1, pull request #217; `07`, Entering data,
  * The total; `edge/journal`, Entering): works added by hand, the total, "not
- * held", the carry of a homework and the numbers. Every route decides the
+ * held" and the numbers. Every route decides the
  * lesson as attendance entry does (`enterableLesson`: 404, 403
  * `journal_entry_scope`, then the lesson's state), then refuses a lesson that
  * takes attendance only, then checks the column against the lesson's columns
- * (`lesson-columns.ts`). A column with no row gets one at its first write; a
- * stored homework shown at this lesson moves here first (decision 7).
+ * (`lesson-columns.ts`). A column with no row gets one at its first write.
+ * Task 11.24: a homework is a column of the lesson where it was given.
  */
 
 const CHECK_VIOLATION = '23514';
@@ -66,9 +64,11 @@ const CHECK_VIOLATION = '23514';
 /** The refusals of the work triggers (0119), as error codes. */
 const WORK_REFUSALS = {
   journal_work_total_below: 'total_below_numbers',
-  journal_work_move_numbers: 'work_holds_numbers',
-  journal_work_carry_once: 'work_carried',
   journal_works_limit: 'journal_works_limit',
+  // Task 11.24 (0186): a work stays at the lesson where it was given. No route writes a work's
+  // lesson (the application has no right to); mapped so that no path can answer 500.
+  journal_work_fixed: 'work_not_in_lesson',
+  journal_works_at_source: 'work_not_in_lesson',
   journal_cell_delete: 'work_holds_data',
   // Task 8.8 (decision 4): a planned homework marked "not given" takes no entry (0130).
   journal_work_not_given: 'journal_work_not_given',
@@ -111,7 +111,6 @@ interface WorkRow {
   kind: string;
   total: number | null;
   not_held: boolean;
-  carried_from_lesson_id: string | null;
   title: string | null;
   version: number;
 }
@@ -121,21 +120,11 @@ const savedOf = (row: WorkRow): WorkSaved => ({
   kind: row.kind === 'homework' ? 'homework' : 'classwork',
   total: row.total,
   notHeld: row.not_held,
-  carriedFrom: row.carried_from_lesson_id,
   title: row.title,
   version: row.version,
 });
 
-const WORK_COLUMNS = [
-  'id',
-  'lesson_id',
-  'kind',
-  'total',
-  'not_held',
-  'carried_from_lesson_id',
-  'title',
-  'version',
-] as const;
+const WORK_COLUMNS = ['id', 'lesson_id', 'kind', 'total', 'not_held', 'title', 'version'] as const;
 
 /** The numbers typed for a work: student and number. */
 async function numbersOf(
@@ -345,8 +334,8 @@ export class WorksService {
 
   /**
    * The row of a column, locked FOR UPDATE: inserted empty for a column with
-   * no row, moved here for a stored homework shown at this lesson (decision
-   * 7). `version` is the version the change was made on: a row changed
+   * no row. A work is stored at the lesson where it was given (task 11.24,
+   * 0186), so a row stored at another lesson is not this lesson's. `version` is the version the change was made on: a row changed
    * since, or one written meanwhile for a column that had none, is stale;
    * `undefined` (a save of numbers, whose cells carry their own versions)
    * takes the row as it is.
@@ -356,9 +345,8 @@ export class WorksService {
     scene: Scene,
     column: Column,
     version: number | null | undefined,
-  ): Promise<{ row: WorkRow; moved: boolean }> {
+  ): Promise<WorkRow> {
     let row: WorkRow | undefined;
-    let moved = false;
     // Task 8.8 (decision 4): the plan work of a planned homework first, FOR NO KEY UPDATE, as
     // "homework not given" takes it: the mark and a first entry meet in one order.
     if (column.kind === 'homework' && column.planWorkId !== null) {
@@ -418,26 +406,10 @@ export class WorksService {
         .forUpdate()
         .executeTakeFirst();
       if (row === undefined) throw new ApiException('work_not_in_lesson', 409);
+      if (row.lesson_id !== scene.lesson.id) throw new ApiException('work_not_in_lesson', 409);
       if (version !== undefined && version !== row.version) throw this.stale(row);
-      if (row.lesson_id !== scene.lesson.id) {
-        try {
-          row = await transaction
-            .updateTable('journal_works')
-            .set({
-              lesson_id: scene.lesson.id,
-              changed_by: scene.access.accountId,
-              changed_how: 'move',
-            })
-            .where('id', '=', row.id)
-            .returning(WORK_COLUMNS)
-            .executeTakeFirstOrThrow();
-        } catch (error) {
-          mapWorkRefusal(error);
-        }
-        moved = true;
-      }
     }
-    return { row, moved };
+    return row;
   }
 
   private stale(stored: WorkRow | undefined): ApiException {
@@ -538,8 +510,8 @@ export class WorksService {
 
   /**
    * Task 10.8: the lesson a work added in the journal is given at (its source), and whether this
-   * lesson shows it (its source, or the check lesson of a homework; `.claude/rules/journal.md`:
-   * "A route that acts on a stored row takes every lesson the screen shows the row at").
+   * lesson shows it. Task 11.24: a work is a column of the lesson where it was given and of no
+   * other, so the lesson that shows it is its source.
    */
   private planWorkAt(
     columns: JournalColumns,
@@ -547,18 +519,13 @@ export class WorksService {
     planWorkId: string,
   ): { source: string | null; shown: boolean } {
     let source: string | null = null;
-    let shown = false;
     for (const [at, lesson] of columns.columns) {
       const own = [...lesson.columns, ...lesson.notHeld].filter(
         (column) => column.planWorkId === planWorkId,
       );
-      if (lesson.given.some((one) => one.planWorkId === planWorkId)) source = at;
-      if (own.some((column) => column.kind === 'classwork' && column.sourceLessonId === at)) {
-        source = at;
-      }
-      if (at === lessonId && own.length > 0) shown = true;
+      if (own.length > 0 || lesson.given.some((one) => one.planWorkId === planWorkId)) source = at;
     }
-    return { source, shown: shown || source === lessonId };
+    return { source, shown: source === lessonId };
   }
 
   /**
@@ -594,15 +561,6 @@ export class WorksService {
     await sql`select pg_advisory_xact_lock(hashtextextended(${`journal_works_limit:${source}`}, 0))`.execute(
       transaction,
     );
-    // The edit period of the lesson it is given at (as `rename` judges a work at its lesson).
-    if (source !== scene.lesson.id) {
-      await decideWrite(transaction, {
-        access,
-        branchId: scene.branchId,
-        target: { kind: 'lesson', lessonId: source },
-        staffId: await ownStaffOf(transaction, access.accountId),
-      });
-    }
     const fresh = await transaction
       .selectFrom('lesson_plan_works')
       .select(['id', 'item_id', 'kind', 'title'])
@@ -777,10 +735,9 @@ export class WorksService {
   /**
    * Task 10.6: rename a work added by hand (`edge/journal`, "A lesson is held
    * with no plan item": "The teacher may rename it while the lesson can still
-   * be edited; each change is kept in history"). Taken at every lesson the
-   * screen shows it (`.claude/rules/journal.md`): stored there, its source, or
-   * the lesson that shows it; judged at the lesson it is stored at, as the
-   * guard of 0130 judges it. A planned work takes its title from the plan.
+   * be edited; each change is kept in history"). Taken at the lesson that
+   * shows it, which is the lesson where it was given and is stored (task
+   * 11.24). A planned work takes its title from the plan.
    */
   rename(
     access: Access,
@@ -799,21 +756,10 @@ export class WorksService {
         .forUpdate()
         .executeTakeFirst();
       if (row === undefined) throw notFound();
-      const shown = columnAt(scene.columns.columns, scene.lesson.id, { workId: row.id }) !== null;
-      if (!shown && row.lesson_id !== scene.lesson.id && row.source_lesson_id !== scene.lesson.id) {
-        throw new ApiException('work_not_in_lesson', 409);
-      }
+      if (row.lesson_id !== scene.lesson.id) throw new ApiException('work_not_in_lesson', 409);
       if (row.plan_work_id !== null) throw new ApiException('work_planned', 409);
       if (input.version !== row.version) throw this.stale(row);
       if (row.title === input.title) return savedOf(row);
-      if (row.lesson_id !== scene.lesson.id) {
-        await decideWrite(transaction, {
-          access,
-          branchId: scene.branchId,
-          target: { kind: 'lesson', lessonId: row.lesson_id },
-          staffId: await ownStaffOf(transaction, access.accountId),
-        });
-      }
       let saved: WorkRow;
       try {
         saved = await transaction
@@ -848,25 +794,11 @@ export class WorksService {
         .forUpdate()
         .executeTakeFirst();
       if (row === undefined) throw notFound();
-      // The lesson it is stored at, its source, or the lesson that shows it (a homework given
-      // by hand is a column of its check lesson; code review round 1, finding 1).
-      const shown = columnAt(scene.columns.columns, scene.lesson.id, { workId: row.id }) !== null;
-      if (!shown && row.lesson_id !== scene.lesson.id && row.source_lesson_id !== scene.lesson.id) {
-        throw new ApiException('work_not_in_lesson', 409);
-      }
+      // A work is a column of the lesson where it was given and is stored there (task 11.24).
+      if (row.lesson_id !== scene.lesson.id) throw new ApiException('work_not_in_lesson', 409);
       const numbers = await numbersOf(transaction, row.id);
       if (row.plan_work_id !== null || row.total !== null || row.not_held || numbers.length > 0) {
         throw new ApiException('work_holds_data', 409);
-      }
-      // Task 8.4: the work is judged at the lesson it is stored at too, as the guard of 0122
-      // judges it (a homework removed through the lesson that shows it).
-      if (row.lesson_id !== scene.lesson.id) {
-        await decideWrite(transaction, {
-          access,
-          branchId: scene.branchId,
-          target: { kind: 'lesson', lessonId: row.lesson_id },
-          staffId: await ownStaffOf(transaction, access.accountId),
-        });
       }
       // The line of the delete names the person who removed it.
       try {
@@ -921,7 +853,7 @@ export class WorksService {
       );
       await this.refuseUnknownColumns(transaction, [input.column]);
       const column = this.columnOf(scene, input.column);
-      const { row } = await this.rowOf(transaction, scene, column, input.version);
+      const row = await this.rowOf(transaction, scene, column, input.version);
       if (row.total === input.total) return savedOf(row);
       const numbers = await numbersOf(transaction, row.id);
       const scored = (one: { studentId: string; score: number }, index: number): ErrorDetail => ({
@@ -995,7 +927,7 @@ export class WorksService {
       );
       await this.refuseUnknownColumns(transaction, [input.column]);
       const column = this.columnOf(scene, input.column);
-      const { row } = await this.rowOf(transaction, scene, column, input.version);
+      const row = await this.rowOf(transaction, scene, column, input.version);
       if (row.not_held === input.notHeld) return savedOf(row);
       const numbers = await numbersOf(transaction, row.id);
       if (input.notHeld && numbers.length > 0 && !input.confirm) {
@@ -1022,70 +954,6 @@ export class WorksService {
         oldValue: { workId: row.id, notHeld: row.not_held, lessonId: row.lesson_id },
         newValue: { workId: row.id, notHeld: saved.not_held, version: saved.version },
         details: { ...writeDetails(scene.write, scene.correction), numbers: numbers.length },
-      });
-      await this.noticeCorrection(transaction, scene);
-      return savedOf(saved);
-    });
-  }
-
-  /**
-   * "Check at the next lesson" (`edge/journal`: "At the check lesson the
-   * teacher chooses, for each homework, 'not checked' or 'check at the next
-   * lesson' (once)"; decision 6): the row stays here, marked, and is shown at
-   * the next check lesson.
-   */
-  carry(
-    access: Access,
-    lessonId: string,
-    input: WorkCarry,
-    requestId?: string,
-  ): Promise<WorkSaved> {
-    return this.transactions.run(access.branchIds, async (transaction) => {
-      const scene = await this.sceneOf(
-        transaction,
-        access,
-        lessonId,
-        requestId,
-        input.correction,
-        undefined,
-        [input.column],
-      );
-      await this.refuseUnknownColumns(transaction, [input.column]);
-      const column = this.columnOf(scene, input.column);
-      if (column.kind !== 'homework') throw new ApiException('work_not_in_lesson', 409);
-      if (column.carriedFrom !== null) throw new ApiException('work_carried', 409);
-      // The next lesson that can check it (code review, must-fix 1): never a cancelled one.
-      const next = scene.columns.columns.get(scene.lesson.id)?.next ?? null;
-      if (next === null) throw new ApiException('no_next_lesson', 409);
-      const { row } = await this.rowOf(transaction, scene, column, input.version);
-      if ((await numbersOf(transaction, row.id)).length > 0) {
-        throw new ApiException('work_holds_numbers', 409);
-      }
-      let saved: WorkRow;
-      try {
-        saved = await transaction
-          .updateTable('journal_works')
-          .set({
-            carried_from_lesson_id: scene.lesson.id,
-            changed_by: access.accountId,
-            changed_how: 'carry',
-          })
-          .where('id', '=', row.id)
-          .returning(WORK_COLUMNS)
-          .executeTakeFirstOrThrow();
-      } catch (error) {
-        mapWorkRefusal(error);
-      }
-      await this.audit.record(transaction, {
-        ...this.actorOf(scene),
-        action: 'journal.work_carry',
-        record: { type: 'lesson', id: scene.lesson.id },
-        newValue: {
-          workId: row.id,
-          carriedFrom: scene.lesson.id,
-          to: next,
-          version: saved.version,
-        },
       });
       await this.noticeCorrection(transaction, scene);
       return savedOf(saved);
@@ -1369,15 +1237,12 @@ export class WorksService {
       keyOf(a).localeCompare(keyOf(b)),
     );
     const rows = new Map<string, WorkRow>();
-    // The rows a save moved to this lesson (decision 7), named in an entry of their own;
-    // a first row of a planned column writes no history line and needs none.
-    const written: WorkRow[] = [];
+    // A first row of a planned column writes no history line and needs none.
     const firsts: WorkRow[] = [];
     for (const column of distinct) {
-      const { row, moved } = await this.rowOf(transaction, scene, column, undefined);
+      const row = await this.rowOf(transaction, scene, column, undefined);
       rows.set(keyOf(column), row);
-      if (moved) written.push(row);
-      else if (column.workId === null) firsts.push(row);
+      if (column.workId === null) firsts.push(row);
     }
     const saved = await saveCells(
       transaction,
@@ -1401,14 +1266,6 @@ export class WorksService {
         };
       }),
     );
-    if (written.length > 0) {
-      await this.audit.record(transaction, {
-        ...this.actorOf(scene),
-        action: 'journal.work_move',
-        record: { type: 'lesson', id: scene.lesson.id },
-        newValue: { works: written.map((one) => ({ id: one.id, version: one.version })) },
-      });
-    }
-    return { saved, works: [...firsts, ...written].map((row) => row.id) };
+    return { saved, works: firsts.map((row) => row.id) };
   }
 }

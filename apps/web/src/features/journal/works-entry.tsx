@@ -33,15 +33,16 @@ import {
   showTyped,
 } from './journal-api';
 import type { WorkEntry } from './journal-grid';
-import { LessonEditor, type GivenWork } from './lesson-editor';
+import { LessonEditor } from './lesson-editor';
 
 /**
  * Classwork and homework in the journal (task 8.1, pull request #217; `07`,
  * Entering data, The total; `09`, In the journal; `edge/journal`, Entering):
  * the numbers typed in the grid, and two dialogs, one for the works of a
  * lesson (works added by hand at a lesson with no plan item, the works marked
- * "not held" with their undo, the homeworks given) and one for a work (its
- * total, "not held", "check at the next lesson", the removal of an empty one).
+ * "not held" with their undo) and one for a work (its total, "not held", the
+ * removal of an empty one). A homework is a column of the lesson where it was
+ * given (`07`, Homework column), so it is removed at that lesson.
  * The server decides who may enter (`canEnterWorks` of each lesson) and every
  * percent; nothing is calculated here.
  */
@@ -202,6 +203,15 @@ export function useWorksEntry(
       ) {
         saves.set(key, 'failed');
         saves.keepUnsent(key, { retry: () => score.mutate(input) });
+        return;
+      }
+      // Task 11.24, decision 9: an entry sent against a lesson that no longer shows its work (a
+      // homework typed at its old check lesson before the move) stays "not saved" with the
+      // reason; the teacher types it again at the lesson where the homework was given.
+      if (error instanceof ApiFailure && error.code === 'work_not_in_lesson') {
+        saves.set(key, 'failed');
+        saves.keepUnsent(key, { retry: () => score.mutate(input) });
+        setFailure(error);
         return;
       }
       saves.set(key, null);
@@ -379,28 +389,6 @@ export function useWorksEntry(
       run({ run: () => removeWork(target.id, id), ask: () => Promise.resolve(false) });
   };
 
-  /** A homework given at the lesson: deleted at its check lesson when it holds data there. */
-  const deleteGiven = (target: JournalLesson, given: GivenWork, name: string) => {
-    const check = grid.lessons.find((one) => one.id === given.checkAt);
-    const column = check?.works.find(
-      (one) =>
-        (given.planWorkId !== null && one.planWorkId === given.planWorkId) ||
-        (given.workId !== null && one.id === given.workId),
-    );
-    if (check !== undefined && column !== undefined) {
-      deleteAt(check, column, name);
-      return;
-    }
-    const planWorkId = given.planWorkId;
-    if (planWorkId !== null) {
-      run({ run: () => removePlanWork(target.id, planWorkId), ask: () => Promise.resolve(false) });
-      return;
-    }
-    const id = given.workId;
-    if (id !== null)
-      run({ run: () => removeWork(target.id, id), ask: () => Promise.resolve(false) });
-  };
-
   const rename = async (target: JournalLesson, chosen: JournalWork, title: string) => {
     const planWorkId = chosen.planWorkId;
     try {
@@ -506,13 +494,6 @@ export function useWorksEntry(
           }}
           onDelete={(chosen) => {
             deleteAt(lesson, chosen, nameOfWork(chosen));
-          }}
-          onDeleteGiven={(given) => {
-            deleteGiven(
-              lesson,
-              given,
-              given.title ?? t('journal.grid.homeworkShort', { number: 1 }),
-            );
           }}
           onClose={() => {
             setLessonOpen(null);

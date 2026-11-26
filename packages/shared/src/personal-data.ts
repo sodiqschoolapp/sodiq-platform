@@ -226,7 +226,10 @@ export const studentReportSchema = z.strictObject({
         changedBy: accountNamedSchema,
       }),
     ),
-    history: z.array(cellLineSchema.extend({ branch: z.string(), changedBy: accountNamedSchema })),
+    /** `changedBy` is `null` for a line the platform wrote (the homework move of 0186). */
+    history: z.array(
+      cellLineSchema.extend({ branch: z.string(), changedBy: accountNamedSchema.nullable() }),
+    ),
     /**
      * Task 8.1 (From 6.1c; decision 13): the total and "not held" lines of the
      * works in which the student has a cell, newest first, every one.

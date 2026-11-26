@@ -35,7 +35,7 @@ const EVER = { from: '1900-01-01', to: '9999-12-30' } as const;
  * lessons of the child's class and groups, read through the one reader of the journal's
  * columns (`journalsColumns`, as the lesson card's "given today"): plan homeworks and works
  * added by hand, "not given" left out (decision 8). With each, the topic of the lesson
- * (approval correction 2), the task text of the plan, its due date, and the files of the plan
+ * (approval correction 2), the task text of the plan, and the files of the plan
  * item (decision 2, Look first).
  */
 @Injectable()
@@ -74,7 +74,6 @@ export class PortalHomeworkService {
         title: one.title,
         number: one.number,
         description: one.description,
-        dueOn: one.dueOn,
         files: one.files,
       })),
     });
@@ -187,7 +186,6 @@ async function givenIn(
   for (const journal of journals) {
     const ofJournal = columns.journals.get(journal.id);
     if (ofJournal === undefined) continue;
-    const dateOf = new Map(ofJournal.lessons.map((one) => [one.id, one.date]));
     for (const lesson of ofJournal.lessons) {
       if (!inSpan(span, lesson.date) || !columns.held.has(lesson.id)) continue;
       const member =
@@ -210,7 +208,6 @@ async function givenIn(
           topic: item === null || item.topic.trim() === '' ? null : item.topic,
           title: one.title,
           number: index + 1,
-          dueOn: one.checkAt === null ? null : (dateOf.get(one.checkAt) ?? null),
           itemId: item?.itemId ?? null,
           planWorkId: one.planWorkId,
         });

@@ -235,7 +235,6 @@ export function PlanItemEditor({
   label,
   notes = {},
   sameTopic,
-  checkedToday,
   onSaved,
   onCancel,
   failureNotes,
@@ -249,7 +248,6 @@ export function PlanItemEditor({
   notes?: Partial<Record<PlanField, string>>;
   /** The topic of the lesson before on the same day ("same topic as the previous lesson"). */
   sameTopic?: string;
-  checkedToday?: string;
   onSaved: (saved: PlanItem, failed: HeldFile[]) => void;
   onCancel: () => void;
   /** The notes of fields a save was refused for, from the failure (the row panel's). */
@@ -400,9 +398,6 @@ export function PlanItemEditor({
             <legend className="font-semibold">
               {kind === 'classwork' ? t('plans.plan.classworks') : t('plans.plan.homeworks')}
             </legend>
-            {kind === 'homework' && checkedToday !== undefined && (
-              <p className="text-sm text-muted-foreground">{checkedToday}</p>
-            )}
             {Array.from({ length: count }, (_, slot) => {
               const place: FilePlace = `${kind}:${String(slot)}`;
               const title = form.bind(titleField(kind, slot)).value;

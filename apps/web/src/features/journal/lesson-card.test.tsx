@@ -41,8 +41,15 @@ const TEST: JournalWork = {
   unplanned: false,
   total: null,
   notHeld: false,
-  carriedFrom: null,
   version: null,
+};
+
+/** A homework of the same plan item: a column of the lesson where it was given (task 11.24). */
+const READ: JournalWork = {
+  ...TEST,
+  planWorkId: uid(71),
+  kind: 'homework',
+  title: 'Read',
 };
 
 const lesson = (id: string, date: string, more: Partial<JournalLesson> = {}): JournalLesson => ({
@@ -141,7 +148,7 @@ const GRID: JournalGrid = {
   months: ['2026-10'],
   lessons: [
     lesson(PLANNED, '2026-10-19', {
-      works: [TEST],
+      works: [TEST, READ],
       number: 7,
       topic: 'Fractions and their common denominators in practice',
       given: [
@@ -149,8 +156,6 @@ const GRID: JournalGrid = {
           workId: null,
           planWorkId: uid(71),
           title: 'Read',
-          checkAt: NO_PLAN,
-          ungraded: null,
           notGiven: false,
         },
       ],
@@ -193,12 +198,8 @@ const CARD: LessonCard = {
       title: 'Read',
       description: 'Pages 10 to 12',
       notGiven: false,
-      checkAt: { lessonId: NO_PLAN, date: '2026-10-26', slot: 1 },
-      checkedSameDay: false,
-      ungraded: null,
     },
   ],
-  checkedToday: [{ title: 'Write', givenOn: '2026-10-12' }],
   delivery: { notDelivered: false, version: null },
   canMark: true,
   editedAfterLesson: false,
@@ -252,14 +253,21 @@ describe('the lesson card', () => {
 
   // The owner, 20 November 2026: no "not given" and no "topic not delivered": the teacher
   // deletes a homework or changes the topic in the editor.
-  it('shows the homework given today with the day it is checked, and no "not given" or "not delivered"', async () => {
+  // Task 11.24 (`09`, In the journal): "The lesson card lists the homeworks of this lesson's plan
+  // item, which are this lesson's homework columns": one homework line, no day it is checked.
+  it('lists the homework of the lesson in one Homework section, with no check day, and no "not given" or "not delivered"', async () => {
     open();
     const cards = await screen.findAllByRole('button', { name: en.journal.card.open });
     fireEvent.click(cards[0] as HTMLElement);
     const dialog = await screen.findByRole('dialog');
-    const given = dialog.querySelector('[data-editor-given]') as HTMLElement;
-    expect(given.textContent).toContain('Read');
-    expect(given.textContent).toContain('26 October 2026');
+    const homework = within(dialog).getByRole('region', { name: en.journal.card.homeworks });
+    expect(homework.textContent).toContain('Read');
+    expect(dialog.textContent).not.toContain('26 October 2026');
+    expect(
+      within(dialog)
+        .getAllByRole('heading')
+        .filter((one) => one.textContent === en.journal.card.homeworks),
+    ).toHaveLength(1);
     // Task 10.7: each work carries its kind's tag, the full word on hover.
     const tags = [...dialog.querySelectorAll('[data-work-kind]')].map((one) => [
       one.getAttribute('data-work-kind'),

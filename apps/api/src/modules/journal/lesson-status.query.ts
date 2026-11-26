@@ -27,8 +27,8 @@ import type { Column } from './lesson-columns.js';
  *   with a cell of `journal_optional_cells` not withdrawn (0127, From 8.6) or
  *   of `exemption_reopened_cells` (0123, From 8.5) on the lesson.
  * - Works: the columns of `lessonColumns` (decision 2), none in a quarter
- *   that takes attendance only; a homework is optional for the students not
- *   expected at the lesson where it was given (`edge/journal`, row 15).
+ *   that takes attendance only; a homework is a work of the lesson where it
+ *   was given (task 11.24), waited for as a classwork is.
  * - Data: a mark or a number, a stored total or "not held", a comment with a
  *   text (`edge/00-definitions`, Data on a lesson).
  */
@@ -248,19 +248,8 @@ export async function lessonStatusFacts(
   );
   const held = lessons.filter(heldOf).map((one) => one.id);
   const heldIds = new Set(held);
-  const sources = [
-    ...new Set(
-      [...worksOf.values()]
-        .flat()
-        .flatMap((column) =>
-          column.kind === 'homework' && column.sourceLessonId !== null
-            ? [column.sourceLessonId]
-            : [],
-        ),
-    ),
-  ];
   const [expected, locks, optional, cells, comments] = await Promise.all([
-    expectedStudents(transaction, [...new Set([...held, ...sources])]),
+    expectedStudents(transaction, held),
     locksOfLessons(transaction, held),
     held.length === 0
       ? Promise.resolve([])
@@ -347,13 +336,12 @@ export async function lessonStatusFacts(
     const statusWorks: StatusWork[] = works.map((column) => {
       const cellsOfWork =
         column.workId === null ? [] : own.filter((cell) => cell.work_id === column.workId);
-      const givenAt =
-        column.kind === 'homework' && column.sourceLessonId !== null
-          ? new Set(expected.get(column.sourceLessonId) ?? [])
-          : null;
+      // Task 11.24: a homework is its own lesson's work, so its cells wait for the students
+      // expected at this lesson, as a classwork's do (`edge/journal`: a student not expected at
+      // the lesson where it was given has a closed cell, never an optional one).
       return {
         total: column.total,
-        optional: givenAt === null ? [] : waited.filter((student) => !givenAt.has(student)),
+        optional: [],
         numbered: cellsOfWork.flatMap((cell) => (cell.score === null ? [] : [cell.student_id])),
         notGraded: cellsOfWork.flatMap((cell) => (cell.not_graded ? [cell.student_id] : [])),
       };

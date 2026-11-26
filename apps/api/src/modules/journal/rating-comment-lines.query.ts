@@ -168,14 +168,19 @@ export async function commentLines(
           ? 'parents'
           : 'staff',
     changedHow:
-      row.changed_how === 'restored' || row.changed_how === 'forced_delete'
+      row.changed_how === 'restored' ||
+      row.changed_how === 'forced_delete' ||
+      row.changed_how === 'homework_move'
         ? row.changed_how
         : 'entry',
-    changedBy: accounts.get(row.changed_by) ?? {
-      accountId: row.changed_by,
-      login: null,
-      name: null,
-    },
+    changedBy:
+      row.changed_by === null
+        ? null
+        : (accounts.get(row.changed_by) ?? {
+            accountId: row.changed_by,
+            login: null,
+            name: null,
+          }),
   }));
 }
 

@@ -1233,8 +1233,6 @@ export class JournalGridReader {
                 workId: one.workId,
                 planWorkId: one.planWorkId,
                 title: one.title,
-                checkAt: one.checkAt,
-                ungraded: one.ungraded,
                 notGiven: one.notGiven,
               })),
       })),
@@ -1430,7 +1428,6 @@ function gridWork(column: Column) {
     unplanned: column.unplanned,
     total: column.total,
     notHeld: column.notHeld,
-    carriedFrom: column.carriedFrom,
     version: column.version,
   };
 }

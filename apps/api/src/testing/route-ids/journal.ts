@@ -138,7 +138,6 @@ export const JOURNAL_IDS: RouteIds = {
     branch('path:planWorkId', 'plan work', PATH, [WORKS]),
   ],
   'PUT /api/journal/lessons/:lessonId/works/not-held': [lesson(WORKS), ...column(WORKS)],
-  'POST /api/journal/lessons/:lessonId/works/carry': [lesson(WORKS), ...column(WORKS)],
   'POST /api/journal/lessons/:lessonId/scores': [
     lesson(WORKS, [WORKS, SAVES_KEY]),
     branch('body:saves[].studentId', 'student', BODY, [WORKS], [WORKS, SAVES_KEY]),

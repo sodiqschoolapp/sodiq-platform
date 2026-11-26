@@ -1385,7 +1385,10 @@ describe('the edit period through the routes', () => {
       expect((await cellOf(inPeriod, ahmedov))?.changed_how).toBe('late_entry');
     });
 
-    it('judges a homework removed through its check lesson at the lesson it is stored at', async () => {
+    // Task 11.24 (`edge/journal`, "Homework given on Monday is handed in on Friday": "It is
+    // graded in Monday's homework column while Monday's lesson can be edited"): a homework is
+    // judged at its own lesson, and no other lesson shows it.
+    it('judges a homework at the lesson where it was given, and refuses it through the next one', async () => {
       const x = await scene();
       // Task 10.8: a homework added by hand before 7 November 2026.
       const given = await handWork(t.database.migrator, {
@@ -1396,8 +1399,10 @@ describe('the edit period through the routes', () => {
         at: LAST_MINUTE,
       });
       await as(x.owner, x.branch, async (calls) => {
-        // The check lesson of 26 October is open; the homework is stored at the 19th, locked.
-        const removed = await calls.del(`/api/journal/lessons/${x.third}/works/${given.id}`);
+        // The 26 October lesson is open but does not show it; the 19th shows it and is locked.
+        const elsewhere = await calls.del(`/api/journal/lessons/${x.third}/works/${given.id}`);
+        expect(codeOf(elsewhere)).toBe('work_not_in_lesson');
+        const removed = await calls.del(`/api/journal/lessons/${x.second}/works/${given.id}`);
         expect(codeOf(removed)).toBe('journal_locked');
       });
       expect(
@@ -1411,7 +1416,7 @@ describe('the edit period through the routes', () => {
 
     // Task 10.6 (edge/journal, "A lesson is held with no plan item": "The teacher may rename it
     // while the lesson can still be edited; each change is kept in history").
-    it('renames a work added by hand in the edit period, refuses it once locked, judges a homework at the lesson it is stored at, and takes it under an open unlock', async () => {
+    it('renames a work added by hand in the edit period, refuses it once locked, judges a homework at its own lesson, and takes it under an open unlock', async () => {
       const x = await scene();
       const [work, homework] = await as(
         x.owner,
@@ -1456,12 +1461,18 @@ describe('the edit period through the routes', () => {
           version: work.version,
         });
         expect(codeOf(locked)).toBe('journal_locked');
-        // The check lesson of 26 October is open; the homework is stored at the 19th, locked.
+        // Task 11.24: the homework is judged at the 19th, its own lesson, which is locked; the
+        // 26th does not show it.
+        const own = await calls.put(`/api/journal/lessons/${x.second}/works/${homework.id}/title`, {
+          title: 'Exercises 4 to 9',
+          version: homework.version,
+        });
+        expect(codeOf(own)).toBe('journal_locked');
         const through = await calls.put(
           `/api/journal/lessons/${x.third}/works/${homework.id}/title`,
           { title: 'Exercises 4 to 9', version: homework.version },
         );
-        expect(codeOf(through)).toBe('journal_locked');
+        expect(codeOf(through)).toBe('work_not_in_lesson');
       });
       const sent = await requested(x);
       ok(await decide(x, x.head, sent.id, { decision: 'approve', days: 2, version: 1 }));
@@ -1472,8 +1483,9 @@ describe('the edit period through the routes', () => {
             version: work.version,
           }),
         );
+        // Under the unlock of the 19th: the homework of the 19th is renamed there.
         ok(
-          await calls.put(`/api/journal/lessons/${x.third}/works/${homework.id}/title`, {
+          await calls.put(`/api/journal/lessons/${x.second}/works/${homework.id}/title`, {
             title: 'Exercises 4 to 9',
             version: homework.version,
           }),
@@ -1499,8 +1511,9 @@ describe('the edit period through the routes', () => {
           unlock_id: sent.id,
         },
       ]);
-      expect((await t.entries('journal.work_rename', x.second)).length).toBe(2);
-      expect((await t.entries('journal.work_rename', x.third)).length).toBe(1);
+      // Task 11.24: both works are renamed at the 19th, their own lesson; none at the 26th.
+      expect((await t.entries('journal.work_rename', x.second)).length).toBe(3);
+      expect((await t.entries('journal.work_rename', x.third)).length).toBe(0);
     });
 
     it('takes a total, a number and "all present" at 23:59 of the last day, and refuses them at 00:00', async () => {

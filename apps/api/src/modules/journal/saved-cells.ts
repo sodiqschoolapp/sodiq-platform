@@ -33,6 +33,7 @@ export async function cellsAsSaved(
       'mark_after',
       'score_after',
       'not_graded_after',
+      'changed_how',
     ])
     .where(
       'cell_id',
@@ -41,7 +42,13 @@ export async function cellsAsSaved(
     )
     .orderBy('changed_at')
     .execute();
-  const lineOf = new Map(lines.map((line) => [`${line.cell_id}/${String(line.version)}`, line]));
+  // A line of the homework move (0186, task 11.24) keeps the version of the line that wrote the
+  // value: the answer is that line's.
+  const lineOf = new Map<string, (typeof lines)[number]>();
+  for (const line of lines) {
+    const key = `${line.cell_id}/${String(line.version)}`;
+    if (line.changed_how !== 'homework_move' || !lineOf.has(key)) lineOf.set(key, line);
+  }
   return cells.flatMap((cell) => {
     const line = lineOf.get(`${cell.id}/${String(cell.version)}`);
     return line === undefined

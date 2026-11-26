@@ -118,8 +118,6 @@ export const portalHomeworkSchema = z.strictObject({
   number: z.int().min(1),
   /** The text of the task, from the plan; `null` for none. */
   description: z.string().nullable(),
-  /** The date of the lesson it is checked at; `null` when none is known yet. */
-  dueOn: schoolDateSchema.nullable(),
   /** The files of the plan item of the lesson (decision 2, Look first). */
   files: z.array(planFileSchema),
 });

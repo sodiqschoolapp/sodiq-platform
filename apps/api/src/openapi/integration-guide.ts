@@ -186,8 +186,6 @@ export const KEY_OPERATION_TEXTS: Readonly<Record<string, string>> = {
     'Change the total of a work. Refused when a number already typed is above the new total; the answer lists those students.',
   WorksController_notHeld:
     'Mark a work "not held", or undo it. Its numbers leave the averages and stay in history.',
-  WorksController_carry:
-    'At the check lesson, choose for a homework "not checked" or "check at the next lesson" (once).',
   WorksController_scores:
     'Save the numbers typed for the works of a lesson, each with the version of the cell as read.',
   WorksController_notGraded:

@@ -432,7 +432,7 @@ describe('the support view', () => {
         ['correction', 1, 3],
       ]);
       expect(cells[3]?.reason).toBe('Seen in the corridor');
-      expect(cells[3]?.by.accountId).toBe(vice.account.id);
+      expect(cells[3]?.by?.accountId).toBe(vice.account.id);
       const refusals = ofKind(view, 'refusal');
       expect(refusals).toHaveLength(1);
       expect(refusals[0]).toMatchObject({ lessonId: s.third, valueSent: 0, field: 'attendance' });

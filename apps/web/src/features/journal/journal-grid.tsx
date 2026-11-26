@@ -1137,39 +1137,19 @@ export function JournalGridView({
         // Task 10.7: the column's accessible name and its hover name the kind in full.
         const kindWord = t(`journal.grid.kind.${work.kind}.word`);
         const label = t('journal.grid.workLabel', { kind: kindWord, title });
-        const source =
-          work.kind === 'homework' &&
-          work.sourceLessonId !== null &&
-          work.sourceLessonId !== lesson.id
-            ? grid.lessons.find((one) => one.id === work.sourceLessonId)
-            : undefined;
-        const given = source?.date ?? null;
         // Task 8.7 (From 8.6): an optional cell of a locked lesson open now takes its number.
         const openCell = (cell: JournalStudent['cells'][number] | undefined) =>
           works !== undefined && work.total !== null && cell?.open === true;
         children.push({
           colId: `${lesson.id}:${workKey(work)}`,
           headerName: title,
-          headerTooltip: [
-            label,
-            work.carriedFrom === null ? null : t('journal.works.carried'),
-            given === null
-              ? null
-              : t('journal.grid.givenOn', { date: schoolDateText(given, language, false) }),
-          ]
-            .filter((part) => part !== null)
-            .join(' · '),
+          headerTooltip: label,
           headerComponentParams: {
-            second: [
+            // A homework is a column of the lesson where it was given (`07`, Homework column).
+            second:
               work.total === null
                 ? t('journal.grid.totalUnset')
                 : t('journal.grid.total', { total: work.total }),
-              // A homework checked here was given at an earlier lesson (`07`, Homework column):
-              // its day, so the column is not read as the homework of this lesson.
-              given === null ? null : t('journal.grid.givenFrom', { date: shortDate(given) }),
-            ]
-              .filter((part) => part !== null)
-              .join(' · '),
             label: work.notHeld ? `${label}, ${t('journal.grid.notHeld')}` : label,
             kind: work.kind,
             menuBelow: true,

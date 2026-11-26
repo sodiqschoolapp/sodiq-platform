@@ -346,7 +346,6 @@ describe('the journal routes outside the scope of a role', () => {
           { column, notHeld: true, version: null },
           'journal_entry_scope',
         ],
-        ['post', `${lesson}/works/carry`, { column, version: null }, 'journal_entry_scope'],
         [
           'post',
           `${lesson}/scores`,

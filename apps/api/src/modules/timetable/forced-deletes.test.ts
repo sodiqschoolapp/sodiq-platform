@@ -22,6 +22,8 @@ import { heldEntry } from '../../testing/held-entry.js';
 import { closeQuarter } from '../../testing/closing-kit.js';
 import { inOrderOnLesson, markedLesson, workWithTotal } from '../../testing/cells-kit.js';
 import { LoadKit } from '../../testing/load-kit.js';
+import { MembersKit } from '../../testing/members-kit.js';
+import { handWork } from '../../testing/hand-works.js';
 import { errorCode } from '../../testing/sign-in-kit.js';
 import { publishedScene, publishOf, type PublishedScene } from '../../testing/published-scene.js';
 import { Audit } from '../audit/audit.service.js';
@@ -1234,10 +1236,10 @@ describe('the forced delete of a dated lesson and its restore', () => {
      * A past lesson with a mark, a work with a total and a number on it, and
      * an empty cell of a second member.
      */
-    async function dataLesson(s: Scene) {
+    async function dataLesson(s: Scene, date = NEXT_MONDAY) {
       // A lesson of the version in force, so a restore finds it in force; the
       // database takes data on any lesson.
-      const id = (await lessonOf(s, NEXT_MONDAY)).id;
+      const id = (await lessonOf(s, date)).id;
       // The teacher who types the cells is another account than the Super
       // Admin who deletes and restores (spec review of the code, should-fix 1).
       const writer = await load.classes.account();
@@ -1348,105 +1350,363 @@ describe('the forced delete of a dated lesson and its restore', () => {
 
     // Task 8.1, code review round 1 (finding 2): while the lesson was gone, a first write took
     // the plan link of its homework and an add by hand its place.
-    it('puts back a homework whose plan link or place was taken meanwhile as a column of its own, and refuses one with no place left', async () => {
-      // A graded subject: its journal has its plans (0117).
-      const s = await publishedScene(t, load, { graded: true });
-      const lesson = await dataLesson(s);
-      const source = (await lessonOf(s, '2026-10-26')).id;
-      const journal = await t.database.migrator
-        .selectFrom('journals')
-        .select('id')
-        .where('class_id', '=', s.classId)
-        .executeTakeFirstOrThrow();
-      const plan = await t.database.migrator
-        .selectFrom('lesson_plan_journals')
-        .select('plan_id')
-        .where('journal_id', '=', journal.id)
-        .executeTakeFirstOrThrow();
-      const item = await t.database.migrator
-        .insertInto('lesson_plan_items')
-        .values({ branch_id: s.branch, plan_id: plan.plan_id, topic: 'Fractions' })
-        .returning('id')
-        .executeTakeFirstOrThrow();
-      const planWork = await t.database.migrator
-        .insertInto('lesson_plan_works')
-        .values({
-          branch_id: s.branch,
-          item_id: item.id,
-          kind: 'homework',
-          position: 1,
-          title: 'Read',
-        })
-        .returning('id')
-        .executeTakeFirstOrThrow();
-      const homework = (values: {
-        lesson: string;
-        planWork?: string;
-        position?: number;
-        total?: number;
-      }) =>
+    // Task 11.24 (0186; plan decision 13, spec review of the code, must-fix 1): a store written
+    // before 0186 may keep a homework at its check lesson, given at another lesson. It comes back
+    // at the lesson where it was given while that lesson exists, with the numbers of the students
+    // expected there (one not expected stays in the store only), at a free place, refused with
+    // no place left; and as a column of the restored lesson once the lesson of its source is gone.
+    describe('a homework a store kept from before 0186 at its check lesson', () => {
+      /** The 19 October lesson with its data, a homework given on the 12th as the old code kept it. */
+      async function oldStore(
+        s: Scene,
+        sourceGone = false,
+        dates: { readonly stored: string; readonly given: string } = {
+          stored: NEXT_MONDAY,
+          given: '2026-10-12',
+        },
+        planWork: string | null = null,
+      ) {
+        const lesson = await dataLesson(s, dates.stored);
+        const given = (await lessonOf(s, dates.given)).id;
+        // A student who joined after the 12th: expected on the 19th only.
+        const members = new MembersKit(t.database.migrator, lesson.writer);
+        const late = await members.student(s.branch, { startsOn: '2026-09-01' });
+        await members.member({
+          branch: s.branch,
+          classId: s.classId,
+          studentId: late,
+          from: '2026-10-15',
+        });
+        await t.app.get(Transactions).run([s.branch], (transaction) =>
+          saveCells(transaction, t.app.get(Audit), { accountId: lesson.writer }, [
+            {
+              lessonId: lesson.id,
+              studentId: late,
+              workId: lesson.work,
+              value: 20,
+              version: null,
+            },
+          ]),
+        );
+        const store = storeOf(await forceDelete(s.branch, lesson.id));
+        const source = sourceGone ? randomUUID() : given;
+        await t.database.migrator.transaction().execute(async (transaction) => {
+          await sql`alter table forced_deletes disable trigger forced_deletes_write`.execute(
+            transaction,
+          );
+          await sql`
+            update forced_deletes set rows = jsonb_set(
+              rows, '{works}',
+              (select jsonb_agg(w || jsonb_build_object(
+                'source_lesson_id', ${source}::uuid, 'kind', 'homework',
+                'title', case when ${planWork}::uuid is null then 'Read' end,
+                'plan_work_id', ${planWork}::uuid
+              )) from jsonb_array_elements(rows -> 'works') w)
+            )
+            where id = ${store}::uuid
+          `.execute(transaction);
+          await sql`alter table forced_deletes enable trigger forced_deletes_write`.execute(
+            transaction,
+          );
+        });
+        return { ...lesson, given, late, store };
+      }
+
+      const workRow = (id: string) =>
         t.database.migrator
-          .insertInto('journal_works')
+          .selectFrom('journal_works')
+          .select(['lesson_id', 'source_lesson_id', 'kind', 'position', 'total'])
+          .where('id', '=', id)
+          .executeTakeFirst();
+      const workCells = (id: string) =>
+        t.database.migrator
+          .selectFrom('journal_cells')
+          .select(['lesson_id', 'student_id', 'score'])
+          .where('work_id', '=', id)
+          .orderBy('score')
+          .execute();
+
+      it('puts it back at the lesson where it was given, without the number of a student not expected there', async () => {
+        const s = await publishedScene(t, load, { graded: true });
+        const old = await oldStore(s);
+        done(await restore(s.branch, old.store));
+        expect(await rowOf(old.id)).toBeDefined();
+        expect(await workRow(old.work)).toMatchObject({
+          lesson_id: old.given,
+          source_lesson_id: old.given,
+          kind: 'homework',
+        });
+        expect(await workCells(old.work)).toEqual([
+          { lesson_id: old.given, student_id: old.student, score: 24 },
+        ]);
+        // The late student's number stays in the store (and in the cell's history) only.
+        const kept = await t.database.migrator
+          .selectFrom('forced_deletes')
+          .select('rows')
+          .where('id', '=', old.store)
+          .executeTakeFirstOrThrow();
+        expect(JSON.stringify(kept.rows)).toContain(old.late);
+        // The attendance of the 19th comes back at the 19th.
+        expect((await cellsOf(old.id)).filter((one) => one.work_id === null)).not.toEqual([]);
+      });
+
+      it('puts it back as a column of the restored lesson when the lesson where it was given is gone', async () => {
+        const s = await publishedScene(t, load, { graded: true });
+        const old = await oldStore(s, true);
+        done(await restore(s.branch, old.store));
+        expect(await workRow(old.work)).toMatchObject({
+          lesson_id: old.id,
+          source_lesson_id: old.id,
+          kind: 'homework',
+        });
+        expect((await workCells(old.work)).map((one) => [one.lesson_id, one.score])).toEqual([
+          [old.id, 20],
+          [old.id, 24],
+        ]);
+      });
+
+      // Review round 1, finding 4 (code review round 1 of 8.1, finding 2, as 0186 leaves it): while
+      // the lesson is gone, a first write of the planned homework at the lesson where it was given
+      // takes its plan link there; the restored row comes back with no link, under its plan title.
+      it('puts it back with no plan link, under its plan title, when a first write took the link meanwhile', async () => {
+        const s = await publishedScene(t, load, { graded: true });
+        const journal = await t.database.migrator
+          .selectFrom('journals')
+          .select('id')
+          .where('class_id', '=', s.classId)
+          .executeTakeFirstOrThrow();
+        const plan = await t.database.migrator
+          .selectFrom('lesson_plan_journals')
+          .select('plan_id')
+          .where('journal_id', '=', journal.id)
+          .executeTakeFirstOrThrow();
+        const item = await t.database.migrator
+          .insertInto('lesson_plan_items')
+          .values({ branch_id: s.branch, plan_id: plan.plan_id, topic: 'Fractions' })
+          .returning('id')
+          .executeTakeFirstOrThrow();
+        const planWork = await t.database.migrator
+          .insertInto('lesson_plan_works')
           .values({
             branch_id: s.branch,
-            lesson_id: values.lesson,
-            source_lesson_id: source,
+            item_id: item.id,
             kind: 'homework',
-            plan_work_id: values.planWork ?? null,
-            position: values.position ?? 1,
-            total: values.total ?? null,
+            position: 1,
+            title: 'Read',
           })
           .returning('id')
           .executeTakeFirstOrThrow();
-      const planned = await homework({ lesson: lesson.id, planWork: planWork.id, total: 5 });
-      const byHand = await homework({ lesson: lesson.id, position: 1, total: 4 });
-      const store = storeOf(await forceDelete(s.branch, lesson.id));
-      // The first write of the same column at another lesson, and an add by hand at place 1.
-      await homework({ lesson: source, planWork: planWork.id, total: 6 });
-      await homework({ lesson: source, position: 1 });
-      done(await restore(s.branch, store));
-      const back = await t.database.migrator
-        .selectFrom('journal_works')
-        .select(['id', 'plan_work_id', 'position', 'total'])
-        .where('id', 'in', [planned.id, byHand.id])
-        .orderBy('total')
-        .execute();
-      // Both back with their totals, with no plan link, at the places 2 and 3 left free.
-      expect(back.map((one) => [one.id, one.plan_work_id, one.total])).toEqual([
-        [byHand.id, null, 4],
-        [planned.id, null, 5],
-      ]);
-      expect(back.map((one) => one.position).sort()).toEqual([2, 3]);
-
-      // Every place of the lesson taken: the restore is refused with a code of its own.
-      const other = await scene();
-      const full = await dataLesson(other);
-      const otherSource = (await lessonOf(other, '2026-10-26')).id;
-      await t.database.migrator
-        .insertInto('journal_works')
-        .values({
-          branch_id: other.branch,
-          lesson_id: full.id,
-          source_lesson_id: otherSource,
-          kind: 'homework',
-          position: 1,
-          total: 3,
-        })
-        .execute();
-      const fullStore = storeOf(await forceDelete(other.branch, full.id));
-      for (let position = 1; position <= 10; position += 1) {
-        await t.database.migrator
+        const old = await oldStore(s, false, undefined, planWork.id);
+        // The first write of the planned homework at the lesson where it was given.
+        const first = await t.database.migrator
           .insertInto('journal_works')
           .values({
-            branch_id: other.branch,
-            lesson_id: otherSource,
-            source_lesson_id: otherSource,
+            branch_id: s.branch,
+            lesson_id: old.given,
+            source_lesson_id: old.given,
             kind: 'homework',
-            position,
+            plan_work_id: planWork.id,
+            total: 6,
           })
-          .execute();
-      }
-      const refused = await restore(other.branch, fullStore);
+          .returning('id')
+          .executeTakeFirstOrThrow();
+        done(await restore(s.branch, old.store));
+        const back = await t.database.migrator
+          .selectFrom('journal_works')
+          .select(['lesson_id', 'plan_work_id', 'title', 'position', 'total'])
+          .where('id', '=', old.work)
+          .executeTakeFirstOrThrow();
+        expect(back).toEqual({
+          lesson_id: old.given,
+          plan_work_id: null,
+          title: 'Read',
+          position: 1,
+          total: 30,
+        });
+        expect(
+          await t.database.migrator
+            .selectFrom('journal_works')
+            .select(['plan_work_id', 'total'])
+            .where('id', '=', first.id)
+            .executeTakeFirstOrThrow(),
+        ).toEqual({ plan_work_id: planWork.id, total: 6 });
+      });
+
+      it('takes the next free place when its place at the lesson where it was given is taken meanwhile', async () => {
+        const s = await publishedScene(t, load, { graded: true });
+        const old = await oldStore(s);
+        const taken = await handWork(t.database.migrator, {
+          branchId: s.branch,
+          lessonId: old.given,
+          kind: 'homework',
+          title: 'Exercises',
+          at: '2026-10-27T12:00:00+05:00',
+        });
+        done(await restore(s.branch, old.store));
+        expect(await workRow(old.work)).toMatchObject({ lesson_id: old.given, position: 2 });
+        expect(await workRow(taken.id)).toMatchObject({ lesson_id: old.given, position: 1 });
+      });
+
+      // Review round 1, finding 1: the lesson where it was given may lie in an earlier quarter
+      // than the restored lesson; that quarter is locked open too, and a closed one refuses.
+      const acrossQuarters = { stored: '2026-11-09', given: '2026-10-26' };
+      const quarterOf = async (lessonId: string) => {
+        const row = await t.database.migrator
+          .selectFrom('lessons')
+          .innerJoin('lesson_blocks', 'lesson_blocks.id', 'lessons.block_id')
+          .select('lesson_blocks.quarter_id')
+          .where('lessons.id', '=', lessonId)
+          .executeTakeFirstOrThrow();
+        return row.quarter_id;
+      };
+
+      it('refuses the restore when the lesson where it was given lies in a closed quarter', async () => {
+        const s = await publishedScene(t, load, { graded: true });
+        const old = await oldStore(s, false, acrossQuarters);
+        const quarter = await quarterOf(old.given);
+        // The restored lesson of 9 November lies in the next quarter.
+        const ends = await t.database.migrator
+          .selectFrom('quarters')
+          .select(sql<string>`end_date::text`.as('end'))
+          .where('id', '=', quarter)
+          .executeTakeFirstOrThrow();
+        expect(ends.end < acrossQuarters.stored).toBe(true);
+        await closeQuarter(t.database, {
+          branchId: s.branch,
+          quarterId: quarter,
+          accountId: adminAccount,
+        });
+        const before = await everything();
+        refusedWith(await restore(s.branch, old.store), 409, 'quarter_closed');
+        expect(await everything()).toEqual(before);
+        expect(await workRow(old.work)).toBeUndefined();
+      });
+
+      it('waits for a close of the quarter of the lesson where it was given, then refuses', async () => {
+        const s = await publishedScene(t, load, { graded: true });
+        const old = await oldStore(s, false, acrossQuarters);
+        const quarter = await quarterOf(old.given);
+        let release: () => void = () => undefined;
+        const released = new Promise<void>((resolve) => {
+          release = resolve;
+        });
+        let heldPid = 0;
+        let holding: () => void = () => undefined;
+        const held = new Promise<void>((resolve) => {
+          holding = resolve;
+        });
+        // A close in progress: it holds its quarter and writes its closing, then commits.
+        const closing = t.app.get(Transactions).run([s.branch], async (transaction) => {
+          const pid = await sql<{ pid: number }>`select pg_backend_pid() as pid`.execute(
+            transaction,
+          );
+          heldPid = pid.rows[0]?.pid ?? 0;
+          await transaction
+            .selectFrom('quarters')
+            .select('id')
+            .where('id', '=', quarter)
+            .forUpdate()
+            .execute();
+          await transaction
+            .insertInto('quarter_closings')
+            .values({
+              branch_id: s.branch,
+              quarter_id: quarter,
+              version: 1,
+              closed_at: new Date(0),
+              closed_by: adminAccount,
+              lock_now: false,
+              start_quarter: null,
+              warnings: JSON.stringify([]),
+            })
+            .execute();
+          holding();
+          await released;
+        });
+        await held;
+        const restoring = new Promise<Response>((resolve, reject) => {
+          restore(s.branch, old.store).then(resolve, reject);
+        });
+        for (let tries = 0; tries < 100; tries += 1) {
+          const waits = await sql<{ n: number }>`
+            select count(*)::int as n from pg_stat_activity a
+            where a.datname = current_database()
+              and ${heldPid}::int = any(pg_blocking_pids(a.pid))
+          `.execute(t.database.migrator);
+          if ((waits.rows[0]?.n ?? 0) > 0) break;
+          await new Promise((resolve) => setTimeout(resolve, 50));
+        }
+        const waits = await sql<{ n: number }>`
+          select count(*)::int as n from pg_stat_activity a
+          where a.datname = current_database() and ${heldPid}::int = any(pg_blocking_pids(a.pid))
+        `.execute(t.database.migrator);
+        expect(waits.rows[0]?.n).toBeGreaterThan(0);
+        // It waits at the lock of the quarters, before any write: it holds no write lock of the
+        // journal's works yet (a restore that wrote first would wait inside its write of them).
+        const writing = await sql<{ n: number }>`
+          select count(*)::int as n from pg_locks l
+          join pg_stat_activity a on a.pid = l.pid
+          where a.datname = current_database()
+            and ${heldPid}::int = any(pg_blocking_pids(a.pid))
+            and l.relation = 'journal_works'::regclass
+            and l.mode = 'RowExclusiveLock'
+        `.execute(t.database.migrator);
+        expect(writing.rows[0]?.n).toBe(0);
+        release();
+        await closing;
+        refusedWith(await restoring, 409, 'quarter_closed');
+        expect(await workRow(old.work)).toBeUndefined();
+      });
+
+      it('refuses the restore through the route when the lesson where it was given has no place left', async () => {
+        const s = await publishedScene(t, load, { graded: true });
+        const old = await oldStore(s);
+        for (let position = 1; position <= 10; position += 1) {
+          await handWork(t.database.migrator, {
+            branchId: s.branch,
+            lessonId: old.given,
+            kind: 'homework',
+            title: `Exercises ${String(position)}`,
+            at: '2026-10-27T12:00:00+05:00',
+          });
+        }
+        const refused = await restore(s.branch, old.store);
+        expect(refused.status, JSON.stringify(refused.body)).toBe(409);
+        expect(errorCode(refused)).toBe('restore_works_full');
+        expect(await rowOf(old.id)).toBeUndefined();
+        expect(await workRow(old.work)).toBeUndefined();
+      });
+    });
+
+    // Code review round 1 of 8.1, finding 2, as 0186 leaves it: the restored lesson's own works
+    // meet nothing while it is gone, and a store with more hand-added works of a kind than places
+    // is refused with its code.
+    it('refuses a restore with no place left for its works added by hand (restore_works_full)', async () => {
+      const s = await scene();
+      const lesson = await dataLesson(s);
+      const store = storeOf(await forceDelete(s.branch, lesson.id));
+      // Eleven homeworks added by hand at place 1, as a store can hold them only by an edit.
+      await t.database.migrator.transaction().execute(async (transaction) => {
+        await sql`alter table forced_deletes disable trigger forced_deletes_write`.execute(
+          transaction,
+        );
+        await sql`
+          update forced_deletes set rows = jsonb_set(
+            rows, '{works}',
+            (select jsonb_agg(jsonb_build_object(
+              'id', uuidv7(), 'kind', 'homework', 'total', null, 'not_held', false,
+              'source_lesson_id', ${lesson.id}::uuid, 'plan_work_id', null, 'position', 1,
+              'title', 'Exercises', 'version', 1
+            )) from generate_series(1, 11))
+              || (rows -> 'works')
+          )
+          where id = ${store}::uuid
+        `.execute(transaction);
+        await sql`alter table forced_deletes enable trigger forced_deletes_write`.execute(
+          transaction,
+        );
+      });
+      const refused = await restore(s.branch, store);
       expect(refused.status, JSON.stringify(refused.body)).toBe(409);
       expect(errorCode(refused)).toBe('restore_works_full');
     });

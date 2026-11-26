@@ -129,8 +129,6 @@ const journalWorkSchema = z.object({
   /** `null` while the teacher has not set it: "Soni" with no number (review correction 2). */
   total: z.int().min(1).max(1000).nullable(),
   notHeld: z.boolean(),
-  /** The check lesson a homework was carried from ("check at the next lesson"). */
-  carriedFrom: z.uuid().nullable(),
   /** The work's version, `null` before its first write. */
   version: z.int().min(1).nullable(),
 });
@@ -184,7 +182,7 @@ export const journalLessonSchema = z.object({
   notDelivered: z.boolean(),
   /** The works of the lesson marked "not held": out of the columns, listed for the undo (`09`: "its column is removed from that lesson"). */
   notHeldWorks: z.array(journalWorkSchema),
-  /** The homeworks given at this lesson, with the lesson that checks them, or why none does (task 8.1). */
+  /** The homeworks given at this lesson, which are its homework columns (task 11.24). */
   given: z.array(
     z.object({
       /**
@@ -194,10 +192,7 @@ export const journalLessonSchema = z.object({
       workId: z.uuid().nullable(),
       planWorkId: z.uuid().nullable(),
       title: z.string().nullable(),
-      checkAt: z.uuid().nullable(),
-      /** `year_end`: "will not be graded"; `group_closed`: "not checked, group closed" (`edge/lesson-plans`). */
-      ungraded: z.enum(['year_end', 'group_closed']).nullable(),
-      /** Task 8.8: marked "not given"; the next lesson has no column for it. */
+      /** Task 8.8: marked "not given"; it has no column. */
       notGiven: z.boolean(),
     }),
   ),

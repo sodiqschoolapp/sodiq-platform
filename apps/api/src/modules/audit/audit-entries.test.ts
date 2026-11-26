@@ -569,6 +569,23 @@ describe('the audit log page', () => {
       ]);
     });
 
+    // Task 11.24 (review round 1, finding 3): the entry of the homework move (0186) is named and
+    // found by the journal's filter.
+    it('finds the entry of the homework move under the journal', async () => {
+      const record = await newId();
+      const moved = await entry({
+        branch: t.north,
+        action: 'journal.homework_move',
+        record: { type: 'lesson', id: record },
+      });
+      expect(
+        ids(await readAll({ ...ofRecord(record, 'lesson'), group: 'journal' }, t.principal)),
+      ).toEqual([moved]);
+      expect(
+        ids(await readAll({ ...ofRecord(record, 'lesson'), group: 'exports' }, t.principal)),
+      ).toEqual([]);
+    });
+
     it('pages 50 at a time, each entry once, newest first', async () => {
       const record = await newId();
       const written: string[] = [];

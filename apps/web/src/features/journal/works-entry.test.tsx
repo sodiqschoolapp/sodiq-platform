@@ -36,7 +36,6 @@ const TEST: JournalWork = {
   unplanned: false,
   total: null,
   notHeld: false,
-  carriedFrom: null,
   version: null,
 };
 
@@ -157,7 +156,6 @@ const SAVED = {
   kind: 'classwork',
   total: 30,
   notHeld: false,
-  carriedFrom: null,
   title: null,
   version: 2,
 };
@@ -447,7 +445,9 @@ describe('classwork and homework in the grid', () => {
   });
 
   // Code review round 1 of task 8.1: a homework given by hand is a column of its check lesson.
-  it('deletes an empty homework given by hand from the lesson that shows it, and one given here at its check lesson when it holds a total there', async () => {
+  // Task 11.24 (`07`, Homework column): a homework is a column of the lesson where it was given,
+  // so it is deleted there, like a classwork.
+  it('deletes an empty homework given by hand, and keeps out one with a total, at the lesson where they were given', async () => {
     const given: JournalWork = {
       ...TEST,
       id: uid(81),
@@ -469,27 +469,22 @@ describe('classwork and homework in the grid', () => {
       lessons: [
         {
           ...(GRID.lessons[0] as JournalLesson),
+          works: [TEST, given, planned],
           given: [
-            {
-              workId: null,
-              planWorkId: uid(72),
-              title: 'Read',
-              checkAt: NO_PLAN,
-              ungraded: null,
-              notGiven: false,
-            },
+            { workId: null, planWorkId: uid(72), title: 'Read', notGiven: false },
+            { workId: uid(81), planWorkId: null, title: null, notGiven: false },
           ],
         },
-        { ...(GRID.lessons[1] as JournalLesson), works: [given, planned] },
+        GRID.lessons[1] as JournalLesson,
       ],
       students: GRID.students.map((one) => ({
         ...one,
         cells: [
-          one.cells[0] as JournalStudent['cells'][number],
           {
-            ...(one.cells[1] as JournalStudent['cells'][number]),
-            works: [EMPTY_SCORE, EMPTY_SCORE],
+            ...(one.cells[0] as JournalStudent['cells'][number]),
+            works: [EMPTY_SCORE, EMPTY_SCORE, EMPTY_SCORE],
           },
+          one.cells[1] as JournalStudent['cells'][number],
         ],
       })),
     };
@@ -497,31 +492,30 @@ describe('classwork and homework in the grid', () => {
       'GET /api/auth/session': () =>
         json(sessionOf({ assignments: [{ role: 'teacher', branchId: NORTH.id }] })),
       [`GET /api/journal/journals/${JOURNAL}`]: () => json(grid),
-      [`DELETE /api/journal/lessons/${NO_PLAN}/works/${uid(81)}`]: () =>
+      [`DELETE /api/journal/lessons/${PLANNED}/works/${uid(81)}`]: () =>
         new Response(null, { status: 204 }),
-      [`PUT /api/journal/lessons/${NO_PLAN}/works/not-held`]: () =>
+      [`PUT /api/journal/lessons/${PLANNED}/works/not-held`]: () =>
         json({ ...SAVED, kind: 'homework', notHeld: true }),
     });
     renderApp(`/journal/${JOURNAL}`);
     fireEvent.click(await screen.findByRole('button', { name: 'Work: HW 1 · unplanned' }));
-    const checking = await screen.findByRole('dialog');
-    fireEvent.click(within(checking).getByRole('button', { name: deleteOf('HW 1') }));
+    const editor = await screen.findByRole('dialog');
+    // One homework section, both homeworks in it.
+    const homework = within(editor).getByRole('region', { name: en.journal.card.homeworks });
+    expect(within(homework).getByText('Read')).toBeDefined();
+    fireEvent.click(within(homework).getByRole('button', { name: deleteOf('HW 1') }));
     await waitFor(() => {
       expect(
         calls.some(
-          (call) => call.route === `DELETE /api/journal/lessons/${NO_PLAN}/works/${uid(81)}`,
+          (call) => call.route === `DELETE /api/journal/lessons/${PLANNED}/works/${uid(81)}`,
         ),
       ).toBe(true);
     });
-    fireEvent.click(within(checking).getByRole('button', { name: en.journal.entry.close }));
-    // At the lesson it was given at, "Read" holds a total at its check lesson: kept out there.
-    fireEvent.click(await screen.findByRole('button', { name: 'Work: Test' }));
-    const giving = await screen.findByRole('dialog');
-    fireEvent.click(within(giving).getByRole('button', { name: deleteOf('Read') }));
+    fireEvent.click(within(homework).getByRole('button', { name: deleteOf('Read') }));
     const question = await screen.findByRole('alertdialog');
     fireEvent.click(within(question).getByRole('button', { name: en.journal.editor.deleteAction }));
     await waitFor(() => {
-      expect(sent(calls, `PUT /api/journal/lessons/${NO_PLAN}/works/not-held`)).toEqual([
+      expect(sent(calls, `PUT /api/journal/lessons/${PLANNED}/works/not-held`)).toEqual([
         {
           column: { planWorkId: uid(72), sourceLessonId: PLANNED },
           notHeld: true,

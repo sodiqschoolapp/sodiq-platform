@@ -120,7 +120,8 @@ export const cellHistorySchema = z.object({
       version: z.int().min(1),
       before: z.int().nullable(),
       after: z.int().nullable(),
-      changedBy: accountNamedSchema,
+      /** `null` for a line the platform wrote: the homework move of 25 November 2026 (0186). */
+      changedBy: accountNamedSchema.nullable(),
       changedHow: cellChangeSchema,
       changedAt: z.iso.datetime(),
       /** Task 10.10: the integration key the change was made through ("via <key name>"). */

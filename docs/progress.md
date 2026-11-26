@@ -2,6 +2,18 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 26 November 2026: task 11.24, homework graded at the lesson where it was given
+
+- **The column at its own lesson**: a lesson's homework columns are the homeworks of its own plan item and those added at it (`lesson-columns.ts`), under that lesson's lock, unlock and quarter. The check lesson, the carry and its route (`POST :lessonId/works/carry`), "checked today", "will not be graded", "not checked, group closed", the slot-N warning and the portal's due date are gone.
+- **The move** (0186, 0187): every homework stored at a later lesson moves to the lesson where it was given; cells follow by cascade (`journal_cells_work_fkey on update cascade`), each with a `homework_move` history line with no author, and one audit entry `journal.homework_move` per work. Numbers and comments of students not expected there are cleared and kept in history. The migration refuses, naming each case, for a closed, reopened or closing quarter, a locked lesson, a cancelled source, or a planned homework with no row at a locked held lesson. `journal_works_at_source` keeps every work at its source lesson.
+- Left out: the stale comments of `packages/calc/src/quarter.ts` ("checked at it"), for 11.25, which may change `packages/calc`; no `journal_voids` assertion in the move test (no task named; the move does not touch void rows). A pre-0186 forced-delete store restores its homework at the lesson where it was given while that lesson exists, otherwise at the restored lesson (decision 13).
+
+The next sessions must know:
+
+- The kind `homework_move` exists only in history tables and is written only in the move mode (`journal_homework_move_on()`: the migrator with `app.homework_move` on); no row of cells, works or comments may hold it.
+- A reader of cell history keyed by version must prefer the line that wrote the version over a `homework_move` line of the same version, and accept a null author.
+- Deploy 0186 to production before the first pilot lessons lock (23:59 on 27 November, Tashkent time, with the 30-day edit period), or it refuses and names the rows.
+
 ## 25 November 2026: task 11.23, helpers: the day's briefing, substitutes, a unit of plans, and why a result is what it is
 
 - **Four helpers** (`apps/api/src/modules/assistant/helpers.ts`), tools of the engine that run only the platform's own reads as the person (each stored and counted as a read): `todays_briefing` (Super Admin, Academic Vice Principal: absences today, lessons without a teacher, unlock and plan requests waiting, overdue plans, the early-warning list, each counted and linked), `suggest_substitutes` (the lesson's own substitutes list per lesson of an absence, ranked: language last, group, fewest lessons that day, already in the building), `draft_plan_unit` (Teacher only: the next N empty rows of the own plan) and `explain_result` (the results row, the trace's works and the journal legend's weights).

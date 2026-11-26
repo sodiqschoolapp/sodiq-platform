@@ -908,7 +908,7 @@ function LessonMode({
         )}
         {lesson.works.some((one) => one.kind === 'homework') && (
           <p>
-            <span className="font-semibold">{t('journal.card.checkedToday')}</span>{' '}
+            <span className="font-semibold">{t('journal.card.homeworks')}</span>{' '}
             {lesson.works
               .filter((one) => one.kind === 'homework')
               .map((one) => (
@@ -918,19 +918,6 @@ function LessonMode({
                 >
                   <WorkKindTag kind={one.kind} />
                   {workName(one)}
-                </span>
-              ))}
-          </p>
-        )}
-        {lesson.given.some((one) => !one.notGiven) && (
-          <p>
-            <span className="font-semibold">{t('journal.card.givenToday')}</span>{' '}
-            {lesson.given
-              .filter((one) => !one.notGiven)
-              .map((one, at) => (
-                <span key={String(at)} className="mr-2 inline-flex items-center gap-1">
-                  <WorkKindTag kind="homework" />
-                  {one.title ?? t('journal.grid.homeworkShort', { number: at + 1 })}
                 </span>
               ))}
           </p>

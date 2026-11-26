@@ -7,14 +7,7 @@ import { ErrorState, LoadingOutline } from '@/components/states';
 import { PANEL, SECTION_TITLE } from '@/components/ui/control';
 import { SubjectSwatch } from '@/features/setup/subject-colour';
 import { schoolDateText } from '@/lib/dates';
-import { cn } from '@/lib/utils';
-import {
-  datePlus,
-  portalAttendanceQuery,
-  portalGradesQuery,
-  portalHomeworkQuery,
-  portalWeekQuery,
-} from './portal-api';
+import { portalAttendanceQuery, portalGradesQuery, portalWeekQuery } from './portal-api';
 import { ExamRow, LessonRow, dayItems, languageOf, type Language } from './portal-lessons';
 import { PortalTitle } from './portal-shell';
 import { dayText } from './portal-week';
@@ -68,7 +61,6 @@ export function PortalTodayPage(): React.JSX.Element {
         {t('portal.today.title')}
       </PortalTitle>
       <LessonsSection studentId={studentId} language={language} />
-      <HomeworkSection studentId={studentId} language={language} />
       <ScoresSection studentId={studentId} language={language} />
     </>
   );
@@ -158,93 +150,6 @@ function LessonsSection({
           )}
         </ul>
       )}
-    </Section>
-  );
-}
-
-/**
- * The homework still to hand in (checked today or later), the nearest first: of this week and of
- * the week before, so that a homework given on Friday for Monday is on Monday's page (review of
- * pull request #356).
- */
-function HomeworkSection({
-  studentId,
-  language,
-}: {
-  studentId: string;
-  language: Language;
-}): React.JSX.Element {
-  const { t } = useTranslation();
-  const week = useQuery(portalHomeworkQuery(studentId, undefined));
-  const previousMonday = week.data === undefined ? undefined : datePlus(week.data.monday, -7);
-  const before = useQuery({
-    ...portalHomeworkQuery(studentId, previousMonday ?? ''),
-    enabled: previousMonday !== undefined,
-  });
-  const link = (
-    <Link to="/portal/$studentId/homework" params={{ studentId }} className={LINK}>
-      {t('portal.today.allHomework')}
-    </Link>
-  );
-  let body: React.ReactNode;
-  const failed = week.isError ? week : before.isError ? before : null;
-  if (failed !== null) {
-    body = (
-      <ErrorState
-        error={failed.error}
-        onRetry={() => {
-          void failed.refetch();
-        }}
-      />
-    );
-  } else if (week.data === undefined || before.data === undefined) {
-    body = <LoadingOutline lines={3} />;
-  } else {
-    const today = week.data.today;
-    const due = [...before.data.homework, ...week.data.homework]
-      .filter((one) => (one.dueOn === null ? one.givenOn === today : one.dueOn >= today))
-      .sort(
-        (a, b) =>
-          (a.dueOn ?? '9999').localeCompare(b.dueOn ?? '9999') ||
-          a.subject.names[language].localeCompare(b.subject.names[language], language),
-      );
-    body =
-      due.length === 0 ? (
-        <p className="text-muted-foreground">{t('portal.today.noHomework')}</p>
-      ) : (
-        <ul>
-          {due.map((one) => (
-            <li
-              key={`${one.givenOn}-${one.subject.id}-${String(one.number)}`}
-              className="grid gap-0.5 border-b border-border py-3 first:pt-0 last:border-b-0 last:pb-0"
-            >
-              <span className="flex min-w-0 items-center gap-2 text-sm text-muted-foreground">
-                <SubjectSwatch colour={one.subject.colour} />
-                <span className="truncate">{one.subject.names[language]}</span>
-              </span>
-              <span className="font-semibold">
-                {one.title ?? t('portal.homework.numbered', { n: one.number })}
-              </span>
-              {one.dueOn !== null && (
-                <span
-                  className={cn(
-                    'text-sm',
-                    one.dueOn === today ? 'font-semibold' : 'text-muted-foreground',
-                  )}
-                >
-                  {one.dueOn === today
-                    ? t('portal.today.dueToday')
-                    : t('portal.homework.dueOn', { date: dayText(one.dueOn, language) })}
-                </span>
-              )}
-            </li>
-          ))}
-        </ul>
-      );
-  }
-  return (
-    <Section id="today-homework" title={t('portal.today.homework')} link={link}>
-      {body}
     </Section>
   );
 }

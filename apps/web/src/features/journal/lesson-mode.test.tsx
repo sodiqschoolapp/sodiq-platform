@@ -35,7 +35,6 @@ const work = (total: number | null): JournalWork => ({
   unplanned: false,
   total,
   notHeld: false,
-  carriedFrom: null,
   version: 1,
 });
 

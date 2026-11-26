@@ -19,7 +19,6 @@ import {
   scoresSaveSchema,
   scoresSavedSchema,
   workAddSchema,
-  workCarrySchema,
   workNotHeldSchema,
   workRenameSchema,
   workSavedSchema,
@@ -29,7 +28,6 @@ import {
   type ScoresSave,
   type ScoresSaved,
   type WorkAdd,
-  type WorkCarry,
   type WorkRename,
   type WorkSaved,
 } from '@sodiq/shared';
@@ -165,20 +163,6 @@ export class WorksController {
     @RequestId() requestId: string,
   ): Promise<WorkSaved> {
     return this.works.setNotHeld(access, params.lessonId, input, requestId);
-  }
-
-  @Post(':lessonId/works/carry')
-  @HttpCode(200)
-  @Requires('journal', 'edit')
-  @OpenToKeys()
-  @Returns(workSavedSchema)
-  carry(
-    @CurrentAccess() access: Access,
-    @ValidParams(journalLessonParamsSchema) params: JournalLessonParams,
-    @ValidBody(workCarrySchema) input: WorkCarry,
-    @RequestId() requestId: string,
-  ): Promise<WorkSaved> {
-    return this.works.carry(access, params.lessonId, input, requestId);
   }
 
   @Post(':lessonId/scores')

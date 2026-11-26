@@ -439,121 +439,40 @@ describe('journal works in the database', () => {
     });
   });
 
-  describe('the move and the carry', () => {
-    it('moves a homework with no number to another lesson, its empty cells going with it, and refuses one with a number', async () => {
+  // Task 11.24 (0186): a homework is stored at the lesson where it was given. The move of a
+  // homework to its check lesson (decision 7 of 8.1) and the carry are gone; the guards of 0186
+  // are tested in homework-at-source.database.test.ts and the one-time move in
+  // homework-move.migration.test.ts.
+  describe('the lesson of a work', () => {
+    it('is fixed for the application: a homework with or without numbers stays where it was given, and takes no carry', async () => {
       const { classId, lesson: id, student } = await scene();
       const next = await lesson(classId, '2026-10-15');
-      const homework = await work(id, { kind: 'homework', total: 5 });
-      const cleared = await number(id, student, homework, 4);
-      await inBranch(async (transaction) => {
-        await audited(transaction);
-        await transaction
-          .updateTable('journal_cells')
-          .set({ score: null, changed_by: account })
-          .where('id', '=', cleared.id)
-          .execute();
-      });
-      await setWork(homework, { lesson_id: next });
-      const moved = await database.migrator
+      const empty = await work(id, { kind: 'homework', total: 5 });
+      const scored = await work(id, { kind: 'homework', position: 2, total: 5 });
+      await number(id, student, scored, 4);
+      for (const homework of [empty, scored]) {
+        // 42501: the application has no right to write a work's lesson or its carry (0186).
+        expect((await refusal(setWork(homework, { lesson_id: next }))).code).toBe('42501');
+        expect((await refusal(setWork(homework, { carried_from_lesson_id: id }))).code).toBe(
+          '42501',
+        );
+      }
+      const rows = await database.migrator
         .selectFrom('journal_works')
-        .select(['lesson_id', 'total'])
-        .where('id', '=', homework)
-        .executeTakeFirstOrThrow();
-      expect(moved).toEqual({ lesson_id: next, total: 5 });
-      // The cell's lines stay in the history.
-      const cellLines = await database.migrator
-        .selectFrom('journal_cell_history')
-        .select('score_after')
-        .where('cell_id', '=', cleared.id)
-        .orderBy('version')
+        .select(['id', 'lesson_id', 'carried_from_lesson_id'])
+        .where('id', 'in', [empty, scored])
+        .orderBy('position')
         .execute();
-      expect(cellLines.map((one) => one.score_after)).toEqual([4, null]);
-      await number(next, student, homework, 2);
-      expect((await refusal(setWork(homework, { lesson_id: id }))).constraint).toBe(
-        'journal_work_move_numbers',
-      );
-    });
-
-    // Task 8.2, code review round 1, defect 2: the comment of a cleared number
-    // follows the move by the cascade, with no version, no moment and no line,
-    // and no check of the student at the target lesson.
-    it('moves a homework with the comment of a cleared number of a student who left before the target lesson', async () => {
-      const { classId, lesson: id, student } = await scene();
-      const next = await lesson(classId, '2026-10-15');
-      const homework = await work(id, { kind: 'homework', total: 5 });
-      const cell = await number(id, student, homework, 4);
-      const comment = await inBranch(async (transaction) => {
-        await audited(transaction);
-        await transaction
-          .updateTable('journal_cells')
-          .set({ score: null, changed_by: account })
-          .where('id', '=', cell.id)
-          .execute();
-        return (
-          await transaction
-            .insertInto('journal_comments')
-            .values({
-              branch_id: north,
-              student_id: student,
-              target: 'work',
-              lesson_id: id,
-              work_id: homework,
-              body: 'Text',
-              visibility: 'staff',
-              version: 1,
-              changed_by: account,
-              changed_how: 'entry',
-              changed_at: new Date(0),
-            })
-            .returning('id')
-            .executeTakeFirstOrThrow()
-        ).id;
-      });
-      await inBranch(async (transaction) => {
-        await audited(transaction);
-        const leavingId = await kit.members.leaving(transaction, north, student, '2026-10-15');
-        await transaction
-          .updateTable('class_memberships')
-          .set({ valid_until: '2026-10-15', ended_by: 'leaving', leaving_id: leavingId })
-          .where('student_id', '=', student)
-          .execute();
-      });
-      const expected = await sql<{ expected: boolean }>`
-        select lesson_student_expected(${next}::uuid, ${student}::uuid) as expected
-      `.execute(database.migrator);
-      expect(expected.rows[0]?.expected).toBe(false);
-      const before = await database.migrator
-        .selectFrom('journal_comments')
-        .select(['version', 'changed_at', 'changed_by', 'changed_how'])
-        .where('id', '=', comment)
-        .executeTakeFirstOrThrow();
-      await setWork(homework, { lesson_id: next });
-      expect(
-        await database.migrator
-          .selectFrom('journal_comments')
-          .select(['lesson_id', 'version', 'changed_at', 'changed_by', 'changed_how'])
-          .where('id', '=', comment)
-          .executeTakeFirstOrThrow(),
-      ).toEqual({ ...before, lesson_id: next });
-      const lines = await database.migrator
-        .selectFrom('journal_comment_history')
-        .select('version')
-        .where('comment_id', '=', comment)
+      expect(rows).toEqual([
+        { id: empty, lesson_id: id, carried_from_lesson_id: null },
+        { id: scored, lesson_id: id, carried_from_lesson_id: null },
+      ]);
+      const cells = await database.migrator
+        .selectFrom('journal_cells')
+        .select(['lesson_id', 'score'])
+        .where('work_id', '=', scored)
         .execute();
-      expect(lines.map((one) => one.version)).toEqual([1]);
-    });
-
-    it('sets the carry once, on a homework only', async () => {
-      const { lesson: id } = await scene();
-      const homework = await work(id, { kind: 'homework' });
-      await setWork(homework, { carried_from_lesson_id: id });
-      expect((await refusal(setWork(homework, { carried_from_lesson_id: null }))).constraint).toBe(
-        'journal_work_carry_once',
-      );
-      const classwork = await work(id, { position: 2 });
-      expect((await refusal(setWork(classwork, { carried_from_lesson_id: id }))).code).toBe(
-        CHECK_VIOLATION,
-      );
+      expect(cells).toEqual([{ lesson_id: id, score: 4 }]);
     });
   });
 

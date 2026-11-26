@@ -88,7 +88,6 @@ const HOMEWORK: PortalHomeworkWeek = {
       title: 'Exercise 5',
       number: 1,
       description: 'Pages 12 and 13',
-      dueOn: '2026-10-30',
       files: [{ id: FILE, name: 'fractions.pdf', type: 'application/pdf', bytes: 9 }],
     },
     {
@@ -98,13 +97,12 @@ const HOMEWORK: PortalHomeworkWeek = {
       title: null,
       number: 2,
       description: null,
-      dueOn: null,
       files: [],
     },
   ],
 };
 
-/** The week before: given on Friday for today (listed on Today), and one due before today (not). */
+/** The week before: homework given on Friday and on Monday. */
 const LAST_WEEK: PortalHomeworkWeek = {
   today: '2026-10-26',
   monday: '2026-10-19',
@@ -116,7 +114,6 @@ const LAST_WEEK: PortalHomeworkWeek = {
       title: 'Essay on autumn',
       number: 1,
       description: null,
-      dueOn: '2026-10-26',
       files: [],
     },
     {
@@ -126,7 +123,6 @@ const LAST_WEEK: PortalHomeworkWeek = {
       title: 'Old exercise',
       number: 1,
       description: null,
-      dueOn: '2026-10-23',
       files: [],
     },
   ],
@@ -234,7 +230,7 @@ describe('the parent portal', () => {
     ).toBe(true);
   });
 
-  it('shows today’s lessons with their marks, the homework to hand in and the newest scores', async () => {
+  it('shows today’s lessons with their marks and the newest scores, and no homework to hand in', async () => {
     portal();
     renderApp(`/portal/${ANVAR}/today`);
     const lessons = await screen.findByRole('region', { name: en.portal.today.lessons });
@@ -244,15 +240,11 @@ describe('the parent portal', () => {
       );
     });
     expect(within(lessons).getByText('Exam: Quarter exam')).toBeDefined();
-    const homework = screen.getByRole('region', { name: en.portal.today.homework });
-    // Due on Friday: listed; "Homework 2" has no due date and was given today: listed too.
-    expect(await within(homework).findByText('Exercise 5')).toBeDefined();
-    expect(within(homework).getByText('Due Friday, 30 October')).toBeDefined();
-    expect(within(homework).getByText('Homework 2')).toBeDefined();
-    // Given last Friday for today: listed first, "due today"; last week's one due before today: not.
-    const rows = [...homework.querySelectorAll('li')].map((row) => row.textContent);
-    expect(rows[0]).toBe(`Mathematics${'Essay on autumn'}${en.portal.today.dueToday}`);
-    expect(within(homework).queryByText('Old exercise')).toBeNull();
+    // Task 11.24 (`10`, Today): a homework is graded at the lesson where it was given, so the
+    // page has no homework still to hand in and no due date.
+    expect(screen.queryByRole('region', { name: en.portal.homework.title })).toBeNull();
+    expect(screen.queryByText('Exercise 5')).toBeNull();
+    expect(screen.queryByText('Essay on autumn')).toBeNull();
     const scores = screen.getByRole('region', { name: en.portal.today.latestScores });
     await waitFor(() => {
       expect(
@@ -288,8 +280,6 @@ describe('the parent portal', () => {
     });
     expect(within(next).getByText('Day off: Teachers’ day')).toBeDefined();
     expect(within(next).getByText('Mathematics')).toBeDefined();
-    const homework = screen.getByRole('region', { name: en.portal.today.homework });
-    expect(await within(homework).findByText(en.portal.today.noHomework)).toBeDefined();
   });
 
   it('shows today with the changed mark and the exam in words, and another day when chosen', async () => {
@@ -382,15 +372,35 @@ describe('the parent portal', () => {
     expect(screen.queryByRole('button', { name: /Anvar Karimov/ })).toBeNull();
   });
 
-  it('lists homework with title, text, due date and files, and "Homework n" without a title', async () => {
+  // Task 11.24 (`10`, Homework): "Tasks by the date of the lesson where they were given and by
+  // subject"; a homework has no due date.
+  it('lists homework with title, text and files, and "Homework n" without a title, with no due date', async () => {
     portal();
     renderApp(`/portal/${ANVAR}/homework`);
     await screen.findByText('Exercise 5');
     expect(screen.getByText('Pages 12 and 13')).toBeDefined();
-    expect(screen.getByText('Due Friday, 30 October')).toBeDefined();
+    expect(screen.queryByText(/^Due /)).toBeNull();
     expect(screen.getByRole('button', { name: 'fractions.pdf' })).toBeDefined();
     expect(screen.getByText('Homework 2')).toBeDefined();
     expect(screen.getAllByText(/Fractions/).length).toBeGreaterThan(0);
+  });
+
+  it('groups the homework by the day it was given, the newest day first', async () => {
+    fakeApi({
+      'GET /api/auth/session': () => json(PARENT()),
+      'GET /api/portal/children': () => json(CHILDREN),
+      [`GET /api/portal/children/${ANVAR}/homework`]: () => json(LAST_WEEK),
+    });
+    renderApp(`/portal/${ANVAR}/homework`);
+    await screen.findByText('Essay on autumn');
+    const days = screen
+      .getAllByRole('heading', { level: 2 })
+      .map((one) => one.textContent)
+      .filter((text) => text.startsWith('Given on'));
+    expect(days).toEqual(['Given on Friday, 23 October', 'Given on Monday, 19 October']);
+    const friday = screen.getByRole('region', { name: 'Given on Friday, 23 October' });
+    expect(within(friday).getByText('Essay on autumn')).toBeDefined();
+    expect(within(friday).queryByText('Old exercise')).toBeNull();
   });
 
   it('says so when no homework was given', async () => {

@@ -549,7 +549,7 @@ describe('the rating exam and comments', () => {
           ok(await present(calls, lesson, s.ahmedov));
           ok(await present(calls, lesson, s.boboyev));
         }
-        // A classwork of the first lesson, 5 of 10; a homework given there, checked at the second, 3 of 10.
+        // A classwork of the first lesson, 5 of 10; a homework given there, graded there (task 11.24), 3 of 10.
         // Task 10.8: both are written into the first lesson's plan item; their columns are planned.
         const added = [];
         for (const kind of ['classwork', 'homework'] as const) {
@@ -567,7 +567,7 @@ describe('the rating exam and comments', () => {
         const totals = [];
         for (const [lesson, work] of [
           [first, added[0]],
-          [second, added[1]],
+          [first, added[1]],
         ] as const) {
           totals.push(
             workSavedSchema.parse(
@@ -591,7 +591,7 @@ describe('the rating exam and comments', () => {
           }),
         );
         ok(
-          await calls.post(`/api/journal/lessons/${second}/scores`, {
+          await calls.post(`/api/journal/lessons/${first}/scores`, {
             saves: [
               { studentId: s.ahmedov, column: { workId: homework.id }, score: 3, version: null },
             ],

@@ -269,7 +269,7 @@ export class CommentsService {
       );
       return {
         lines: rows.map((row) => {
-          const named = names.get(row.changed_by);
+          const named = row.changed_by === null ? undefined : names.get(row.changed_by);
           return {
             version: row.version,
             bodyBefore: row.body_before,
@@ -278,7 +278,9 @@ export class CommentsService {
             visibilityAfter: visibilityOf(row.visibility_after),
             changedBy: named?.name ?? named?.login ?? null,
             changedHow:
-              row.changed_how === 'restored' || row.changed_how === 'forced_delete'
+              row.changed_how === 'restored' ||
+              row.changed_how === 'forced_delete' ||
+              row.changed_how === 'homework_move'
                 ? row.changed_how
                 : 'entry',
             changedAt: row.changed_at.toISOString(),

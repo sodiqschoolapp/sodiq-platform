@@ -1,3 +1,4 @@
+import { sql } from 'kysely';
 import type { Transaction } from '../../database/transactions.js';
 
 export interface CellHistoryLine {
@@ -5,7 +6,8 @@ export interface CellHistoryLine {
   /** The mark or the number before and after; `null` when empty. */
   before: number | null;
   after: number | null;
-  changedBy: string;
+  /** `null` for a line the platform wrote: the homework move of 25 November 2026 (0186). */
+  changedBy: string | null;
   changedHow: string;
   changedAt: Date;
 }
@@ -14,7 +16,8 @@ export interface CellHistoryLine {
  * The history of one cell (task 6.1a; 07, Editing rules and locks: "Every
  * cell keeps its history: old value, new value, who and when"), written by
  * the database (0108). Ordered by version: every line of one transaction has
- * the same moment.
+ * the same moment. A line of the homework move (0186, task 11.24) keeps the
+ * cell's version and comes after the line that wrote it.
  */
 export async function cellHistory(
   transaction: Transaction,
@@ -25,6 +28,9 @@ export async function cellHistory(
     .selectAll()
     .where('cell_id', '=', cellId)
     .orderBy('version')
+    .orderBy(sql`changed_how = 'homework_move'`)
+    // A cell left out by the move has two of its lines with one version (its clear, its move).
+    .orderBy('id')
     .execute();
   return lines.map((line) => ({
     version: line.version,

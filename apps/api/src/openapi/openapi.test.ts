@@ -178,7 +178,6 @@ describe('OpenAPI document', () => {
         '/api/journal/lessons/{lessonId}/undo',
         '/api/journal/lessons/{lessonId}/unlocks',
         '/api/journal/lessons/{lessonId}/works',
-        '/api/journal/lessons/{lessonId}/works/carry',
         '/api/journal/lessons/{lessonId}/works/not-held',
         '/api/journal/lessons/{lessonId}/works/total',
         '/api/journal/lessons/{lessonId}/works/{workId}',

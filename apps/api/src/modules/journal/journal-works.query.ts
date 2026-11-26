@@ -43,7 +43,6 @@ export async function storedWorks(
       'journal_works.position',
       'journal_works.total',
       'journal_works.not_held',
-      'journal_works.carried_from_lesson_id',
       'journal_works.title',
       'journal_works.version',
       (eb) =>
@@ -60,9 +59,7 @@ export async function storedWorks(
     // One array parameter, not one per lesson: a statement holds at most
     // 65,535 parameters, and the closing checklist names every lesson of a
     // branch's quarter (the Speed run at three times the data, 28 October 2026).
-    .where(
-      sql<boolean>`journal_works.lesson_id = any(${ids}::uuid[]) or journal_works.source_lesson_id = any(${ids}::uuid[])`,
-    )
+    .where(sql<boolean>`journal_works.lesson_id = any(${ids}::uuid[])`)
     .orderBy('journal_works.id')
     .execute();
   return rows.map((row) => ({
@@ -74,7 +71,6 @@ export async function storedWorks(
     position: row.position,
     total: row.total,
     notHeld: row.not_held,
-    carriedFromLessonId: row.carried_from_lesson_id,
     title: row.title,
     version: row.version,
     hasNumbers: Boolean(row.has_numbers),
@@ -260,22 +256,6 @@ export async function plannedWorks(
   return new Map([...items].map(([lessonId, item]) => [lessonId, item?.works ?? null]));
 }
 
-/** The journals named whose runs end early in their year: no run day left (7.1b decision 9). */
-async function journalsClosedEarly(
-  transaction: Transaction,
-  journalIds: readonly string[],
-): Promise<Set<string>> {
-  if (journalIds.length === 0) return new Set();
-  const found = await transaction
-    .selectFrom('journals')
-    .innerJoin('academic_years', 'academic_years.id', 'journals.academic_year_id')
-    .select('journals.id')
-    .where('journals.id', 'in', [...journalIds])
-    .where(sql<boolean>`isempty(journals.runs) or upper(journals.runs) <= academic_years.end_date`)
-    .execute();
-  return new Set(found.map((row) => row.id));
-}
-
 /** The dated lessons of each journal in its year, in date and time order (one statement). */
 export async function yearLessonsOf(
   transaction: Transaction,
@@ -367,7 +347,7 @@ export async function journalsColumns(
 ): Promise<JournalsColumns> {
   const lessonsOf = await yearLessonsOf(transaction, journals, timeZone);
   const all = [...lessonsOf.values()].flat();
-  const [away, items, stored, closed, marks] = await Promise.all([
+  const [away, items, stored, marks] = await Promise.all([
     awayLessons(
       transaction,
       all.map((one) => ({ id: one.id, teacherId: one.teacherId, startsAt: one.startsAt })),
@@ -376,10 +356,6 @@ export async function journalsColumns(
     storedWorks(
       transaction,
       all.map((one) => one.id),
-    ),
-    journalsClosedEarly(
-      transaction,
-      journals.map((one) => one.id),
     ),
     deliveryMarksOf(
       transaction,
@@ -411,10 +387,7 @@ export async function journalsColumns(
   for (const journal of journals) {
     const lessons = lessonsOf.get(journal.id) ?? [];
     const ids = new Set(lessons.map((one) => one.id));
-    const own = stored.filter(
-      (work) =>
-        ids.has(work.lessonId) || (work.sourceLessonId !== null && ids.has(work.sourceLessonId)),
-    );
+    const own = stored.filter((work) => ids.has(work.lessonId));
     const planned = new Map<string, readonly PlannedWork[] | null>();
     const topicless = new Set<string>();
     for (const lesson of lessons) {
@@ -428,7 +401,6 @@ export async function journalsColumns(
         lessons: lessons.map(columnLessonOf),
         planned,
         stored: own,
-        journalClosed: closed.has(journal.id),
         notGiven: marks.notGiven,
         topicless,
       }),

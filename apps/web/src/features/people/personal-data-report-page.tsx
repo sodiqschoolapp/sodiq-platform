@@ -359,7 +359,12 @@ function StudentJournal({ report, words }: { report: StudentReport; words: Words
                   {cellChangeText(t, line)}
                 </p>
                 <p className="text-muted-foreground print:text-current">
-                  {t('people.report.lineBy', { name: accountText(line.changedBy, words.empty) })}
+                  {t('people.report.lineBy', {
+                    name:
+                      line.changedBy === null
+                        ? words.empty
+                        : accountText(line.changedBy, words.empty),
+                  })}
                 </p>
               </li>
             ))}
@@ -412,7 +417,12 @@ function StudentJournal({ report, words }: { report: StudentReport; words: Words
                 </p>
                 <p>{ratingLineText(t, words.language, line)}</p>
                 <p className="text-muted-foreground print:text-current">
-                  {t('people.report.lineBy', { name: accountText(line.changedBy, words.empty) })}
+                  {t('people.report.lineBy', {
+                    name:
+                      line.changedBy === null
+                        ? words.empty
+                        : accountText(line.changedBy, words.empty),
+                  })}
                 </p>
               </li>
             ))}

@@ -59,7 +59,7 @@ Not written yet for most of the plans: plans and their items, shared plans, the 
 **Rules.**
 
 - The column opens for the lesson's teacher only, until the request's period ends or the teacher presses **Finished**.
-- A homework added to a lesson is graded at the next lesson, where its column is.
+- A homework added to a lesson is graded at that lesson, where its column is (owner, 25 November 2026).
 - Entries made this way are late entries; they count against nobody.
 - Other works of the same lesson stay locked.
 

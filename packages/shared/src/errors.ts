@@ -1085,12 +1085,6 @@ export const ERROR_CODES = [
   'work_planned',
   /** A work added by hand is named: the title is required, at most 60 characters (07, Entering data; task 10.6). */
   'journal_work_title_required',
-  /** The homework has numbers at this lesson, so it is not carried (task 8.1, decision 6). */
-  'work_holds_numbers',
-  /** The homework was carried once already (edge/journal: "'check at the next lesson' (once)"; task 8.1). */
-  'work_carried',
-  /** The journal has no later lesson to check the homework at (task 8.1). */
-  'no_next_lesson',
   /** A number is typed before the work's total is set (07: "Numbers cannot be typed for a work until its total is set"; task 8.1). */
   'work_total_missing',
   /** A number above the work's total (07: "A number above the total is refused"; task 8.1). */
