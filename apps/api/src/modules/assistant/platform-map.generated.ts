@@ -2890,6 +2890,74 @@ export const PLATFORM_MAP_SOURCE: unknown = {
    "description": "Lists the divisions of the school with their departments and staff. Here one adds a division and its departments, renames them, and archives or restores them."
   },
   {
+   "id": "page:/setup/past-marks",
+   "path": "/setup/past-marks",
+   "title": {
+    "uz": "Ishga tushishdan oldingi baholar",
+    "ru": "Оценки до запуска",
+    "en": "Past marks before go-live"
+   },
+   "roles": [
+    "super_admin",
+    "academic_vice_principal"
+   ],
+   "params": {},
+   "search": {
+    "q": {
+     "kind": "text"
+    },
+    "sort": {
+     "kind": "text"
+    },
+    "f": {
+     "kind": "record",
+     "keys": {}
+    },
+    "open": {
+     "kind": "id"
+    }
+   },
+   "operations": [
+    "PastMarksController_withdraw"
+   ],
+   "description": "Lists the saved uploads of past marks from before go-live (attendance, classwork and homework of the lessons before the branch went live, shown to parents only): file name, who and when, the number of rows, and whether each stands or was withdrawn. An upload opens in the side panel, where it can be withdrawn with a reason."
+  },
+  {
+   "id": "page:/setup/past-marks/import",
+   "path": "/setup/past-marks/import",
+   "title": {
+    "uz": "Oʻtgan baholar importi",
+    "ru": "Импорт прошлых оценок",
+    "en": "Import of past marks"
+   },
+   "roles": [
+    "super_admin",
+    "academic_vice_principal"
+   ],
+   "params": {},
+   "search": {
+    "q": {
+     "kind": "text"
+    },
+    "sort": {
+     "kind": "text"
+    },
+    "f": {
+     "kind": "record",
+     "keys": {}
+    },
+    "open": {
+     "kind": "id"
+    }
+   },
+   "operations": [
+    "PastMarksController_confirm",
+    "PastMarksController_preview",
+    "PastMarksController_template"
+   ],
+   "description": "Imports past marks from before go-live from an Excel file: download the template, upload the filled file, see each row's problems page by page, then confirm to save every row at once."
+  },
+  {
    "id": "page:/setup/rooms",
    "path": "/setup/rooms",
    "title": {
@@ -3961,6 +4029,8 @@ export const PLATFORM_MAP_SOURCE: unknown = {
     "/setup/day-template-settings",
     "/setup/day-templates",
     "/setup/divisions",
+    "/setup/past-marks",
+    "/setup/past-marks/import",
     "/setup/rooms",
     "/setup/slot-types",
     "/setup/subjects",
@@ -4046,6 +4116,8 @@ export const PLATFORM_MAP_SOURCE: unknown = {
     "/setup/day-template-settings",
     "/setup/day-templates",
     "/setup/divisions",
+    "/setup/past-marks",
+    "/setup/past-marks/import",
     "/setup/rooms",
     "/setup/slot-types",
     "/setup/subjects",
@@ -4131,6 +4203,8 @@ export const PLATFORM_MAP_SOURCE: unknown = {
     "/setup/day-template-settings",
     "/setup/day-templates",
     "/setup/divisions",
+    "/setup/past-marks",
+    "/setup/past-marks/import",
     "/setup/rooms",
     "/setup/slot-types",
     "/setup/subjects",
@@ -4216,6 +4290,8 @@ export const PLATFORM_MAP_SOURCE: unknown = {
     "/setup/day-template-settings",
     "/setup/day-templates",
     "/setup/divisions",
+    "/setup/past-marks",
+    "/setup/past-marks/import",
     "/setup/rooms",
     "/setup/slot-types",
     "/setup/subjects",
@@ -4301,6 +4377,8 @@ export const PLATFORM_MAP_SOURCE: unknown = {
     "/setup/day-template-settings",
     "/setup/day-templates",
     "/setup/divisions",
+    "/setup/past-marks",
+    "/setup/past-marks/import",
     "/setup/rooms",
     "/setup/slot-types",
     "/setup/subjects",
@@ -4386,6 +4464,8 @@ export const PLATFORM_MAP_SOURCE: unknown = {
     "/setup/day-template-settings",
     "/setup/day-templates",
     "/setup/divisions",
+    "/setup/past-marks",
+    "/setup/past-marks/import",
     "/setup/rooms",
     "/setup/slot-types",
     "/setup/subjects",
@@ -4471,6 +4551,8 @@ export const PLATFORM_MAP_SOURCE: unknown = {
     "/setup/day-template-settings",
     "/setup/day-templates",
     "/setup/divisions",
+    "/setup/past-marks",
+    "/setup/past-marks/import",
     "/setup/rooms",
     "/setup/slot-types",
     "/setup/subjects",
@@ -4556,6 +4638,8 @@ export const PLATFORM_MAP_SOURCE: unknown = {
     "/setup/day-template-settings",
     "/setup/day-templates",
     "/setup/divisions",
+    "/setup/past-marks",
+    "/setup/past-marks/import",
     "/setup/rooms",
     "/setup/slot-types",
     "/setup/subjects",
@@ -4641,6 +4725,8 @@ export const PLATFORM_MAP_SOURCE: unknown = {
     "/setup/day-template-settings",
     "/setup/day-templates",
     "/setup/divisions",
+    "/setup/past-marks",
+    "/setup/past-marks/import",
     "/setup/rooms",
     "/setup/slot-types",
     "/setup/subjects",
@@ -4946,6 +5032,8 @@ export const PLATFORM_MAP_SOURCE: unknown = {
     "/setup/day-template-settings",
     "/setup/day-templates",
     "/setup/divisions",
+    "/setup/past-marks",
+    "/setup/past-marks/import",
     "/setup/rooms",
     "/setup/slot-types",
     "/setup/subjects",
@@ -5027,6 +5115,8 @@ export const PLATFORM_MAP_SOURCE: unknown = {
     "/setup/day-template-settings",
     "/setup/day-templates",
     "/setup/divisions",
+    "/setup/past-marks",
+    "/setup/past-marks/import",
     "/setup/rooms",
     "/setup/slot-types",
     "/setup/subjects",
@@ -31862,6 +31952,418 @@ export const PLATFORM_MAP_SOURCE: unknown = {
    "description": "Shows whether the division is active or archived."
   },
   {
+   "id": "features/setup/past-mark-import-page.tsx#button:people.import.reading",
+   "kind": "button",
+   "label": {
+    "uz": "Fayl oʻqilmoqda…",
+    "ru": "Читаем файл…",
+    "en": "Reading the file…"
+   },
+   "pages": [
+    "/setup/past-marks/import"
+   ],
+   "parent": null,
+   "roles": [
+    "super_admin",
+    "academic_vice_principal"
+   ],
+   "operations": [],
+   "opens": null,
+   "description": "Uploads the filled Excel file of past marks and shows the first page of its preview, every row with its problems; nothing is saved yet."
+  },
+  {
+   "id": "features/setup/past-mark-import-page.tsx#button:people.import.template",
+   "kind": "button",
+   "label": {
+    "uz": "Shablonni yuklab olish",
+    "ru": "Скачать шаблон",
+    "en": "Download the template"
+   },
+   "pages": [
+    "/setup/past-marks/import"
+   ],
+   "parent": null,
+   "roles": [
+    "super_admin",
+    "academic_vice_principal"
+   ],
+   "operations": [
+    "PastMarksController_template"
+   ],
+   "opens": null,
+   "description": "Downloads the Excel template of past marks, with headings in three languages."
+  },
+  {
+   "id": "features/setup/past-mark-import-page.tsx#button:setup.pastMarks.confirm",
+   "kind": "button",
+   "label": {
+    "uz": "Barcha … ta qatorni saqlash",
+    "ru": "Сохранить все … строки",
+    "en": "Save all … rows"
+   },
+   "pages": [
+    "/setup/past-marks/import"
+   ],
+   "parent": null,
+   "roles": [
+    "super_admin",
+    "academic_vice_principal"
+   ],
+   "operations": [
+    "PastMarksController_confirm"
+   ],
+   "opens": null,
+   "description": "Saves every row of the file at once; it stays off until every row is clean."
+  },
+  {
+   "id": "features/setup/past-mark-import-page.tsx#button:setup.pastMarks.next",
+   "kind": "button",
+   "label": {
+    "uz": "Keyingi",
+    "ru": "Далее",
+    "en": "Next"
+   },
+   "pages": [
+    "/setup/past-marks/import"
+   ],
+   "parent": null,
+   "roles": [
+    "super_admin",
+    "academic_vice_principal"
+   ],
+   "operations": [
+    "PastMarksController_preview"
+   ],
+   "opens": null,
+   "description": "Shows the next page of the preview; rows with problems come first."
+  },
+  {
+   "id": "features/setup/past-mark-import-page.tsx#button:setup.pastMarks.previous",
+   "kind": "button",
+   "label": {
+    "uz": "Oldingi",
+    "ru": "Назад",
+    "en": "Previous"
+   },
+   "pages": [
+    "/setup/past-marks/import"
+   ],
+   "parent": null,
+   "roles": [
+    "super_admin",
+    "academic_vice_principal"
+   ],
+   "operations": [
+    "PastMarksController_preview"
+   ],
+   "opens": null,
+   "description": "Shows the previous page of the preview."
+  },
+  {
+   "id": "features/setup/past-mark-import-page.tsx#column:people.import.problemsColumn",
+   "kind": "column",
+   "label": {
+    "uz": "Xatolar",
+    "ru": "Ошибки",
+    "en": "Problems"
+   },
+   "pages": [
+    "/setup/past-marks/import"
+   ],
+   "parent": null,
+   "roles": [
+    "super_admin",
+    "academic_vice_principal"
+   ],
+   "operations": [],
+   "opens": null,
+   "description": "Shows what is wrong with the row, each problem with its column, or that it is clean."
+  },
+  {
+   "id": "features/setup/past-mark-import-page.tsx#column:people.import.row",
+   "kind": "column",
+   "label": {
+    "uz": "Qator",
+    "ru": "Строка",
+    "en": "Row"
+   },
+   "pages": [
+    "/setup/past-marks/import"
+   ],
+   "parent": null,
+   "roles": [
+    "super_admin",
+    "academic_vice_principal"
+   ],
+   "operations": [],
+   "opens": null,
+   "description": "Shows the row number in the uploaded file."
+  },
+  {
+   "id": "features/setup/past-mark-import-page.tsx#column:setup.pastMarks.date",
+   "kind": "column",
+   "label": {
+    "uz": "Sana",
+    "ru": "Дата",
+    "en": "Date"
+   },
+   "pages": [
+    "/setup/past-marks/import"
+   ],
+   "parent": null,
+   "roles": [
+    "super_admin",
+    "academic_vice_principal"
+   ],
+   "operations": [],
+   "opens": null,
+   "description": "Shows the date of the lesson as read from the row."
+  },
+  {
+   "id": "features/setup/past-mark-import-page.tsx#column:setup.pastMarks.student",
+   "kind": "column",
+   "label": {
+    "uz": "Oʻquvchi",
+    "ru": "Ученик",
+    "en": "Student"
+   },
+   "pages": [
+    "/setup/past-marks/import"
+   ],
+   "parent": null,
+   "roles": [
+    "super_admin",
+    "academic_vice_principal"
+   ],
+   "operations": [],
+   "opens": null,
+   "description": "Shows the UID and the name as read from the row."
+  },
+  {
+   "id": "features/setup/past-mark-import-page.tsx#column:setup.pastMarks.subject",
+   "kind": "column",
+   "label": {
+    "uz": "Fan",
+    "ru": "Предмет",
+    "en": "Subject"
+   },
+   "pages": [
+    "/setup/past-marks/import"
+   ],
+   "parent": null,
+   "roles": [
+    "super_admin",
+    "academic_vice_principal"
+   ],
+   "operations": [],
+   "opens": null,
+   "description": "Shows the subject as read from the row."
+  },
+  {
+   "id": "features/setup/past-marks-page.tsx#button:setup.pastMarks.keep",
+   "kind": "button",
+   "label": {
+    "uz": "Qoldirish",
+    "ru": "Оставить",
+    "en": "Keep it"
+   },
+   "pages": [
+    "/setup/past-marks"
+   ],
+   "parent": "features/setup/past-marks-page.tsx#panel:setup.pastMarks.withdrawTitle",
+   "roles": [
+    "super_admin",
+    "academic_vice_principal"
+   ],
+   "operations": [
+    "PastMarksController_withdraw"
+   ],
+   "opens": null,
+   "description": "Closes the dialog without withdrawing anything."
+  },
+  {
+   "id": "features/setup/past-marks-page.tsx#button:setup.pastMarks.withdraw",
+   "kind": "button",
+   "label": {
+    "uz": "Qaytarib olish",
+    "ru": "Отозвать",
+    "en": "Withdraw"
+   },
+   "pages": [
+    "/setup/past-marks"
+   ],
+   "parent": null,
+   "roles": [
+    "super_admin",
+    "academic_vice_principal"
+   ],
+   "operations": [],
+   "opens": null,
+   "description": "Opens the dialog to withdraw the whole upload with a reason."
+  },
+  {
+   "id": "features/setup/past-marks-page.tsx#button:setup.pastMarks.withdraw:2",
+   "kind": "button",
+   "label": {
+    "uz": "Qaytarib olish",
+    "ru": "Отозвать",
+    "en": "Withdraw"
+   },
+   "pages": [
+    "/setup/past-marks"
+   ],
+   "parent": "features/setup/past-marks-page.tsx#panel:setup.pastMarks.withdrawTitle",
+   "roles": [
+    "super_admin",
+    "academic_vice_principal"
+   ],
+   "operations": [
+    "PastMarksController_withdraw"
+   ],
+   "opens": null,
+   "description": "Withdraws the upload with the reason typed."
+  },
+  {
+   "id": "features/setup/past-marks-page.tsx#column:setup.pastMarks.at",
+   "kind": "column",
+   "label": {
+    "uz": "Saqlangan",
+    "ru": "Сохранено",
+    "en": "Saved"
+   },
+   "pages": [
+    "/setup/past-marks"
+   ],
+   "parent": null,
+   "roles": [
+    "super_admin",
+    "academic_vice_principal"
+   ],
+   "operations": [],
+   "opens": null,
+   "description": "Shows when the upload was saved."
+  },
+  {
+   "id": "features/setup/past-marks-page.tsx#column:setup.pastMarks.by",
+   "kind": "column",
+   "label": {
+    "uz": "Kim saqlagan",
+    "ru": "Кто сохранил",
+    "en": "Saved by"
+   },
+   "pages": [
+    "/setup/past-marks"
+   ],
+   "parent": null,
+   "roles": [
+    "super_admin",
+    "academic_vice_principal"
+   ],
+   "operations": [],
+   "opens": null,
+   "description": "Shows who saved the upload."
+  },
+  {
+   "id": "features/setup/past-marks-page.tsx#column:setup.pastMarks.fileName",
+   "kind": "column",
+   "label": {
+    "uz": "Fayl",
+    "ru": "Файл",
+    "en": "File"
+   },
+   "pages": [
+    "/setup/past-marks"
+   ],
+   "parent": null,
+   "roles": [
+    "super_admin",
+    "academic_vice_principal"
+   ],
+   "operations": [],
+   "opens": null,
+   "description": "Shows the name of the uploaded file; selecting it opens the upload in the side panel."
+  },
+  {
+   "id": "features/setup/past-marks-page.tsx#column:setup.pastMarks.rows",
+   "kind": "column",
+   "label": {
+    "uz": "Qatorlar",
+    "ru": "Строк",
+    "en": "Rows"
+   },
+   "pages": [
+    "/setup/past-marks"
+   ],
+   "parent": null,
+   "roles": [
+    "super_admin",
+    "academic_vice_principal"
+   ],
+   "operations": [],
+   "opens": null,
+   "description": "Shows how many rows the file held."
+  },
+  {
+   "id": "features/setup/past-marks-page.tsx#column:setup.pastMarks.state",
+   "kind": "column",
+   "label": {
+    "uz": "Holati",
+    "ru": "Состояние",
+    "en": "State"
+   },
+   "pages": [
+    "/setup/past-marks"
+   ],
+   "parent": null,
+   "roles": [
+    "super_admin",
+    "academic_vice_principal"
+   ],
+   "operations": [],
+   "opens": null,
+   "description": "Shows whether the upload stands (its marks are shown to parents) or was withdrawn."
+  },
+  {
+   "id": "features/setup/past-marks-page.tsx#field:setup.pastMarks.reason",
+   "kind": "field",
+   "label": {
+    "uz": "Sabab",
+    "ru": "Причина",
+    "en": "Reason"
+   },
+   "pages": [
+    "/setup/past-marks"
+   ],
+   "parent": "features/setup/past-marks-page.tsx#panel:setup.pastMarks.withdrawTitle",
+   "roles": [
+    "super_admin",
+    "academic_vice_principal"
+   ],
+   "operations": [],
+   "opens": null,
+   "description": "The reason the upload is withdrawn; it is required and kept with the upload."
+  },
+  {
+   "id": "features/setup/past-marks-page.tsx#panel:setup.pastMarks.withdrawTitle",
+   "kind": "panel",
+   "label": {
+    "uz": "… ni qaytarib olish",
+    "ru": "Отозвать …",
+    "en": "Withdraw …"
+   },
+   "pages": [
+    "/setup/past-marks"
+   ],
+   "parent": null,
+   "roles": [
+    "super_admin",
+    "academic_vice_principal"
+   ],
+   "operations": [],
+   "opens": null,
+   "description": "The dialog that withdraws an upload of past marks: its rows are kept but no longer shown to parents, and the same file can then be imported again."
+  },
+  {
    "id": "features/setup/quarters-preview.tsx#button:setup.years.cancel",
    "kind": "button",
    "label": {
@@ -32795,6 +33297,27 @@ export const PLATFORM_MAP_SOURCE: unknown = {
    "operations": [],
    "opens": "/integration-keys",
    "description": "Opens the Integration keys page of School setup (/integration-keys)."
+  },
+  {
+   "id": "features/setup/setup-page.tsx#tab:setup.pastMarksLink",
+   "kind": "tab",
+   "label": {
+    "uz": "Ishga tushishdan oldingi baholar",
+    "ru": "Оценки до запуска",
+    "en": "Past marks before go-live"
+   },
+   "pages": [
+    "/setup"
+   ],
+   "parent": null,
+   "roles": [
+    "super_admin",
+    "principal",
+    "academic_vice_principal"
+   ],
+   "operations": [],
+   "opens": "/setup/past-marks",
+   "description": "Opens the page of past marks from before go-live of School setup (/setup/past-marks)."
   },
   {
    "id": "features/setup/setup-page.tsx#tab:setup.roomsLink",

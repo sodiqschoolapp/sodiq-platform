@@ -88,7 +88,7 @@ describe('the figures of the demo school across an import of past marks', () => 
       await read(`/api/results/early-warning?quarterId=${quarter.id}`);
       await read(`/api/results/branch-summary?quarterId=${quarter.id}`);
       await read(`/api/results/rating/classes?quarterId=${quarter.id}`);
-      await read(`/api/results/reports/attendance?from=2026-09-01&to=${TODAY}`);
+      await read(`/api/results/reports/attendance?from=2026-09-02&to=${TODAY}`);
       const classes = await migrator
         .selectFrom('classes')
         .select('id')

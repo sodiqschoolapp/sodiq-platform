@@ -306,6 +306,46 @@ export const DESCRIPTIONS: Readonly<Record<string, string>> = {
     'Turns on the rating exam for a graded subject, adding a rating exam part to its result.',
   'features/setup/subject-form.tsx#field:setup.subjects.switchesFrom':
     'Chooses the quarter from which a changed journal type or rating exam takes effect; earlier quarters keep what they had.',
+  'features/setup/past-mark-import-page.tsx#button:people.import.reading':
+    'Uploads the filled Excel file of past marks and shows the first page of its preview, every row with its problems; nothing is saved yet.',
+  'features/setup/past-mark-import-page.tsx#button:people.import.template':
+    'Downloads the Excel template of past marks, with headings in three languages.',
+  'features/setup/past-mark-import-page.tsx#button:setup.pastMarks.confirm':
+    'Saves every row of the file at once; it stays off until every row is clean.',
+  'features/setup/past-mark-import-page.tsx#button:setup.pastMarks.previous':
+    'Shows the previous page of the preview.',
+  'features/setup/past-mark-import-page.tsx#button:setup.pastMarks.next':
+    'Shows the next page of the preview; rows with problems come first.',
+  'features/setup/past-mark-import-page.tsx#column:people.import.problemsColumn':
+    'Shows what is wrong with the row, each problem with its column, or that it is clean.',
+  'features/setup/past-mark-import-page.tsx#column:people.import.row':
+    'Shows the row number in the uploaded file.',
+  'features/setup/past-mark-import-page.tsx#column:setup.pastMarks.student':
+    'Shows the UID and the name as read from the row.',
+  'features/setup/past-mark-import-page.tsx#column:setup.pastMarks.date':
+    'Shows the date of the lesson as read from the row.',
+  'features/setup/past-mark-import-page.tsx#column:setup.pastMarks.subject':
+    'Shows the subject as read from the row.',
+  'features/setup/past-marks-page.tsx#column:setup.pastMarks.fileName':
+    'Shows the name of the uploaded file; selecting it opens the upload in the side panel.',
+  'features/setup/past-marks-page.tsx#column:setup.pastMarks.by':
+    'Shows who saved the upload.',
+  'features/setup/past-marks-page.tsx#column:setup.pastMarks.at':
+    'Shows when the upload was saved.',
+  'features/setup/past-marks-page.tsx#column:setup.pastMarks.rows':
+    'Shows how many rows the file held.',
+  'features/setup/past-marks-page.tsx#column:setup.pastMarks.state':
+    'Shows whether the upload stands (its marks are shown to parents) or was withdrawn.',
+  'features/setup/past-marks-page.tsx#button:setup.pastMarks.withdraw':
+    'Opens the dialog to withdraw the whole upload with a reason.',
+  'features/setup/past-marks-page.tsx#panel:setup.pastMarks.withdrawTitle':
+    'The dialog that withdraws an upload of past marks: its rows are kept but no longer shown to parents, and the same file can then be imported again.',
+  'features/setup/past-marks-page.tsx#field:setup.pastMarks.reason':
+    'The reason the upload is withdrawn; it is required and kept with the upload.',
+  'features/setup/past-marks-page.tsx#button:setup.pastMarks.keep':
+    'Closes the dialog without withdrawing anything.',
+  'features/setup/past-marks-page.tsx#button:setup.pastMarks.withdraw:2':
+    'Withdraws the upload with the reason typed.',
   'features/setup/subject-import-page.tsx#button:people.import.reading':
     'Uploads the filled Excel file and shows a preview of every row with its problems; nothing is saved yet.',
   'features/setup/subject-import-page.tsx#button:people.import.template':
@@ -449,6 +489,8 @@ export const DESCRIPTIONS: Readonly<Record<string, string>> = {
     'Opens the Demo time page of School setup (/setup/demo-clock).',
   'features/setup/setup-page.tsx#tab:setup.travelTimesLink':
     'Opens the Travel time page of School setup (/setup/travel-times).',
+  'features/setup/setup-page.tsx#tab:setup.pastMarksLink':
+    'Opens the page of past marks from before go-live of School setup (/setup/past-marks).',
   'features/setup/setup-page.tsx#tab:setup.subjectsLink':
     'Opens the Subjects page of School setup (/setup/subjects).',
   'features/setup/setup-page.tsx#tab:setup.forcedDeletesLink':
