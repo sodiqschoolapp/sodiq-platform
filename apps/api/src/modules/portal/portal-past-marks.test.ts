@@ -330,7 +330,7 @@ describe('the past marks in the parent portal', () => {
     expect(other.rows).toEqual([]);
   });
 
-  it('answers 404 for another family\'s child who has past marks, on each page (review finding 9)', async () => {
+  it("answers 404 for another family's child who has past marks, on each page (review finding 9)", async () => {
     t.clock.set(MOMENT);
     try {
       await t.database.migrator

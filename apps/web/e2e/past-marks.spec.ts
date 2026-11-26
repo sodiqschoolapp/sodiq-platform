@@ -77,7 +77,8 @@ test('an Academic Vice Principal imports past marks and a parent sees them', asy
 
   await page.goto(`${base}/grades`);
   // The past score lies in quarter 1; the page opens on the current quarter.
-  await page.getByRole('radio', { name: 'Quarter 1', exact: true }).click();
+  // The switch's label covers its radio, as in portal.spec.ts.
+  await page.getByRole('radio', { name: 'Q1', exact: true }).check({ force: true });
   const score = page.locator('[data-score-row]').filter({ hasText: 'Dictation' });
   await expect(score).toContainText('Past history');
   await expect(score.locator('[data-score]')).toHaveText('7.5/1075%');

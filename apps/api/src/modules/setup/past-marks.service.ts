@@ -673,4 +673,3 @@ function conflicted(error: unknown): boolean {
   const failure = error as { code?: unknown };
   return failure.code === DEADLOCK || failure.code === SERIALIZATION_FAILURE;
 }
-
