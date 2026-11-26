@@ -617,37 +617,42 @@ describe('classwork and homework', () => {
           .where('id', '=', s.first)
           .executeTakeFirstOrThrow()
       ).lesson_date;
-      const admin = await account();
-      await as(admin, s.branch, [{ role: 'super_admin' }], async (calls) => {
-        const view = journalSupportSchema.parse(
-          ok(
-            await calls.get(
-              `/api/journal/support?studentId=${s.ahmedov}&journalId=${s.journal}&date=${date}`,
+      const vice = await account();
+      await as(
+        vice,
+        s.branch,
+        [{ role: 'academic_vice_principal', branchId: s.branch }],
+        async (calls) => {
+          const view = journalSupportSchema.parse(
+            ok(
+              await calls.get(
+                `/api/journal/support?studentId=${s.ahmedov}&journalId=${s.journal}&date=${date}`,
+              ),
             ),
-          ),
-        );
-        expect(
-          view.lines
-            .flatMap((line) => (line.kind === 'cell' && line.work !== null ? [line.after] : []))
-            .sort(),
-        ).toEqual([6, 7.5, 8.25]);
-        expect(
-          view.lessons.flatMap((one) => one.stored.works.map((work) => work.score)).sort(),
-        ).toEqual([6, 7.5, 8.25]);
-        const trace = studentResultLessonsSchema.parse(
-          ok(
-            await calls.get(
-              `/api/results/students/${s.ahmedov}/lessons?subjectId=${s.subject}&quarterId=${s.q1}`,
+          );
+          expect(
+            view.lines
+              .flatMap((line) => (line.kind === 'cell' && line.work !== null ? [line.after] : []))
+              .sort(),
+          ).toEqual([6, 7.5, 8.25]);
+          expect(
+            view.lessons.flatMap((one) => one.stored.works.map((work) => work.score)).sort(),
+          ).toEqual([6, 7.5, 8.25]);
+          const trace = studentResultLessonsSchema.parse(
+            ok(
+              await calls.get(
+                `/api/results/students/${s.ahmedov}/lessons?subjectId=${s.subject}&quarterId=${s.q1}`,
+              ),
             ),
-          ),
-        );
-        const traced = trace.lessons.find((one) => one.lessonId === s.first);
-        expect(traced?.classworks.map((work) => [work.score, work.total, work.percent])).toEqual([
-          [7.5, 10, 75],
-          [6, 7.5, 80],
-          [8.25, 11, 75],
-        ]);
-      });
+          );
+          const traced = trace.lessons.find((one) => one.lessonId === s.first);
+          expect(traced?.classworks.map((work) => [work.score, work.total, work.percent])).toEqual([
+            [7.5, 10, 75],
+            [6, 7.5, 80],
+            [8.25, 11, 75],
+          ]);
+        },
+      );
     });
 
     // Task 11.25b (0189): the readers of a forced-delete store return `work_amount`, and the delete

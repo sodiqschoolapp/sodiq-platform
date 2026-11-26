@@ -1363,8 +1363,8 @@ Answer `200`:
       kind: "classwork" | "homework";
     } | null;
     version: integer;  // min 1
-    before: integer | null;
-    after: integer | null;
+    before: number | null;  // min 0, max 1000
+    after: number | null;  // min 0, max 1000
     changedBy: {
       accountId: uuid;
       login: string | null;
