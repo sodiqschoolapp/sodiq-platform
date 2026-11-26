@@ -2,6 +2,19 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 26 November 2026: task 11.26, past marks from before go-live
+
+- **0190**: `past_mark_uploads`, `past_attendance`, `past_works` (branch, upload, year; partial unique indexes over standing rows; `title_key` generated; `withdrawn_at` set once with the upload), `portal_past_mark_branches` and `past_mark_students` (SECURITY DEFINER, on the allow-list). Tables and functions only.
+- **Import** (`/api/setup/past-marks`, area `past_marks`: Super Admin, Academic Vice Principal): template, upload with a paged preview, confirm all or none (advisory lock, students and branch locked), list, withdrawal with a reason. The go-live save refuses `go_live_past_marks`; a merge carries past marks or refuses `student_merge_past_marks_overlap`; the personal data report lists them; the portal's Grades, Attendance and Homework read them through `portal-past-marks.query.ts` only; the assistant runs the import through its preview.
+- A source test (`past-marks-readers.test.ts`) pins the only files that name the tables; the demo school's figures are compared before and after an import (`testing/demo/past-marks.test.ts`).
+
+Left out: nothing of the task.
+
+The next sessions must know:
+
+- A new reader of past marks goes into `ALLOWED` of `past-marks-readers.test.ts` only when the spec names it as a reader (`edge/developer-rules`, Past marks); every staff screen stays off the tables.
+- The branch of a row of an import is the branch of the student's class membership on its date (review correction 1), read through `past_mark_students`, which also locks the students for the confirm.
+
 ## 26 November 2026: task 11.25b, decimal scores and totals: the switch
 
 - **0189**: the mirrors and the old integer columns of 0188 are dropped; the twins and their checks take the old names (metadata only). `forced_store_cells`/`forced_store_works` return `work_amount`, `execute` for `sodiq_app` only. Every PL/pgSQL function of `public` is compiled again in every session (`alter function … cost`), or the running version's pooled connections fail their next journal write.
