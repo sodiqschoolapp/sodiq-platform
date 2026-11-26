@@ -1529,7 +1529,8 @@ export const errorDetailSchema = z.object({
     .union([
       z.string(),
       z.array(z.string()),
-      z.object({ title: z.string(), description: z.string() }),
+      // Task 11.27: a work's code as shown (`null` when none or off; never a hidden code).
+      z.object({ title: z.string(), description: z.string(), code: z.string().nullable().optional() }),
       z.null(),
     ])
     .optional(),

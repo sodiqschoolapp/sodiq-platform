@@ -747,6 +747,7 @@ const MESSAGE: Record<ErrorCode, string> = {
   past_marks_not_standing: 'The upload is not saved, or is already withdrawn.',
   past_marks_changed:
     'Another import of past marks was saved at the same moment. Nothing was saved; check the file again.',
+  plan_codes_off: "The subject's codes for topics and works are off: no code can be set.",
 };
 
 function codeOfStatus(status: number): ErrorCode {

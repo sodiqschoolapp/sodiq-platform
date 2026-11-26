@@ -20,6 +20,7 @@ import {
   subjectQuarterWeightsQuerySchema,
   subjectQuarterWeightsSchema,
   subjectRecordSchema,
+  subjectCodesSchema,
   subjectSchema,
   type CopyQuarterWeightsRecord,
   type GradeChanges,
@@ -32,6 +33,7 @@ import {
   type SubjectQuarterWeights,
   type SubjectQuarterWeightsQuery,
   type SubjectRecord,
+  type SubjectCodes,
 } from '@sodiq/shared';
 import { RequestId } from '../../http/request-id.js';
 import { SUBJECT_IMPORT_ROUTE, type UploadedFile } from '../../http/file-routes.js';
@@ -161,6 +163,19 @@ export class SubjectsController {
     @RequestId() requestId: string,
   ): Promise<Subject> {
     return this.subjects.edit(access, params.id, record, requestId);
+  }
+
+  /** Task 11.27: the codes switch (`09`, Codes), the Super Admin's alone (`subject_codes`). */
+  @Put('subjects/:id/codes')
+  @Requires('subject_codes', 'edit')
+  @Returns(subjectSchema)
+  switchCodes(
+    @CurrentAccess() access: Access,
+    @ValidParams(setupIdParamsSchema) params: SetupIdParams,
+    @ValidBody(subjectCodesSchema) input: SubjectCodes,
+    @RequestId() requestId: string,
+  ): Promise<Subject> {
+    return this.subjects.switchCodes(access, params.id, input, requestId);
   }
 
   @Post('subjects/:id/archive')

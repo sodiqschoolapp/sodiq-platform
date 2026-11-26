@@ -13,6 +13,7 @@ import type {
   SubjectExport,
   SubjectExportColumn,
   SubjectList,
+  SubjectCodes,
   SubjectQuarterWeights,
   SubjectRecord,
 } from '@sodiq/shared';
@@ -101,6 +102,7 @@ const SUBJECT_COLUMNS = [
   'archived_at',
   'weights_round',
   'rating_round',
+  'codes_on',
 ] as const;
 
 export interface SubjectRow {
@@ -129,6 +131,8 @@ export interface SubjectRow {
    * quarterly row of another rating round is not counted.
    */
   rating_round: number;
+  /** Task 11.27: the codes switch (`09`, Codes). */
+  codes_on: boolean;
 }
 
 interface WeightsRow {
@@ -354,6 +358,8 @@ export class Subjects {
     return this.transactions.run(access.branchIds, async (transaction) => ({
       subjects: await this.readList(transaction, branchId),
       mayMoveDepartment: superAdminOf(access) !== undefined,
+      // Task 11.27: `subject_codes` `edit` is the Super Admin's alone (`packages/shared/src/permissions.ts`).
+      maySwitchCodes: superAdminOf(access) !== undefined,
     }));
   }
 
@@ -643,6 +649,45 @@ export class Subjects {
             record: { type: 'subject', id },
             oldValue: { archivedAt: null },
             newValue: { archivedAt: now.toISOString() },
+            requestId,
+          });
+        }
+        return this.readSubject(transaction, branchId, id);
+      }),
+    );
+  }
+
+  /**
+   * Task 11.27: the codes switch of a subject (`09`, Codes: "The Super Admin switches codes on for
+   * chosen subjects"), the Super Admin's alone (`subject_codes` `edit`). The subject is locked
+   * as every change of it is; a request that changes nothing writes nothing. An archived subject
+   * can be switched too (plan decision 11). Switching off hides the codes and keeps them; no row
+   * of a plan changes.
+   */
+  switchCodes(
+    access: Access,
+    id: string,
+    input: SubjectCodes,
+    requestId: string,
+  ): Promise<Subject> {
+    const branchId = branchOf(access);
+    return this.refusing(() =>
+      this.transactions.run(access.branchIds, async (transaction) => {
+        const row = await this.lock(transaction, id);
+        if (row.codes_on !== input.codesOn) {
+          await transaction
+            .updateTable('subjects')
+            .set({ codes_on: input.codesOn })
+            .where('id', '=', id)
+            .execute();
+          await this.audit.record(transaction, {
+            branchId: null,
+            actorId: access.accountId,
+            assignmentId: access.assignmentId,
+            action: 'subject.codes',
+            record: { type: 'subject', id },
+            oldValue: { codesOn: row.codes_on },
+            newValue: { codesOn: input.codesOn },
             requestId,
           });
         }
@@ -1375,6 +1420,7 @@ export class Subjects {
         archivedAt: row.archived_at === null ? null : row.archived_at.toISOString(),
         quarterWeightsMissing: graded && counted.length > 0 ? counted.length - fitting : null,
         quarterCount: graded && counted.length > 0 ? counted.length : null,
+        codesOn: row.codes_on,
       };
     });
   }

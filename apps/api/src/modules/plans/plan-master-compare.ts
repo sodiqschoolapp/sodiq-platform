@@ -38,18 +38,24 @@ export interface CompareRow {
 }
 
 const sameWorks = (
-  a: readonly { title: string; description: string }[],
-  b: readonly { title: string; description: string }[],
+  a: readonly { title: string; code: string | null; description: string }[],
+  b: readonly { title: string; code: string | null; description: string }[],
 ) =>
   a.length === b.length &&
   a.every(
-    (one, index) => one.title === b[index]?.title && one.description === b[index]?.description,
+    (one, index) =>
+      one.title === b[index]?.title &&
+      one.code === b[index]?.code &&
+      one.description === b[index]?.description,
   );
 
 /** The content a teacher sees: topic, objectives, links and the works in order. */
 export function sameContent(a: PlanMasterContent, b: PlanMasterContent): boolean {
   return (
     a.topic === b.topic &&
+    // Task 11.27 (`09`, Codes: "part of 'master updated'"): the codes as shown, so a hidden code
+    // (codes off) never raises "master updated".
+    a.topicCode === b.topicCode &&
     a.objectives === b.objectives &&
     a.links.length === b.links.length &&
     a.links.every((link, index) => link === b.links[index]) &&
