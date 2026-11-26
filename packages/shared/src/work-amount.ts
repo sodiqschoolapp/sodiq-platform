@@ -27,7 +27,6 @@ export function isWorkAmount(value: number): boolean {
   );
 }
 
-
 /** A score or a total as stored (0 to 1000, at most two decimals). */
 export const workAmountSchema = z
   .number()
