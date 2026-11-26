@@ -2919,7 +2919,7 @@ export const uz: Texts<'one' | 'other'> = {
     pastMarks: {
       title: 'Ishga tushishdan oldingi baholar',
       importTitle: 'Oʻtgan baholar importi',
-      import: 'Excel’dan import',
+      import: 'Exceldan import',
       fileName: 'Fayl',
       by: 'Kim saqlagan',
       at: 'Saqlangan',
@@ -2960,9 +2960,9 @@ export const uz: Texts<'one' | 'other'> = {
       problems: {
         required: 'toʻldiring.',
         invalid: 'bu qiymat qabul qilinmaydi.',
-        uid_unknown: 'maktabda bu UID’li oʻquvchi yoʻq.',
+        uid_unknown: 'maktabda bu UIDli oʻquvchi yoʻq.',
         student_other_branch: 'bu kuni oʻquvchi shu filialda boʻlmagan.',
-        name_mismatch: 'ism bu UID’li oʻquvchining ismi emas.',
+        name_mismatch: 'ism bu UIDli oʻquvchining ismi emas.',
         date_invalid: 'sanani 2026-09-07 yoki 07.09.2026 koʻrinishida yozing.',
         no_go_live: 'filialda hali ishga tushish sanasi yoʻq.',
         date_not_before_go_live: 'sana ishga tushish sanasidan oldin boʻlishi kerak.',

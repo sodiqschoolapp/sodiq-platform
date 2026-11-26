@@ -221,7 +221,7 @@ Not built yet: the mark on the timetable itself (task 5.4a).
 
 **How it works.**
 
-1. School setup → **Past marks before go-live** (**Ishga tushishdan oldingi baholar**) → **Import from Excel** (**Excel’dan import**).
+1. School setup → **Past marks before go-live** (**Ishga tushishdan oldingi baholar**) → **Import from Excel** (**Exceldan import**).
 2. Press **Download the template** and fill one row per student, date and subject: the UID, the surname and the first name, the date, the subject (its name in Uzbek, Russian or English), the lesson (1 for the first lesson of that subject that day, 2 for the second; empty means 1), the attendance mark, and the title, total and score of a classwork and of a homework. A second classwork or homework of the same lesson goes on a further row with the attendance left empty.
 3. Press **Upload the filled file**. The preview lists every row with its problems, rows with problems first, 500 rows a page. Nothing is saved yet.
 4. Correct the file and upload it again until no row has a problem, then press **Save all … rows**. Every row is saved at once, or none.
