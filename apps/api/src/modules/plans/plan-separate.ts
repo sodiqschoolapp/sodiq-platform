@@ -78,7 +78,16 @@ export async function copyItems(
   if (itemIds.length === 0) return made;
   const items = await transaction
     .selectFrom('lesson_plan_items')
-    .select(['id', 'topic', 'objectives', 'links', 'master_item_id', 'not_delivered_from'])
+    // Task 11.27: the codes as stored go with the copy whatever the switch (plan decision 2).
+    .select([
+      'id',
+      'topic',
+      'topic_code',
+      'objectives',
+      'links',
+      'master_item_id',
+      'not_delivered_from',
+    ])
     .where('id', 'in', [...itemIds])
     .execute();
   const byId = new Map(items.map((item) => [item.id, item]));
@@ -91,6 +100,7 @@ export async function copyItems(
         branch_id: branchId,
         plan_id: planId,
         topic: source.topic,
+        topic_code: source.topic_code,
         objectives: source.objectives,
         links: source.links,
         copied_from: source.id,
@@ -110,6 +120,7 @@ export async function copyItems(
       'kind',
       'position',
       'title',
+      'work_code',
       'description',
       'added_in_journal_at',
       'added_in_journal_by',
@@ -132,6 +143,7 @@ export async function copyItems(
           kind: work.kind,
           position: work.position,
           title: work.title,
+          work_code: work.work_code,
           description: work.description,
           added_in_journal_at: work.added_in_journal_at,
           added_in_journal_by: work.added_in_journal_by,
@@ -278,10 +290,12 @@ export async function separateJournal(
 export interface MasterContentRow {
   readonly id: string;
   readonly topic: string;
+  /** Task 11.27: the codes as stored (`masterItemsOf` with `codes: 'stored'`). */
+  readonly topicCode: string | null;
   readonly objectives: string;
   readonly links: readonly string[];
-  readonly classworks: readonly { title: string; description: string }[];
-  readonly homeworks: readonly { title: string; description: string }[];
+  readonly classworks: readonly { title: string; code: string | null; description: string }[];
+  readonly homeworks: readonly { title: string; code: string | null; description: string }[];
 }
 
 async function insertWorksFrom(
@@ -304,6 +318,7 @@ async function insertWorksFrom(
         kind,
         position: index + 1,
         title: work.title,
+        work_code: work.code,
         description: work.description,
       })),
     )
@@ -326,6 +341,7 @@ export async function insertFromMaster(
       branch_id: branchId,
       plan_id: planId,
       topic: source.topic,
+      topic_code: source.topicCode,
       objectives: source.objectives,
       links: [...source.links],
       master_item_id: source.id,
@@ -349,7 +365,12 @@ export async function takeFromMaster(
 ): Promise<string[]> {
   await transaction
     .updateTable('lesson_plan_items')
-    .set({ topic: source.topic, objectives: source.objectives, links: [...source.links] })
+    .set({
+      topic: source.topic,
+      topic_code: source.topicCode,
+      objectives: source.objectives,
+      links: [...source.links],
+    })
     .where('id', '=', itemId)
     .execute();
   // Task 10.8: the files of the works replaced are removed with them; the caller audits them.

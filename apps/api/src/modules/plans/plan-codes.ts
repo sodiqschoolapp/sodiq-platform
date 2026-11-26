@@ -139,3 +139,56 @@ export function newCode(
 
 /** The keys of an audit entry's values that hold a code (hidden on read while off). */
 export const CODE_KEYS: ReadonlySet<string> = new Set(['topicCode', 'code']);
+
+/** A record an audit entry names, as `entryAnswers` reads it. */
+interface EntryRecord {
+  readonly record_type: string | null;
+  readonly record_id: string | null;
+}
+
+/**
+ * Task 11.27 (plan decision 1, Look first): the records of audit entries whose subject has codes
+ * off, as `<type>|<id>`, so the Audit log leaves out their codes on read (the rows stay as
+ * written). A plan (`lesson_plan`), a master (`lesson_plan_master`) and a lesson (`lesson`: the
+ * journal's adds, topics and renames) are the records whose entries carry codes.
+ */
+export async function codesOffRecords(
+  transaction: Transaction,
+  rows: readonly EntryRecord[],
+): Promise<ReadonlySet<string>> {
+  const ids = (type: string) => [
+    ...new Set(
+      rows.flatMap((row) =>
+        row.record_type === type && row.record_id !== null ? [row.record_id] : [],
+      ),
+    ),
+    NO_ID,
+  ];
+  const { rows: found } = await sql<{ key: string }>`
+    select 'lesson_plan|' || p.id as key
+    from lesson_plans p join subjects s on s.id = p.subject_id
+    where p.id = any(${ids('lesson_plan')}::uuid[]) and not s.codes_on
+    union all
+    select 'lesson_plan_master|' || m.id
+    from lesson_plan_masters m join subjects s on s.id = m.subject_id
+    where m.id = any(${ids('lesson_plan_master')}::uuid[]) and not s.codes_on
+    union all
+    select 'lesson|' || l.id
+    from lessons l join subjects s on s.id = l.subject_id
+    where l.id = any(${ids('lesson')}::uuid[]) and not s.codes_on
+  `.execute(transaction);
+  return new Set(found.map((row) => row.key));
+}
+
+/** A value of an audit entry with every code key left out, at any depth. */
+export function withoutCodes<T>(value: T): T {
+  if (Array.isArray(value)) return value.map((one: unknown) => withoutCodes(one)) as T;
+  if (value !== null && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value).flatMap(([key, one]: [string, unknown]) =>
+        CODE_KEYS.has(key) ? [] : [[key, withoutCodes(one)]],
+      ),
+    ) as T;
+  }
+  return value;
+}

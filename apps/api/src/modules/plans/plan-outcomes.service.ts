@@ -200,7 +200,8 @@ export class PlanOutcomesService {
             ? []
             : await transaction
                 .selectFrom('lesson_plan_works')
-                .select(['id', 'added_in_journal_at', 'added_in_journal_by'])
+                // Task 11.27: the stored code goes with the merged work (plan decision 2).
+                .select(['id', 'work_code', 'added_in_journal_at', 'added_in_journal_by'])
                 .where('id', 'in', sourceIds)
                 .execute()
           ).map((one) => [one.id, one]),
@@ -228,6 +229,7 @@ export class PlanOutcomesService {
                 kind,
                 position,
                 title: work.title,
+                work_code: mark?.work_code ?? null,
                 description: work.description,
                 added_in_journal_at: mark?.added_in_journal_at ?? null,
                 added_in_journal_by: mark?.added_in_journal_by ?? null,

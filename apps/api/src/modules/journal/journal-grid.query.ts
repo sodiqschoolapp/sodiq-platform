@@ -30,6 +30,8 @@ export interface JournalRow {
   readonly subject: {
     readonly names: { readonly uz: string; readonly ru: string; readonly en: string };
     readonly colour: string;
+    /** Task 11.27: the codes switch (`09`, Codes; `plans/plan-codes.ts`). */
+    readonly codesOn: boolean;
   };
   /**
    * The subject's switches in each quarter of the journal's year, by quarter
@@ -122,6 +124,7 @@ export async function journalRows(
       'subjects.name_ru',
       'subjects.name_en',
       'subjects.colour',
+      'subjects.codes_on',
     ])
     .where('journals.branch_id', '=', branchId);
   if ('journalIds' in filter && filter.journalIds.length === 0) return [];
@@ -205,6 +208,7 @@ export async function journalRows(
       subject: {
         names: { uz: row.name_uz, ru: row.name_ru, en: row.name_en },
         colour: row.colour,
+        codesOn: row.codes_on,
       },
       quarters: quarters
         .filter((quarter) => quarter.academic_year_id === row.academic_year_id)
@@ -340,6 +344,8 @@ export interface GridWorkRow {
   readonly notHeld: boolean;
   /** The column's title and place among its kind, where a reader of columns gives them (task 9.1, the trace). */
   readonly title?: string | null;
+  /** Task 11.27: the plan work's code as shown, beside the title. */
+  readonly code?: string | null;
   readonly position?: number;
 }
 

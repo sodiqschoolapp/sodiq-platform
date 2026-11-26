@@ -2,6 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import {
   fillText,
   isLanguage,
+  codedName,
   PLAN_EXPORT_ASCII_NAMES,
   PLAN_EXPORT_TEXTS,
   type Clock,
@@ -104,7 +105,7 @@ export class PlanExports {
       const notHeld = new Map<string, string[]>();
       for (const row of plan.rows) {
         const titles = (columns?.get(row.lessonId)?.notHeld ?? []).flatMap((column) =>
-          column.title === null ? [] : [column.title],
+          column.title === null ? [] : [codedName(column.code, column.title)],
         );
         notHeld.set(row.lessonId, titles);
       }
@@ -240,8 +241,9 @@ export function planSheet(
   asOf: string,
 ): Sheet {
   const c = texts.columns;
-  const titles = (works: readonly { title: string }[]) =>
-    works.map((work) => work.title).join('; ');
+  // Task 11.27 (plan decision 5): a code shown first, "code · name" (`09`, Codes: exports and prints).
+  const titles = (works: readonly { title: string; code: string | null }[]) =>
+    works.map((work) => codedName(work.code, work.title)).join('; ');
   const materials = (item: Pick<Plan['notCovered'][number], 'links' | 'files'>) =>
     [...item.links, ...item.files.map((file) => file.name)].join('; ');
   const rows: Cell[][] = plan.rows.map((row) => {
@@ -261,7 +263,7 @@ export function planSheet(
     return [
       row.number,
       { date: row.date },
-      item?.topic ?? '',
+      item === null ? '' : codedName(item.topicCode, item.topic),
       titles(item?.classworks ?? []),
       titles(item?.homeworks ?? []),
       item?.objectives ?? '',
@@ -273,7 +275,7 @@ export function planSheet(
     rows.push([
       texts.notCovered,
       null,
-      item.topic,
+      codedName(item.topicCode, item.topic),
       titles(item.classworks),
       titles(item.homeworks),
       item.objectives,
@@ -288,7 +290,7 @@ export function planSheet(
     rows.push([
       texts.carriedIn,
       null,
-      item.topic,
+      codedName(item.topicCode, item.topic),
       titles(item.classworks),
       titles(item.homeworks),
       item.objectives,
@@ -305,7 +307,16 @@ export function planSheet(
           : outcome.automatic
             ? texts.outcomes.carriedAutomatic
             : texts.outcomes.carried;
-    rows.push([texts.notCovered, null, outcome.topic, '', '', '', '', mark]);
+    rows.push([
+      texts.notCovered,
+      null,
+      codedName(outcome.topicCode, outcome.topic),
+      '',
+      '',
+      '',
+      '',
+      mark,
+    ]);
   }
   return {
     name: texts.plan,

@@ -58,6 +58,8 @@ export interface SubjectSpan {
 export interface CountedWork {
   readonly workId: string;
   readonly title: string | null;
+  /** Task 11.27: the code as shown (`null` when none or off). */
+  readonly code: string | null;
   readonly position: number;
 }
 
@@ -118,6 +120,7 @@ const countedWorkRows = (
 const columnOf = (work: GridWorkRow, index: number): CountedWork => ({
   workId: work.id,
   title: work.title ?? null,
+  code: work.code ?? null,
   position: work.position ?? index + 1,
 });
 
@@ -228,6 +231,7 @@ async function journalData(
           total: column.total,
           notHeld: column.notHeld,
           title: column.title,
+          code: column.code,
           position: column.position,
         })),
       ]),

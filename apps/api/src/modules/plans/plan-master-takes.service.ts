@@ -249,7 +249,8 @@ export class PlanMasterTakes {
     removedFiles: string[],
   ): Promise<Map<string, string>> {
     const live = new Map(
-      (await masterItemsOf(transaction, masterId)).map((item) => [item.id, item]),
+      // Task 11.27: the stored codes go with the take (plan decision 2).
+      (await masterItemsOf(transaction, masterId, false, 'stored')).map((item) => [item.id, item]),
     );
     for (const row of rows) {
       const source = live.get(row.masterItemId);

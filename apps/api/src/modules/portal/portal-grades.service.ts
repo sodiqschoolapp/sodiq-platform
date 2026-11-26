@@ -53,6 +53,8 @@ const pastScore = (work: PastWorkRow): PortalScore => ({
   date: work.date,
   kind: work.kind,
   title: work.title,
+  // Task 11.27 (plan decision 8): past marks carry no code.
+  code: null,
   position: work.position,
   score: work.score,
   total: work.total,
@@ -215,6 +217,8 @@ export class PortalGradesService {
               date: lesson.date,
               kind,
               title: work.title,
+              // Task 11.27: the code as the results breakdown shows it (`null` when none or off).
+              code: work.code,
               position: work.position,
               score: work.score,
               total: work.total,

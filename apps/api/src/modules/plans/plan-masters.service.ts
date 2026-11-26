@@ -675,7 +675,10 @@ export class PlanMastersService {
     });
     const topicCode = topic === undefined ? storedTopic : topic.value;
     const lists = [
-      ...values.classworks.map((work, index) => ({ work, path: `values.classworks.${index}.code` })),
+      ...values.classworks.map((work, index) => ({
+        work,
+        path: `values.classworks.${index}.code`,
+      })),
       ...values.homeworks.map((work, index) => ({ work, path: `values.homeworks.${index}.code` })),
     ];
     const works = lists.map(({ work, path }) => {

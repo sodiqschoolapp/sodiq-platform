@@ -43,6 +43,11 @@ export interface PlannedWork {
   readonly id: string;
   readonly kind: WorkKind;
   readonly title: string;
+  /**
+   * Task 11.27: the code as shown (`null` when none or the subject's codes are off; the caller
+   * reads it through `shownCode`).
+   */
+  readonly code?: string | null;
   /** Task 10.8: added in the journal at a lesson with no plan item (`added_in_journal_at`). */
   readonly addedInJournal?: boolean;
 }
@@ -76,6 +81,8 @@ export interface Column {
    * screen numbers it).
    */
   readonly title: string | null;
+  /** Task 11.27: the plan work's code as shown; `null` for an unplanned work (plan decision 3). */
+  readonly code: string | null;
   readonly unplanned: boolean;
   /** Its place among the columns of its kind in the lesson, from 1. */
   readonly position: number;
@@ -88,6 +95,8 @@ export interface GivenHomework {
   readonly workId: string | null;
   readonly planWorkId: string | null;
   readonly title: string | null;
+  /** Task 11.27: the code as shown (`null` for a work added by hand). */
+  readonly code: string | null;
   /** Task 8.8: marked "not given" at this lesson; it has no column then. */
   readonly notGiven: boolean;
 }
@@ -145,12 +154,17 @@ export function lessonColumns(input: ColumnsInput): Map<string, LessonColumns> {
     storedAt.set(row.lessonId, [...(storedAt.get(row.lessonId) ?? []), row]);
   }
 
-  const fromRow = (row: StoredWork, title: string | null): Omit<Column, 'position'> => ({
+  const fromRow = (
+    row: StoredWork,
+    title: string | null,
+    code: string | null,
+  ): Omit<Column, 'position'> => ({
     workId: row.id,
     planWorkId: row.planWorkId,
     sourceLessonId: row.sourceLessonId,
     kind: row.kind,
     title,
+    code,
     unplanned: row.planWorkId === null,
     total: row.total,
     notHeld: row.notHeld,
@@ -177,6 +191,7 @@ export function lessonColumns(input: ColumnsInput): Map<string, LessonColumns> {
               sourceLessonId: lesson.id,
               kind,
               title: work.title,
+              code: work.code ?? null,
               unplanned: false,
               total: null,
               notHeld: false,
@@ -184,20 +199,21 @@ export function lessonColumns(input: ColumnsInput): Map<string, LessonColumns> {
             });
           } else {
             used.add(row.id);
-            found.push(fromRow(row, work.title));
+            found.push(fromRow(row, work.title, work.code ?? null));
           }
         }
         for (const row of here
           .filter((one) => one.kind === kind && one.planWorkId === null)
           .sort((a, b) => a.position - b.position || a.id.localeCompare(b.id))) {
           used.add(row.id);
-          found.push(fromRow(row, row.title));
+          found.push(fromRow(row, row.title, null));
         }
       }
       // Any other row kept here (its plan no longer names it, or the lesson is not open).
       for (const row of here.filter((one) => one.kind === kind && !used.has(one.id))) {
         used.add(row.id);
-        found.push(fromRow(row, plannedTitle(input.planned, row)));
+        const named = plannedTitle(input.planned, row);
+        found.push(fromRow(row, named.title, named.code));
       }
       return found;
     };
@@ -215,13 +231,20 @@ export function lessonColumns(input: ColumnsInput): Map<string, LessonColumns> {
         workId: here.find((one) => one.planWorkId === work.id)?.id ?? null,
         planWorkId: work.id,
         title: work.title,
+        code: work.code ?? null,
         notGiven: isNotGiven(lesson.id, work.id),
       });
     }
     for (const row of here
       .filter((one) => one.kind === 'homework' && one.planWorkId === null)
       .sort((a, b) => a.position - b.position || a.id.localeCompare(b.id))) {
-      given.push({ workId: row.id, planWorkId: null, title: row.title, notGiven: false });
+      given.push({
+        workId: row.id,
+        planWorkId: null,
+        title: row.title,
+        code: null,
+        notGiven: false,
+      });
     }
     result.set(lesson.id, {
       planItem:
@@ -241,13 +264,13 @@ export function lessonColumns(input: ColumnsInput): Map<string, LessonColumns> {
 function plannedTitle(
   planned: ReadonlyMap<string, readonly PlannedWork[] | null>,
   row: StoredWork,
-): string | null {
-  if (row.planWorkId === null) return row.title;
+): { title: string | null; code: string | null } {
+  if (row.planWorkId === null) return { title: row.title, code: null };
   for (const works of planned.values()) {
     const found = works?.find((work) => work.id === row.planWorkId);
-    if (found !== undefined) return found.title;
+    if (found !== undefined) return { title: found.title, code: found.code ?? null };
   }
-  return null;
+  return { title: null, code: null };
 }
 
 /** The column of `lessonId` named by a write: its row, or its plan work and source. */

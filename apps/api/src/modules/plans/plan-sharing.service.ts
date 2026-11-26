@@ -607,7 +607,8 @@ export class PlanSharing {
       const pass = await this.plans.gate(transaction, scene, planNow ?? '', targets);
       const master = await masterRowOf(transaction, masterId, 'share');
       if (master.archived_at !== null) throw new ApiException('plan_master_archived', 409);
-      const items = await masterItemsOf(transaction, masterId);
+      // Task 11.27: the stored codes go with the copy (plan decision 2).
+      const items = await masterItemsOf(transaction, masterId, false, 'stored');
       const target = await this.plans.planFor(transaction, access, scene, requestId);
       const made: string[] = [];
       for (const item of items) {

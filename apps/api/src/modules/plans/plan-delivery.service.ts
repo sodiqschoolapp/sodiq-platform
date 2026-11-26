@@ -266,6 +266,7 @@ export class PlanDelivery {
       const givenToday = (own_?.given ?? []).map((one) => ({
         planWorkId: one.planWorkId,
         title: one.title,
+        code: one.code,
         description: whole ? descriptionOf(one.planWorkId) : null,
         notGiven: one.notGiven,
       }));
@@ -302,6 +303,9 @@ export class PlanDelivery {
         held: row?.held === true,
         planItem: topic !== null,
         topic,
+        // Task 11.27: the codes as shown (`09`, Codes: "on the lesson card").
+        topicCode: topic === null ? null : (item?.topicCode ?? null),
+        codesOn: journal.subject.codesOn,
         whole,
         classworks: whole ? (item?.classworks ?? []) : [],
         objectives: whole ? (item?.objectives ?? null) : null,

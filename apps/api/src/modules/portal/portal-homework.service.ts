@@ -75,7 +75,10 @@ export class PortalHomeworkService {
             colour: subjectColourSchema.parse(one.subject.colour),
           },
           topic: null,
+          topicCode: null,
           title: one.title,
+          // Task 11.27 (plan decision 8): past marks carry no code.
+          code: null,
           number: one.position,
           description: null,
           files: [],
@@ -107,7 +110,9 @@ export class PortalHomeworkService {
         givenOn: one.givenOn,
         subject: one.subject,
         topic: one.topic,
+        topicCode: one.topicCode,
         title: one.title,
+        code: one.code,
         number: one.number,
         description: one.description,
         files: one.files,
@@ -242,7 +247,10 @@ async function givenIn(
           },
           // Task 10.8: an item made by a work added in the journal has no topic yet.
           topic: item === null || item.topic.trim() === '' ? null : item.topic,
+          // Task 11.27: the codes as shown (`09`, Codes: "in the parent portal").
+          topicCode: item === null || item.topic.trim() === '' ? null : item.topicCode,
           title: one.title,
+          code: one.code,
           number: index + 1,
           itemId: item?.itemId ?? null,
           planWorkId: one.planWorkId,
