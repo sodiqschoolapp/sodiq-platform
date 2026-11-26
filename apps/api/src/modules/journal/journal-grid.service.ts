@@ -1181,6 +1181,8 @@ export class JournalGridReader {
         // The column shows while the quarter's switch is on (spec review of the code,
         // should-fix 3): entries are taken then, with or without the rating weight.
         ratingExam: ratingOn,
+        // Task 11.27: the subject's codes switch (`09`, Codes: the code fields of the journal).
+        codesOn: journal.subject.codesOn,
       },
       rating,
       others,

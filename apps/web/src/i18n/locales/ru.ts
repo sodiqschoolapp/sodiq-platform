@@ -7883,6 +7883,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       topicCode: 'Код темы',
       workCode: 'Код {{number}}',
       code: 'Код',
+      tooLong: 'Не более {{max}} символов.',
     },
     files: {
       closeText: 'Их нет в плане. Закрыть карточку без них?',

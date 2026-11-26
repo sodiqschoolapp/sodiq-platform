@@ -342,6 +342,8 @@ export const journalGridSchema = z.object({
      * 0–4" is on).
      */
     ratingExam: z.boolean(),
+    /** Task 11.27: the subject's codes switch (`09`, Codes); the code fields show only when on. */
+    codesOn: z.boolean(),
   }),
   /**
    * The rating exam of the quarter shown (task 8.2): `null` when the subject has

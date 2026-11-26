@@ -389,13 +389,23 @@ export function useWorksEntry(
       run({ run: () => removeWork(target.id, id), ask: () => Promise.resolve(false) });
   };
 
-  const rename = async (target: JournalLesson, chosen: JournalWork, title: string) => {
+  const rename = async (
+    target: JournalLesson,
+    chosen: JournalWork,
+    title: string,
+    code?: string | null,
+  ) => {
     const planWorkId = chosen.planWorkId;
     try {
       if (planWorkId !== null) {
         await runAsync({
           run: () =>
-            renamePlanWork(target.id, planWorkId, { title, baseTitle: chosen.title ?? '' }),
+            renamePlanWork(target.id, planWorkId, {
+              title,
+              baseTitle: chosen.title ?? '',
+              // Task 11.27: the code on the code read; left out while the subject's codes are off.
+              ...(code === undefined ? {} : { code, baseCode: chosen.code }),
+            }),
           ask: () => Promise.resolve(false),
         });
         return true;
@@ -455,12 +465,13 @@ export function useWorksEntry(
           focusKey={workOpen?.lessonId === lesson.id ? workOpen.key : null}
           nameOfWork={nameOfWork}
           keyOf={workKey}
-          onTopic={(topic) =>
+          onTopic={(topic, code) =>
             runAsync({
               run: () =>
                 saveLessonTopic(lesson.id, {
                   topic,
                   baseTopic: lesson.topic ?? '',
+                  ...(code === undefined ? {} : { topicCode: code, baseTopicCode: lesson.topicCode }),
                   ...(correctionOf(lesson.id) === undefined
                     ? {}
                     : { correction: correctionOf(lesson.id) }),
@@ -471,13 +482,14 @@ export function useWorksEntry(
               () => false,
             )
           }
-          onAdd={(kind, title) =>
+          onAdd={(kind, title, code) =>
             // The form stays with its title until the server took it; a refusal is shown above it.
             runAsync({
               run: () =>
                 addWork(lesson.id, {
                   kind,
                   title,
+                  ...(code === undefined || code === null ? {} : { code }),
                   ...(correctionOf(lesson.id) === undefined
                     ? {}
                     : { correction: correctionOf(lesson.id) }),
@@ -488,7 +500,7 @@ export function useWorksEntry(
               () => false,
             )
           }
-          onRename={(chosen, title) => rename(lesson, chosen, title)}
+          onRename={(chosen, title, code) => rename(lesson, chosen, title, code)}
           onTotal={(chosen, total) => {
             setTotal(lesson, chosen, total);
           }}

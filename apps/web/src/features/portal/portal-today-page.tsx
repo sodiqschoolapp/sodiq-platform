@@ -1,4 +1,4 @@
-import type { PortalMark, PortalScore, PortalSubjectGrades } from '@sodiq/shared';
+import { codedName, type PortalMark, type PortalScore, type PortalSubjectGrades } from '@sodiq/shared';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useParams } from '@tanstack/react-router';
 import type { TFunction } from 'i18next';
@@ -235,7 +235,8 @@ export function workTitle(score: PortalScore, t: TFunction): string {
   }
   return t('portal.grades.kindTitle', {
     kind: t(`portal.grades.kinds.${score.kind}`),
-    title: score.title,
+    // Task 11.27 (`09`, Codes: "in the parent portal"): the code first, "code · title".
+    title: codedName(score.code, score.title),
   });
 }
 

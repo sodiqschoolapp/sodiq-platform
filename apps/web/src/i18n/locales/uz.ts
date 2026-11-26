@@ -7562,6 +7562,7 @@ export const uz: Texts<'one' | 'other'> = {
       topicCode: 'Mavzu kodi',
       workCode: 'Kod {{number}}',
       code: 'Kod',
+      tooLong: 'Koʻpi bilan {{max}} ta belgi.',
     },
     files: {
       closeText: 'Ular rejada yoʻq. Kartani ularsiz yopasizmi?',

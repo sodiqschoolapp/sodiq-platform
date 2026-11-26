@@ -7489,6 +7489,7 @@ export const en = {
       topicCode: 'Topic code',
       workCode: 'Code {{number}}',
       code: 'Code',
+      tooLong: 'At most {{max}} characters.',
     },
     files: {
       closeText: 'They are not in the plan. Close the card without them?',
