@@ -6,7 +6,7 @@ Newest entry first. Each finished task adds an entry: what was built, what was l
 
 - **The column at its own lesson**: a lesson's homework columns are the homeworks of its own plan item and those added at it (`lesson-columns.ts`), under that lesson's lock, unlock and quarter. The check lesson, the carry and its route (`POST :lessonId/works/carry`), "checked today", "will not be graded", "not checked, group closed", the slot-N warning and the portal's due date are gone.
 - **The move** (0186, 0187): every homework stored at a later lesson moves to the lesson where it was given; cells follow by cascade (`journal_cells_work_fkey on update cascade`), each with a `homework_move` history line with no author, and one audit entry `journal.homework_move` per work. Numbers and comments of students not expected there are cleared and kept in history. The migration refuses, naming each case, for a closed, reopened or closing quarter, a locked lesson, a cancelled source, or a planned homework with no row at a locked held lesson. `journal_works_at_source` keeps every work at its source lesson.
-- Left out: the stale comments of `packages/calc/src/quarter.ts` ("checked at it"), for 11.25, which may change `packages/calc`; a pre-0186 forced-delete store restores its homework at the restored lesson (decision 13 changed, Look first).
+- Left out: the stale comments of `packages/calc/src/quarter.ts` ("checked at it"), for 11.25, which may change `packages/calc`; no `journal_voids` assertion in the move test (no task named; the move does not touch void rows). A pre-0186 forced-delete store restores its homework at the lesson where it was given while that lesson exists, otherwise at the restored lesson (decision 13).
 
 The next sessions must know:
 
