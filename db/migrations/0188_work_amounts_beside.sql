@@ -213,7 +213,9 @@ alter table digest_entries enable trigger user;
 -- ---------------------------------------------------------------------------
 -- The twin checks: the same expressions as the old columns' checks, on the
 -- twins, added after the fill (some would refuse the rows before it). Step 2
--- renames them into the old names and scans nothing.
+-- renames them into the old names and scans nothing. `journal_cells_score_exact_check`
+-- repeats a bound of the domain; it is kept so that the rename keeps the name
+-- `journal_cells_score_check`, as does the upper bound of the total's check.
 alter table journal_cells
   add constraint journal_cells_score_exact_check check (score_exact >= 0),
   add constraint journal_cells_attendance_exact_check check (

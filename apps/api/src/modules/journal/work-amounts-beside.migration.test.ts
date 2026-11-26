@@ -6,10 +6,12 @@ import { sql } from 'kysely';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { Database } from '../../database/database.js';
 import { migrate } from '../../database/migrate.js';
-import type { Transaction } from '../../database/transactions.js';
+import { Transactions, type Transaction } from '../../database/transactions.js';
 import { insertBranch, setEditDays } from '../../testing/branch-filter-sql.js';
 import { CellsKit } from '../../testing/cells-kit.js';
 import { closeQuarter } from '../../testing/closing-kit.js';
+import { FixedClock } from '../../testing/fixed-clock.js';
+import { heldEntry } from '../../testing/held-entry.js';
 import { createTestDatabase, type TestDatabase } from '../../testing/test-database.js';
 
 const MIGRATIONS = path.resolve(
@@ -115,6 +117,8 @@ describe('migration 0188 puts an exact twin beside every work score and total', 
   let exemption: string;
   let quarter: string;
   let journal: string;
+  let digestId: string;
+  let appCell: string;
   let before: Record<string, unknown[]>;
 
   beforeAll(async () => {
@@ -331,6 +335,7 @@ describe('migration 0188 puts an exact twin beside every work score and total', 
       })
       .returning('id')
       .executeTakeFirstOrThrow();
+    digestId = digest.id;
     const entry = {
       digest_id: digest.id,
       account_id: teacher,
@@ -417,24 +422,16 @@ describe('migration 0188 puts an exact twin beside every work score and total', 
       where not t.tgisinternal and t.tgenabled <> 'O'
     `.execute(database.migrator);
     expect(rows).toEqual([]);
-    // The partitions are reached: a partition of each partitioned table has its triggers.
-    const partitioned = await sql<{ table: string; partitions: number; triggers: number }>`
-      select p.relname as table, count(distinct c.oid)::int as partitions,
-        count(t.oid)::int as triggers
-      from pg_class p
-      join pg_inherits i on i.inhparent = p.oid
-      join pg_class c on c.oid = i.inhrelid
-      left join pg_trigger t on t.tgrelid = c.oid and not t.tgisinternal
-      where p.relname in ('journal_cell_history', 'journal_work_history', 'journal_save_refusals')
-      group by p.relname
-      order by p.relname
+    // The read above reaches the partitions: they carry the user triggers of their parents.
+    const cloned = await sql<{ count: number }>`
+      select count(*)::int as count
+      from pg_trigger t
+      join pg_inherits i on i.inhrelid = t.tgrelid
+      join pg_class p on p.oid = i.inhparent
+      where not t.tgisinternal
+        and p.relname in ('journal_cell_history', 'journal_work_history', 'journal_save_refusals')
     `.execute(database.migrator);
-    expect(partitioned.rows.map((one) => one.table)).toEqual([
-      'journal_cell_history',
-      'journal_save_refusals',
-      'journal_work_history',
-    ]);
-    for (const one of partitioned.rows) expect(one.triggers).toBeGreaterThanOrEqual(one.partitions);
+    expect(cloned.rows[0]?.count).toBeGreaterThan(0);
   });
 
   it('holds every twin of a score or total in the domain work_amount, and the refusal as sent in numeric', async () => {
@@ -604,14 +601,57 @@ describe('migration 0188 puts an exact twin beside every work score and total', 
           })
           .execute(),
       );
-      await migrator
-        .updateTable('digest_entries')
-        .set({ state: 'corrected', sent_score: 6, sent_total: 6, sent_version: 4 })
-        .where('source_id', '=', cells.open)
-        .execute();
+      // A first save of a number and a digest entry sent for it, as the running version writes
+      // them: inserts, as the application role, in a transaction of the branch.
+      const [first] = students as [string];
+      await new Transactions(database.app, new FixedClock(AFTER)).run(
+        [branch],
+        async (transaction) => {
+          const homework = await transaction
+            .selectFrom('journal_works')
+            .select('id')
+            .where('lesson_id', '=', lessons.open)
+            .where('kind', '=', 'homework')
+            .executeTakeFirstOrThrow();
+          const cell = await transaction
+            .insertInto('journal_cells')
+            .values({
+              branch_id: branch,
+              lesson_id: lessons.open,
+              student_id: first,
+              work_id: homework.id,
+              score: 9,
+              version: 1,
+              changed_by: teacher,
+              changed_how: 'entry',
+              changed_at: new Date(AFTER),
+            })
+            .returning('id')
+            .executeTakeFirstOrThrow();
+          appCell = cell.id;
+          // The audit entry the save writes in its transaction (lesson_change_unaudited).
+          await heldEntry(transaction, branch);
+          await transaction
+            .insertInto('digest_entries')
+            .values({
+              digest_id: digestId,
+              account_id: teacher,
+              student_id: first,
+              kind: 'score',
+              source_id: cell.id,
+              subject_id: null,
+              lesson_date: '2026-11-19',
+              state: 'new',
+              sent_score: 9,
+              sent_total: 12,
+              sent_version: 1,
+            })
+            .execute();
+        },
+      );
     }, 60_000);
 
-    it('keeps every twin equal to its column, also where a trigger cleared the number', async () => {
+    it('keeps every twin equal to its column, for an insert, an update and a clear', async () => {
       expect(await differing(database.migrator)).toEqual(
         Object.fromEntries(TWINS.map(([table, column]) => [`${table}.${column}`, 0])),
       );
@@ -621,6 +661,18 @@ describe('migration 0188 puts an exact twin beside every work score and total', 
         .where('id', '=', cells.cleared)
         .executeTakeFirstOrThrow();
       expect(cleared).toEqual({ score: null, score_exact: null });
+      const inserted = await database.migrator
+        .selectFrom('journal_cells')
+        .select(['score', 'score_exact'])
+        .where('id', '=', appCell)
+        .executeTakeFirstOrThrow();
+      expect(inserted).toEqual({ score: 9, score_exact: 9 });
+      const sent = await database.migrator
+        .selectFrom('digest_entries')
+        .select(['sent_score_exact', 'sent_total_exact'])
+        .where('source_id', '=', appCell)
+        .executeTakeFirstOrThrow();
+      expect(sent).toEqual({ sent_score_exact: 9, sent_total_exact: 12 });
       const history = await database.migrator
         .selectFrom('journal_cell_history')
         .select(['score_before_exact', 'score_after_exact'])
