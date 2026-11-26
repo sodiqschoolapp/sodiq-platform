@@ -1,9 +1,10 @@
 /**
  * The boundary between typed numbers and exact arithmetic. Every number that
- * comes into the module is a whole number (docs/spec/07-journal.md, The total:
- * "The number typed is a whole number. Decimals are not accepted"; CLAUDE.md,
- * "Typed scores and totals are whole numbers") and becomes a `bigint` here, so no
- * arithmetic is ever done on a JS `number` (task 4.1, decision 8).
+ * comes into the module becomes a `bigint` or an exact fraction here, so no
+ * arithmetic is ever done on a JS `number` (task 4.1, decision 8). A score or a
+ * total of a work may have up to two digits after the point (docs/spec/07-journal.md,
+ * The total; the owner's spec changes of 25 November 2026) and is read from its
+ * decimal text (`workAmount` of `work.ts`); every other number is whole (`wholeNumber`).
  *
  * The API validates its input with the schemas of `packages/shared` before it
  * calls the module, so a `CalcInputError` is a fault in the caller, not a
@@ -11,6 +12,7 @@
  */
 export type CalcInputErrorCode =
   | 'not_whole_number'
+  | 'more_than_two_decimals'
   | 'out_of_range'
   | 'zero_denominator'
   | 'negative_rounding'
