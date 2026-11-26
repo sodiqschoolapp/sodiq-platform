@@ -1371,6 +1371,14 @@ export const ERROR_CODES = [
   'assistant_files_too_large',
   /** Task 11.22: the file is not the person’s own upload of that kind, unsent, of this branch and the last 24 hours. */
   'assistant_file_not_found',
+  /** Task 11.26: the go-live date would put a standing past mark on or after it, or is cleared while one stands (`edge/academic-year`, Past marks); `details` name each upload to withdraw first (`recordId` the upload, `message` its file name). */
+  'go_live_past_marks',
+  /** Task 11.26 (plan decision 3, Look first): the merge would give the kept record two standing past marks of one lesson or one work; `details` name each upload (`recordId`, `message` its file name). */
+  'student_merge_past_marks_overlap',
+  /** Task 11.26: the upload is not confirmed, or already withdrawn. */
+  'past_marks_not_standing',
+  /** Task 11.26: another import of past marks was saved at the same moment; nothing was saved, run the preview again. */
+  'past_marks_changed',
   /** Any other refusal that has no code of its own yet. */
   'request_refused',
   /** A fault on the server. The answer says nothing about it; the log does. */

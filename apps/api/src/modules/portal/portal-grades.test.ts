@@ -611,6 +611,7 @@ describe('the portal grades and attendance', () => {
         comment: 'Good start, parents',
         // Saved the evening of the lesson (`saveOn`, 18:00 Tashkent).
         savedAt: '2026-10-12T13:00:00.000Z',
+        past: false,
       },
       {
         date: '2026-10-19',
@@ -623,6 +624,7 @@ describe('the portal grades and attendance', () => {
         // The staff-only comment on this score is not sent.
         comment: null,
         savedAt: '2026-10-19T13:00:00.000Z',
+        past: false,
       },
     ]);
     expect(maths?.ratingComments).toEqual(['Exam on Friday, parents']);
@@ -792,9 +794,95 @@ describe('the portal grades and attendance', () => {
       ['2026-10-26', s.subject, 'exempt'],
       ['2026-10-26', s.secondSubject, 'exempt'],
     ]);
-    expect(week.lessons.every((one) => one.start < one.end)).toBe(true);
+    expect(
+      week.lessons.every(
+        (one) =>
+          one.start !== null &&
+          one.end !== null &&
+          one.start < one.end &&
+          one.lessonNumber === null,
+      ),
+    ).toBe(true);
     // A week with no held lesson of the child.
     expect((await attendanceOf('2026-11-02')).lessons).toEqual([]);
+  });
+
+  // Task 11.26 (`10`, Past marks from before go-live: "in the same lists and the same form as
+  // the platform's own"; spec review must-fix 5): past marks beside the platform's own, then
+  // taken away again so the other tests read the scene as it was.
+  it("lists past marks in the same lists as the platform's own scores and lessons", async () => {
+    const by = await load.classes.account();
+    const upload = await t.database.migrator
+      .insertInto('past_mark_uploads')
+      .values({
+        branch_id: s.branch,
+        file_name: 'Mixed.xlsx',
+        file_sha256: 'f'.repeat(64),
+        rows: JSON.stringify([]),
+        row_count: 1,
+        uploaded_by: by,
+        uploaded_at: new Date(START),
+        confirmed_by: by,
+        confirmed_at: new Date(START),
+      })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    const base = {
+      branch_id: s.branch,
+      upload_id: upload.id,
+      academic_year_id: s.year,
+      student_id: child,
+      subject_id: s.subject,
+      lesson_number: 1,
+    };
+    try {
+      await t.database.migrator
+        .insertInto('past_works')
+        .values({
+          ...base,
+          school_date: '2026-10-05',
+          kind: 'classwork',
+          position: 1,
+          title: 'Past dictation',
+          total: 10,
+          score: 7.5,
+        })
+        .execute();
+      // Tuesday 13th, in the week of the held Monday 12th.
+      await t.database.migrator
+        .insertInto('past_attendance')
+        .values({ ...base, school_date: '2026-10-13', mark: 2 })
+        .execute();
+      const maths = (await gradesOf(child)).subjects.find((one) => one.subject.id === s.subject);
+      expect(maths?.scores.map((one) => [one.date, one.title, one.past])).toEqual([
+        ['2026-10-05', 'Past dictation', true],
+        ['2026-10-12', null, false],
+        ['2026-10-19', null, false],
+      ]);
+      // The figures stay the platform's: the past score is in none of them.
+      expect(maths?.figures).not.toBeNull();
+      const week = await attendanceOf('2026-10-12');
+      expect(
+        week.lessons.map((one) => [one.date, one.subject.id, one.mark, one.lessonNumber]),
+      ).toEqual([
+        ['2026-10-12', s.subject, 'present', null],
+        ['2026-10-12', s.secondSubject, 'skipped', null],
+        ['2026-10-13', s.subject, 'late', 1],
+      ]);
+    } finally {
+      await t.database.migrator
+        .deleteFrom('past_works')
+        .where('upload_id', '=', upload.id)
+        .execute();
+      await t.database.migrator
+        .deleteFrom('past_attendance')
+        .where('upload_id', '=', upload.id)
+        .execute();
+      await t.database.migrator
+        .deleteFrom('past_mark_uploads')
+        .where('id', '=', upload.id)
+        .execute();
+    }
   });
 
   it('shows a child moved to another class during the quarter in the journal where each mark was entered', async () => {

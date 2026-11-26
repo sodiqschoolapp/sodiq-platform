@@ -86,6 +86,7 @@ const GRADES = (closed: boolean): PortalGrades => ({
           percent: 40,
           comment: 'Good start',
           savedAt: '2026-10-12T13:00:00.000Z',
+          past: false,
         },
         {
           date: '2026-10-19',
@@ -97,6 +98,7 @@ const GRADES = (closed: boolean): PortalGrades => ({
           percent: 80,
           comment: null,
           savedAt: null,
+          past: false,
         },
       ],
       rating: { kind: 'score', score: 77 },
@@ -124,6 +126,7 @@ const WEEK: PortalAttendanceWeek = {
       date: '2026-10-26',
       start: 480,
       end: 525,
+      lessonNumber: null,
       subject: maths,
       mark: 'exempt',
       comment: null,
@@ -133,6 +136,7 @@ const WEEK: PortalAttendanceWeek = {
       date: '2026-10-26',
       start: 590,
       end: 635,
+      lessonNumber: null,
       subject: assembly,
       mark: 'late',
       comment: 'Came after the bell',
@@ -334,6 +338,84 @@ describe('the row of a subject', () => {
     const final = document.querySelector(`[data-subject-row="${maths.id}"]`);
     expect(final?.querySelector('[data-result]')?.textContent).toBe('71/100Grade 4');
     expect(final?.querySelector('[data-row-note]')).toBeNull();
+  });
+});
+
+// Task 11.26 (`10`, Past marks from before go-live): past marks in the same lists and the same
+// form, with no label; a subject with past scores only shows no result.
+describe('the past marks in the portal', () => {
+  const PAST: PortalGrades = {
+    quarters: [quarter(Q1, 1, false)],
+    quarterId: Q1,
+    subjects: [
+      {
+        subject: maths,
+        final: false,
+        attendanceOnly: false,
+        figures: null,
+        attendance: null,
+        year: null,
+        scores: [
+          {
+            date: '2026-09-07',
+            kind: 'classwork',
+            title: 'Dictation',
+            position: 1,
+            score: 7.5,
+            total: 10,
+            percent: 75,
+            comment: null,
+            savedAt: null,
+            past: true,
+          },
+        ],
+        rating: null,
+        ratingComments: [],
+      },
+    ],
+  };
+
+  it('lists a past score as any score, and its subject without a result or "attendance only"', async () => {
+    fakeApi({
+      'GET /api/auth/session': () => json(PARENT()),
+      'GET /api/portal/children': () => json(CHILDREN),
+      [`GET /api/portal/children/${ANVAR}/grades`]: () => json(PAST),
+    });
+    renderApp(`/portal/${ANVAR}/grades`);
+    const day = await screen.findByRole('region', { name: 'Monday, 7 September' });
+    const row = within(day).getByText('Classwork · Dictation').closest('[data-score-row]');
+    expect(row?.querySelector('[data-score]')?.textContent).toBe('7.5/1075%');
+    fireEvent.click(screen.getByRole('radio', { name: en.portal.grades.views.quarter }));
+    const subjectRow = await openRow(maths.id);
+    expect(subjectRow.textContent).not.toContain(en.portal.grades.attendanceOnlyShort);
+    expect(subjectRow.querySelector('[data-figure]')).toBeNull();
+  });
+
+  it('shows a past attendance mark by its lesson number, with no time', async () => {
+    fakeApi({
+      'GET /api/auth/session': () => json(PARENT()),
+      'GET /api/portal/children': () => json(CHILDREN),
+      [`GET /api/portal/children/${ANVAR}/attendance`]: () =>
+        json({
+          today: '2026-10-27',
+          monday: '2026-09-07',
+          lessons: [1, 2].map((lessonNumber) => ({
+            date: '2026-09-07',
+            start: null,
+            end: null,
+            lessonNumber,
+            subject: maths,
+            mark: lessonNumber === 1 ? 'present' : 'exempt',
+            comment: null,
+            note: null,
+          })),
+        }),
+    });
+    renderApp(`/portal/${ANVAR}/attendance?date=2026-09-07`);
+    const monday = await screen.findByRole('region', { name: /Monday/ });
+    expect(within(monday).getByText('Lesson 1')).toBeDefined();
+    expect(within(monday).getByText('Lesson 2')).toBeDefined();
+    expect(within(monday).getByText(en.portal.attendance.marks.exempt)).toBeDefined();
   });
 });
 

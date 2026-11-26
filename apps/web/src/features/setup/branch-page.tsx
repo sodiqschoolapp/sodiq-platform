@@ -15,7 +15,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { api, branchHeader } from '@/api/client';
-import { answerOf } from '@/api/failure';
+import { answerOf, ApiFailure } from '@/api/failure';
 import {
   CheckboxGroupField,
   DateField,
@@ -201,6 +201,13 @@ function GoLiveSection({ branch, canEdit }: { branch: Branch; canEdit: boolean }
     body = <LoadingOutline lines={1} />;
   }
 
+  // Task 11.26 (`edge/academic-year`, Past marks: "refused, naming the uploads to withdraw
+  // first"): the files of the uploads in the way, from the refusal's details.
+  const blocking =
+    save.error instanceof ApiFailure && save.error.code === 'go_live_past_marks'
+      ? (save.error.details ?? []).map((detail) => detail.message)
+      : [];
+
   return (
     <section
       aria-label={t('setup.branch.goLiveTitle')}
@@ -208,6 +215,19 @@ function GoLiveSection({ branch, canEdit }: { branch: Branch; canEdit: boolean }
     >
       <h2 className={SECTION_TITLE}>{t('setup.branch.goLiveTitle')}</h2>
       {body}
+      {blocking.length > 0 && (
+        <div className="grid gap-1 text-sm" data-go-live-uploads>
+          <p>{t('setup.branch.goLiveUploads')}</p>
+          <ul className="list-disc pl-5">
+            {blocking.map((name, index) => (
+              <li key={`${name}-${String(index)}`}>{name}</li>
+            ))}
+          </ul>
+          <Link to="/setup/past-marks" className="text-link">
+            {t('setup.pastMarks.title')}
+          </Link>
+        </div>
+      )}
     </section>
   );
 }

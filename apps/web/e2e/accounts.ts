@@ -128,7 +128,10 @@ export type AccountKey =
   | 'announcementsAuthor'
   | 'announcementsParent'
   // Task 11.12: the Teacher of assistant.spec.ts.
-  | 'assistantTeacher';
+  | 'assistantTeacher'
+  // Task 11.26: the importer and the parent of past-marks.spec.ts.
+  | 'pastMarksVice'
+  | 'pastMarksParent';
 
 /** Invented for the tests. */
 export const NEW_PASSWORD = 'a-new-password-73';

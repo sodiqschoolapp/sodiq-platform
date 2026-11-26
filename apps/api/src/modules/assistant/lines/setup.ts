@@ -292,6 +292,49 @@ export const SETUP_LINES: Readonly<Record<string, AssistantRouteLine>> = {
     preview: { route: 'POST /api/setup/subjects/imports/:id/preview' },
   },
 
+  // Task 11.26: the import of past marks from before go-live, for parents only (`10`, Past marks
+  // from before go-live): run through its preview, as every import.
+  'GET /api/setup/past-marks/import-template': {
+    kind: 'download',
+    group: 'setup',
+    description:
+      'The Excel template of the import of past marks from before go-live (attendance, classwork and homework of the lessons before the branch went live, for parents only), in the language given.',
+  },
+  'GET /api/setup/past-marks/imports': {
+    group: 'setup',
+    description:
+      'The saved uploads of past marks of the branch: file name, who and when, the number of rows, and whether each stands or was withdrawn (with the reason). The marks themselves are for parents only and are never read here.',
+  },
+  'PUT /api/setup/past-marks/imports': {
+    kind: 'file',
+    group: 'setup',
+    description:
+      'Uploads a filled template of past marks; the rows are kept and the first page of their preview answered, nothing is saved yet.',
+  },
+  'POST /api/setup/past-marks/imports/:id/preview': {
+    kind: 'preview',
+    group: 'setup',
+    description:
+      'A page of the preview of a kept upload of past marks (body: page, from 1): the counts, each row and its problems, rows with problems first. Saves nothing.',
+  },
+  'POST /api/setup/past-marks/imports/:id/confirm': {
+    kind: 'change',
+    group: 'setup',
+    description:
+      'Saves every row of a kept upload of past marks, or nothing while a row has a problem; the body is empty. Run the preview first.',
+    basis: { kind: 'own' },
+    outdatedCodes: ['past_marks_changed', 'import_already_done'],
+    preview: { route: 'POST /api/setup/past-marks/imports/:id/preview' },
+  },
+  'POST /api/setup/past-marks/imports/:id/withdraw': {
+    kind: 'change',
+    group: 'setup',
+    description:
+      'Withdraws a whole saved upload of past marks, with a reason: its marks are kept and no longer shown to parents; the same file may then be imported again.',
+    basis: readById('GET /api/setup/past-marks/imports'),
+    outdatedCodes: ['past_marks_not_standing'],
+  },
+
   // The parents' digest and the demo time (school-wide, the Super Admin).
   'GET /api/setup/school-settings/digest': {
     group: 'setup',

@@ -21,6 +21,7 @@ import {
 } from '../../testing/assistant-kit.js';
 import { answer, calls, FAKE_TOKENS, type FakeTurn } from '../../testing/assistant-model.js';
 import { filledTemplate, studentRow } from '../../testing/student-import-kit.js';
+import { filledPastMarkTemplate } from '../../testing/past-marks-kit.js';
 import { binary } from '../../testing/xlsx-kit.js';
 import { EXPORT_FILE, IMPORT_ATTACHMENT } from './file-tools.js';
 import { GENERATED_TOOLS } from './tools.generated.js';
@@ -187,6 +188,44 @@ describe('the assistant: files, imports, exports and voice', () => {
     expect(undone?.kind === 'answer' ? undone.undo?.none.map((one) => one.reason) : []).toEqual([
       'no_reverse',
     ]);
+  });
+
+  // Task 11.26 (build line: "the assistant runs the import through its preview"; spec review of
+  // the code, should-fix 9): the template of past marks goes through its own upload, named.
+  it('sends a template of past marks through its own upload with its file name, and saves nothing', async () => {
+    const file = await attach(
+      await filledPastMarkTemplate([
+        {
+          uid: '2699997',
+          lastName: 'Karimova',
+          firstName: 'Dilnoza',
+          date: '2026-09-07',
+          subject: 'History',
+          attendance: '1',
+        },
+      ]),
+      ASSISTANT_EXCEL_TYPE,
+      'Past marks.xlsx',
+    );
+    scene.model.script(
+      calls({ name: IMPORT_ATTACHMENT, args: { fileId: file.id, import: 'pastMarks' } }),
+      answer('Row 3 names an unknown student.'),
+    );
+    const response = await ask(scene, scene.admin, scene.north, {
+      text: 'Import these past marks.',
+      files: [file.id],
+    });
+    expect(response.status).toBe(202);
+    expect(resultOf(IMPORT_ATTACHMENT)).toMatchObject({ status: 200, data: { clean: false } });
+    const upload = await scene.database.migrator
+      .selectFrom('past_mark_uploads')
+      .select(['file_name', 'confirmed_at', 'branch_id'])
+      .executeTakeFirstOrThrow();
+    expect(upload).toEqual({
+      file_name: 'Past marks.xlsx',
+      confirmed_at: null,
+      branch_id: scene.north,
+    });
   });
 
   it('saves none of a template with a row in error, the good row included', async () => {

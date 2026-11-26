@@ -41,6 +41,7 @@ const WEIGHT_WRITES = `${G} > answers 404 to the writes of weights for another b
 const S = 'src/modules/setup/subjects.test.ts';
 const SUBJECT = `${S} > of an unknown subject is not found; nothing is written`;
 const SUBJECT_IMPORT = `src/modules/setup/subject-imports.test.ts > answers 404 for an import of another branch and an unknown one on the preview and the confirm, changing nothing`;
+const PAST_MARKS_404 = `src/modules/setup/past-marks.test.ts > answers 404 for an upload of another branch or an unknown one, changing nothing`;
 const SUBJECT_QUARTERS = `${S} > of another branch's quarter or year, or an unknown one, are not found; nothing is written`;
 
 const PATH = '.claude/rules/api.md, task 1.3';
@@ -246,6 +247,16 @@ export const SETUP_IDS: RouteIds = {
 
   'POST /api/setup/subjects/export': [school('body:ids', 'subject', SUBJECTS, [SUBJECTS_EXPORT])],
   'POST /api/setup/subjects': [school('body:departmentId', 'department', SCHOOL_WIDE)],
+  // Task 11.26: an upload of past marks of the branch of the request.
+  'POST /api/setup/past-marks/imports/:id/preview': [
+    branch('path:id', 'past-mark upload', PATH, [PAST_MARKS_404]),
+  ],
+  'POST /api/setup/past-marks/imports/:id/confirm': [
+    branch('path:id', 'past-mark upload', PATH, [PAST_MARKS_404]),
+  ],
+  'POST /api/setup/past-marks/imports/:id/withdraw': [
+    branch('path:id', 'past-mark upload', PATH, [PAST_MARKS_404]),
+  ],
   'POST /api/setup/subjects/imports/:id/preview': [
     branch('path:id', 'subject import', PATH, [SUBJECT_IMPORT]),
   ],

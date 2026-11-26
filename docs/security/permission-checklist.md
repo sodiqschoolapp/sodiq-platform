@@ -138,12 +138,12 @@ Neither was done by hand (owner, 29 October 2026, issue #42). In their place: th
 
 ## The routes in numbers
 
-- Routes of the application: 560, each called by the role harness as the 15 roles, an account without a role, a Parent account (task 11.1) and nobody, in the own and in another branch.
-- Without sign-in: 5. For the own account: 24. The parent portal: 8. With a permission of the table: 522.
+- Routes of the application: 566, each called by the role harness as the 15 roles, an account without a role, a Parent account (task 11.1) and nobody, in the own and in another branch.
+- Without sign-in: 5. For the own account: 24. The parent portal: 8. With a permission of the table: 528.
 - Open to integration keys: 97 (tasks 10.10 and 10.11).
 - Routes with a limit inside the route: 166.
-- Routes that take an id: 430, with 877 ids (branch 756, school 78, own 20, none 23).
-- Areas of the permission table: 66.
+- Routes that take an id: 433, with 880 ids (branch 759, school 78, own 20, none 23).
+- Areas of the permission table: 67.
 
 ## Routes without a role
 
@@ -1309,6 +1309,9 @@ For every id a route takes, in its path, its query or its body, the record it na
 | `POST /api/setup/floors/:id/archive` | `path:id` | floor | branch | `src/modules/setup/other-branch-ids.test.ts > PUT /api/setup/floors/:id, its archive and its restore answer 404` |
 | `POST /api/setup/floors/:id/forced-delete` | `path:id` | floor | branch | `src/modules/setup/place-forced-deletes.test.ts > answers 404 for a %s of another branch and an unknown one, and nothing changes`<br>`repeat: src/modules/setup/place-forced-deletes.test.ts > keeps a used key of a %s to its account, its branch and its role (request keys)` |
 | `POST /api/setup/floors/:id/restore` | `path:id` | floor | branch | `src/modules/setup/other-branch-ids.test.ts > PUT /api/setup/floors/:id, its archive and its restore answer 404` |
+| `POST /api/setup/past-marks/imports/:id/confirm` | `path:id` | past-mark upload | branch | `src/modules/setup/past-marks.test.ts > answers 404 for an upload of another branch or an unknown one, changing nothing` |
+| `POST /api/setup/past-marks/imports/:id/preview` | `path:id` | past-mark upload | branch | `src/modules/setup/past-marks.test.ts > answers 404 for an upload of another branch or an unknown one, changing nothing` |
+| `POST /api/setup/past-marks/imports/:id/withdraw` | `path:id` | past-mark upload | branch | `src/modules/setup/past-marks.test.ts > answers 404 for an upload of another branch or an unknown one, changing nothing` |
 | `POST /api/setup/quarters/:id/attendance-values/preview` | `path:id` | quarter | branch | `src/modules/results/grade-changes.test.ts > answers 404 for another branch’s and an unknown quarter and year, and an unknown subject, with every row unchanged` |
 | `POST /api/setup/rooms` | `body:floorId` | floor | branch | `src/modules/setup/other-branch-ids.test.ts > POST /api/setup/rooms answers 404 for the floor` |
 | `POST /api/setup/rooms/:id/forced-delete` | `path:id` | room | branch | `src/modules/setup/place-forced-deletes.test.ts > answers 404 for a %s of another branch and an unknown one, and nothing changes`<br>`repeat: src/modules/setup/place-forced-deletes.test.ts > keeps a used key of a %s to its account, its branch and its role (request keys)` |
@@ -1917,6 +1920,13 @@ Every area of `PERMISSIONS` (`packages/shared/src/permissions.ts`), the table th
 | --- | :-: | :-: | :-: | :-: | :-: |
 | super_admin | yes | yes |  |  | yes |
 | academic_vice_principal | yes | yes |  |  | yes |
+
+### `past_marks`
+
+| Role | view | create | edit | archive | export |
+| --- | :-: | :-: | :-: | :-: | :-: |
+| super_admin | yes | yes |  | yes |  |
+| academic_vice_principal | yes | yes |  | yes |  |
 
 ### `personal_data_report`
 

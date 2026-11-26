@@ -203,3 +203,60 @@ Not built yet: the mark on the timetable itself (task 5.4a).
 
 - When the record is in use: "This is still in use (a room on it, a lesson, a timetable entry, the history of a lesson, or a floor, room or lesson of it deleted for good in the last 30 days), so it cannot be deleted for good. Archive a building or floor, or close a room, instead."
 - When the building or floor it was in was archived or deleted since: "It cannot come back: the building or floor it was in was archived or deleted for good since. Restore that building or floor first, then this."
+
+## Past marks from before go-live
+
+<!-- Sources: spec 10 (Past marks from before go-live; What parents see; The parents' digest), edge/academic-year (the go-live row; Past marks from before go-live), edge/developer-rules (Past marks), edge/people-roles-accounts (the personal data report), 02 (Academic Vice Principal); the owner's spec change of 25 November 2026; task 11.26, plan decisions 1 to 22 and review corrections 1 and 2 -->
+
+**What it is.** A branch that went live in the middle of the year can import the attendance, classwork and homework of its lessons before its go-live date from an Excel file, so that parents see them in the portal. They are history for parents only: nothing is calculated from them, and staff screens never show them.
+
+**Who can use it.**
+
+| Role | What the role may do | Where |
+| --- | --- | --- |
+| Super Admin | Download the template, import a file, see the uploads, withdraw an upload | Every branch |
+| Academic Vice Principal | The same | Own branch |
+| Parent | See the imported marks of their child on the Grades, Attendance and Homework pages of the portal | Own children |
+| Every other role | Nothing | |
+
+**How it works.**
+
+1. School setup → **Past marks before go-live** (**Ishga tushishdan oldingi baholar**) → **Import from Excel** (**Exceldan import**).
+2. Press **Download the template** and fill one row per student, date and subject: the UID, the surname and the first name, the date, the subject (its name in Uzbek, Russian or English), the lesson (1 for the first lesson of that subject that day, 2 for the second; empty means 1), the attendance mark, and the title, total and score of a classwork and of a homework. A second classwork or homework of the same lesson goes on a further row with the attendance left empty.
+3. Press **Upload the filled file**. The preview lists every row with its problems, rows with problems first, 500 rows a page. Nothing is saved yet.
+4. Correct the file and upload it again until no row has a problem, then press **Save all … rows**. Every row is saved at once, or none.
+5. The uploads stand on the page **Past marks before go-live**: file name, who saved it and when, the number of rows, and whether it stands or was withdrawn. To take an upload back, open it and press **Withdraw** (**Qaytarib olish**) with a reason.
+
+**Rules.**
+
+- A file holds at most 50,000 rows and at most 10 MB. A large branch imports several files, for example one per class or per month.
+- The attendance mark is 0 absent, 1 present, 2 late, 3 at school but not at the lesson, 4 or 5 exempt, or empty.
+- A work's title, total and score are filled together or left empty. The title is at most 60 characters. The total is from 1 to 1000 and the score from 0 to the total, each with at most two digits after a point (7.5, never 7,5).
+- The date is before the branch's go-live date, in the current academic year, inside a quarter, and a school day of the calendar for the student's grade. Days off before go-live are entered in the calendar first.
+- The name is checked against the UID after spelling differences are taken out (Oʻtkir, O'tkir and Ўткир are one name).
+- The student was in the branch of the import on that date: a student who moved to another branch later is imported by the branch where the lesson was.
+- An attendance-only subject takes attendance only.
+- A lesson has one attendance mark, and a work (the same lesson, kind and title) appears once, in the file and in every upload that stands. Titles are compared without case, spaces at either end or apostrophes.
+- The same file cannot be imported again while its upload stands; after it is withdrawn it can.
+- A withdrawn upload is kept with its reason and its rows; parents no longer see them.
+- Parents see past marks on the Grades, Attendance and Homework pages, in the same lists and the same form as the platform's own, with no label: by date, subject and the lesson's number that day, with no time or teacher. The percent of a score is worked out as for any score.
+- Past marks are never in an average, a quarter or year result, the rating, a report, the early-warning list, the Today page's latest scores, the parents' digest, or any staff screen or export. The one exception is the personal data report, which lists them all, withdrawn ones marked.
+- The upload, the save and the withdrawal are each an entry in the audit log.
+
+**What happens if…**
+
+| Case | What happens |
+| --- | --- |
+| The go-live date is changed to a date on or before a standing past mark, or cleared | The change is refused, naming the uploads to withdraw first. |
+| Two people save files with the same lesson at the same moment | The second save shows the repeat as a problem of its row and saves nothing. |
+| A student with past marks is merged with another record | The past marks go to the record that stays. When both records have a standing mark of the same lesson or the same work, the merge is refused, naming the uploads to withdraw first. |
+| A student with past marks moves to another branch | The marks stay, and the parents still see them. |
+| A student who left the school | Parents no longer see the child in the portal, as for everything else. |
+| The next academic year starts | The past marks stay with their year. |
+| The calendar or a year's dates change after an import | The past marks stay where they are. |
+
+**What the person sees.**
+
+- A row with a comma: "Classwork: score: write a point, not a comma."
+- A row on the go-live date or later: "Date: the date must be before the go-live date."
+- A changed go-live date across a past mark: "Past marks from before go-live would fall on or after this date. Withdraw the uploads named first, or choose a later date."

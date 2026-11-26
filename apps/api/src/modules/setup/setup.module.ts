@@ -25,6 +25,8 @@ import { TravelTimes } from './travel-times.service.js';
 import { Rooms } from './rooms.service.js';
 import { SubjectsController } from './subjects.controller.js';
 import { Subjects } from './subjects.service.js';
+import { PastMarksController } from './past-marks.controller.js';
+import { PastMarks } from './past-marks.service.js';
 import { SubjectImports } from './subject-imports.service.js';
 import { AccessModule } from '../access/access.module.js';
 import { QuarterLessons } from './quarter-lessons.js';
@@ -38,7 +40,7 @@ import { PlansModule } from '../plans/plans.module.js';
  * templates (task 1.5); the calendar (task 1.4); the settings, travel time
  * and the setup checklist (task 1.6); subjects and their weights (task 2.1);
  * the forced delete of a building, floor or room (task 5.8c); the demo time of the test
- * environment (task 10.5).
+ * environment (task 10.5); the import of past marks from before go-live (task 11.26).
  */
 @Module({
   imports: [AccessModule, TimetableModule, PlansModule, NotificationsModule],
@@ -55,6 +57,7 @@ import { PlansModule } from '../plans/plans.module.js';
     DemoClockController,
     TravelTimesController,
     SubjectsController,
+    PastMarksController,
   ],
   providers: [
     Branches,
@@ -72,6 +75,7 @@ import { PlansModule } from '../plans/plans.module.js';
     TravelTimes,
     Subjects,
     SubjectImports,
+    PastMarks,
   ],
 })
 export class SetupModule {}

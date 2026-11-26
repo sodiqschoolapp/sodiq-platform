@@ -11,13 +11,14 @@ export const EXPORT_FILE = 'export_file';
 
 export const FILE_TOOLS: readonly string[] = [READ_ATTACHMENT, IMPORT_ATTACHMENT, EXPORT_FILE];
 
-/** The five imports and their upload routes (build plan 11.22, Read). */
+/** The six imports and their upload routes (build plan 11.22, Read; task 11.26: past marks). */
 export const IMPORT_UPLOADS = {
   students: 'PUT /api/people/students/imports',
   staff: 'PUT /api/people/staff/imports',
   subjects: 'PUT /api/setup/subjects/imports',
   load: 'PUT /api/timetable/versions/:id/load/imports',
   pattern: 'PUT /api/timetable/versions/:id/pattern/imports',
+  pastMarks: 'PUT /api/setup/past-marks/imports',
 } as const;
 
 export type ImportKind = keyof typeof IMPORT_UPLOADS;

@@ -293,6 +293,7 @@ function StudentParts({ report, words }: { report: StudentReport; words: Words }
         }))}
       />
       <StudentJournal report={report} words={words} />
+      <StudentPastMarks report={report} words={words} />
     </>
   );
 }
@@ -455,6 +456,57 @@ function StudentJournal({ report, words }: { report: StudentReport; words: Words
         </section>
       )}
     </>
+  );
+}
+
+/** The attendance marks as the portal names them (4 and 5 exempt). */
+const PAST_MARK_NAMES = ['absent', 'present', 'late', 'skipped', 'exempt', 'exempt'] as const;
+
+/**
+ * Task 11.26 (`edge/people-roles-accounts`: "past marks from before go-live included"; plan
+ * decision 21): the student's past marks of every branch, withdrawn ones marked.
+ */
+function StudentPastMarks({ report, words }: { report: StudentReport; words: Words }) {
+  const { t, language } = words;
+  const { attendance, works } = report.pastMarks;
+  const withdrawn = (at: string | null) =>
+    at === null ? '' : ` · ${t('people.report.pastWithdrawn', { moment: words.moment(at) })}`;
+  return (
+    <section className="grid gap-3">
+      <h3 className={SECTION_TITLE}>{t('people.report.pastMarksTitle')}</h3>
+      {attendance.length === 0 && works.length === 0 ? (
+        <p className="text-sm">{t('people.report.noPastMarks')}</p>
+      ) : (
+        <ol className="grid gap-2 text-sm" data-report="past-marks">
+          {attendance.map((one, index) => (
+            <li key={`a-${String(index)}`} className="break-inside-avoid">
+              {[
+                one.branch,
+                words.date(one.date),
+                one.subject[isLanguage(language) ? language : 'uz'],
+                t('portal.attendance.lessonNumber', { number: one.lessonNumber }),
+                t(`portal.attendance.marks.${PAST_MARK_NAMES[one.mark] ?? 'exempt'}`),
+                one.fileName,
+              ].join(' · ')}
+              {withdrawn(one.withdrawnAt)}
+            </li>
+          ))}
+          {works.map((one, index) => (
+            <li key={`w-${String(index)}`} className="break-inside-avoid">
+              {[
+                one.branch,
+                words.date(one.date),
+                one.subject[isLanguage(language) ? language : 'uz'],
+                t('portal.attendance.lessonNumber', { number: one.lessonNumber }),
+                `${t(`portal.grades.kinds.${one.kind}`)} “${one.title}”: ${String(one.score)} / ${String(one.total)}`,
+                one.fileName,
+              ].join(' · ')}
+              {withdrawn(one.withdrawnAt)}
+            </li>
+          ))}
+        </ol>
+      )}
+    </section>
   );
 }
 

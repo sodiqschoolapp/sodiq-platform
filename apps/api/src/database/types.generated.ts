@@ -1670,6 +1670,53 @@ export interface PasswordResetLinks {
   valid_until: Timestamp | null;
 }
 
+export interface PastAttendance {
+  academic_year_id: string;
+  branch_id: string;
+  id: Generated<string>;
+  lesson_number: number;
+  mark: number;
+  school_date: string;
+  student_id: string;
+  subject_id: string;
+  upload_id: string;
+  withdrawn_at: Timestamp | null;
+}
+
+export interface PastMarkUploads {
+  branch_id: string;
+  confirmed_at: Timestamp | null;
+  confirmed_by: string | null;
+  file_name: string;
+  file_sha256: string;
+  id: Generated<string>;
+  row_count: number;
+  rows: Json;
+  uploaded_at: Timestamp;
+  uploaded_by: string;
+  withdraw_reason: string | null;
+  withdrawn_at: Timestamp | null;
+  withdrawn_by: string | null;
+}
+
+export interface PastWorks {
+  academic_year_id: string;
+  branch_id: string;
+  id: Generated<string>;
+  kind: string;
+  lesson_number: number;
+  position: number;
+  school_date: string;
+  score: Numeric;
+  student_id: string;
+  subject_id: string;
+  title: string;
+  title_key: Generated<string | null>;
+  total: Numeric;
+  upload_id: string;
+  withdrawn_at: Timestamp | null;
+}
+
 export interface PatternBlockClasses {
   block_id: string;
   branch_id: string;
@@ -2671,6 +2718,9 @@ export interface DB {
   notifications: Notifications;
   parent_slips: ParentSlips;
   password_reset_links: PasswordResetLinks;
+  past_attendance: PastAttendance;
+  past_mark_uploads: PastMarkUploads;
+  past_works: PastWorks;
   pattern_block_classes: PatternBlockClasses;
   pattern_blocks: PatternBlocks;
   pattern_entries: PatternEntries;

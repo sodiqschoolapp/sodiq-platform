@@ -814,6 +814,7 @@ describe('a frozen permission table', () => {
       'journal_unlocks',
       'monitoring',
       'parent_accounts',
+      'past_marks',
       'personal_data_report',
       'plan_masters',
       'plan_reports',

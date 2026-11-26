@@ -1759,7 +1759,7 @@ export class AssistantEngine {
     let status = 0;
     let runId: string | undefined;
     if (typeof kind !== 'string' || !Object.hasOwn(IMPORT_UPLOADS, kind)) {
-      given = { error: 'invalid_arguments', detail: 'import is one of the five imports' };
+      given = { error: 'invalid_arguments', detail: 'import is one of the six imports' };
     } else if (file === undefined) {
       given = { error: 'not_found' };
     } else if (file.mediaType !== ASSISTANT_EXCEL_TYPE) {
@@ -1774,7 +1774,10 @@ export class AssistantEngine {
         ? typeof versionId === 'string' && /^[0-9a-f-]{36}$/i.test(versionId)
           ? path.replace(':id', versionId)
           : undefined
-        : path;
+        : importKind === 'pastMarks'
+          ? // Task 11.26: the upload of past marks names its file in the list of uploads.
+            `${path}?name=${encodeURIComponent(file.name)}`
+          : path;
       const bytes = await this.files.bytesOf(file.id);
       if (!Object.hasOwn(as.lines, route)) {
         given = { error: Object.hasOwn(as.listed, route) ? 'action_off' : 'not_on_list' };

@@ -740,6 +740,13 @@ const MESSAGE: Record<ErrorCode, string> = {
   assistant_file_too_large: 'The file is larger than its type allows.',
   assistant_files_too_large: 'The files of one question are more than 14 MB together.',
   assistant_file_not_found: 'The file is not an upload of yours that can be sent.',
+  go_live_past_marks:
+    'Past marks from before go-live would fall on or after the date. Withdraw the uploads named first.',
+  student_merge_past_marks_overlap:
+    'Both records hold past marks of the same lesson or work. Withdraw one of the uploads named first.',
+  past_marks_not_standing: 'The upload is not saved, or is already withdrawn.',
+  past_marks_changed:
+    'Another import of past marks was saved at the same moment. Nothing was saved; check the file again.',
 };
 
 function codeOfStatus(status: number): ErrorCode {

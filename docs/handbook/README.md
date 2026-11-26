@@ -11,7 +11,7 @@ One page per area, in the order a school meets them:
 | Page | What it covers |
 | --- | --- |
 | `01-signing-in-and-roles.md` | Accounts, signing in, passwords and the second step, roles, branches, who may see and do what |
-| `02-school-setup.md` | Branches, buildings and rooms, divisions and departments, academic years and quarters, lessons, breaks and day templates, the calendar, subjects and weights, settings |
+| `02-school-setup.md` | Branches, buildings and rooms, divisions and departments, academic years and quarters, lessons, breaks and day templates, the calendar, subjects and weights, settings, past marks from before go-live |
 | `03-people.md` | Staff, vacancies and working hours, students, relatives and parents, Head Teachers, search, exports, the personal data report |
 | `04-classes-and-groups.md` | Classes and Tutors, groups, putting students in classes and groups, moves, leaving and returning, moving to another branch, merging two records, the History tab |
 | `05-teaching-load-and-timetable.md` | The teaching load, the timetable and its versions, the board, generation, publishing, one-day changes, absences and substitutions, exams |

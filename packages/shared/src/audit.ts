@@ -118,6 +118,10 @@ export const AUDIT_ACTION_GROUPS = {
     // The owner's change of 7 November 2026 (#316): the upload of a filled subject template and its confirm.
     'subject_import.upload',
     'subject_import.confirm',
+    // Task 11.26: the upload of a file of past marks from before go-live, its confirm and its withdrawal.
+    'past_marks.upload',
+    'past_marks.confirm',
+    'past_marks.withdraw',
     'school_settings.rating_exams_primary',
     // Task 11.5: the digest's time of day and quiet hours.
     'school_settings.digest',

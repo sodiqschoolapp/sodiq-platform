@@ -225,6 +225,11 @@ export const portalScoreSchema = z.strictObject({
    * request #356). `null` when the cell is not readable in the child's present branch.
    */
   savedAt: z.iso.datetime({ offset: true }).nullable(),
+  /**
+   * A past score from before go-live (task 11.26; `10`, Past marks from before go-live): never
+   * shown as such ("no separate label"); the Today page leaves it out of the latest scores.
+   */
+  past: z.boolean(),
 });
 
 export type PortalScore = z.infer<typeof portalScoreSchema>;
@@ -279,9 +284,14 @@ export type PortalMark = (typeof PORTAL_MARKS)[number];
 
 export const portalAttendanceLessonSchema = z.strictObject({
   date: schoolDateSchema,
-  /** Clock minutes of the day in branch time, half-open. */
-  start: z.int().min(0),
-  end: z.int().min(1),
+  /**
+   * Clock minutes of the day in branch time, half-open; `null` for a past mark from before
+   * go-live, which has no time (task 11.26; `10`: "no teacher, slot or time").
+   */
+  start: z.int().min(0).nullable(),
+  end: z.int().min(1).nullable(),
+  /** The number of that subject's lesson on that day, for a past mark; `null` otherwise. */
+  lessonNumber: z.int().min(1).nullable(),
   subject,
   mark: z.enum(PORTAL_MARKS),
   /** The comment "visible to parents" on the mark, or `null`. */

@@ -132,6 +132,10 @@ export const DESCRIPTIONS: Readonly<Record<string, string>> = {
     'The settings of the branch and school: edit days, most lessons of a class per day, plan windows, early-warning thresholds, attendance values per quarter, languages of instruction, grade bands and the assistant.',
   'page:/setup/slot-types':
     'Lists the slot types: the kinds of lesson and break with their length in minutes, including planned changes of length. Here one adds, edits, archives and restores them.',
+  'page:/setup/past-marks':
+    'Lists the saved uploads of past marks from before go-live (attendance, classwork and homework of the lessons before the branch went live, shown to parents only): file name, who and when, the number of rows, and whether each stands or was withdrawn. An upload opens in the side panel, where it can be withdrawn with a reason.',
+  'page:/setup/past-marks/import':
+    "Imports past marks from before go-live from an Excel file: download the template, upload the filled file, see each row's problems page by page, then confirm to save every row at once.",
   'page:/setup/subjects':
     'Lists the subjects of the school with department, grades, journal type, rating exam, quarter weights and switches. Here one adds and edits subjects, archives or restores them, and imports from Excel.',
   'page:/setup/subjects/import':

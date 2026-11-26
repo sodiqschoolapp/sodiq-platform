@@ -133,6 +133,13 @@ export function SetupPage() {
       area: 'subjects',
     },
     {
+      // Task 11.26: the past marks from before go-live, for parents.
+      key: 'pastMarks',
+      to: '/setup/past-marks',
+      title: t('setup.pastMarksLink'),
+      area: 'past_marks',
+    },
+    {
       // The records deleted for good, the Super Admin's (tasks 5.8b and 5.8c).
       key: 'forcedDeletes',
       to: '/forced-deletes',

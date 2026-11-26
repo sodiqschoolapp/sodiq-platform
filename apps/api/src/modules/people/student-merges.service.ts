@@ -53,6 +53,58 @@ import {
 } from './student-merges.js';
 import { Students, uidKeyOf } from './students.service.js';
 
+/**
+ * The refusal of a merge whose carry would give the kept record two standing past marks of one
+ * lesson, or one work twice (task 11.26, plan decision 3, Look first; `edge/academic-year`: a
+ * lesson "has at most one attendance mark, and a work … appears once … across the uploads that
+ * stand"): the uploads of both sides that meet are named, to withdraw one first.
+ */
+async function pastMarksOverlap(
+  transaction: Transaction,
+  whole: ReadonlyMap<string, readonly { studentId: string; row: Record<string, unknown> }[]>,
+  keptId: string,
+  mergedId: string,
+): Promise<ApiException | null> {
+  const meeting = new Set<string>();
+  for (const table of ['past_attendance', 'past_works'] as const) {
+    const keyOf = (row: Record<string, unknown>) =>
+      [row.subject_id, row.school_date, row.lesson_number]
+        .concat(table === 'past_works' ? [row.kind, row.title_key] : [])
+        .map(String)
+        .join('|');
+    const standing = (whole.get(table) ?? []).filter((one) => one.row.withdrawn_at === null);
+    const keptRows = new Map<string, string>();
+    for (const one of standing.filter((row) => same(row.studentId, keptId))) {
+      keptRows.set(keyOf(one.row), String(one.row.upload_id));
+    }
+    for (const one of standing.filter((row) => same(row.studentId, mergedId))) {
+      const other = keptRows.get(keyOf(one.row));
+      if (other !== undefined) {
+        meeting.add(other.toLowerCase());
+        meeting.add(String(one.row.upload_id).toLowerCase());
+      }
+    }
+  }
+  if (meeting.size === 0) return null;
+  const uploads = await transaction
+    .selectFrom('past_mark_uploads')
+    .select(['id', 'file_name'])
+    .where('id', 'in', [...meeting])
+    .orderBy('id')
+    .execute();
+  return new ApiException(
+    'student_merge_past_marks_overlap',
+    409,
+    undefined,
+    uploads.map((upload) => ({
+      path: '',
+      code: 'student_merge_past_marks_overlap',
+      message: upload.file_name,
+      recordId: upload.id,
+    })),
+  );
+}
+
 /** Plain data for an audit entry or an archive: dates as text, no class instances. */
 const asJson = (value: unknown): JsonValue => JSON.parse(JSON.stringify(value)) as JsonValue;
 
@@ -90,6 +142,10 @@ const WHOLE_TABLES = [
   { table: 'student_accounts', column: 'student_id', order: 'student_id' },
   { table: 'student_uids', column: 'student_id', order: 'uid' },
   { table: 'student_merges', column: 'kept_id', order: 'id' },
+  // Task 11.26: the past marks from before go-live, carried to the kept record; read whole so an
+  // import between the preview and the merge changes the digest (`student_changed`).
+  { table: 'past_attendance', column: 'student_id', order: 'id' },
+  { table: 'past_works', column: 'student_id', order: 'id' },
 ] as const;
 
 type WholeTable = (typeof WHOLE_TABLES)[number]['table'];
@@ -540,7 +596,8 @@ export class StudentMerges {
         transaction,
         classFates,
         later === 'merged' ? merged.grade : kept.grade,
-      ));
+      )) ??
+      (await pastMarksOverlap(transaction, whole, kept.id, merged.id));
 
     const startsOn = life[0]?.from ?? null;
     const filled: StudentMergeField[] = [];
@@ -814,6 +871,9 @@ export class StudentMerges {
           : {
               code: plan.refusal.code,
               day: plan.refusal.details?.find((detail) => detail.day !== undefined)?.day ?? null,
+              ...(plan.refusal.code === 'student_merge_past_marks_overlap'
+                ? { uploads: (plan.refusal.details ?? []).map((detail) => detail.message) }
+                : {}),
             },
       values: await this.valuesOf(transaction, plan),
       digest: plan.digest,
@@ -1074,6 +1134,19 @@ export class StudentMerges {
     await carry('student_moves', leftMoves, false);
     await carry('student_branch_moves', new Set(), true);
     await carry('student_contracts', new Set(), true);
+    // Task 11.26 (`edge/academic-year`, Past marks: "a merge carries them to the surviving
+    // record"): every past mark of the merged record, standing or withdrawn, in its own branch.
+    for (const table of ['past_attendance', 'past_works'] as const) {
+      const ids = mergedOnly(table).map((one) => one.id);
+      carried[table] = ids;
+      if (ids.length > 0) {
+        await transaction
+          .updateTable(table)
+          .set({ student_id: kept.id })
+          .where('id', 'in', ids)
+          .execute();
+      }
+    }
     // Task 3.5c (decision 2): a stay of one record in a class or a group that
     // the other record's row continues is one stay: the rows are joined
     // (`class_memberships_one_stay`, checked at the commit).
@@ -1321,6 +1394,12 @@ export class StudentMerges {
           .map((one) => one.row.branchId),
         ...plan.moves.filter((one) => one.row.side === 'merged').map((one) => one.row.branchId),
         ...reasons.map((row) => row.branch_id),
+        // Task 11.26: the branches of the past marks carried.
+        ...(['past_attendance', 'past_works'] as const).flatMap((table) =>
+          (plan.whole.get(table) ?? [])
+            .filter((one) => same(one.studentId, merged.id))
+            .map((one) => String(one.row.branch_id)),
+        ),
       ].map((one) => one.toLowerCase()),
     );
     // The personal values (the fields filled, the values left behind) only

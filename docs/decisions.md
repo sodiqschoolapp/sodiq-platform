@@ -65,6 +65,21 @@ The owner's answers to the decided-ahead questions for Phase 10, given in chat o
 19. Production deploys only after 18:00 or at the weekend, Tashkent time.
 20. The test environment stays after go-live; every change is tried there first.
 
+## 26 November 2026: past marks from before go-live (task 11.26)
+
+Plan approved on pull request #398 with corrections 1 (the branch of a row is the branch of the class membership on its date) and 2 (one comparison key for titles, in the reader and the database). Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first.** The portal reads a child's past marks in every branch that holds them, through `portal_past_mark_branches(account, student, at)` with the child scope inside | `edge/academic-year`: "a branch move keeps them"; only the child's own family reads them |
+| **Look first.** A merge whose carry would give the kept record two standing past marks of one lesson or work is refused (`student_merge_past_marks_overlap`), naming the uploads, in the preview too | A mark is never dropped ("archive, do not delete"); proposed `/spec-change`: "A merge that would give the surviving record two marks of one lesson, or one work twice, is refused, naming the uploads to withdraw first." |
+| **Look first.** `past_mark_students(branch, uids, lock)`, SECURITY DEFINER: the students a file names who are of the branch now or had a class there that held days, with their names and the grade and days of each class; another branch is never named; the branch must be the request's | Correction 1: a student who moved away is imported by the branch where the lesson was, whose record is no longer readable there |
+| A student whose classes all ended before the row's date is decided by the last of them; only a student with no class at all by the record's branch | The nearest reading of correction 1 |
+| The standing unique indexes include `branch_id`; the merge still refuses a repeat across branches | `.claude/rules/database.md`: a unique constraint on a branch table includes the branch |
+| Two confirms of a branch meet at an advisory lock, so a repeat is a problem of its row; the unique violations are no longer mapped (unreachable) | Spec review finding 6 of the plan; permission review finding 6 |
+| The upload is a file route of 10 MB; the preview answers pages of 500 rows; the routes are under `/api/setup/past-marks` | Plan decisions 2, 4 and 15, confirmed |
+| The personal data report lists every past mark, withdrawn ones marked, its subjects in three languages, and counts them in its log | `edge/people-roles-accounts`; permission review finding 7 |
+
 ## 26 November 2026: decimal scores and totals, the switch (task 11.25b)
 
 Plan approved on pull request #397 with corrections 1 (the total field takes the parser and a point key) and 2 (the total field's own text, 1 to 1000). Flagged on issue #42.

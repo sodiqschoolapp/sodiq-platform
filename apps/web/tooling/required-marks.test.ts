@@ -287,6 +287,10 @@ const NOT_FORM_FIELDS: Readonly<Record<string, { count: number; reason: string }
     count: 1,
     reason: 'The building navigation on a phone, a view choice.',
   },
+  'features/setup/past-mark-import-page.tsx': {
+    count: 1,
+    reason: 'A hidden file input behind the upload button: an action.',
+  },
   'features/setup/subject-import-page.tsx': {
     count: 1,
     reason: 'A hidden file input behind the upload button: an action.',

@@ -159,6 +159,14 @@ function PreviewOf({ preview, branchId }: { preview: StudentMergePreview; branch
               {t('people.students.merge.refusedDay', { date: date(preview.refusal.day) })}
             </span>
           )}
+          {/* Task 11.26: the uploads of past marks to withdraw first. */}
+          {(preview.refusal.uploads ?? []).length > 0 && (
+            <ul className="list-disc pl-5" data-merge-uploads>
+              {(preview.refusal.uploads ?? []).map((name, index) => (
+                <li key={`${name}-${String(index)}`}>{name}</li>
+              ))}
+            </ul>
+          )}
         </div>
       ) : (
         <>

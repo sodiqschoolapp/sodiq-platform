@@ -49,6 +49,10 @@ const MERGE_DOES: Readonly<
   // Task 9.2b: the final results of closed quarters go to the kept record; two of one close
   // and subject refuse the merge by their key.
   quarter_final_results: 'carried',
+  // Task 11.26: past marks from before go-live go to the kept record, in their own branch; two
+  // standing of one lesson or work refuse the merge (plan decision 3).
+  past_attendance: 'carried',
+  past_works: 'carried',
   // Task 6.3, correction 2: the reasons of absence go to the kept record.
   student_absence_reasons: 'carried',
   student_accounts: 'left behind',

@@ -19,7 +19,11 @@ import {
   PATTERN_IMPORT_FILE,
   STAFF_IMPORT_FILE,
   STUDENT_IMPORT_FILE,
+  PAST_MARKS_BAD_FILE,
+  PAST_MARKS_DATE_FILE,
+  PAST_MARKS_FILE,
 } from './import-file.js';
+import { filledPastMarkTemplate } from '../past-marks-kit.js';
 import { writeLoadImportTemplate } from '../../modules/timetable/load-import-template.js';
 import { writePatternImportTemplate } from '../../modules/timetable/pattern-import-template.js';
 import { filledPatternTemplate } from '../pattern-import-kit.js';
@@ -8470,6 +8474,59 @@ try {
       .execute();
   });
 
+  // Task 11.26: the import of past marks from before go-live (past-marks.spec.ts). A branch of its
+  // own whose year began with the others, its quarter 1 dated over the first 90 days and its
+  // go-live date a weekday 20 days ago; the past marks lie a week before it.
+  const pastBranch = await insertBranch(migrator, 'Past marks browser test branch');
+  classBranches.push(pastBranch);
+  const weekdayOnOrBefore = (moment: Date): Date => {
+    let day = moment;
+    while (day.getUTCDay() === 0 || day.getUTCDay() === 6) {
+      day = new Date(day.getTime() - dayMs);
+    }
+    return day;
+  };
+  const pastGoLive = weekdayOnOrBefore(new Date(tashkentToday.getTime() - 20 * dayMs));
+  const pastDay = isoDate(new Date(pastGoLive.getTime() - 7 * dayMs));
+  await migrator.transaction().execute(async (transaction) => {
+    const year = await transaction
+      .insertInto('academic_years')
+      .values({
+        branch_id: pastBranch,
+        start_date: startDate,
+        end_date: isoDate(new Date(yearStart.getTime() + 364 * dayMs)),
+      })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    await transaction
+      .insertInto('quarters')
+      .values(
+        [
+          [0, 90],
+          [91, 180],
+          [181, 270],
+          [271, 364],
+        ].map(([from = 0, to = 0], index) => ({
+          branch_id: pastBranch,
+          academic_year_id: year.id,
+          number: index + 1,
+          start_date: isoDate(new Date(yearStart.getTime() + from * dayMs)),
+          end_date: isoDate(new Date(yearStart.getTime() + to * dayMs)),
+        })),
+      )
+      .execute();
+    await transaction
+      .updateTable('academic_years')
+      .set({ status: 'current' })
+      .where('id', '=', year.id)
+      .execute();
+    await transaction
+      .updateTable('branches')
+      .set({ go_live_date: isoDate(pastGoLive) })
+      .where('id', '=', pastBranch)
+      .execute();
+  });
+
   for (const branch of classBranches) {
     const years = await migrator
       .selectFrom('academic_years')
@@ -8976,6 +9033,127 @@ try {
         ])
         .execute();
     });
+  }
+
+  // Task 11.26: the student of "7 Seeded" of the past marks branch, his mother's Parent account,
+  // the Academic Vice Principal who imports, and the two files the test uploads: one with a
+  // comma in a score, one clean.
+  {
+    const pastVice = await create('Dilshod', 'Ergashev');
+    await transactions.run([pastBranch], (transaction) =>
+      assignments.give(transaction, {
+        accountId: pastVice.id,
+        role: 'academic_vice_principal',
+        branchId: pastBranch,
+        givenBy: null,
+      }),
+    );
+    seeded.pastMarksVice = { login: pastVice.login, password: pastVice.firstPassword };
+    const steam = await migrator
+      .selectFrom('departments')
+      .select('id')
+      .where('name_en', '=', 'STEAM')
+      .executeTakeFirstOrThrow();
+    await migrator
+      .insertInto('subjects')
+      .values({
+        name_uz: 'Oʻtmish tarixi',
+        name_ru: 'История прошлого',
+        name_en: 'Past history',
+        department_id: steam.id,
+        grades: [7, 8],
+        colour: 'teal',
+        journal_type: 'graded',
+      })
+      .execute();
+    const pastClass = await migrator
+      .selectFrom('classes')
+      .select('id')
+      .where('branch_id', '=', pastBranch)
+      .where('grade', '=', 7)
+      .executeTakeFirstOrThrow();
+    const pastUntil = isoDate(new Date(yearStart.getTime() + 365 * dayMs));
+    const pastMother = await migrator.transaction().execute(async (transaction) => {
+      const found = await sql<{ id: string }>`select uuidv7() as id`.execute(transaction);
+      const id = found.rows[0]?.id ?? '';
+      const uid = 'PAST-E2E-1';
+      await transaction
+        .insertInto('students')
+        .values({
+          id,
+          branch_id: pastBranch,
+          uid,
+          first_name: 'Bekzod',
+          last_name: 'Aliyev',
+          name_key: studentNameKey('Aliyev', 'Bekzod'),
+          sex: 'male',
+          birth_date: '2013-05-06',
+          grade: 7,
+          starts_on: startDate,
+          created_by: pastVice.id,
+        })
+        .execute();
+      await transaction
+        .insertInto('student_uids')
+        .values({ uid, student_id: id, branch_id: pastBranch, held_from: yearStart })
+        .execute();
+      await transaction
+        .insertInto('student_contracts')
+        .values({ student_id: id, branch_id: pastBranch, number: uid, signed_on: startDate })
+        .execute();
+      await transaction
+        .insertInto('student_statuses')
+        .values({
+          student_id: id,
+          branch_id: pastBranch,
+          status: 'active',
+          valid_from: startDate,
+          cause: 'start',
+        })
+        .execute();
+      const relative = await linkRelative(transaction, id, pastBranch, yearStart, {
+        fullName: 'Malika Aliyeva',
+      });
+      await transaction
+        .insertInto('class_memberships')
+        .values({
+          branch_id: pastBranch,
+          student_id: id,
+          class_id: pastClass.id,
+          valid_from: startDate,
+          valid_until: pastUntil,
+          own_until: pastUntil,
+          cause: 'placement',
+        })
+        .execute();
+      return relative;
+    });
+    const pastParent = await create('Malika', 'Aliyeva');
+    await migrator.transaction().execute(async (transaction) => {
+      await sql`select set_config(${MOMENT_SETTING}, ${yearStart.toISOString()}, true)`.execute(
+        transaction,
+      );
+      await transaction
+        .updateTable('relative_accounts')
+        .set({ account_id: pastParent.id, switched_on_at: yearStart })
+        .where('relative_id', '=', pastMother)
+        .execute();
+    });
+    seeded.pastMarksParent = { login: pastParent.login, password: pastParent.firstPassword };
+    const row = (score: string) => ({
+      uid: 'PAST-E2E-1',
+      lastName: 'Aliyev',
+      firstName: 'Bekzod',
+      date: pastDay,
+      subject: 'Past history',
+      attendance: '2',
+      classworkTitle: 'Dictation',
+      classworkTotal: '10',
+      classworkScore: score,
+    });
+    writeFileSync(PAST_MARKS_BAD_FILE, await filledPastMarkTemplate([row('7,5')]));
+    writeFileSync(PAST_MARKS_FILE, await filledPastMarkTemplate([row('7.5')]));
+    writeFileSync(PAST_MARKS_DATE_FILE, pastDay);
   }
 
   console.log(JSON.stringify(seeded));

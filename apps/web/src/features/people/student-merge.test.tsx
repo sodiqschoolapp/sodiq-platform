@@ -368,6 +368,29 @@ describe('the merge of two student records', () => {
     expect(calls.some((call) => call.route.startsWith('POST'))).toBe(false);
   });
 
+  // Task 11.26 (plan decision 3, Look first): the uploads of past marks to withdraw first.
+  it('names the uploads of past marks that refuse the merge', async () => {
+    open(detailOf(), {
+      [`GET /api/people/students/${STUDENT.id}/merge`]: () =>
+        json({
+          ...PREVIEW,
+          refusal: {
+            code: 'student_merge_past_marks_overlap',
+            day: null,
+            uploads: ['September.xlsx', 'October.xlsx'],
+          },
+        }),
+    });
+    renderApp(`${PATH}?open=${STUDENT.id}`);
+    const panel = await screen.findByRole('complementary', { name: 'Oʻtkir Rahimov' });
+    const form = await previewed(panel);
+    const alert = within(form).getByRole('alert');
+    expect(within(alert).getByText(en.errors.student_merge_past_marks_overlap)).toBeDefined();
+    expect(
+      [...alert.querySelectorAll('[data-merge-uploads] li')].map((one) => one.textContent),
+    ).toEqual(['September.xlsx', 'October.xlsx']);
+  });
+
   it('moves the panel to the kept record when it is the other one, the form taken away first', async () => {
     open(detailOf(), {
       [`GET /api/people/students/${OTHER.id}`]: () =>

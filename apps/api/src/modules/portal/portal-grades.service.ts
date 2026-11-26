@@ -11,6 +11,12 @@ import {
 import { Transactions, type Transaction } from '../../database/transactions.js';
 import { StudentResultsService } from '../results/student-results.service.js';
 import { lessonTimes } from './portal-grades.query.js';
+import {
+  pastAttendanceOf,
+  pastMarkBranches,
+  pastWorksOf,
+  type PastWorkRow,
+} from './portal-past-marks.query.js';
 import { childWeekScope, inSpan, portalChild } from './portal-scope.js';
 
 /** A comment "visible to parents" with a body, by its target (decision 8). */
@@ -41,6 +47,27 @@ const markOf = (mark: number | null): PortalMark => {
       return 'exempt';
   }
 };
+
+/** A past score as the Grades page lists it: the same form as the platform's, no label. */
+const pastScore = (work: PastWorkRow): PortalScore => ({
+  date: work.date,
+  kind: work.kind,
+  title: work.title,
+  position: work.position,
+  score: work.score,
+  total: work.total,
+  percent: work.percent,
+  comment: null,
+  savedAt: null,
+  past: true,
+});
+
+/** Past works by date, lesson number, kind (classwork first) and position. */
+const pastOrder = (a: PastWorkRow, b: PastWorkRow): number =>
+  a.date.localeCompare(b.date) ||
+  a.lessonNumber - b.lessonNumber ||
+  a.kind.localeCompare(b.kind) ||
+  a.position - b.position;
 
 /**
  * The comments "visible to parents" of the child on the lessons given, and on the rating exam
@@ -112,9 +139,13 @@ export class PortalGradesService {
     studentId: string,
     quarterId: string | undefined,
   ): Promise<PortalGrades> {
-    const child = await this.transactions.run([], (transaction) =>
-      portalChild(transaction, accountId, studentId),
-    );
+    const { child, pastBranches } = await this.transactions.run([], async (transaction) => {
+      const scoped = await portalChild(transaction, accountId, studentId);
+      return {
+        child: scoped,
+        pastBranches: await pastMarkBranches(transaction, accountId, scoped.id),
+      };
+    });
     // Decision 3 (Look first): the results of the child's present branch.
     const found = await this.results.familyGrades(child.branchId, child.id, quarterId);
     const quarterShown = found.quarterId;
@@ -148,12 +179,30 @@ export class PortalGradesService {
         .filter((one) => one.target === 'work')
         .map((one) => [`${one.lessonId ?? ''}|${one.workId ?? ''}`, one.body]),
     );
+    // Task 11.26 (`10`, Past marks from before go-live): the past scores of the quarter shown stand
+    // in the same lists, first (they lie before go-live), with no label; in no figure.
+    const quarter = found.results.quarters.find((one) => one.id === quarterShown);
+    const pastWorks =
+      quarter === undefined || pastBranches.length === 0
+        ? []
+        : await this.transactions.run(pastBranches, (transaction) =>
+            pastWorksOf(transaction, child.id, quarter.startDate, quarter.endDate, [
+              'classwork',
+              'homework',
+            ]),
+          );
+    pastWorks.sort(pastOrder);
+    const pastBySubject = new Map<string, PastWorkRow[]>();
+    for (const work of pastWorks) {
+      pastBySubject.set(work.subject.id, [...(pastBySubject.get(work.subject.id) ?? []), work]);
+    }
     const subjects = [];
     for (const subject of found.results.subjects) {
       const row = subject.quarters.find((one) => one.quarterId === quarterShown);
       if (row === undefined) continue;
       const lessons = found.lessons.find((one) => one.subject.id === subject.subject.id);
-      const scores: PortalScore[] = [];
+      const scores: PortalScore[] = (pastBySubject.get(subject.subject.id) ?? []).map(pastScore);
+      pastBySubject.delete(subject.subject.id);
       for (const lesson of lessons?.lessons ?? []) {
         for (const [kind, works] of [
           ['classwork', lesson.classworks],
@@ -172,6 +221,7 @@ export class PortalGradesService {
               percent: work.percent,
               comment: workComment.get(`${lesson.lessonId}|${work.workId}`) ?? null,
               savedAt: comments.saved.get(`${lesson.lessonId}|${work.workId}`) ?? null,
+              past: false,
             });
           }
         }
@@ -229,6 +279,27 @@ export class PortalGradesService {
         ratingComments: [],
       });
     }
+    // Plan decision 16: a subject with past scores and no row of the platform in that quarter (a
+    // quarter "not in the system"): its scores only, no figure.
+    for (const works of pastBySubject.values()) {
+      const [first] = works;
+      if (first === undefined) continue;
+      subjects.push({
+        subject: {
+          id: first.subject.id,
+          names: first.subject.names,
+          colour: subjectColourSchema.parse(first.subject.colour),
+        },
+        final: closedShown,
+        attendanceOnly: false,
+        figures: null,
+        attendance: null,
+        year: null,
+        scores: works.map(pastScore),
+        rating: null,
+        ratingComments: [],
+      });
+    }
     subjects.sort((a, b) => a.subject.names.en.localeCompare(b.subject.names.en, 'en'));
     return portalGradesSchema.parse({
       quarters: found.results.quarters.map((quarter) => ({
@@ -256,6 +327,31 @@ export class PortalGradesService {
     const first = scope.dates[0] ?? scope.today;
     const last = scope.dates[scope.dates.length - 1] ?? scope.today;
     const lessons = [];
+    // Task 11.26: the past marks of the week, by date, subject and lesson number, with no time.
+    const pastBranches = await this.transactions.run([], (transaction) =>
+      pastMarkBranches(transaction, accountId, scope.child.id),
+    );
+    if (pastBranches.length > 0) {
+      const past = await this.transactions.run(pastBranches, (transaction) =>
+        pastAttendanceOf(transaction, scope.child.id, first, last),
+      );
+      for (const one of past) {
+        lessons.push({
+          date: one.date,
+          start: null,
+          end: null,
+          lessonNumber: one.lessonNumber,
+          subject: {
+            id: one.subject.id,
+            names: one.subject.names,
+            colour: subjectColourSchema.parse(one.subject.colour),
+          },
+          mark: markOf(one.mark),
+          comment: null,
+          note: null,
+        });
+      }
+    }
     // Each date in the branch of the child's class membership on that date (11.2 decision 6).
     for (const span of scope.spans) {
       const found = (
@@ -285,6 +381,7 @@ export class PortalGradesService {
           date: one.date,
           start: time.start_minutes,
           end: time.end_minutes,
+          lessonNumber: null,
           subject: {
             id: one.subject.id,
             names: one.subject.names,
@@ -296,11 +393,14 @@ export class PortalGradesService {
         });
       }
     }
+    // A day holds platform lessons or past marks, never both (past marks lie before go-live):
+    // by time, or by subject and lesson number.
     lessons.sort(
       (a, b) =>
         a.date.localeCompare(b.date) ||
-        a.start - b.start ||
-        a.subject.names.en.localeCompare(b.subject.names.en, 'en'),
+        (a.start ?? 0) - (b.start ?? 0) ||
+        a.subject.names.en.localeCompare(b.subject.names.en, 'en') ||
+        (a.lessonNumber ?? 0) - (b.lessonNumber ?? 0),
     );
     return portalAttendanceWeekSchema.parse({
       today: scope.today,

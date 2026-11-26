@@ -15,3 +15,10 @@ export const LOAD_IMPORT_FILE = path.join(tmpdir(), 'sodiq-e2e-load-import.xlsx'
 
 /** The filled timetable template of the timetable import browser test (task 5.14), made for its seeded draft. */
 export const PATTERN_IMPORT_FILE = path.join(tmpdir(), 'sodiq-e2e-pattern-import.xlsx');
+
+/** The files of the past-marks browser test (task 11.26): one with a comma in a score, one clean. */
+export const PAST_MARKS_BAD_FILE = path.join(tmpdir(), 'sodiq-e2e-past-marks-bad.xlsx');
+export const PAST_MARKS_FILE = path.join(tmpdir(), 'sodiq-e2e-past-marks.xlsx');
+
+/** The date of the past marks the seed wrote, `yyyy-mm-dd`. */
+export const PAST_MARKS_DATE_FILE = path.join(tmpdir(), 'sodiq-e2e-past-marks-date.txt');

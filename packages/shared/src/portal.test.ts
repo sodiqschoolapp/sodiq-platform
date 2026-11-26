@@ -80,8 +80,11 @@ describe('the portal schemas of grades and attendance (task 11.3)', () => {
       percent: 40,
       comment: null,
       savedAt: '2026-10-12T10:15:00.000+05:00',
+      past: false,
     };
     expect(portalScoreSchema.safeParse(score).success).toBe(true);
+    // Task 11.26: a past score from before go-live is marked, never labelled on the screen.
+    expect(portalScoreSchema.safeParse({ ...score, past: true, savedAt: null }).success).toBe(true);
     expect(portalScoreSchema.safeParse({ ...score, savedAt: null }).success).toBe(true);
     expect(portalScoreSchema.safeParse({ ...score, savedAt: '12 October' }).success).toBe(false);
     expect(portalScoreSchema.safeParse({ ...score, workId: ID }).success).toBe(false);
@@ -108,12 +111,18 @@ describe('the portal schemas of grades and attendance (task 11.3)', () => {
       date: '2026-10-12',
       start: 480,
       end: 525,
+      lessonNumber: null,
       subject,
       mark: 'exempt',
       comment: null,
       note: null,
     };
     expect(portalAttendanceLessonSchema.safeParse(lesson).success).toBe(true);
+    // Task 11.26: a past mark has no time, only the number of its lesson that day.
+    expect(
+      portalAttendanceLessonSchema.safeParse({ ...lesson, start: null, end: null, lessonNumber: 2 })
+        .success,
+    ).toBe(true);
     // Exempt has no kind, reason or category (decision 7); no number either.
     expect(portalAttendanceLessonSchema.safeParse({ ...lesson, mark: 4 }).success).toBe(false);
     expect(
