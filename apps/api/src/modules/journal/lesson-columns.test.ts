@@ -134,6 +134,19 @@ describe('lessonColumns', () => {
     expect(titles(columns, 'L3')).toEqual([]);
   });
 
+  // Review round 1, finding 5: "A cancelled or unresolved lesson shows only the rows kept at it."
+  it('skips a lesson that started without a teacher (unresolved): no planned column, its stored rows kept', () => {
+    const row = stored('w1', { kind: 'homework', lessonId: 'L2', sourceLessonId: 'L2', total: 5 });
+    const columns = run({
+      lessons: [lesson(1), lesson(2, { held: false }), lesson(3)],
+      planned: new Map([['L2', [cw('c2'), hw('h2')]]]),
+      stored: [row],
+    });
+    expect(workIds(columns, 'L2')).toEqual(['w1']);
+    expect(titles(columns, 'L2')).toEqual(['#w1']);
+    expect(columns.get('L3')?.columns).toEqual([]);
+  });
+
   it('keeps a homework with a total at its own lesson when that lesson is later cancelled', () => {
     const row = stored('w1', { kind: 'homework', lessonId: 'L2', sourceLessonId: 'L2', total: 5 });
     const columns = run({
