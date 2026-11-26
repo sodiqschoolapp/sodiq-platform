@@ -655,7 +655,7 @@ describe('department_move_loads in the database', () => {
         {
           table_name: 'subjects',
           columns:
-            'archived_at,colour,demanding,department_before,department_before_since,department_id,department_since,grades,group_subject,journal_type,language_rule,name_en,name_ru,name_uz,rating_exam,rating_round,switches_from,weights_round',
+            'archived_at,codes_on,colour,demanding,department_before,department_before_since,department_id,department_since,grades,group_subject,journal_type,language_rule,name_en,name_ru,name_uz,rating_exam,rating_round,switches_from,weights_round',
         },
       ]);
     });

@@ -392,6 +392,8 @@ describe('plans in the journal', () => {
         expect(card.givenToday[0] === undefined ? [] : Object.keys(card.givenToday[0])).toEqual([
           'planWorkId',
           'title',
+          // Task 11.27: the code shown beside the title.
+          'code',
           'description',
           'notGiven',
         ]);

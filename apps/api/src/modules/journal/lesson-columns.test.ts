@@ -85,7 +85,7 @@ describe('lessonColumns', () => {
     });
     expect(titles(columns, 'L2', 'homework')).toEqual(['h2']);
     expect(columns.get('L2')?.given).toEqual([
-      { workId: null, planWorkId: 'h2', title: 'h2', notGiven: false },
+      { workId: null, planWorkId: 'h2', title: 'h2', code: null, notGiven: false },
     ]);
   });
 
@@ -211,7 +211,7 @@ describe('lessonColumns', () => {
     expect(workIds(columns, 'L1')).toEqual(['w1', 'w2']);
     expect(columns.get('L2')?.columns).toEqual([]);
     expect(columns.get('L1')?.given).toEqual([
-      { workId: 'w2', planWorkId: null, title: null, notGiven: false },
+      { workId: 'w2', planWorkId: null, title: null, code: null, notGiven: false },
     ]);
   });
 

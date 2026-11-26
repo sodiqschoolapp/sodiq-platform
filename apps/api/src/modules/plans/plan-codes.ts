@@ -23,21 +23,6 @@ export const shownCode = (codesOn: boolean, code: string | null): string | null 
 /** An id no row has, for an `any` over an empty list. */
 const NO_ID = '00000000-0000-0000-0000-000000000000';
 
-/** The codes switch of each subject named (`false` for an unknown one). */
-export async function codesOnOfSubjects(
-  transaction: Transaction,
-  subjectIds: readonly string[],
-): Promise<ReadonlySet<string>> {
-  if (subjectIds.length === 0) return new Set();
-  const rows = await transaction
-    .selectFrom('subjects')
-    .select('id')
-    .where('id', 'in', [...new Set(subjectIds)])
-    .where('codes_on', '=', true)
-    .execute();
-  return new Set(rows.map((row) => row.id));
-}
-
 /** The codes switch of the subject of each plan named, by plan. */
 export async function codesOnOfPlans(
   transaction: Transaction,
@@ -51,18 +36,6 @@ export async function codesOnOfPlans(
     where p.id = any(${[...new Set(planIds), NO_ID]}::uuid[])
   `.execute(transaction);
   return new Map(rows.map((row) => [row.id, row.codes_on]));
-}
-
-/** The codes switch of the subject of an item's plan. */
-export async function codesOnOfItem(transaction: Transaction, itemId: string): Promise<boolean> {
-  const { rows } = await sql<{ codes_on: boolean }>`
-    select s.codes_on
-    from lesson_plan_items i
-    join lesson_plans p on p.id = i.plan_id
-    join subjects s on s.id = p.subject_id
-    where i.id = ${itemId}
-  `.execute(transaction);
-  return rows[0]?.codes_on ?? false;
 }
 
 /** The codes switch of a master's subject. */
@@ -138,7 +111,7 @@ export function newCode(
 }
 
 /** The keys of an audit entry's values that hold a code (hidden on read while off). */
-export const CODE_KEYS: ReadonlySet<string> = new Set(['topicCode', 'code']);
+const CODE_KEYS: ReadonlySet<string> = new Set(['topicCode', 'code']);
 
 /** A record an audit entry names, as `entryAnswers` reads it. */
 interface EntryRecord {

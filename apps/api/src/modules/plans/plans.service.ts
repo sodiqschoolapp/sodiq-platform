@@ -998,6 +998,7 @@ export class PlansService {
         date: lesson.lesson_date,
         number: row?.number ?? null,
         subject: subjectOf(scene.journal),
+        codesOn: scene.journal.subject.codesOn,
         unit: unitOf(scene.journal),
         item: items.find((item) => item.position === row?.number) ?? null,
       });
@@ -1823,7 +1824,11 @@ export class PlansService {
       codesOn,
       path: 'topicCode',
     });
-    if (code !== undefined && (input.baseTopicCode ?? codeBefore) !== codeBefore) {
+    if (
+      code !== undefined &&
+      input.baseTopicCode !== undefined &&
+      input.baseTopicCode !== codeBefore
+    ) {
       throw new ApiException('plan_item_stale', 409, undefined, [
         {
           path: 'topicCode',
@@ -2001,7 +2006,11 @@ export class PlansService {
             codesOn,
             path: 'values.topicCode',
           });
-          if (topicCode !== undefined && (base.topicCode ?? shownTopicCode) !== shownTopicCode) {
+          if (
+            topicCode !== undefined &&
+            base.topicCode !== undefined &&
+            base.topicCode !== shownTopicCode
+          ) {
             staleField('values.topicCode', shownTopicCode);
           }
           // A code sent with a work changes it only while on (refused otherwise).

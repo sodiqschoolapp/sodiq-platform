@@ -167,7 +167,7 @@ describe('codes for topics and works (task 11.27)', () => {
 
   const teacherOf = (s: Planned) => [{ role: 'teacher' as const, branchId: s.scene.branch }];
 
-  const create = (api: Api, s: Planned, position: number, body: object) =>
+  const create = (api: Api, s: Planned, position: number, body: Record<string, unknown>) =>
     api.post(`/api/plans/journals/${s.journal}/items`, {
       quarterId: s.q2,
       position,
@@ -523,11 +523,6 @@ describe('codes for topics and works (task 11.27)', () => {
         baseTopicCode: null,
       });
       expect(ok(topic)).toMatchObject({ topic: 'Fractions', topicCode: 'F1' });
-      const lesson = (await gridOf(api, { ...s, q2: s.q2 }).catch(() => null))?.lessons.find(
-        (one) => one.id === held.id,
-      );
-      // The first quarter's grid holds the lesson.
-      void lesson;
       const card = await cardOf(api, held.id);
       expect([card.topicCode, card.classworks.map((one) => one.code)]).toEqual(['F1', ['Q2']]);
     });
@@ -541,9 +536,10 @@ describe('codes for topics and works (task 11.27)', () => {
     });
     const admin = await account();
     const stored = async () =>
+      // Byte for byte (review correction 3): the stored text of the row's values.
       (
-        await sql<{ new_value: unknown }>`
-          select new_value from audit_log
+        await sql<{ new_value: string }>`
+          select new_value::text as new_value from audit_log
           where action = 'plan.item_create' and new_value ->> 'topicCode' = 'F1'
             and branch_id = ${s.scene.branch}
         `.execute(t.database.migrator)

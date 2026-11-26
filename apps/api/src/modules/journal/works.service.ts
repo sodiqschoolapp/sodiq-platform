@@ -634,7 +634,7 @@ export class WorksService {
       });
       if (
         input.baseTitle !== work.title ||
-        (code !== undefined && (input.baseCode ?? shown) !== shown)
+        (code !== undefined && input.baseCode !== undefined && input.baseCode !== shown)
       ) {
         throw new ApiException('work_stale', 409, undefined, [
           {

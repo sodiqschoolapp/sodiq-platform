@@ -1479,7 +1479,7 @@ describe('plan items follow the timetable', () => {
         {
           journalId: x.other,
           unit: expect.objectContaining({ kind: 'class', id: x.s.otherClass }) as unknown,
-          next: { number: 1, date: '2026-11-09', topic: 'Topic 1' },
+          next: { number: 1, date: '2026-11-09', topic: 'Topic 1', topicCode: null },
           notCovered: 0,
         },
       ]);
@@ -1535,7 +1535,12 @@ describe('plan items follow the timetable', () => {
       expect(other.rows['2026-11-23']).toBe('Topic 2');
       expect(other.notCovered).toEqual(['Topic 8']);
       const seen = await planIn(x, x.journal, THURSDAY);
-      expect(seen.sharedWith[0]?.next).toEqual({ number: 3, date: '2026-11-30', topic: 'Topic 3' });
+      expect(seen.sharedWith[0]?.next).toEqual({
+        number: 3,
+        date: '2026-11-30',
+        topic: 'Topic 3',
+        topicCode: null,
+      });
       expect(seen.sharedWith[0]?.notCovered).toBe(1);
       // A prepared request is per class: the class whose item went to "not covered".
       expect((await planIn(x, x.other)).request?.causes.map((cause) => cause.kind)).toEqual([

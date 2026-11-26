@@ -142,7 +142,7 @@ Neither was done by hand (owner, 29 October 2026, issue #42). In their place: th
 - Without sign-in: 5. For the own account: 24. The parent portal: 8. With a permission of the table: 529.
 - Open to integration keys: 97 (tasks 10.10 and 10.11).
 - Routes with a limit inside the route: 166.
-- Routes that take an id: 434, with 881 ids (branch 759, school 79, own 20, none 23).
+- Routes that take an id: 434, with 883 ids (branch 759, school 79, own 20, none 25).
 - Areas of the permission table: 68.
 
 ## Routes without a role
@@ -1539,6 +1539,8 @@ For every id a route takes, in its path, its query or its body, the record it na
 | `PUT /api/plans/journals/:journalId/queue` | `body:order` | plan item | branch | `src/modules/plans/plan-requests.test.ts > answers 404 for another branch's or an unknown journal on the queue, for another branch's lesson or item in a body` |
 | `PUT /api/plans/masters/:masterId/items/:itemId` | `path:masterId` | master plan | branch | `src/modules/plans/plan-masters.test.ts > answers 404 for a master, an item, a body id or a quarter of another branch or unknown, and changes nothing` |
 | `PUT /api/plans/masters/:masterId/items/:itemId` | `path:itemId` | master plan item | branch | `src/modules/plans/plan-masters.test.ts > answers 404 for a master, an item, a body id or a quarter of another branch or unknown, and changes nothing` |
+| `PUT /api/plans/masters/:masterId/items/:itemId` | `body:values.classworks[].id` | master plan work | none | task 11.27, plan review 1: a work id of a master save is matched only against the master item's own works, refused 400 unknown_work otherwise (plan-masters.test.ts, "refuses a work id that is not of the master item") |
+| `PUT /api/plans/masters/:masterId/items/:itemId` | `body:values.homeworks[].id` | master plan work | none | task 11.27, plan review 1: a work id of a master save is matched only against the master item's own works, refused 400 unknown_work otherwise (plan-masters.test.ts, "refuses a work id that is not of the master item") |
 | `PUT /api/plans/masters/:masterId/order` | `path:masterId` | master plan | branch | `src/modules/plans/plan-masters.test.ts > answers 404 for a master, an item, a body id or a quarter of another branch or unknown, and changes nothing` |
 | `PUT /api/plans/masters/:masterId/order` | `body:order` | master plan item | branch | `src/modules/plans/plan-masters.test.ts > answers 404 for a master, an item, a body id or a quarter of another branch or unknown, and changes nothing` |
 | `PUT /api/plans/minimums` | `body:subjectId` | subject | school | `src/modules/plans/plan-delivery.test.ts > answers 404 for a minimum of an unknown subject, and refuses an attendance-only subject` |

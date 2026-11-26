@@ -1323,6 +1323,20 @@ export function JournalGridView({
       const first = `${date}${slot}`;
       const second =
         reason ?? [number, topic, noPlan, notDelivered].filter((part) => part !== '').join(' · ');
+      // Task 11.27: the tooltip holds the full topic beside its code (`09`, Codes: "the full name on
+      // hover"), also in the compact header.
+      const secondFull =
+        reason ??
+        [
+          number,
+          lesson.topic === null || lesson.topic === ''
+            ? ''
+            : codedName(lesson.topicCode, lesson.topic),
+          noPlan,
+          notDelivered,
+        ]
+          .filter((part) => part !== '')
+          .join(' · ');
       // The narrow header: "Du, 16.11" (or "Today") over "3-dars" (or the reason of a cancelled
       // lesson), the status as an icon; the whole text for a screen reader and in the tooltip.
       const compactLines = compact
@@ -1350,7 +1364,7 @@ export function JournalGridView({
             first,
             ...(compact && status !== null ? [status.text] : []),
             ...(compact
-              ? [second]
+              ? [secondFull]
               : [
                   reason ??
                     (lesson.topic === null ? null : codedName(lesson.topicCode, lesson.topic)),

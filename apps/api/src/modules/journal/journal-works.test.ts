@@ -1790,7 +1790,7 @@ describe('classwork and homework', () => {
         const second = lessonTopicSavedSchema.parse(
           ok(await topicOf(calls, s.second, 'Decimals', 'Fractions')),
         );
-        expect(second).toEqual({ itemId: first.itemId, topic: 'Decimals' });
+        expect(second).toEqual({ itemId: first.itemId, topic: 'Decimals', topicCode: null });
         // The same topic again writes nothing.
         ok(await topicOf(calls, s.second, 'Decimals', 'Decimals'));
         // A work added after it joins the same item.
