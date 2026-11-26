@@ -425,6 +425,67 @@ describe('classwork and homework in the grid', () => {
     expect(screen.queryByRole('alertdialog')).toBeNull();
   });
 
+  // Task 11.25b (`07`, The total: "shown with a point, without trailing zeros (7.50 shows 7.5)";
+  // the spec change: "a point in every language"): no number format of the language turns it into
+  // 7,5 in Russian or Uzbek.
+  it.each(['ru', 'uz', 'en'] as const)(
+    'shows a score of 7.5 and a total of 7.5 with a point in %s',
+    async (language) => {
+      const grid: JournalGrid = {
+        ...GRID,
+        lessons: GRID.lessons.map((one, index) =>
+          index > 0
+            ? one
+            : {
+                ...one,
+                works: one.works.map((work) => ({ ...work, id: uid(80), total: 7.5 })),
+              },
+        ),
+        students: GRID.students.map((one, index) =>
+          index > 0
+            ? one
+            : {
+                ...one,
+                cells: [
+                  {
+                    ...(one.cells[0] as JournalStudent['cells'][number]),
+                    works: [
+                      {
+                        score: 7.5,
+                        percent: 100,
+                        version: 1,
+                        onAbsent: false,
+                        marker: null,
+                        notGraded: false,
+                      },
+                    ],
+                  },
+                  one.cells[1] as JournalStudent['cells'][number],
+                ],
+              },
+        ),
+      };
+      fakeApi({
+        'GET /api/auth/session': () =>
+          json(sessionOf({ assignments: [{ role: 'teacher', branchId: NORTH.id }] })),
+        [`GET /api/journal/journals/${JOURNAL}`]: () => json(grid),
+      });
+      renderApp(`/journal/${JOURNAL}`, language);
+      const score = await waitFor(() => {
+        const found = document.querySelector<HTMLElement>(`[row-id="${uid(101)}"] [data-score]`);
+        expect(found).not.toBeNull();
+        return found as HTMLElement;
+      });
+      expect(score.firstChild?.textContent).toBe('7.5');
+      expect(score.textContent).toBe('7.5100%');
+      const header = document.querySelector(
+        `[col-id="${PLANNED}:${uid(80)}"][role="columnheader"]`,
+      );
+      expect(header?.textContent ?? '').toContain('7.5');
+      expect(header?.textContent ?? '').not.toContain('7,5');
+    },
+  );
+
   it('asks before deleting a work with numbers, naming the count, and keeps it out of the journal with its numbers in the history', async () => {
     const grid: JournalGrid = {
       ...GRID,
