@@ -794,7 +794,11 @@ describe('the portal grades and attendance', () => {
     ]);
     expect(
       week.lessons.every(
-        (one) => one.start !== null && one.end !== null && one.start < one.end && one.lessonNumber === null,
+        (one) =>
+          one.start !== null &&
+          one.end !== null &&
+          one.start < one.end &&
+          one.lessonNumber === null,
       ),
     ).toBe(true);
     // A week with no held lesson of the child.

@@ -1144,10 +1144,14 @@ export const uz: Texts<'one' | 'other'> = {
       'Oldindan koʻrishdan keyin qoralama darslari oʻzgardi. Hech narsa saqlanmadi; endi nima olib tashlanishini koʻrish uchun faylni qayta yuklang.',
     load_import_other_draft:
       'Bu fayl boshqa qoralamaning shabloni. Shu qoralamadan shablonni yuklab oling.',
-    go_live_past_marks: 'Ishga tushishdan oldingi baholar shu kunga yoki undan keyinga toʻgʻri kelib qoladi. Avval koʻrsatilgan yuklamalarni qaytarib oling yoki keyinroq sanani tanlang.',
-    student_merge_past_marks_overlap: 'Ikkala yozuvda ham bitta dars yoki ishning oʻtgan baholari bor. Avval koʻrsatilgan yuklamalardan birini qaytarib oling, keyin birlashtiring.',
-    past_marks_not_standing: 'Bu yuklama saqlanmagan yoki allaqachon qaytarib olingan. Yuklamalar roʻyxatini qayta oching.',
-    past_marks_changed: 'Shu daqiqada oʻtgan baholarning boshqa importi saqlandi. Hech narsa saqlanmadi: faylni qayta tekshiring.',
+    go_live_past_marks:
+      'Ishga tushishdan oldingi baholar shu kunga yoki undan keyinga toʻgʻri kelib qoladi. Avval koʻrsatilgan yuklamalarni qaytarib oling yoki keyinroq sanani tanlang.',
+    student_merge_past_marks_overlap:
+      'Ikkala yozuvda ham bitta dars yoki ishning oʻtgan baholari bor. Avval koʻrsatilgan yuklamalardan birini qaytarib oling, keyin birlashtiring.',
+    past_marks_not_standing:
+      'Bu yuklama saqlanmagan yoki allaqachon qaytarib olingan. Yuklamalar roʻyxatini qayta oching.',
+    past_marks_changed:
+      'Shu daqiqada oʻtgan baholarning boshqa importi saqlandi. Hech narsa saqlanmadi: faylni qayta tekshiring.',
     subject_import_changed:
       'Shu paytda kimdir fanlar yoki choraklarni oʻzgartirdi. Hech narsa saqlanmadi; qayta urinib koʻring.',
     photos_not_configured: 'Suratlar hali sozlanmagan. Administratorga murojaat qiling.',
@@ -2928,8 +2932,10 @@ export const uz: Texts<'one' | 'other'> = {
       withdraw: 'Qaytarib olish',
       keep: 'Qoldirish',
       withdrawTitle: '{{name}} ni qaytarib olish',
-      withdrawText_one: 'Uning {{count}} ta qatori saqlanadi, lekin ota-onalarga endi koʻrinmaydi. Keyin shu faylni qayta import qilish mumkin.',
-      withdrawText_other: 'Uning {{count}} ta qatori saqlanadi, lekin ota-onalarga endi koʻrinmaydi. Keyin shu faylni qayta import qilish mumkin.',
+      withdrawText_one:
+        'Uning {{count}} ta qatori saqlanadi, lekin ota-onalarga endi koʻrinmaydi. Keyin shu faylni qayta import qilish mumkin.',
+      withdrawText_other:
+        'Uning {{count}} ta qatori saqlanadi, lekin ota-onalarga endi koʻrinmaydi. Keyin shu faylni qayta import qilish mumkin.',
       emptyTitle: 'Oʻtgan baholar import qilinmagan',
       empty: 'Ishga tushishdan oldingi darslar baholarini ota-onalar koʻrishi uchun import qiling.',
       student: 'Oʻquvchi',
@@ -2944,7 +2950,8 @@ export const uz: Texts<'one' | 'other'> = {
       toList: 'Yuklamalar roʻyxatini ochish',
       confirm_one: '{{count}} ta qatorni saqlash',
       confirm_other: 'Barcha {{count}} ta qatorni saqlash',
-      notClean: 'Har bir qator toʻgʻri boʻlmaguncha hech narsa saqlanmaydi. Faylni tuzatib, qayta yuklang.',
+      notClean:
+        'Har bir qator toʻgʻri boʻlmaguncha hech narsa saqlanmaydi. Faylni tuzatib, qayta yuklang.',
       fields: {
         fileSha256: 'Fayl izi',
         attendance: 'Davomat belgilari',
@@ -2965,7 +2972,8 @@ export const uz: Texts<'one' | 'other'> = {
         subject_unknown: 'bunday nomli fan yoʻq.',
         subject_ambiguous: 'bu nom ikki fanda bor; boshqa tilda yozing.',
         subject_attendance_only: 'bu fanda faqat davomat; ishni boʻsh qoldiring.',
-        work_incomplete: 'nomi, jami va ballni birga toʻldiring yoki uchalasini ham boʻsh qoldiring.',
+        work_incomplete:
+          'nomi, jami va ballni birga toʻldiring yoki uchalasini ham boʻsh qoldiring.',
         title_too_long: 'nom koʻpi bilan 60 belgi.',
         amount_comma: 'vergul emas, nuqta yozing.',
         amount_decimals: 'nuqtadan keyin koʻpi bilan ikki raqam.',
@@ -2975,7 +2983,8 @@ export const uz: Texts<'one' | 'other'> = {
         row_empty: 'qatorda na davomat belgisi, na ish bor.',
         attendance_repeated_in_file: 'bu dars davomati {{rows}}-qatorlarda ham bor.',
         work_repeated_in_file: 'xuddi shu ish {{rows}}-qatorlarda ham bor.',
-        attendance_already_imported: 'bu darsning davomat belgisi saqlangan yuklamada allaqachon bor.',
+        attendance_already_imported:
+          'bu darsning davomat belgisi saqlangan yuklamada allaqachon bor.',
         work_already_imported: 'bu ish saqlangan yuklamada allaqachon bor.',
       },
     },

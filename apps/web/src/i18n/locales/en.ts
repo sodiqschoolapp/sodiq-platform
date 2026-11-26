@@ -1126,10 +1126,14 @@ export const en = {
       'The lessons of the draft changed after the preview. Nothing was saved; upload the file again to see what is removed now.',
     load_import_other_draft:
       'This file is the template of another draft. Download the template of this draft.',
-    go_live_past_marks: 'Past marks from before go-live would fall on or after this date. Withdraw the uploads named first, or choose a later date.',
-    student_merge_past_marks_overlap: 'Both records hold past marks of the same lesson or work. Withdraw one of the uploads named first, then merge.',
-    past_marks_not_standing: 'This upload is not saved, or was already withdrawn. Open the list of uploads again.',
-    past_marks_changed: 'Another import of past marks was saved at the same moment. Nothing was saved: check the file again.',
+    go_live_past_marks:
+      'Past marks from before go-live would fall on or after this date. Withdraw the uploads named first, or choose a later date.',
+    student_merge_past_marks_overlap:
+      'Both records hold past marks of the same lesson or work. Withdraw one of the uploads named first, then merge.',
+    past_marks_not_standing:
+      'This upload is not saved, or was already withdrawn. Open the list of uploads again.',
+    past_marks_changed:
+      'Another import of past marks was saved at the same moment. Nothing was saved: check the file again.',
     subject_import_changed:
       'Someone changed subjects or quarters at the same moment. Nothing was saved; try again.',
     photos_not_configured: 'Photos are not configured yet. Ask the administrator.',
@@ -2896,8 +2900,10 @@ export const en = {
       withdraw: 'Withdraw',
       keep: 'Keep it',
       withdrawTitle: 'Withdraw {{name}}',
-      withdrawText_one: 'Its {{count}} row is kept but no longer shown to parents. The same file can then be imported again.',
-      withdrawText_other: 'Its {{count}} rows are kept but no longer shown to parents. The same file can then be imported again.',
+      withdrawText_one:
+        'Its {{count}} row is kept but no longer shown to parents. The same file can then be imported again.',
+      withdrawText_other:
+        'Its {{count}} rows are kept but no longer shown to parents. The same file can then be imported again.',
       emptyTitle: 'No past marks imported',
       empty: 'Import the marks of the lessons before go-live, for parents to see.',
       student: 'Student',
@@ -2933,7 +2939,8 @@ export const en = {
         subject_unknown: 'no subject has this name.',
         subject_ambiguous: 'two subjects have this name; write it in another language.',
         subject_attendance_only: 'this subject takes attendance only; leave the work empty.',
-        work_incomplete: 'fill the title, the total and the score together, or leave all three empty.',
+        work_incomplete:
+          'fill the title, the total and the score together, or leave all three empty.',
         title_too_long: 'a title has at most 60 characters.',
         amount_comma: 'write a point, not a comma.',
         amount_decimals: 'at most two digits after the point.',
@@ -2943,7 +2950,8 @@ export const en = {
         row_empty: 'the row has no attendance mark and no work.',
         attendance_repeated_in_file: 'this lesson’s attendance is also on rows {{rows}}.',
         work_repeated_in_file: 'the same work is also on rows {{rows}}.',
-        attendance_already_imported: 'this lesson already has an attendance mark in a saved upload.',
+        attendance_already_imported:
+          'this lesson already has an attendance mark in a saved upload.',
         work_already_imported: 'this work is already in a saved upload.',
       },
     },

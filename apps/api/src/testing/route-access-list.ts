@@ -496,9 +496,18 @@ export const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
   'GET /api/setup/past-marks/import-template': { branch: 'request', roles: PAST_MARK_IMPORTERS },
   'GET /api/setup/past-marks/imports': { branch: 'request', roles: PAST_MARK_IMPORTERS },
   'PUT /api/setup/past-marks/imports': { branch: 'request', roles: PAST_MARK_IMPORTERS },
-  'POST /api/setup/past-marks/imports/:id/preview': { branch: 'request', roles: PAST_MARK_IMPORTERS },
-  'POST /api/setup/past-marks/imports/:id/confirm': { branch: 'request', roles: PAST_MARK_IMPORTERS },
-  'POST /api/setup/past-marks/imports/:id/withdraw': { branch: 'request', roles: PAST_MARK_IMPORTERS },
+  'POST /api/setup/past-marks/imports/:id/preview': {
+    branch: 'request',
+    roles: PAST_MARK_IMPORTERS,
+  },
+  'POST /api/setup/past-marks/imports/:id/confirm': {
+    branch: 'request',
+    roles: PAST_MARK_IMPORTERS,
+  },
+  'POST /api/setup/past-marks/imports/:id/withdraw': {
+    branch: 'request',
+    roles: PAST_MARK_IMPORTERS,
+  },
   'GET /api/setup/subjects/import-template': { branch: 'request', roles: SUBJECT_WRITERS },
   'PUT /api/setup/subjects/imports': { branch: 'request', roles: SUBJECT_WRITERS },
   'POST /api/setup/subjects/imports/:id/preview': { branch: 'request', roles: SUBJECT_WRITERS },

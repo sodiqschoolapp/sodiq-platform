@@ -257,10 +257,20 @@ describe('the merge of two student records', () => {
       school_date: input.date ?? '2026-09-07',
       lesson_number: 1,
     };
-    await t.database.migrator.insertInto('past_attendance').values({ ...base, mark: 1 }).execute();
+    await t.database.migrator
+      .insertInto('past_attendance')
+      .values({ ...base, mark: 1 })
+      .execute();
     await t.database.migrator
       .insertInto('past_works')
-      .values({ ...base, kind: 'classwork', position: 1, title: 'Dictation', total: 10, score: 7.5 })
+      .values({
+        ...base,
+        kind: 'classwork',
+        position: 1,
+        title: 'Dictation',
+        total: 10,
+        score: 7.5,
+      })
       .execute();
     if (input.withdrawn === true) {
       await t.database.migrator

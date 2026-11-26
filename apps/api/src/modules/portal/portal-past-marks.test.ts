@@ -283,10 +283,19 @@ describe('the past marks in the parent portal', () => {
     const week = portalHomeworkWeekSchema.parse(
       (await get(`/api/portal/children/${child}/homework?date=2026-09-07`)).body,
     );
-    expect(week.homework).toEqual([
+    expect(week.homework.map((one) => one.subject.id)).toEqual([history]);
+    expect(
+      week.homework.map((one) => ({
+        givenOn: one.givenOn,
+        topic: one.topic,
+        title: one.title,
+        number: one.number,
+        description: one.description,
+        files: one.files,
+      })),
+    ).toEqual([
       {
         givenOn: '2026-09-07',
-        subject: expect.objectContaining({ id: history }),
         topic: null,
         title: 'Map of the river',
         number: 1,

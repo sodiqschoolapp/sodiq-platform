@@ -306,8 +306,19 @@ describe('the import of past marks', () => {
       until: '2026-10-01',
       ownUntil: '2026-10-01',
     });
-    await moveStudentBranch(t.database.migrator, moved.id, t.north, t.south, '2026-10-01T10:00:00+05:00');
-    await members.member({ branch: t.south, classId: south8, studentId: moved.id, from: '2026-10-01' });
+    await moveStudentBranch(
+      t.database.migrator,
+      moved.id,
+      t.north,
+      t.south,
+      '2026-10-01T10:00:00+05:00',
+    );
+    await members.member({
+      branch: t.south,
+      classId: south8,
+      studentId: moved.id,
+      from: '2026-10-01',
+    });
   });
 
   afterAll(async () => {
@@ -585,7 +596,12 @@ describe('the import of past marks', () => {
 
   it('lists past marks in the personal data report: withdrawn ones marked, and those of a branch moved from', async () => {
     const report = async (studentId: string, branch: string) => {
-      const response = await t.post(`/api/people/students/${studentId}/report`, branch, {}, t.admin);
+      const response = await t.post(
+        `/api/people/students/${studentId}/report`,
+        branch,
+        {},
+        t.admin,
+      );
       expect(response.status, JSON.stringify(response.body).slice(0, 400)).toBe(200);
       return studentReportSchema.parse(response.body).pastMarks;
     };
@@ -596,9 +612,9 @@ describe('the import of past marks', () => {
     expect(poem?.withdrawnAt).not.toBeNull();
     // The moved student is of the south now; the north's past marks stay in her report.
     const movedReport = await report(moved.id, t.south);
-    expect(movedReport.attendance.map((one) => [one.date, one.lessonNumber, one.mark, one.withdrawnAt])).toEqual([
-      ['2026-09-24', 1, 1, null],
-    ]);
+    expect(
+      movedReport.attendance.map((one) => [one.date, one.lessonNumber, one.mark, one.withdrawnAt]),
+    ).toEqual([['2026-09-24', 1, 1, null]]);
   });
 
   it('answers 404 for an upload of another branch or an unknown one, changing nothing', async () => {

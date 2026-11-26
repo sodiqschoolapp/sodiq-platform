@@ -745,7 +745,8 @@ const MESSAGE: Record<ErrorCode, string> = {
   student_merge_past_marks_overlap:
     'Both records hold past marks of the same lesson or work. Withdraw one of the uploads named first.',
   past_marks_not_standing: 'The upload is not saved, or is already withdrawn.',
-  past_marks_changed: 'Another import of past marks was saved at the same moment. Nothing was saved; check the file again.',
+  past_marks_changed:
+    'Another import of past marks was saved at the same moment. Nothing was saved; check the file again.',
 };
 
 function codeOfStatus(status: number): ErrorCode {

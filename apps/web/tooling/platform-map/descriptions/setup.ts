@@ -328,8 +328,7 @@ export const DESCRIPTIONS: Readonly<Record<string, string>> = {
     'Shows the subject as read from the row.',
   'features/setup/past-marks-page.tsx#column:setup.pastMarks.fileName':
     'Shows the name of the uploaded file; selecting it opens the upload in the side panel.',
-  'features/setup/past-marks-page.tsx#column:setup.pastMarks.by':
-    'Shows who saved the upload.',
+  'features/setup/past-marks-page.tsx#column:setup.pastMarks.by': 'Shows who saved the upload.',
   'features/setup/past-marks-page.tsx#column:setup.pastMarks.at':
     'Shows when the upload was saved.',
   'features/setup/past-marks-page.tsx#column:setup.pastMarks.rows':
