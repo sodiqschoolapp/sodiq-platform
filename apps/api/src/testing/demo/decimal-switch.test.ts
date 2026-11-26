@@ -1,9 +1,10 @@
-import { copyFile, mkdtemp, readdir, rm } from 'node:fs/promises';
+import { copyFile, mkdtemp, readFile, readdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { Fraction, workPercent } from '@sodiq/calc';
+import { sql } from 'kysely';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { migrate } from '../../database/migrate.js';
 import { createTestApp } from '../create-test-app.js';
@@ -20,6 +21,12 @@ const MIGRATIONS = path.resolve(
   '../../../../../db/migrations',
 );
 const SWITCH = '0189_work_amounts_switch.sql';
+/**
+ * Later migrations that add columns only and that today's code reads (task 11.27: the codes of
+ * subjects, plan items and works). Run on the database before the switch, outside the runner, so
+ * the code of this branch finds them; the switch itself is still 0189 alone.
+ */
+const LATER_COLUMNS = ['0191_plan_codes.sql'];
 
 const PASSWORD = 'demo-decimal-switch-password-1';
 /** A Friday of quarter 1, three weeks into the year: the journals are filled up to the day before. */
@@ -57,6 +64,9 @@ describe('the quarter results of the demo school across the switch to decimal sc
       if (name < SWITCH) await copyFile(path.join(MIGRATIONS, name), path.join(directory, name));
     }
     await migrate({ connectionString: database.migrationUrl, directory });
+    for (const name of LATER_COLUMNS) {
+      await sql.raw(await readFile(path.join(MIGRATIONS, name), 'utf8')).execute(database.migrator);
+    }
     clock = new FixedClock(SETUP_MOMENT);
     app = await createTestApp({
       database: database.app,
