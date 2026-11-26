@@ -733,7 +733,9 @@ describe('the parent portal', () => {
   });
 
   describe('the homework page', () => {
-    it('lists the homework given at a held lesson with its title, text, topic, due date and files', async () => {
+    // Task 11.24 (`10`, Homework): "Tasks by the date of the lesson where they were given and by
+    // subject"; no due date.
+    it('lists the homework given at a held lesson with its title, text, topic and files, by the date given', async () => {
       const week = await homeworkOf(child);
       expect(week.homework).toEqual([
         {
@@ -743,7 +745,6 @@ describe('the parent portal', () => {
           title: 'Exercise 5',
           number: 1,
           description: 'About Exercise 5',
-          dueOn: '2026-11-09',
           files: [{ id: file, name: 'fractions.pdf', type: 'application/pdf', bytes: 9 }],
         },
         expect.objectContaining({ title: 'Exercise 6', number: 2, topic: 'Fractions' }) as unknown,

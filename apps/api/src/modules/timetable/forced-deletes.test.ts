@@ -1348,7 +1348,12 @@ describe('the forced delete of a dated lesson and its restore', () => {
 
     // Task 8.1, code review round 1 (finding 2): while the lesson was gone, a first write took
     // the plan link of its homework and an add by hand its place.
-    it('puts back a homework whose plan link or place was taken meanwhile as a column of its own, and refuses one with no place left', async () => {
+    // Task 11.24 (0186): a work is stored at the lesson where it was given, so nothing can take a
+    // restored lesson's plan link or place while it is gone. A store written before 0186 may keep
+    // a homework at its check lesson, given at another lesson: it comes back as a column of the
+    // restored lesson, with no plan link (the link names the other lesson's item), its plan title
+    // and a free place (decision 13 of the plan, as built: see the report).
+    it('puts back a homework a store kept from before 0186 at its check lesson as an unplanned column of the restored lesson', async () => {
       // A graded subject: its journal has its plans (0117).
       const s = await publishedScene(t, load, { graded: true });
       const lesson = await dataLesson(s);
@@ -1379,76 +1384,65 @@ describe('the forced delete of a dated lesson and its restore', () => {
         })
         .returning('id')
         .executeTakeFirstOrThrow();
-      const homework = (values: {
-        lesson: string;
-        planWork?: string;
-        position?: number;
-        total?: number;
-      }) =>
+      const homework = (values: { planWork?: string; position?: number; total: number }) =>
         t.database.migrator
           .insertInto('journal_works')
           .values({
             branch_id: s.branch,
-            lesson_id: values.lesson,
-            source_lesson_id: source,
+            lesson_id: lesson.id,
+            source_lesson_id: lesson.id,
             kind: 'homework',
             plan_work_id: values.planWork ?? null,
             position: values.position ?? 1,
-            total: values.total ?? null,
+            title: values.planWork === undefined ? 'Exercises' : null,
+            total: values.total,
           })
           .returning('id')
           .executeTakeFirstOrThrow();
-      const planned = await homework({ lesson: lesson.id, planWork: planWork.id, total: 5 });
-      const byHand = await homework({ lesson: lesson.id, position: 1, total: 4 });
+      const planned = await homework({ planWork: planWork.id, total: 5 });
+      const byHand = await homework({ position: 1, total: 4 });
       const store = storeOf(await forceDelete(s.branch, lesson.id));
-      // The first write of the same column at another lesson, and an add by hand at place 1.
-      await homework({ lesson: source, planWork: planWork.id, total: 6 });
-      await homework({ lesson: source, position: 1 });
+      // The store as one written before 0186 kept them: given at the 26th, stored here.
+      await t.database.migrator.transaction().execute(async (transaction) => {
+        await sql`alter table forced_deletes disable trigger forced_deletes_write`.execute(
+          transaction,
+        );
+        await sql`
+          update forced_deletes set rows = jsonb_set(
+            rows, '{works}',
+            (select jsonb_agg(w || jsonb_build_object('source_lesson_id', ${source}::uuid))
+              from jsonb_array_elements(rows -> 'works') w)
+          )
+          where id = ${store}::uuid
+        `.execute(transaction);
+        await sql`alter table forced_deletes enable trigger forced_deletes_write`.execute(
+          transaction,
+        );
+      });
       done(await restore(s.branch, store));
       const back = await t.database.migrator
         .selectFrom('journal_works')
-        .select(['id', 'plan_work_id', 'position', 'total'])
+        .select(['id', 'lesson_id', 'source_lesson_id', 'plan_work_id', 'position', 'title', 'total'])
         .where('id', 'in', [planned.id, byHand.id])
         .orderBy('total')
         .execute();
-      // Both back with their totals, with no plan link, at the places 2 and 3 left free.
-      expect(back.map((one) => [one.id, one.plan_work_id, one.total])).toEqual([
-        [byHand.id, null, 4],
-        [planned.id, null, 5],
+      // Both back at the restored lesson with their totals, unplanned, at the places 1 and 2.
+      expect(
+        back.map((one) => [one.id, one.lesson_id, one.source_lesson_id, one.plan_work_id, one.total]),
+      ).toEqual([
+        [byHand.id, lesson.id, lesson.id, null, 4],
+        [planned.id, lesson.id, lesson.id, null, 5],
       ]);
-      expect(back.map((one) => one.position).sort()).toEqual([2, 3]);
-
-      // Every place of the lesson taken: the restore is refused with a code of its own.
-      const other = await scene();
-      const full = await dataLesson(other);
-      const otherSource = (await lessonOf(other, '2026-10-26')).id;
-      await t.database.migrator
-        .insertInto('journal_works')
-        .values({
-          branch_id: other.branch,
-          lesson_id: full.id,
-          source_lesson_id: otherSource,
-          kind: 'homework',
-          position: 1,
-          total: 3,
-        })
-        .execute();
-      const fullStore = storeOf(await forceDelete(other.branch, full.id));
-      for (let position = 1; position <= 10; position += 1) {
+      expect(back.map((one) => one.title)).toEqual(['Exercises', 'Read']);
+      expect(back.map((one) => one.position).sort()).toEqual([1, 2]);
+      // Nothing came back at the lesson where it was given.
+      expect(
         await t.database.migrator
-          .insertInto('journal_works')
-          .values({
-            branch_id: other.branch,
-            lesson_id: otherSource,
-            source_lesson_id: otherSource,
-            kind: 'homework',
-            position,
-          })
-          .execute();
-      }
-      const refused = await restore(other.branch, fullStore);
-      expect(refused.status, JSON.stringify(refused.body)).toBe(409);
-      expect(errorCode(refused)).toBe('restore_works_full');
+          .selectFrom('journal_works')
+          .select('id')
+          .where('lesson_id', '=', source)
+          .execute(),
+      ).toEqual([]);
     });
 
     it('puts back a lesson cancelled with its data cancelled, with its cells (plan test 8)', async () => {

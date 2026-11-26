@@ -1511,8 +1511,9 @@ describe('the edit period through the routes', () => {
           unlock_id: sent.id,
         },
       ]);
-      expect((await t.entries('journal.work_rename', x.second)).length).toBe(2);
-      expect((await t.entries('journal.work_rename', x.third)).length).toBe(1);
+      // Task 11.24: both works are renamed at the 19th, their own lesson; none at the 26th.
+      expect((await t.entries('journal.work_rename', x.second)).length).toBe(3);
+      expect((await t.entries('journal.work_rename', x.third)).length).toBe(0);
     });
 
     it('takes a total, a number and "all present" at 23:59 of the last day, and refuses them at 00:00', async () => {

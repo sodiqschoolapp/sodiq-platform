@@ -648,7 +648,7 @@ describe('plans in the journal', () => {
           }),
         );
         const back = await gridOf(calls, s.journal);
-        expect(lessonIn(back, s.second).works.map((one) => one.title)).toEqual(['Read', 'Write']);
+        expect(lessonIn(back, s.first).works.map((one) => one.title)).toEqual(['Read', 'Write']);
       });
       const history = await t.database.migrator
         .selectFrom('journal_delivery_history')
