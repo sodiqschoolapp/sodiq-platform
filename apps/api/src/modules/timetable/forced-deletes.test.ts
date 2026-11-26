@@ -1363,12 +1363,25 @@ describe('the forced delete of a dated lesson and its restore', () => {
         // A student who joined after the 12th: expected on the 19th only.
         const members = new MembersKit(t.database.migrator, lesson.writer);
         const late = await members.student(s.branch, { startsOn: '2026-09-01' });
-        await members.member({ branch: s.branch, classId: s.classId, studentId: late, from: '2026-10-15' });
-        await t.app.get(Transactions).run([s.branch], (transaction) =>
-          saveCells(transaction, t.app.get(Audit), { accountId: lesson.writer }, [
-            { lessonId: lesson.id, studentId: late, workId: lesson.work, value: 20, version: null },
-          ]),
-        );
+        await members.member({
+          branch: s.branch,
+          classId: s.classId,
+          studentId: late,
+          from: '2026-10-15',
+        });
+        await t.app
+          .get(Transactions)
+          .run([s.branch], (transaction) =>
+            saveCells(transaction, t.app.get(Audit), { accountId: lesson.writer }, [
+              {
+                lessonId: lesson.id,
+                studentId: late,
+                workId: lesson.work,
+                value: 20,
+                version: null,
+              },
+            ]),
+          );
         const store = storeOf(await forceDelete(s.branch, lesson.id));
         const source = sourceGone ? randomUUID() : given;
         await t.database.migrator.transaction().execute(async (transaction) => {

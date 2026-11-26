@@ -418,7 +418,7 @@ export const NARROWER_SCOPES: RouteScopes = {
       rule: `${ATTENDANCE_READERS}: no work lines`,
       refusedIn: [
         'src/modules/journal/narrower-refusals.test.ts > answers the Spiritual Vice Principal the attendance lines of a cell only, no work line',
-        'src/modules/journal/journal-works.test.ts > shows the Head Tutor no works, no works "not held", no homework given and no work lines',
+        'src/modules/journal/journal-works.test.ts > shows the Head Tutor no works, no works "not held", no homeworks of the lesson and no work lines',
         'src/modules/journal/attendance.test.ts > answers the lines of the cells the reader’s grid shows, attendance only for a Head Tutor, and refuses a substitute outside their lesson',
       ],
     },

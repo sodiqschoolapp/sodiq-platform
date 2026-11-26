@@ -300,7 +300,9 @@ describe('the readers of the lines of the homework move', () => {
     expect(answer.status, JSON.stringify(answer.body)).toBe(200);
     const report = studentReportSchema.parse(answer.body);
     const moves = report.journal.history.filter((line) => line.changedHow === 'homework_move');
-    expect(moves.map((line) => [line.lesson?.date, line.before, line.after, line.changedBy])).toEqual(
+    expect(
+      moves.map((line) => [line.lesson?.date, line.before, line.after, line.changedBy]),
+    ).toEqual(
       expect.arrayContaining([
         ['2026-10-19', 9, null, null],
         ['2026-10-12', null, null, null],

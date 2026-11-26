@@ -1050,9 +1050,7 @@ async function restoreCells(
       const keepsLink =
         one.plan_work_id != null &&
         plansThere.has(one.plan_work_id) &&
-        (target !== lessonId ||
-          one.source_lesson_id == null ||
-          one.source_lesson_id === lessonId);
+        (target !== lessonId || one.source_lesson_id == null || one.source_lesson_id === lessonId);
       return {
         id: one.id,
         kind: one.kind,
@@ -1133,7 +1131,11 @@ async function restoreCells(
       await transaction
         .insertInto('journal_cells')
         .values(
-          cells.map((one) => ({ ...one, branch_id: branchId, lesson_id: lessonOfWork(one.work_id) })),
+          cells.map((one) => ({
+            ...one,
+            branch_id: branchId,
+            lesson_id: lessonOfWork(one.work_id),
+          })),
         )
         .execute();
     }
