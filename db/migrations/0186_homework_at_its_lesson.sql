@@ -704,7 +704,20 @@ begin
       case when journal_lesson_lock(l.id) <= moment then 'edit period ended'
         else 'quarter closed or closing' end
     ) as line
-    from lesson_plan_rows r
+    from (
+      -- The plan row of each lesson, as the journal lays a plan on its lessons
+      -- (journal-works.query.ts, planItemsOf): the place of the lesson among the
+      -- journal's lessons of the quarter that are not cancelled, in order.
+      -- lesson_plan_rows is only the snapshot of the last follow.
+      select l.id as lesson_id, pj.plan_id, pj.journal_id,
+        row_number() over (
+          partition by pj.journal_id, pj.quarter_id order by l.starts_at, l.id
+        ) as position
+      from lessons l
+      join lesson_plan_journals pj
+        on pj.journal_id = lesson_journal(l.id) and pj.quarter_id = lesson_quarter(l.id)
+      where l.cancel_cause is null
+    ) r
     join lesson_plan_places p
       on p.plan_id = r.plan_id and p.journal_id = r.journal_id and p.position = r.position
     join lesson_plan_works pw on pw.item_id = p.item_id and pw.kind = 'homework'
