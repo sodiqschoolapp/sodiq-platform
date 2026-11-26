@@ -22,6 +22,8 @@ import { heldEntry } from '../../testing/held-entry.js';
 import { closeQuarter } from '../../testing/closing-kit.js';
 import { inOrderOnLesson, markedLesson, workWithTotal } from '../../testing/cells-kit.js';
 import { LoadKit } from '../../testing/load-kit.js';
+import { MembersKit } from '../../testing/members-kit.js';
+import { handWork } from '../../testing/hand-works.js';
 import { errorCode } from '../../testing/sign-in-kit.js';
 import { publishedScene, publishOf, type PublishedScene } from '../../testing/published-scene.js';
 import { Audit } from '../audit/audit.service.js';
@@ -1348,61 +1350,143 @@ describe('the forced delete of a dated lesson and its restore', () => {
 
     // Task 8.1, code review round 1 (finding 2): while the lesson was gone, a first write took
     // the plan link of its homework and an add by hand its place.
-    // Task 11.24 (0186): a work is stored at the lesson where it was given, so nothing can take a
-    // restored lesson's plan link or place while it is gone. A store written before 0186 may keep
-    // a homework at its check lesson, given at another lesson: it comes back as a column of the
-    // restored lesson, with no plan link (the link names the other lesson's item), its plan title
-    // and a free place (decision 13 of the plan, as built: see the report).
-    it('puts back a homework a store kept from before 0186 at its check lesson as an unplanned column of the restored lesson', async () => {
-      // A graded subject: its journal has its plans (0117).
-      const s = await publishedScene(t, load, { graded: true });
-      const lesson = await dataLesson(s);
-      const source = (await lessonOf(s, '2026-10-26')).id;
-      const journal = await t.database.migrator
-        .selectFrom('journals')
-        .select('id')
-        .where('class_id', '=', s.classId)
-        .executeTakeFirstOrThrow();
-      const plan = await t.database.migrator
-        .selectFrom('lesson_plan_journals')
-        .select('plan_id')
-        .where('journal_id', '=', journal.id)
-        .executeTakeFirstOrThrow();
-      const item = await t.database.migrator
-        .insertInto('lesson_plan_items')
-        .values({ branch_id: s.branch, plan_id: plan.plan_id, topic: 'Fractions' })
-        .returning('id')
-        .executeTakeFirstOrThrow();
-      const planWork = await t.database.migrator
-        .insertInto('lesson_plan_works')
-        .values({
-          branch_id: s.branch,
-          item_id: item.id,
-          kind: 'homework',
-          position: 1,
-          title: 'Read',
-        })
-        .returning('id')
-        .executeTakeFirstOrThrow();
-      const homework = (values: { planWork?: string; position?: number; total: number }) =>
+    // Task 11.24 (0186; plan decision 13, spec review of the code, must-fix 1): a store written
+    // before 0186 may keep a homework at its check lesson, given at another lesson. It comes back
+    // at the lesson where it was given while that lesson exists, with the numbers of the students
+    // expected there (one not expected stays in the store only), at a free place, refused with
+    // no place left; and as a column of the restored lesson once the lesson of its source is gone.
+    describe('a homework a store kept from before 0186 at its check lesson', () => {
+      /** The 19 October lesson with its data, a homework given on the 12th as the old code kept it. */
+      async function oldStore(s: Scene, sourceGone = false) {
+        const lesson = await dataLesson(s);
+        const given = (await lessonOf(s, '2026-10-12')).id;
+        // A student who joined after the 12th: expected on the 19th only.
+        const members = new MembersKit(t.database.migrator, lesson.writer);
+        const late = await members.student(s.branch, { startsOn: '2026-09-01' });
+        await members.member({ branch: s.branch, classId: s.classId, studentId: late, from: '2026-10-15' });
+        await t.app.get(Transactions).run([s.branch], (transaction) =>
+          saveCells(transaction, t.app.get(Audit), { accountId: lesson.writer }, [
+            { lessonId: lesson.id, studentId: late, workId: lesson.work, value: 20, version: null },
+          ]),
+        );
+        const store = storeOf(await forceDelete(s.branch, lesson.id));
+        const source = sourceGone ? randomUUID() : given;
+        await t.database.migrator.transaction().execute(async (transaction) => {
+          await sql`alter table forced_deletes disable trigger forced_deletes_write`.execute(
+            transaction,
+          );
+          await sql`
+            update forced_deletes set rows = jsonb_set(
+              rows, '{works}',
+              (select jsonb_agg(w || jsonb_build_object(
+                'source_lesson_id', ${source}::uuid, 'kind', 'homework', 'title', 'Read'
+              )) from jsonb_array_elements(rows -> 'works') w)
+            )
+            where id = ${store}::uuid
+          `.execute(transaction);
+          await sql`alter table forced_deletes enable trigger forced_deletes_write`.execute(
+            transaction,
+          );
+        });
+        return { ...lesson, given, late, store };
+      }
+
+      const workRow = (id: string) =>
         t.database.migrator
-          .insertInto('journal_works')
-          .values({
-            branch_id: s.branch,
-            lesson_id: lesson.id,
-            source_lesson_id: lesson.id,
-            kind: 'homework',
-            plan_work_id: values.planWork ?? null,
-            position: values.position ?? 1,
-            title: values.planWork === undefined ? 'Exercises' : null,
-            total: values.total,
-          })
-          .returning('id')
+          .selectFrom('journal_works')
+          .select(['lesson_id', 'source_lesson_id', 'kind', 'position', 'total'])
+          .where('id', '=', id)
+          .executeTakeFirst();
+      const workCells = (id: string) =>
+        t.database.migrator
+          .selectFrom('journal_cells')
+          .select(['lesson_id', 'student_id', 'score'])
+          .where('work_id', '=', id)
+          .orderBy('score')
+          .execute();
+
+      it('puts it back at the lesson where it was given, without the number of a student not expected there', async () => {
+        const s = await publishedScene(t, load, { graded: true });
+        const old = await oldStore(s);
+        done(await restore(s.branch, old.store));
+        expect(await rowOf(old.id)).toBeDefined();
+        expect(await workRow(old.work)).toMatchObject({
+          lesson_id: old.given,
+          source_lesson_id: old.given,
+          kind: 'homework',
+        });
+        expect(await workCells(old.work)).toEqual([
+          { lesson_id: old.given, student_id: old.student, score: 24 },
+        ]);
+        // The late student's number stays in the store (and in the cell's history) only.
+        const kept = await t.database.migrator
+          .selectFrom('forced_deletes')
+          .select('rows')
+          .where('id', '=', old.store)
           .executeTakeFirstOrThrow();
-      const planned = await homework({ planWork: planWork.id, total: 5 });
-      const byHand = await homework({ position: 1, total: 4 });
+        expect(JSON.stringify(kept.rows)).toContain(old.late);
+        // The attendance of the 19th comes back at the 19th.
+        expect((await cellsOf(old.id)).filter((one) => one.work_id === null)).not.toEqual([]);
+      });
+
+      it('puts it back as a column of the restored lesson when the lesson where it was given is gone', async () => {
+        const s = await publishedScene(t, load, { graded: true });
+        const old = await oldStore(s, true);
+        done(await restore(s.branch, old.store));
+        expect(await workRow(old.work)).toMatchObject({
+          lesson_id: old.id,
+          source_lesson_id: old.id,
+          kind: 'homework',
+        });
+        expect((await workCells(old.work)).map((one) => [one.lesson_id, one.score])).toEqual([
+          [old.id, 20],
+          [old.id, 24],
+        ]);
+      });
+
+      it('takes the next free place when its place at the lesson where it was given is taken meanwhile', async () => {
+        const s = await publishedScene(t, load, { graded: true });
+        const old = await oldStore(s);
+        const taken = await handWork(t.database.migrator, {
+          branchId: s.branch,
+          lessonId: old.given,
+          kind: 'homework',
+          title: 'Exercises',
+          at: '2026-10-27T12:00:00+05:00',
+        });
+        done(await restore(s.branch, old.store));
+        expect(await workRow(old.work)).toMatchObject({ lesson_id: old.given, position: 2 });
+        expect(await workRow(taken.id)).toMatchObject({ lesson_id: old.given, position: 1 });
+      });
+
+      it('refuses the restore through the route when the lesson where it was given has no place left', async () => {
+        const s = await publishedScene(t, load, { graded: true });
+        const old = await oldStore(s);
+        for (let position = 1; position <= 10; position += 1) {
+          await handWork(t.database.migrator, {
+            branchId: s.branch,
+            lessonId: old.given,
+            kind: 'homework',
+            title: `Exercises ${String(position)}`,
+            at: '2026-10-27T12:00:00+05:00',
+          });
+        }
+        const refused = await restore(s.branch, old.store);
+        expect(refused.status, JSON.stringify(refused.body)).toBe(409);
+        expect(errorCode(refused)).toBe('restore_works_full');
+        expect(await rowOf(old.id)).toBeUndefined();
+        expect(await workRow(old.work)).toBeUndefined();
+      });
+    });
+
+    // Code review round 1 of 8.1, finding 2, as 0186 leaves it: the restored lesson's own works
+    // meet nothing while it is gone, and a store with more hand-added works of a kind than places
+    // is refused with its code.
+    it('refuses a restore with no place left for its works added by hand (restore_works_full)', async () => {
+      const s = await scene();
+      const lesson = await dataLesson(s);
       const store = storeOf(await forceDelete(s.branch, lesson.id));
-      // The store as one written before 0186 kept them: given at the 26th, stored here.
+      // Eleven homeworks added by hand at place 1, as a store can hold them only by an edit.
       await t.database.migrator.transaction().execute(async (transaction) => {
         await sql`alter table forced_deletes disable trigger forced_deletes_write`.execute(
           transaction,
@@ -1410,8 +1494,12 @@ describe('the forced delete of a dated lesson and its restore', () => {
         await sql`
           update forced_deletes set rows = jsonb_set(
             rows, '{works}',
-            (select jsonb_agg(w || jsonb_build_object('source_lesson_id', ${source}::uuid))
-              from jsonb_array_elements(rows -> 'works') w)
+            (select jsonb_agg(jsonb_build_object(
+              'id', uuidv7(), 'kind', 'homework', 'total', null, 'not_held', false,
+              'source_lesson_id', ${lesson.id}::uuid, 'plan_work_id', null, 'position', 1,
+              'title', 'Exercises', 'version', 1
+            )) from generate_series(1, 11))
+              || (rows -> 'works')
           )
           where id = ${store}::uuid
         `.execute(transaction);
@@ -1419,44 +1507,9 @@ describe('the forced delete of a dated lesson and its restore', () => {
           transaction,
         );
       });
-      done(await restore(s.branch, store));
-      const back = await t.database.migrator
-        .selectFrom('journal_works')
-        .select([
-          'id',
-          'lesson_id',
-          'source_lesson_id',
-          'plan_work_id',
-          'position',
-          'title',
-          'total',
-        ])
-        .where('id', 'in', [planned.id, byHand.id])
-        .orderBy('total')
-        .execute();
-      // Both back at the restored lesson with their totals, unplanned, at the places 1 and 2.
-      expect(
-        back.map((one) => [
-          one.id,
-          one.lesson_id,
-          one.source_lesson_id,
-          one.plan_work_id,
-          one.total,
-        ]),
-      ).toEqual([
-        [byHand.id, lesson.id, lesson.id, null, 4],
-        [planned.id, lesson.id, lesson.id, null, 5],
-      ]);
-      expect(back.map((one) => one.title)).toEqual(['Exercises', 'Read']);
-      expect(back.map((one) => one.position).sort()).toEqual([1, 2]);
-      // Nothing came back at the lesson where it was given.
-      expect(
-        await t.database.migrator
-          .selectFrom('journal_works')
-          .select('id')
-          .where('lesson_id', '=', source)
-          .execute(),
-      ).toEqual([]);
+      const refused = await restore(s.branch, store);
+      expect(refused.status, JSON.stringify(refused.body)).toBe(409);
+      expect(errorCode(refused)).toBe('restore_works_full');
     });
 
     it('puts back a lesson cancelled with its data cancelled, with its cells (plan test 8)', async () => {

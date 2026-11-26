@@ -967,14 +967,71 @@ async function restoreCells(
   rows: LessonRows,
 ): Promise<void> {
   const works = rows.works ?? [];
-  const cells = rows.cells ?? [];
+  let cells = rows.cells ?? [];
+  let comments = rows.comments ?? [];
+  // Task 11.24 (0186; plan decision 13): a work is stored at the lesson where it was given. A
+  // store written before 0186 may keep a homework at its check lesson, given at another lesson:
+  // it comes back at the lesson where it was given while that lesson exists (with the move's
+  // rule: a number or a comment of a student not expected there stays in the store and its
+  // history only), and as a column of the restored lesson when that lesson is gone.
+  const named = [
+    ...new Set(
+      works.flatMap((one) =>
+        one.source_lesson_id == null || one.source_lesson_id === lessonId
+          ? []
+          : [one.source_lesson_id],
+      ),
+    ),
+  ];
+  const sourcesThere = new Set(
+    named.length === 0
+      ? []
+      : (
+          await transaction
+            .selectFrom('lessons')
+            .select('id')
+            .where('id', 'in', named)
+            .where('branch_id', '=', branchId)
+            .execute()
+        ).map((one) => one.id),
+  );
+  const targetOf = (one: StoredWork): string =>
+    one.source_lesson_id != null && sourcesThere.has(one.source_lesson_id)
+      ? one.source_lesson_id
+      : lessonId;
+  const workTarget = new Map(works.map((one) => [one.id, targetOf(one)]));
   if (works.length > 0) {
+    const elsewhere = works.filter((one) => targetOf(one) !== lessonId);
+    if (elsewhere.length > 0) {
+      const asked = [
+        ...new Set(
+          [...cells, ...comments].flatMap((one) => {
+            const target = one.work_id === null ? undefined : workTarget.get(one.work_id);
+            return target === undefined || target === lessonId
+              ? []
+              : [`${target}/${one.student_id}`];
+          }),
+        ),
+      ];
+      const expected = new Set<string>();
+      for (const key of asked) {
+        const [target = '', student = ''] = key.split('/');
+        const found = await sql<{ expected: boolean }>`
+          select lesson_student_expected(${target}::uuid, ${student}::uuid) as expected
+        `.execute(transaction);
+        if (found.rows[0]?.expected === true) expected.add(key);
+      }
+      const keeps = (one: { work_id: string | null; student_id: string }) => {
+        const target = one.work_id === null ? undefined : workTarget.get(one.work_id);
+        return (
+          target === undefined || target === lessonId || expected.has(`${target}/${one.student_id}`)
+        );
+      };
+      cells = cells.filter(keeps);
+      comments = comments.filter(keeps);
+    }
     // Task 8.1 (spec review should-fix 9): a plan work gone since comes back as none; the row
-    // is then a column of its own. Task 11.24 (0186): a work is stored at the lesson where it
-    // was given, so every work comes back as a work of the restored lesson. A homework a store
-    // kept from before 0186 at its check lesson (given at another lesson) comes back as a
-    // column of this lesson with no plan link (the link names the other lesson's item) and its
-    // plan title.
+    // is then a column of its own, with its plan's title.
     const planNamed = works.flatMap((one) => (one.plan_work_id == null ? [] : [one.plan_work_id]));
     const plansThere = new Map(
       planNamed.length === 0
@@ -987,59 +1044,54 @@ async function restoreCells(
               .execute()
           ).map((one) => [one.id, one.title]),
     );
-    const givenHere = (one: StoredWork) =>
-      one.source_lesson_id === undefined ||
-      one.source_lesson_id === null ||
-      one.source_lesson_id === lessonId;
-    const linkOf = (one: StoredWork) =>
-      givenHere(one) && one.plan_work_id != null && plansThere.has(one.plan_work_id)
-        ? one.plan_work_id
-        : null;
-    // Code review round 1, finding 2: while the lesson was gone, a first write at the next
-    // check lesson may have taken the work's plan link, or an add by hand its place. The
-    // restored row then comes back with no plan link at a free place, a column of its own;
-    // with no place left the restore is refused. The lock of an add (`journal_works_limit`)
-    // is taken for each source lesson first.
-    const rows = works.map((one) => ({
-      id: one.id,
-      kind: one.kind,
-      total: one.total,
-      not_held: one.not_held,
-      branch_id: branchId,
-      lesson_id: lessonId,
-      source_lesson_id: lessonId,
-      plan_work_id: linkOf(one),
-      position: one.position ?? 1,
-      // Task 10.6: absent from a store row written before 0157, brought back as none. Task
-      // 11.24: a planned work coming back unplanned keeps its plan's title.
-      title:
-        one.title ??
-        (linkOf(one) === null && one.plan_work_id != null
-          ? (plansThere.get(one.plan_work_id) ?? null)
-          : null),
-      version: one.version ?? 1,
-      changed_by: one.changed_by ?? null,
-      changed_how: 'restored',
-      changed_at: one.changed_at ?? null,
-    }));
-    const sources = [
-      ...new Set(
-        rows.flatMap((one) => (one.source_lesson_id === null ? [] : [one.source_lesson_id])),
-      ),
-    ].sort();
+    const rows = works.map((one) => {
+      const target = targetOf(one);
+      // A homework given at a lesson that is gone loses the link to that lesson's item.
+      const keepsLink =
+        one.plan_work_id != null &&
+        plansThere.has(one.plan_work_id) &&
+        (target !== lessonId ||
+          one.source_lesson_id == null ||
+          one.source_lesson_id === lessonId);
+      return {
+        id: one.id,
+        kind: one.kind,
+        total: one.total,
+        not_held: one.not_held,
+        branch_id: branchId,
+        lesson_id: target,
+        source_lesson_id: target,
+        plan_work_id: keepsLink ? (one.plan_work_id ?? null) : null,
+        position: one.position ?? 1,
+        // Task 10.6: absent from a store row written before 0157, brought back as none. Task
+        // 11.24: a planned work coming back unplanned keeps its plan's title.
+        title:
+          one.title ??
+          (!keepsLink && one.plan_work_id != null
+            ? (plansThere.get(one.plan_work_id) ?? null)
+            : null),
+        version: one.version ?? 1,
+        changed_by: one.changed_by ?? null,
+        changed_how: 'restored',
+        changed_at: one.changed_at ?? null,
+      };
+    });
+    // Code review round 1 of 8.1, finding 2: at the lesson where a homework was given, a first
+    // write may have taken its plan link meanwhile, or an add by hand its place. The restored
+    // row then comes back with no plan link at a free place, a column of its own; with no place
+    // left the restore is refused. The lock of an add (`journal_works_limit`) is taken for each
+    // lesson first.
+    const sources = [...new Set(rows.map((one) => one.source_lesson_id))].sort();
     for (const source of sources) {
       await sql`select pg_advisory_xact_lock(hashtextextended(${`journal_works_limit:${source}`}, 0))`.execute(
         transaction,
       );
     }
-    const standing =
-      sources.length === 0
-        ? []
-        : await transaction
-            .selectFrom('journal_works')
-            .select(['source_lesson_id', 'kind', 'plan_work_id', 'position'])
-            .where('source_lesson_id', 'in', sources)
-            .execute();
+    const standing = await transaction
+      .selectFrom('journal_works')
+      .select(['source_lesson_id', 'kind', 'plan_work_id', 'position'])
+      .where('source_lesson_id', 'in', sources)
+      .execute();
     const linked = new Set(
       standing.flatMap((one) =>
         one.plan_work_id === null ? [] : [`${one.source_lesson_id ?? ''}/${one.plan_work_id}`],
@@ -1053,13 +1105,13 @@ async function restoreCells(
       ),
     );
     for (const row of rows) {
-      if (row.source_lesson_id === null) continue;
       if (row.plan_work_id !== null && linked.has(`${row.source_lesson_id}/${row.plan_work_id}`)) {
+        row.title = row.title ?? plansThere.get(row.plan_work_id) ?? null;
         row.plan_work_id = null;
       }
       if (row.plan_work_id !== null) continue;
       const placeOf = (position: number) =>
-        `${row.source_lesson_id ?? ''}/${row.kind}/${String(position)}`;
+        `${row.source_lesson_id}/${row.kind}/${String(position)}`;
       if (places.has(placeOf(row.position))) {
         const free = Array.from({ length: 10 }, (_, at) => at + 1).find(
           (one) => !places.has(placeOf(one)),
@@ -1073,13 +1125,16 @@ async function restoreCells(
     }
     await transaction.insertInto('journal_works').values(rows).execute();
   }
-  const comments = rows.comments ?? [];
+  const lessonOfWork = (workId: string | null) =>
+    workId === null ? lessonId : (workTarget.get(workId) ?? lessonId);
   if (cells.length === 0 && comments.length === 0) return;
   try {
     if (cells.length > 0) {
       await transaction
         .insertInto('journal_cells')
-        .values(cells.map((one) => ({ ...one, branch_id: branchId, lesson_id: lessonId })))
+        .values(
+          cells.map((one) => ({ ...one, branch_id: branchId, lesson_id: lessonOfWork(one.work_id) })),
+        )
         .execute();
     }
     // Task 8.2: the comments after the works they name, as stored (`restored`, 0120).
@@ -1090,7 +1145,7 @@ async function restoreCells(
           comments.map((one) => ({
             ...one,
             branch_id: branchId,
-            lesson_id: lessonId,
+            lesson_id: lessonOfWork(one.work_id),
             rating_exam_id: null,
             changed_how: 'restored',
           })),
