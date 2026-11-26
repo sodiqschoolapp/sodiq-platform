@@ -1989,10 +1989,20 @@ describe('master plans', () => {
         );
       const seven = await parallelOf(7);
       const first = seven.units.find((unit) => unit.journalId === x.journal);
-      expect(first?.reached).toEqual({ number: 3, date: '2026-11-23', topic: 'M3' });
-      expect(first?.next).toEqual({ number: 4, date: '2026-11-30', topic: 'M4' });
+      expect(first?.reached).toEqual({
+        number: 3,
+        date: '2026-11-23',
+        topic: 'M3',
+        topicCode: null,
+      });
+      expect(first?.next).toEqual({ number: 4, date: '2026-11-30', topic: 'M4', topicCode: null });
       const other = seven.units.find((unit) => unit.journalId === x.otherJournal);
-      expect(other?.reached).toEqual({ number: 3, date: '2026-11-23', topic: null });
+      expect(other?.reached).toEqual({
+        number: 3,
+        date: '2026-11-23',
+        topic: null,
+        topicCode: null,
+      });
       expect(seven.units.map((unit) => unit.unit.kind)).toEqual(['class', 'class', 'group']);
       const eight = await parallelOf(8);
       expect(eight.units.map((unit) => unit.unit.id)).toEqual([group]);
