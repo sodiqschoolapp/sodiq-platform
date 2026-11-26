@@ -161,7 +161,6 @@ describe('the readers of the lines of the homework move', () => {
             kind: 'homework',
             position: 1,
             title: 'Reading page 12',
-            total: 10,
             changed_by: teacher.accountId,
           })
           .returning('id')
@@ -171,6 +170,14 @@ describe('the readers of the lines of the homework move', () => {
     // The teacher's numbers and a comment at the lesson that checked it, before the move.
     t.clock.set(BEFORE_MOVE);
     await freshSession(teacher.accountId, BEFORE_MOVE);
+    // The total set at the lesson that checked it: a line of the work's history at that lesson.
+    const total = await asTeacher(
+      checked,
+      'works/total',
+      { column: { workId: work }, total: 10, version: 1 },
+      'put',
+    );
+    expect(total.status, JSON.stringify(total.body)).toBe(200);
     const scores = await asTeacher(
       checked,
       'scores',
@@ -320,8 +327,12 @@ describe('the readers of the lines of the homework move', () => {
       }),
     ]);
     // The work's lines of the report are its total and "not held" (decision 13 of 6.1c): the move
-    // changes neither (and the fixture wrote the total with no line), so none is listed.
-    expect(report.journal.workHistory.filter((line) => line.workId === work)).toEqual([]);
+    // changes neither, so the total the teacher set is the work's one line.
+    expect(
+      report.journal.workHistory
+        .filter((line) => line.workId === work)
+        .map((line) => [line.changedHow, line.totalAfter]),
+    ).toEqual([['entry', 10]]);
   });
 
   it('shows the cleared comment with its move line in the comment history', async () => {
@@ -377,5 +388,17 @@ describe('the readers of the lines of the homework move', () => {
     );
     expect(there.find((line) => line.changedHow === 'homework_move')?.changedBy).toBeNull();
     expect(await at(checked)).toEqual([]);
+    // Review round 1, finding 2: the work's total line shows at the lesson where it was given
+    // and nothing of the work at the lesson it left.
+    const workLinesAt = async (lesson: string) => {
+      const answer = await t.get(
+        `/api/journal/lessons/${lesson}/students/${stays}/history`,
+        branch,
+        vice,
+      );
+      return cellHistorySchema.parse(answer.body).workLines.filter((line) => line.workId === work);
+    };
+    expect((await workLinesAt(given)).map((line) => line.totalAfter)).toEqual([10]);
+    expect(await workLinesAt(checked)).toEqual([]);
   });
 });

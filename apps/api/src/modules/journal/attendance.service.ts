@@ -487,6 +487,20 @@ export class AttendanceService {
                 .select('work_id')
                 .distinct()
                 .where('lesson_id', '=', lesson.id)
+                // Task 11.24 (review round 1, finding 2): a work moved by 0186 to the lesson where
+                // it was given shows its lines there, never at the lesson it left; a work removed
+                // or force-deleted here keeps its lines here (it lives at no other lesson).
+                .where((eb) =>
+                  eb.not(
+                    eb.exists(
+                      eb
+                        .selectFrom('journal_works as now')
+                        .select('now.id')
+                        .whereRef('now.id', '=', 'journal_work_history.work_id')
+                        .where('now.lesson_id', '<>', lesson.id),
+                    ),
+                  ),
+                )
                 .execute()
             ).map((row) => row.work_id);
       const works = (await workLines(transaction, { workIds })).filter(
