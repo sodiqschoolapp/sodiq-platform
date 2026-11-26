@@ -78,7 +78,8 @@ Plan approved on pull request #397 with corrections 1 (the total field takes the
 | 0189 compiles every PL/pgSQL function again in every session (`alter function … cost` of its own cost) | The running version's sessions keep the old column type in their compiled triggers |
 | A point key of its own beside the lesson-mode field and the total field | A phone's decimal key may be a comma, which the spec refuses |
 | The support view reads `value_sent` as text (`valueSent: string`) | A value refused as sent may not read back as a JS number |
-| The demo is built on 0188 and read before and after 0189; version 8 is its arithmetic | The code of 11.25a cannot run on this branch; the demo cannot be closed (no rating exams) |
+| **Look first.** The demo is built on 0188 and read before and after 0189; version 8 is its arithmetic; its quarters are not closed, so the comparison with records stored by version 8 is `closing.test.ts` (a quarter closed on 8, compared on 9) | The code of 11.25a cannot run on this branch; the demo enters no rating exam, so its quarters cannot be closed |
+| A score or a total is shown with `String` (no shared formatter) | It writes every value of `work_amount` with a point and without trailing zeros, in every language |
 
 ## 26 November 2026: decimal scores and totals, the exact columns beside the old ones (task 11.25a)
 
