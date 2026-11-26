@@ -526,6 +526,139 @@ describe('classwork and homework', () => {
       expect((await t.entries('journal.work_total', s.first)).length).toBe(1);
     });
 
+    // Task 11.25b; `07`, The total ("Give half points | 10 | 7.5 | 75%"; "A total is a number of 1
+    // or more, with up to two digits after the decimal point"); `edge/calculation`, the decimals
+    // row ("8.25 ÷ 11 is exactly 75%"); `14`, Rule tests. The Done when of 11.25b: "7.5 out of 10
+    // shows 75%; a score of 6 out of a total of 7.5 shows 80%".
+    it('takes scores and totals with up to two decimals: 7.5 of 10 is 75%, 6 of 7.5 is 80%, 8.25 of 11 is 75%', async () => {
+      const owner = await account();
+      const s = await scene({ teacher: owner.account.id });
+      const item = await itemAt(s, s.first, { classworks: ['Halves', 'Short', 'Quarters'] });
+      await as(owner, s.branch, teacherIn(s), async (calls) => {
+        const totals = [10, 7.5, 11];
+        const ids: string[] = [];
+        for (const [index, total] of totals.entries()) {
+          const saved = workSavedSchema.parse(
+            ok(
+              await calls.put(`/api/journal/lessons/${s.first}/works/total`, {
+                column: planned(item.classworks[index] ?? '', s.first),
+                total,
+                version: null,
+              }),
+            ),
+          );
+          expect(saved.total).toBe(total);
+          ids.push(saved.id);
+        }
+        const [halves = '', short = '', quarters = ''] = ids;
+        const typed = scoresSavedSchema.parse(
+          ok(
+            await calls.post(`/api/journal/lessons/${s.first}/scores`, {
+              saves: [
+                { studentId: s.ahmedov, column: { workId: halves }, score: 7.5, version: null },
+                { studentId: s.ahmedov, column: { workId: short }, score: 6, version: null },
+                { studentId: s.ahmedov, column: { workId: quarters }, score: 8.25, version: null },
+                { studentId: s.boboyev, column: { workId: halves }, score: 9.75, version: null },
+              ],
+            }),
+          ),
+        );
+        expect(
+          typed.cells.map((one) => [one.workId, one.score, one.percent]).sort(),
+        ).toEqual(
+          [
+            [halves, 7.5, 75],
+            [short, 6, 80],
+            [quarters, 8.25, 75],
+            [halves, 9.75, 98],
+          ].sort(),
+        );
+        // The grid and the stored rows hold each number exactly as typed.
+        const grid = await gridOf(calls, s);
+        expect(lessonIn(grid, s.first).works.map((one) => one.total)).toEqual([10, 7.5, 11]);
+        const at = grid.lessons.findIndex((one) => one.id === s.first);
+        const ahmedov = grid.students.find((one) => one.id === s.ahmedov);
+        expect(ahmedov?.cells[at]?.works.map((one) => [one.score, one.percent])).toEqual([
+          [7.5, 75],
+          [6, 80],
+          [8.25, 75],
+        ]);
+        expect(grid.lastTotal).toBe(11);
+      });
+      const history = await t.database.migrator
+        .selectFrom('journal_cell_history')
+        .select(['score_after', sql<string>`score_after::text`.as('stored')])
+        .where('lesson_id', '=', s.first)
+        .where('student_id', '=', s.ahmedov)
+        .where('work_id', 'is not', null)
+        .execute();
+      expect(history.map((one) => one.stored).sort()).toEqual(['6', '7.5', '8.25']);
+      const totals = await t.database.migrator
+        .selectFrom('journal_work_history')
+        .select(sql<string>`total_after::text`.as('stored'))
+        .where('lesson_id', '=', s.first)
+        .execute();
+      expect(totals.map((one) => one.stored).sort()).toEqual(['10', '11', '7.5']);
+    });
+
+    // Task 11.25b, decision 5: a total with three decimals is refused by its schema; `07`, The
+    // total: "If a number already typed is above the new total, the change is refused and those
+    // students are listed" (9.5 with a new total of 9).
+    it('refuses a total with three decimals, and a new total of 9 below a typed 9.5 with the student listed', async () => {
+      const owner = await account();
+      const s = await scene({ teacher: owner.account.id });
+      const item = await itemAt(s, s.first, { classworks: ['Test'] });
+      await as(owner, s.branch, teacherIn(s), async (calls) => {
+        const column = planned(item.classworks[0] ?? '', s.first);
+        for (const total of [7.555, 0.5, 1000.01]) {
+          const refused = await calls.put(`/api/journal/lessons/${s.first}/works/total`, {
+            column,
+            total,
+            version: null,
+          });
+          expect(codeOf(refused)).toBe('validation_failed');
+        }
+        const work = workSavedSchema.parse(
+          ok(
+            await calls.put(`/api/journal/lessons/${s.first}/works/total`, {
+              column,
+              total: 10,
+              version: null,
+            }),
+          ),
+        );
+        ok(
+          await calls.post(`/api/journal/lessons/${s.first}/scores`, {
+            saves: [
+              { studentId: s.ahmedov, column: { workId: work.id }, score: 9.5, version: null },
+              { studentId: s.boboyev, column: { workId: work.id }, score: 9, version: null },
+            ],
+          }),
+        );
+        const above = await calls.post(`/api/journal/lessons/${s.first}/scores`, {
+          saves: [{ studentId: s.boboyev, column: { workId: work.id }, score: 10.01, version: 1 }],
+        });
+        expect(codeOf(above)).toBe('score_above_total');
+        const below = await calls.put(`/api/journal/lessons/${s.first}/works/total`, {
+          column: { workId: work.id },
+          total: 9,
+          version: work.version,
+          confirm: true,
+        });
+        expect(codeOf(below)).toBe('total_below_numbers');
+        const listed = (below.body as { error: { details: { recordId: string }[] } }).error.details;
+        expect(listed.map((one) => one.recordId)).toEqual([s.ahmedov]);
+        ok(
+          await calls.put(`/api/journal/lessons/${s.first}/works/total`, {
+            column: { workId: work.id },
+            total: 9.5,
+            version: work.version,
+            confirm: true,
+          }),
+        );
+      });
+    });
+
     it('refuses a total below a number with the students listed, and asks to confirm a change with numbers', async () => {
       const owner = await account();
       const s = await scene({ teacher: owner.account.id });

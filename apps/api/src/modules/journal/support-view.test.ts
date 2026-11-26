@@ -353,6 +353,69 @@ describe('the support view', () => {
   });
 
   describe('of a student, journal and date', () => {
+    // Task 11.25b, decision 5 and 12; `edge/journal`, "My grade disappeared." ("shows every save,
+    // every refusal"); the build line: "A refused 7.555 is still recorded as sent". A number with
+    // more than two digits after the point passes the body's schema and is refused by the domain
+    // of the score (0188) inside the recording of refusals; the support view reads it as text,
+    // also one that does not read back as a JS number (0.0000001).
+    it('records a number with three decimals as sent, refused score_decimals, and the support view shows it', async () => {
+      const owner = await account();
+      const vice = await account();
+      const s = await scene(owner.account.id);
+      await give(owner, [{ role: 'teacher', branchId: s.branch }]);
+      await give(vice, [{ role: 'academic_vice_principal', branchId: s.branch }]);
+      const work = (
+        await t.database.migrator
+          .insertInto('journal_works')
+          .values({ branch_id: s.branch, lesson_id: s.third, kind: 'classwork', total: 10 })
+          .returning('id')
+          .executeTakeFirstOrThrow()
+      ).id;
+      await at(owner, MOMENT);
+      for (const score of [7.555, 0.0000001]) {
+        const refused = await post(owner, s.branch, `/api/journal/lessons/${s.third}/scores`, {
+          saves: [{ studentId: s.ahmedov, column: { workId: work }, score, version: null }],
+        });
+        expect(codeOf(refused)).toBe('score_decimals');
+      }
+      const rows = await t.database.migrator
+        .selectFrom('journal_save_refusals')
+        .select([sql<string>`value_sent::text`.as('sent'), 'code', 'work_id'])
+        .where('student_id', '=', s.ahmedov)
+        .orderBy('refused_at')
+        .orderBy('id')
+        .execute();
+      expect(rows.map((one) => [one.sent, one.code, one.work_id]).sort()).toEqual(
+        [
+          ['0.0000001', 'score_decimals', work],
+          ['7.555', 'score_decimals', work],
+        ].sort(),
+      );
+      // Nothing was saved.
+      const cells = await t.database.migrator
+        .selectFrom('journal_cells')
+        .select('id')
+        .where('work_id', '=', work)
+        .execute();
+      expect(cells).toEqual([]);
+      await at(vice, MOMENT);
+      const view = await supportOf(vice, s.branch, {
+        studentId: s.ahmedov,
+        journalId: s.journal,
+        date: '2026-10-26',
+      });
+      expect(
+        ofKind(view, 'refusal')
+          .map((one) => [one.field, one.valueSent, one.code])
+          .sort(),
+      ).toEqual(
+        [
+          ['score', '0.0000001', 'score_decimals'],
+          ['score', '7.555', 'score_decimals'],
+        ].sort(),
+      );
+    });
+
     it("lists every save, refusal, correction, offline entry, undo, clear and give-back in time order, with the grid's figures, and writes one audit entry", async () => {
       const owner = await account();
       const vice = await account();
@@ -435,7 +498,7 @@ describe('the support view', () => {
       expect(cells[3]?.by?.accountId).toBe(vice.account.id);
       const refusals = ofKind(view, 'refusal');
       expect(refusals).toHaveLength(1);
-      expect(refusals[0]).toMatchObject({ lessonId: s.third, valueSent: 0, field: 'attendance' });
+      expect(refusals[0]).toMatchObject({ lessonId: s.third, valueSent: '0', field: 'attendance' });
       // In time order: the refusal between the entry and the undo.
       expect(view.lines.slice(0, 3).map((line) => line.kind)).toEqual(['cell', 'refusal', 'cell']);
       // "with how the result was calculated": the grid's figures, from packages/calc.
@@ -780,7 +843,7 @@ describe('the support view', () => {
       ]);
       expect(
         ofKind(exam, 'refusal').map((one) => [one.field, one.valueSent, one.lessonId]),
-      ).toEqual([['rating', 90, null]]);
+      ).toEqual([['rating', '90', null]]);
       // On another date the exam's lines are not this view's.
       const other = await supportOf(vice, s.branch, {
         studentId: s.ahmedov,
