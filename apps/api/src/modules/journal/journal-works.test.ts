@@ -382,7 +382,9 @@ describe('classwork and homework', () => {
   });
 
   describe('the columns', () => {
-    it('gives the first lesson no homework column and the next one the homework given at it (the Done when)', async () => {
+    // Task 11.24: "a homework of Monday's item is a column of Monday's lesson and of no other
+    // lesson" (Done when); the first lesson of the journal has its homework columns too.
+    it('gives each lesson the homework columns of its own item and no other lesson any (the Done when)', async () => {
       const owner = await account();
       const s = await scene({ teacher: owner.account.id });
       // The version is published from 12 October: the first lesson of the journal.
@@ -396,30 +398,31 @@ describe('classwork and homework', () => {
         const kinds = (lesson: JournalLesson) =>
           lesson.works.map((one) => [one.kind, one.title, one.position]);
         expect(grid.lessons[0]?.id).toBe(s.first);
+        // Two classworks and three homeworks given on the 12th: all five are its columns.
         expect(kinds(lessonIn(grid, s.first))).toEqual([
           ['classwork', 'Test', 1],
           ['classwork', 'Quiz', 2],
-        ]);
-        // Three homeworks given on the 12th, checked on the 19th; no classwork there.
-        expect(kinds(lessonIn(grid, s.second))).toEqual([
           ['homework', 'Read', 1],
           ['homework', 'Write', 2],
           ['homework', 'Draw', 3],
         ]);
+        // The 19th has an empty item: no column, and nothing of the 12th's homework.
+        expect(lessonIn(grid, s.second).works).toEqual([]);
         expect(lessonIn(grid, s.second).planItem).toBe(true);
-        // The 19th gave none: the 26th has no homework column, and no plan item ("No plan").
         expect(lessonIn(grid, s.third).works).toEqual([]);
         expect(lessonIn(grid, s.third).planItem).toBe(false);
-        expect(lessonIn(grid, s.first).given.map((one) => [one.title, one.checkAt])).toEqual([
-          ['Read', s.second],
-          ['Write', s.second],
-          ['Draw', s.second],
+        expect(lessonIn(grid, s.first).given.map((one) => [one.title, one.notGiven])).toEqual([
+          ['Read', false],
+          ['Write', false],
+          ['Draw', false],
         ]);
         expect(lessonIn(grid, s.first).canEnterWorks).toBe(true);
       });
     });
 
-    it('shows the homework of the last lesson of a quarter at the first lesson of the next', async () => {
+    // Task 11.24 (`07`, Closing a quarter): "Homework given at the last lesson of the quarter
+    // belongs to that quarter, like every work of that lesson".
+    it('shows the homework of the last lesson of a quarter at that lesson, in that quarter', async () => {
       const owner = await account();
       const s = await scene({ teacher: owner.account.id });
       await itemAt(s, s.third, { homeworks: ['Holiday reading'] });
@@ -430,10 +433,10 @@ describe('classwork and homework', () => {
           .where('academic_year_id', '=', s.year)
           .where('number', '=', 2)
           .executeTakeFirstOrThrow();
-        const grid = await gridOf(calls, s, quarters.id);
-        expect(lessonIn(grid, s.fourth).works.map((one) => one.title)).toEqual(['Holiday reading']);
-        // Future: shown, not enterable (09: "Nothing can be entered in them").
-        expect(lessonIn(grid, s.fourth).canEnterWorks).toBe(false);
+        const grid = await gridOf(calls, s);
+        expect(lessonIn(grid, s.third).works.map((one) => one.title)).toEqual(['Holiday reading']);
+        const next = await gridOf(calls, s, quarters.id);
+        expect(lessonIn(next, s.fourth).works).toEqual([]);
       });
     });
   });
@@ -784,7 +787,9 @@ describe('classwork and homework', () => {
       ]);
     });
 
-    it('accepts a homework number for a student who joined after the homework was given', async () => {
+    // Task 11.24 (`edge/journal`, "A student was exempt, or not yet in the group, at the lesson
+    // where the homework was given"): "their cell is closed like every cell of that lesson".
+    it('closes the homework cell of a student who joined after the lesson where it was given', async () => {
       const owner = await account();
       const s = await scene({ teacher: owner.account.id });
       const late = await student(s.branch, s.classId, 'Davronov', '2026-10-15');
@@ -793,37 +798,32 @@ describe('classwork and homework', () => {
         const column = planned(item.homeworks[0] ?? '', s.first);
         const work = workSavedSchema.parse(
           ok(
-            await calls.put(`/api/journal/lessons/${s.second}/works/total`, {
+            await calls.put(`/api/journal/lessons/${s.first}/works/total`, {
               column,
               total: 5,
               version: null,
             }),
           ),
         );
-        const saved = scoresSavedSchema.parse(
-          ok(
-            await calls.post(`/api/journal/lessons/${s.second}/scores`, {
-              saves: [{ studentId: late, column: { workId: work.id }, score: 5, version: null }],
-            }),
-          ),
-        );
-        expect(saved.cells).toEqual([
-          {
-            studentId: late,
-            workId: work.id,
-            score: 5,
-            percent: 100,
-            notGraded: false,
-            version: 1,
-          },
-        ]);
-        // On the 12th the column is not the homework's (it is checked on the 19th).
-        const wrong = await calls.put(`/api/journal/lessons/${s.first}/works/total`, {
+        const refused = await calls.post(`/api/journal/lessons/${s.first}/scores`, {
+          saves: [{ studentId: late, column: { workId: work.id }, score: 5, version: null }],
+        });
+        expect(codeOf(refused)).toBe('cell_closed');
+        // On the 19th the column is not the homework's: it is a column of the 12th only.
+        const wrong = await calls.put(`/api/journal/lessons/${s.second}/works/total`, {
           column,
           total: 5,
           version: null,
         });
         expect(codeOf(wrong)).toBe('work_not_in_lesson');
+        expect(
+          await t.database.migrator
+            .selectFrom('journal_cells')
+            .select('id')
+            .where('work_id', '=', work.id)
+            .where('score', 'is not', null)
+            .execute(),
+        ).toEqual([]);
       });
     });
   });
@@ -885,14 +885,19 @@ describe('classwork and homework', () => {
         const grid = await gridOf(calls, s);
         // Task 10.8: planned columns of the item the add wrote, with the plan's titles.
         expect(
-          lessonIn(grid, s.second).works.map((one) => [one.planWorkId, one.unplanned, one.title]),
+          lessonIn(grid, s.second)
+            .works.filter((one) => one.kind === 'classwork')
+            .map((one) => [one.planWorkId, one.unplanned, one.title]),
         ).toEqual(added.map((id, index) => [id, false, `Dictation ${String(index + 1)}`]));
         // The lesson still has no plan item: no topic yet ("No plan").
         expect(lessonIn(grid, s.second).planItem).toBe(false);
-        // The homework given on the 19th is a column of the 26th.
-        expect(lessonIn(grid, s.third).works.map((one) => one.planWorkId)).toEqual([
-          homework.planWorkId,
-        ]);
+        // Task 11.24: the homework given on the 19th is a column of the 19th, not of the 26th.
+        expect(
+          lessonIn(grid, s.second)
+            .works.filter((one) => one.kind === 'homework')
+            .map((one) => one.planWorkId),
+        ).toEqual([homework.planWorkId]);
+        expect(lessonIn(grid, s.third).works).toEqual([]);
         // An empty one is removed; one with a total is not.
         ok(await calls.del(`/api/journal/lessons/${s.second}/plan-works/${added[9] ?? ''}`), 204);
         ok(
@@ -912,27 +917,36 @@ describe('classwork and homework', () => {
       expect((await t.entries('journal.work_delete', s.second)).length).toBe(1);
     });
 
-    // Code review round 1, finding 1: the homework is a column of its check lesson.
-    it('removes an empty homework given by hand from the lesson that shows it', async () => {
+    // Task 11.24: a homework given by hand is a column of the lesson that gave it, and of no other.
+    it('removes an empty homework given by hand at its own lesson, and refuses it through the next', async () => {
       const owner = await account();
       const s = await scene({ teacher: owner.account.id });
       await as(owner, s.branch, teacherIn(s), async (calls) => {
         const given = await byHand(s.branch, s.second, 'homework', 'Exercises');
-        ok(await calls.del(`/api/journal/lessons/${s.third}/works/${given.id}`), 204);
+        const elsewhere = await calls.del(`/api/journal/lessons/${s.third}/works/${given.id}`);
+        expect(codeOf(elsewhere)).toBe('work_not_in_lesson');
+        ok(await calls.del(`/api/journal/lessons/${s.second}/works/${given.id}`), 204);
         const grid = await gridOf(calls, s);
-        expect(lessonIn(grid, s.third).works).toEqual([]);
+        expect(lessonIn(grid, s.second).works).toEqual([]);
         expect(lessonIn(grid, s.second).given).toEqual([]);
       });
-      expect((await t.entries('journal.work_delete', s.third)).length).toBe(1);
+      expect((await t.entries('journal.work_delete', s.second)).length).toBe(1);
+      expect((await t.entries('journal.work_delete', s.third)).length).toBe(0);
     });
 
-    it('moves a homework given by hand to its check lesson at the first write there', async () => {
+    it('grades a homework given by hand at its own lesson, and refuses its total through the next', async () => {
       const owner = await account();
       const s = await scene({ teacher: owner.account.id });
       const homework = await as(owner, s.branch, teacherIn(s), async (calls) => {
         const given = await byHand(s.branch, s.second, 'homework', 'Exercises');
+        const elsewhere = await calls.put(`/api/journal/lessons/${s.third}/works/total`, {
+          column: { workId: given.id },
+          total: 5,
+          version: given.version,
+        });
+        expect(codeOf(elsewhere)).toBe('work_not_in_lesson');
         ok(
-          await calls.put(`/api/journal/lessons/${s.third}/works/total`, {
+          await calls.put(`/api/journal/lessons/${s.second}/works/total`, {
             column: { workId: given.id },
             total: 5,
             version: given.version,
@@ -945,52 +959,28 @@ describe('classwork and homework', () => {
         .select(['lesson_id', 'source_lesson_id', 'total'])
         .where('id', '=', homework.id)
         .executeTakeFirstOrThrow();
-      // Stored where it was given (decision 18), moved at the first write at its check lesson.
-      expect(row).toEqual({ lesson_id: s.third, source_lesson_id: s.second, total: 5 });
+      expect(row).toEqual({ lesson_id: s.second, source_lesson_id: s.second, total: 5 });
       const lines = await t.database.migrator
         .selectFrom('journal_work_history')
         .select(['changed_how', 'lesson_before', 'total_after'])
         .where('work_id', '=', homework.id)
         .orderBy('version')
         .execute();
-      expect(lines).toEqual([
-        { changed_how: 'move', lesson_before: s.second, total_after: null },
-        { changed_how: 'entry', lesson_before: null, total_after: 5 },
-      ]);
+      expect(lines).toEqual([{ changed_how: 'entry', lesson_before: null, total_after: 5 }]);
     });
   });
 
-  describe('homework at its check lesson', () => {
-    it('carries a homework to the next lesson once, and moves one whose check lesson is cancelled with its total', async () => {
+  // Task 11.24: everything about a later lesson goes (the check lesson, the carry, the move of
+  // columns when a lesson is cancelled, "will not be graded", "not checked, group closed").
+  describe('homework at the lesson where it was given', () => {
+    it('keeps a homework with a total at its lesson when a later lesson is cancelled, and moves nothing', async () => {
       const owner = await account();
       const s = await scene({ teacher: owner.account.id });
       const item = await itemAt(s, s.first, { homeworks: ['Read', 'Write'] });
       await itemAt(s, s.second, { homeworks: ['Draw'] });
       await as(owner, s.branch, teacherIn(s), async (calls) => {
-        const read = planned(item.homeworks[0] ?? '', s.first);
-        const carried = workSavedSchema.parse(
-          ok(
-            await calls.post(`/api/journal/lessons/${s.second}/works/carry`, {
-              column: read,
-              version: null,
-            }),
-          ),
-        );
-        expect(carried.carriedFrom).toBe(s.second);
-        const grid = await gridOf(calls, s);
-        expect(lessonIn(grid, s.second).works.map((one) => one.title)).toEqual(['Write']);
-        expect(lessonIn(grid, s.third).works.map((one) => [one.title, one.carriedFrom])).toEqual([
-          ['Draw', null],
-          ['Read', s.second],
-        ]);
-        const again = await calls.post(`/api/journal/lessons/${s.third}/works/carry`, {
-          column: { workId: carried.id },
-          version: carried.version,
-        });
-        expect(codeOf(again)).toBe('work_carried');
-        // "Write" gets a total on the 19th; then the 19th is cancelled.
         ok(
-          await calls.put(`/api/journal/lessons/${s.second}/works/total`, {
+          await calls.put(`/api/journal/lessons/${s.first}/works/total`, {
             column: planned(item.homeworks[1] ?? '', s.first),
             total: 4,
             version: null,
@@ -1004,10 +994,18 @@ describe('classwork and homework', () => {
         .execute();
       await as(owner, s.branch, [], async (calls) => {
         const grid = await gridOf(calls, s);
-        const write = lessonIn(grid, s.third).works.find((one) => one.title === 'Write');
-        expect(write?.total).toBe(4);
+        expect(lessonIn(grid, s.first).works.map((one) => [one.title, one.total])).toEqual([
+          ['Read', null],
+          ['Write', 4],
+        ]);
+        // `09`, When something else changes: the cancelled lesson's item moves to the next lesson
+        // with its homework; no column of the 12th moves.
+        expect(lessonIn(grid, s.third).works.map((one) => [one.title, one.total])).toEqual([
+          ['Draw', null],
+        ]);
+        const write = lessonIn(grid, s.first).works.find((one) => one.title === 'Write');
         ok(
-          await calls.post(`/api/journal/lessons/${s.third}/scores`, {
+          await calls.post(`/api/journal/lessons/${s.first}/scores`, {
             saves: [
               {
                 studentId: s.ahmedov,
@@ -1019,73 +1017,28 @@ describe('classwork and homework', () => {
           }),
         );
       });
-      const moved = await t.database.migrator
+      const stays = await t.database.migrator
         .selectFrom('journal_works')
         .select('lesson_id')
         .where('total', '=', 4)
         .executeTakeFirstOrThrow();
-      expect(moved.lesson_id).toBe(s.third);
+      expect(stays.lesson_id).toBe(s.first);
     });
-  });
 
-  describe('the carry and the end of the journal (code review, must-fixes 1 and 2)', () => {
-    it('refuses a carry with numbers and one with no lesson left to check it, and keeps the homework', async () => {
+    it('answers 404 for the carry route, which is gone', async () => {
       const owner = await account();
       const s = await scene({ teacher: owner.account.id });
-      const item = await itemAt(s, s.first, { homeworks: ['Read', 'Write'] });
+      const item = await itemAt(s, s.first, { homeworks: ['Read'] });
       await as(owner, s.branch, teacherIn(s), async (calls) => {
-        const read = workSavedSchema.parse(
-          ok(
-            await calls.put(`/api/journal/lessons/${s.second}/works/total`, {
-              column: planned(item.homeworks[0] ?? '', s.first),
-              total: 5,
-              version: null,
-            }),
-          ),
-        );
-        ok(
-          await calls.post(`/api/journal/lessons/${s.second}/scores`, {
-            saves: [{ studentId: s.ahmedov, column: { workId: read.id }, score: 4, version: null }],
-          }),
-        );
-        const scored = await calls.post(`/api/journal/lessons/${s.second}/works/carry`, {
-          column: { workId: read.id },
-          version: read.version,
+        const gone = await calls.post(`/api/journal/lessons/${s.first}/works/carry`, {
+          column: planned(item.homeworks[0] ?? '', s.first),
+          version: null,
         });
-        expect(codeOf(scored)).toBe('work_holds_numbers');
-      });
-      // Every lesson after the 19th is cancelled: none is left to check "Write".
-      await t.database.migrator
-        .updateTable('lessons')
-        .set({ cancel_cause: 'reason', cancel_reason: 'Quarantine' })
-        .where('class_id', '=', s.classId)
-        .where('lesson_date', '>', '2026-10-19')
-        .execute();
-      await as(owner, s.branch, [], async (calls) => {
-        const write = planned(item.homeworks[1] ?? '', s.first);
-        const totalled = workSavedSchema.parse(
-          ok(
-            await calls.put(`/api/journal/lessons/${s.second}/works/total`, {
-              column: write,
-              total: 3,
-              version: null,
-            }),
-          ),
-        );
-        const refused = await calls.post(`/api/journal/lessons/${s.second}/works/carry`, {
-          column: { workId: totalled.id },
-          version: totalled.version,
-        });
-        expect(codeOf(refused)).toBe('no_next_lesson');
-        const grid = await gridOf(calls, s);
-        expect(lessonIn(grid, s.second).works.map((one) => [one.title, one.total])).toEqual([
-          ['Read', 5],
-          ['Write', 3],
-        ]);
+        expect(gone.status).toBe(404);
       });
     });
 
-    it('labels the homework of the last lesson "will not be graded", and of a closed journal "not checked, group closed"', async () => {
+    it('gives the homework of the last lesson, and of a closed journal, a column at that lesson', async () => {
       const owner = await account();
       const s = await scene({ teacher: owner.account.id });
       await itemAt(s, s.third, { homeworks: ['Revise'] });
@@ -1097,16 +1050,12 @@ describe('classwork and homework', () => {
         .execute();
       await as(owner, s.branch, teacherIn(s), async (calls) => {
         const grid = await gridOf(calls, s);
+        expect(lessonIn(grid, s.third).works.map((one) => one.title)).toEqual(['Revise']);
         expect(lessonIn(grid, s.third).given).toEqual([
-          expect.objectContaining({
-            title: 'Revise',
-            checkAt: null,
-            ungraded: 'year_end',
-            notGiven: false,
-          }),
+          expect.objectContaining({ title: 'Revise', notGiven: false }),
         ]);
       });
-      // The journal runs no day after the 26th (7.1b decision 9).
+      // The journal runs no day after the 26th (7.1b decision 9): the column stays.
       await t.database.migrator
         .updateTable('journals')
         .set({ runs: '{[2026-09-01,2026-10-27)}' })
@@ -1114,11 +1063,11 @@ describe('classwork and homework', () => {
         .execute();
       await as(owner, s.branch, [], async (calls) => {
         const grid = await gridOf(calls, s);
-        expect(lessonIn(grid, s.third).given[0]?.ungraded).toBe('group_closed');
+        expect(lessonIn(grid, s.third).works.map((one) => one.title)).toEqual(['Revise']);
       });
     });
 
-    it('keeps a homework given by hand when its future check lesson is removed by a version change', async () => {
+    it('keeps a homework given by hand at its lesson when a later lesson is removed by a version change', async () => {
       const owner = await account();
       const s = await scene({ teacher: owner.account.id });
       // Task 10.8: a homework added by hand before 7 November 2026.
@@ -1136,7 +1085,7 @@ describe('classwork and homework', () => {
       expect(row).toEqual({ lesson_id: s.third, source_lesson_id: s.third });
       await as(owner, s.branch, teacherIn(s), async (calls) => {
         const grid = await gridOf(calls, s);
-        expect(lessonIn(grid, s.third).given.map((one) => one.checkAt)).not.toContain(s.fourth);
+        expect(lessonIn(grid, s.third).works.map((one) => one.id)).toEqual([given.id]);
         expect(lessonIn(grid, s.third).given).toHaveLength(1);
       });
     });
@@ -1285,7 +1234,6 @@ describe('classwork and homework', () => {
       const bodies: [string, string, object][] = [
         ['put', 'works/total', { column, total: 5, version: null }],
         ['put', 'works/not-held', { column, notHeld: true, version: null }],
-        ['post', 'works/carry', { column, version: null }],
         ['post', 'scores', { saves: [{ studentId: s.ahmedov, column, score: 1, version: null }] }],
         ['post', 'works', { kind: 'classwork', title: 'Dictation' }],
         ['delete', `works/${ownWork.id}`, {}],
@@ -1348,14 +1296,6 @@ describe('classwork and homework', () => {
               404,
             );
           }
-          expect(
-            (
-              await calls.post(`/api/journal/lessons/${s.first}/works/carry`, {
-                column: other,
-                version: null,
-              })
-            ).status,
-          ).toBe(404);
           expect(
             (
               await calls.post(`/api/journal/lessons/${s.first}/scores`, {
@@ -1872,10 +1812,13 @@ describe('classwork and homework', () => {
         // The journal still says "No plan" and the topic is shown as none.
         const grid = await gridOf(calls, s);
         expect(lessonIn(grid, s.second)).toMatchObject({ planItem: false, topic: null });
-        // The homework is a planned column of the next lesson.
-        expect(lessonIn(grid, s.third).works.map((one) => [one.planWorkId, one.unplanned])).toEqual(
-          [[homework.planWorkId, false]],
-        );
+        // Task 11.24: the homework is a planned column of its own lesson, not of the next.
+        expect(
+          lessonIn(grid, s.second)
+            .works.filter((one) => one.kind === 'homework')
+            .map((one) => [one.planWorkId, one.unplanned]),
+        ).toEqual([[homework.planWorkId, false]]);
+        expect(lessonIn(grid, s.third).works).toEqual([]);
       });
     });
 
@@ -2112,9 +2055,10 @@ describe('classwork and homework', () => {
     });
 
     // Code review 1 (`.claude/rules/journal.md`: "a test sends the action through the lesson
-    // that shows it"): a homework added in the journal is renamed and removed through its check
-    // lesson; a lesson that neither gives nor shows it is refused.
-    it('renames and removes a homework added in the journal through its check lesson, and refuses a lesson that does not show it', async () => {
+    // that shows it"). Task 11.24: a homework added in the journal is a column of the lesson that
+    // gave it only, so it is renamed and removed there; the lesson before and the lesson after are
+    // refused.
+    it('renames and removes a homework added in the journal at its own lesson, and refuses a lesson that does not show it', async () => {
       const owner = await account();
       const s = await scene({ teacher: owner.account.id });
       await as(owner, s.branch, teacherIn(s), async (calls) => {
@@ -2127,19 +2071,28 @@ describe('classwork and homework', () => {
         expect(
           codeOf(await calls.del(`/api/journal/lessons/${s.first}/plan-works/${work.planWorkId}`)),
         ).toBe('work_not_in_lesson');
+        const after = await calls.put(
+          `/api/journal/lessons/${s.third}/plan-works/${work.planWorkId}/title`,
+          { title: 'Reading', baseTitle: 'Exercises' },
+        );
+        expect(codeOf(after)).toBe('work_not_in_lesson');
+        expect(
+          codeOf(await calls.del(`/api/journal/lessons/${s.third}/plan-works/${work.planWorkId}`)),
+        ).toBe('work_not_in_lesson');
         ok(
-          await calls.put(`/api/journal/lessons/${s.third}/plan-works/${work.planWorkId}/title`, {
+          await calls.put(`/api/journal/lessons/${s.second}/plan-works/${work.planWorkId}/title`, {
             title: 'Reading',
             baseTitle: 'Exercises',
           }),
         );
         expect((await planWork(work.planWorkId)).title).toBe('Reading');
-        ok(await calls.del(`/api/journal/lessons/${s.third}/plan-works/${work.planWorkId}`), 204);
+        ok(await calls.del(`/api/journal/lessons/${s.second}/plan-works/${work.planWorkId}`), 204);
         const grid = await gridOf(calls, s);
-        expect(lessonIn(grid, s.third).works).toEqual([]);
+        expect(lessonIn(grid, s.second).works).toEqual([]);
       });
-      expect((await t.entries('journal.work_rename', s.third)).length).toBe(1);
-      expect((await t.entries('journal.work_delete', s.third)).length).toBe(1);
+      expect((await t.entries('journal.work_rename', s.second)).length).toBe(1);
+      expect((await t.entries('journal.work_delete', s.second)).length).toBe(1);
+      expect((await t.entries('journal.work_rename', s.third)).length).toBe(0);
     });
 
     it('lets the substitute add a work into the plan, and not change the item', async () => {
@@ -2173,8 +2126,11 @@ describe('classwork and homework', () => {
         );
         const work = await added(calls, s.second, 'classwork', 'New classwork');
         let grid = await gridOf(calls, s);
+        // Task 11.24: the ten old homeworks are columns of this lesson too; the classworks:
         expect(
-          lessonIn(grid, s.second).works.map((one) => [one.title, one.unplanned, one.id]),
+          lessonIn(grid, s.second)
+            .works.filter((one) => one.kind === 'classwork')
+            .map((one) => [one.title, one.unplanned, one.id]),
         ).toEqual([
           ['New classwork', false, null],
           ['Old classwork', true, old.id],
@@ -2198,8 +2154,11 @@ describe('classwork and homework', () => {
           }),
         );
         grid = await gridOf(calls, s);
+        // Task 11.24: the ten old homeworks are columns of this lesson too; the classworks:
         expect(
-          lessonIn(grid, s.second).works.map((one) => [one.title, one.unplanned, one.id]),
+          lessonIn(grid, s.second)
+            .works.filter((one) => one.kind === 'classwork')
+            .map((one) => [one.title, one.unplanned, one.id]),
         ).toEqual([
           ['New classwork', false, null],
           ['Planned', false, old.id],
@@ -2703,7 +2662,8 @@ describe('classwork and homework', () => {
       expect(entry?.new_value).toMatchObject({ title: 'x'.repeat(60) });
     });
 
-    it('shows the typed title as the column title, and a homework given by hand at the lesson that gave it and at its check lesson', async () => {
+    // Task 11.24: a homework given by hand is a column of the lesson that gave it, and of no other.
+    it('shows the typed title as the column title, and a homework given by hand at the lesson that gave it only', async () => {
       const owner = await account();
       const s = await scene({ teacher: owner.account.id });
       await as(owner, s.branch, teacherIn(s), async (calls) => {
@@ -2712,13 +2672,14 @@ describe('classwork and homework', () => {
         const grid = await gridOf(calls, s);
         expect(
           lessonIn(grid, s.second).works.map((one) => [one.id, one.title, one.unplanned]),
-        ).toEqual([[classwork.id, 'Dictation', true]]);
+        ).toEqual([
+          [classwork.id, 'Dictation', true],
+          [homework.id, 'Exercises 4 to 9', true],
+        ]);
         expect(lessonIn(grid, s.second).given.map((one) => one.title)).toEqual([
           'Exercises 4 to 9',
         ]);
-        expect(lessonIn(grid, s.third).works.map((one) => [one.id, one.title])).toEqual([
-          [homework.id, 'Exercises 4 to 9'],
-        ]);
+        expect(lessonIn(grid, s.third).works).toEqual([]);
       });
     });
 
@@ -2768,10 +2729,19 @@ describe('classwork and homework', () => {
             ),
           ).version,
         ).toBe(2);
-        // A homework given by hand, renamed through its check lesson.
+        // Task 11.24: a homework given by hand is renamed at the lesson that gave it; the next
+        // lesson does not show it.
         const given = await byHand(s.branch, s.second, 'homework', 'Exercises');
+        expect(
+          codeOf(
+            await calls.put(`/api/journal/lessons/${s.third}/works/${given.id}/title`, {
+              title: 'Exercises 4 to 9',
+              version: given.version,
+            }),
+          ),
+        ).toBe('work_not_in_lesson');
         ok(
-          await calls.put(`/api/journal/lessons/${s.third}/works/${given.id}/title`, {
+          await calls.put(`/api/journal/lessons/${s.second}/works/${given.id}/title`, {
             title: 'Exercises 4 to 9',
             version: given.version,
           }),
@@ -2814,10 +2784,12 @@ describe('classwork and homework', () => {
           ).toBe(400);
         }
         const grid = await gridOf(calls, s);
-        expect(lessonIn(grid, s.third).works.map((one) => one.title)).toEqual([
-          'Reading',
-          'Exercises 4 to 9',
-        ]);
+        expect(lessonIn(grid, s.third).works.map((one) => one.title)).toEqual(['Reading']);
+        expect(
+          lessonIn(grid, s.second)
+            .works.filter((one) => one.kind === 'homework')
+            .map((one) => one.title),
+        ).toEqual(['Exercises 4 to 9']);
         expect(lessonIn(grid, s.second).given.map((one) => one.title)).toEqual([
           'Exercises 4 to 9',
         ]);
@@ -2845,7 +2817,9 @@ describe('classwork and homework', () => {
           ],
         ]),
       );
-      expect(renames).toHaveLength(2);
+      // Task 11.24: the homework given by hand was renamed at its own lesson, the 19th.
+      expect(renames).toHaveLength(1);
+      expect(await t.entries('journal.work_rename', s.second)).toHaveLength(1);
     });
 
     it('lets a plan item written later replace the typed titles in order, keeps them in history, and leaves a work without a match its own title', async () => {
