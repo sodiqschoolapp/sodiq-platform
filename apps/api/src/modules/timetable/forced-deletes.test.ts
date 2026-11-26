@@ -1369,19 +1369,17 @@ describe('the forced delete of a dated lesson and its restore', () => {
           studentId: late,
           from: '2026-10-15',
         });
-        await t.app
-          .get(Transactions)
-          .run([s.branch], (transaction) =>
-            saveCells(transaction, t.app.get(Audit), { accountId: lesson.writer }, [
-              {
-                lessonId: lesson.id,
-                studentId: late,
-                workId: lesson.work,
-                value: 20,
-                version: null,
-              },
-            ]),
-          );
+        await t.app.get(Transactions).run([s.branch], (transaction) =>
+          saveCells(transaction, t.app.get(Audit), { accountId: lesson.writer }, [
+            {
+              lessonId: lesson.id,
+              studentId: late,
+              workId: lesson.work,
+              value: 20,
+              version: null,
+            },
+          ]),
+        );
         const store = storeOf(await forceDelete(s.branch, lesson.id));
         const source = sourceGone ? randomUUID() : given;
         await t.database.migrator.transaction().execute(async (transaction) => {
