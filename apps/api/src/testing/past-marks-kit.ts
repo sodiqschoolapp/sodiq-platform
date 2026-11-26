@@ -31,5 +31,8 @@ export async function filledPastMarkTemplate(
     line.commit();
   });
   edit?.(sheet);
+  // The same rows give the same bytes (ExcelJS writes the moment of writing otherwise): one file.
+  workbook.created = new Date('2026-09-01T00:00:00Z');
+  workbook.modified = new Date('2026-09-01T00:00:00Z');
   return Buffer.from(await workbook.xlsx.writeBuffer());
 }
