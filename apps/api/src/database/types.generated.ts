@@ -888,7 +888,7 @@ export interface JournalCellHistory {
   branch_id: string;
   cell_id: string;
   changed_at: Timestamp;
-  changed_by: string;
+  changed_by: string | null;
   changed_how: string;
   id: Generated<string>;
   lesson_id: string;
@@ -929,7 +929,7 @@ export interface JournalCommentHistory {
   body_before: string | null;
   branch_id: string;
   changed_at: Timestamp;
-  changed_by: string;
+  changed_by: string | null;
   changed_how: string;
   comment_id: string;
   id: Generated<string>;
