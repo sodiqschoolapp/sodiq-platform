@@ -1983,12 +1983,15 @@ describe('the substitution of a lesson', () => {
             'lesson_day_change_ends',
             'timetable_versions',
           ] as const) {
+            // In a fixed order: the physical order of a table may change between two reads.
             rows.push(
-              await t.database.migrator
-                .selectFrom(table)
-                .selectAll()
-                .where('branch_id', '=', branch)
-                .execute(),
+              (
+                await t.database.migrator
+                  .selectFrom(table)
+                  .selectAll()
+                  .where('branch_id', '=', branch)
+                  .execute()
+              ).sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b))),
             );
           }
         }
