@@ -182,3 +182,30 @@ revoke all on function forced_store_cells(forced_deletes) from public;
 revoke all on function forced_store_works(forced_deletes) from public;
 grant execute on function forced_store_cells(forced_deletes) to sodiq_app;
 grant execute on function forced_store_works(forced_deletes) to sodiq_app;
+
+-- ---------------------------------------------------------------------------
+-- Every PL/pgSQL function of the schema is compiled again in every session.
+-- A session keeps a compiled trigger function with the types of the rows it
+-- read: one of the running version that wrote a cell before this migration
+-- holds `score` as `integer`, and its next write would fail ("type of
+-- parameter … does not match that when preparing the plan"). An `alter
+-- function` that sets the cost it has writes its catalog row again without
+-- changing it, and PL/pgSQL compiles a function again when its row changed.
+-- Found by the migration test of task 11.25b: the running version's pooled
+-- connections write the journal across the deploy.
+do $$
+declare
+  found regprocedure;
+  found_cost real;
+begin
+  for found, found_cost in
+    select p.oid::regprocedure, p.procost
+    from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+    join pg_language l on l.oid = p.prolang
+    where n.nspname = 'public' and l.lanname = 'plpgsql'
+  loop
+    execute format('alter function %s cost %s', found, found_cost);
+  end loop;
+end;
+$$;

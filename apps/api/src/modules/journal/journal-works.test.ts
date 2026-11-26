@@ -601,6 +601,71 @@ describe('classwork and homework', () => {
       expect(totals.map((one) => one.stored).sort()).toEqual(['10', '11', '7.5']);
     });
 
+    // Task 11.25b (0189): the readers of a forced-delete store return `work_amount`, and the delete
+    // guards of the cells and works compare the score and the total with the stored rows; a lesson
+    // holding 7.5 is deleted and restored with its numbers exactly as typed.
+    it('keeps a score of 7.5 and a total of 7.5 through a forced delete of the lesson and its restore', async () => {
+      const owner = await account();
+      const admin = await account();
+      const s = await scene({ teacher: owner.account.id });
+      const item = await itemAt(s, s.first, { classworks: ['Test'] });
+      const workId = await as(owner, s.branch, teacherIn(s), async (calls) => {
+        const work = workSavedSchema.parse(
+          ok(
+            await calls.put(`/api/journal/lessons/${s.first}/works/total`, {
+              column: planned(item.classworks[0] ?? '', s.first),
+              total: 7.5,
+              version: null,
+            }),
+          ),
+        );
+        ok(
+          await calls.post(`/api/journal/lessons/${s.first}/scores`, {
+            saves: [
+              { studentId: s.ahmedov, column: { workId: work.id }, score: 7.5, version: null },
+              { studentId: s.boboyev, column: { workId: work.id }, score: 6.25, version: null },
+            ],
+          }),
+        );
+        return work.id;
+      });
+      await as(admin, s.branch, [{ role: 'super_admin' }], async (calls) => {
+        ok(
+          await calls.post(`/api/timetable/lessons/${s.first}/forced-delete`, {
+            reason: 'Entered for the wrong class',
+          }),
+        );
+        const found = await t.database.migrator
+          .selectFrom('forced_deletes')
+          .select('id')
+          .where('record_id', '=', s.first)
+          .executeTakeFirstOrThrow();
+        const kept = await sql<{ score: number | null }>`
+          select c.score from forced_deletes f cross join lateral forced_store_cells(f) c
+          where f.id = ${found.id} and c.work_id = ${workId}
+        `.execute(t.database.migrator);
+        expect(kept.rows.map((one) => one.score).sort()).toEqual([6.25, 7.5]);
+        const keptWorks = await sql<{ total: number | null }>`
+          select w.total from forced_deletes f cross join lateral forced_store_works(f) w
+          where f.id = ${found.id} and w.id = ${workId}
+        `.execute(t.database.migrator);
+        expect(keptWorks.rows).toEqual([{ total: 7.5 }]);
+        ok(await calls.post(`/api/forced-deletes/${found.id}/restore`));
+      });
+      const cells = await t.database.migrator
+        .selectFrom('journal_cells')
+        .select(['student_id', 'score'])
+        .where('work_id', '=', workId)
+        .execute();
+      expect(cells.map((one) => one.score).sort()).toEqual([6.25, 7.5]);
+      const work = await t.database.migrator
+        .selectFrom('journal_works')
+        .select('total')
+        .where('id', '=', workId)
+        .executeTakeFirstOrThrow();
+      expect(work.total).toBe(7.5);
+    });
+
     // Task 11.25b, decision 5: a total with three decimals is refused by its schema; `07`, The
     // total: "If a number already typed is above the new total, the change is refused and those
     // students are listed" (9.5 with a new total of 9).
