@@ -4,6 +4,7 @@ import {
   pastMarkPreviewSchema,
   pastMarkTitleKey,
   pastMarkUploadListSchema,
+  studentMergePreviewSchema,
   studentReportSchema,
   STUDENT_IMPORT_TYPES,
   type PastMarkPreview,
@@ -11,6 +12,7 @@ import {
 import { sql } from 'kysely';
 import request, { type Response } from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { Transactions } from '../../database/transactions.js';
 import {
   dayTemplatesKit,
   START,
@@ -187,6 +189,19 @@ describe('the import of past marks', () => {
         await done;
       },
     };
+  }
+
+  /** Waits until `count` backends of this database wait on another. */
+  async function waiting(count: number): Promise<void> {
+    for (let tries = 0; tries < 400; tries += 1) {
+      const found = await sql<{ count: number }>`
+        select count(*)::int as count from pg_stat_activity a
+        where a.datname = current_database() and cardinality(pg_blocking_pids(a.pid)) > 0
+      `.execute(t.database.migrator);
+      if ((found.rows[0]?.count ?? 0) >= count) return;
+      await new Promise((resolve) => setTimeout(resolve, 25));
+    }
+    throw new Error(`Fewer than ${String(count)} backends waited.`);
   }
 
   /** Waits until a backend of this database waits on `pid`. */
@@ -786,7 +801,127 @@ describe('the import of past marks', () => {
     });
   });
 
+  describe('a confirm and a student merge at the same moment (plan review finding 1)', () => {
+    /** Two records of one pupil of grade 7 of the north, and the merge's preview. */
+    async function pair() {
+      const north7 = (await t.classOf(t.north, 7, '2026-09-02')) ?? '';
+      const first = await pupil(t.north);
+      const twice = await pupil(t.north);
+      await members.member({
+        branch: t.north,
+        classId: north7,
+        studentId: first.id,
+        from: '2026-09-02',
+        until: '2026-09-10',
+        ownUntil: '2026-09-10',
+      });
+      await members.member({
+        branch: t.north,
+        classId: north7,
+        studentId: twice.id,
+        from: '2026-09-10',
+      });
+      const seen = await t.get(`/api/people/students/${first.id}/merge?uid=${twice.uid}`, t.north);
+      expect(seen.status, JSON.stringify(seen.body).slice(0, 400)).toBe(200);
+      const preview = studentMergePreviewSchema.parse(seen.body);
+      expect(preview.refusal).toBeNull();
+      const merged = preview.merged.id === first.id ? first : twice;
+      const kept = merged === first ? twice : first;
+      return { first, twice, kept, merged, north7, digest: preview.digest };
+    }
+
+    const mergeOf = (path: Pupil, other: Pupil, digest: string) =>
+      t.post(`/api/people/students/${path.id}/merge`, t.north, {
+        uid: other.uid,
+        reason: 'Created twice by mistake',
+        digest,
+      });
+
+    it('the confirm first: the merge waits, finds the state changed, and a merge read again carries the rows', async () => {
+      const { first, twice, kept, merged, digest } = await pair();
+      const answer = await uploaded([rowOf(merged, { date: '2026-10-02', attendance: '1' })]);
+      expect(answer.clean, JSON.stringify(answer.rows)).toBe(true);
+      // The branch row held: the confirm takes the students, then waits for the branch.
+      const held_ = await held([
+        sql`select 1 from branches where id = ${t.north}::uuid for update`,
+      ]);
+      const confirming = started(() => confirm(answer.importId));
+      await waitingOn(held_.pid);
+      const merging = started(() => mergeOf(first, twice, digest));
+      // The merge waits for the confirm's lock of the students.
+      await waiting(2);
+      await held_.release();
+      const result = pastMarkConfirmResultSchema.parse((await confirming).body);
+      expect(result.outcome).toBe('saved');
+      refusedWith(await merging, 409, 'student_changed');
+      const again = studentMergePreviewSchema.parse(
+        (await t.get(`/api/people/students/${first.id}/merge?uid=${twice.uid}`, t.north)).body,
+      );
+      expect((await mergeOf(first, twice, again.digest)).status).toBe(200);
+      const row = await t.database.migrator
+        .selectFrom('past_attendance')
+        .select('student_id')
+        .where('upload_id', '=', answer.importId)
+        .executeTakeFirstOrThrow();
+      expect(row.student_id).toBe(kept.id);
+    });
+
+    it('the merge first: the confirm waits and finds the merged record gone', async () => {
+      const { first, twice, merged, north7, digest } = await pair();
+      const answer = await uploaded([rowOf(merged, { date: '2026-10-02', attendance: '1' })]);
+      expect(answer.clean, JSON.stringify(answer.rows)).toBe(true);
+      // The class row held: the merge takes the students, then waits for the class.
+      const held_ = await held([sql`select 1 from classes where id = ${north7}::uuid for update`]);
+      const merging = started(() => mergeOf(first, twice, digest));
+      await waitingOn(held_.pid);
+      const confirming = started(() => confirm(answer.importId));
+      // The confirm waits for the merge's lock of the students.
+      await waiting(2);
+      await held_.release();
+      expect((await merging).status).toBe(200);
+      const result = pastMarkConfirmResultSchema.parse((await confirming).body);
+      expect(result.outcome).toBe('not_clean');
+      if (result.outcome === 'not_clean') {
+        expect(codesAt(result.preview, 3)).toEqual(['uid:uid_unknown']);
+      }
+      expect(await countOf('past_attendance', answer.importId)).toBe(0);
+    });
+  });
+
+  it('never finds a student of another branch only, whatever the name (review finding 2)', async () => {
+    const southOnly = await pupil(t.south);
+    const answer = await uploaded([rowOf(southOnly, { date: '2026-10-05', attendance: '1' })]);
+    // Neither the name nor the UID of a student the branch never had is told.
+    expect(codesAt(answer, 3)).toEqual(['uid:uid_unknown']);
+  });
+
   describe('the database', () => {
+    it('reads the students of the branch of the request only (review finding 2)', async () => {
+      await expect(
+        t.app
+          .get(Transactions)
+          .run([t.north], (transaction) =>
+            sql`select * from past_mark_students(${t.south}::uuid, ${[moved.uid]}::text[], false)`.execute(
+              transaction,
+            ),
+          ),
+      ).rejects.toMatchObject({ code: '42501' });
+      const own = await t.app.get(Transactions).run([t.north], (transaction) =>
+        sql<{
+          student_id: string;
+          home_branch_id: string | null;
+          memberships: { branchId: string | null }[];
+        }>`
+          select * from past_mark_students(${t.north}::uuid, ${[moved.uid]}::text[], false)
+        `.execute(transaction),
+      );
+      // The moved student of the south: found by her class of the north, and the south never named.
+      expect(own.rows.map((one) => [one.student_id, one.home_branch_id])).toEqual([
+        [moved.id, null],
+      ]);
+      expect(own.rows[0]?.memberships.map((one) => one.branchId)).toEqual([t.north, null]);
+    });
+
     it('gives a title the same key as the reader of the file (review correction 2)', async () => {
       const titles = [
         'Essay',

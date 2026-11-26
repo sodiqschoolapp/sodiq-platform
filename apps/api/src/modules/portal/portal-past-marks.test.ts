@@ -330,6 +330,25 @@ describe('the past marks in the parent portal', () => {
     expect(other.rows).toEqual([]);
   });
 
+  it('answers 404 for another family\'s child who has past marks, on each page (review finding 9)', async () => {
+    t.clock.set(MOMENT);
+    try {
+      await t.database.migrator
+        .updateTable('sessions')
+        .set({ created_at: new Date(MOMENT), last_used_at: new Date(MOMENT) })
+        .where('account_id', '=', parent.accountId)
+        .execute();
+      for (const page of ['grades', 'attendance?date=2026-09-07', 'homework?date=2026-09-07']) {
+        const response = await request(t.kit.server)
+          .get(`/api/portal/children/${otherChild}/${page}`)
+          .set('Cookie', parent.cookie);
+        expect(response.status, page).toBe(404);
+      }
+    } finally {
+      t.clock.set(START);
+    }
+  });
+
   it('keeps showing the marks of the branch a child moved from (edge/academic-year)', async () => {
     await moveStudentBranch(
       t.database.migrator,

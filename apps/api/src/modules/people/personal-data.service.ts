@@ -171,6 +171,7 @@ export class PersonalData {
         account_switched_on_at: Date | null;
       }>`select * from personal_data_relatives(${id}::uuid)`.execute(transaction);
       const journal = await studentJournal(transaction, id);
+      const pastMarks = await studentPastMarks(transaction, id);
       const frame = await this.frame(
         transaction,
         access,
@@ -185,6 +186,9 @@ export class PersonalData {
           cellLinesLeftOut: journal.historyLeftOut?.count ?? 0,
           // Task 8.1: the total and "not held" lines (permission review, should-fix 6).
           workLines: journal.workHistory.length,
+          // Task 11.26: the past marks from before go-live (review finding 7).
+          pastAttendance: pastMarks.attendance.length,
+          pastWorks: pastMarks.works.length,
         },
       );
       // A relative with no live link left is hidden from `entryAnswers`'s
@@ -203,7 +207,7 @@ export class PersonalData {
         ...frame,
         entries,
         journal,
-        pastMarks: await studentPastMarks(transaction, id),
+        pastMarks,
         student: {
           id: student.id,
           uid: student.uid,

@@ -38,7 +38,6 @@ import { notFound } from './setup-refusals.js';
 
 const DEADLOCK = '40P01';
 const SERIALIZATION_FAILURE = '40001';
-const UNIQUE_VIOLATION = '23505';
 
 /** The rows of one insert: well below the 65,535 parameters of one statement. */
 const INSERT_BATCH = 1000;
@@ -208,14 +207,9 @@ export class PastMarks {
       if (error instanceof RolledBack) {
         return { outcome: 'not_clean', preview: error.preview };
       }
-      if (uniqueOn(error, 'past_mark_uploads_file_standing_idx')) {
-        throw new ApiException('import_already_done', 409);
-      }
-      if (
-        conflicted(error) ||
-        uniqueOn(error, 'past_attendance_standing_idx') ||
-        uniqueOn(error, 'past_works_standing_idx')
-      ) {
+      // Two confirms of the branch meet at the advisory lock, so the standing indexes and the
+      // file-once index stay guards only and are never reached by a confirm (review finding 6).
+      if (conflicted(error)) {
         throw new ApiException('past_marks_changed', 409);
       }
       throw error;
@@ -394,7 +388,7 @@ export class PastMarks {
       uid: string;
       last_name: string;
       first_name: string;
-      home_branch_id: string;
+      home_branch_id: string | null;
       memberships: PastMarkMembership[];
     }>`select * from past_mark_students(${record.branchId}::uuid, ${uids}::text[], ${lock})`.execute(
       transaction,
@@ -680,8 +674,3 @@ function conflicted(error: unknown): boolean {
   return failure.code === DEADLOCK || failure.code === SERIALIZATION_FAILURE;
 }
 
-/** A unique violation of the index named. */
-function uniqueOn(error: unknown, constraint: string): boolean {
-  const failure = error as { code?: unknown; constraint?: unknown };
-  return failure.code === UNIQUE_VIOLATION && failure.constraint === constraint;
-}

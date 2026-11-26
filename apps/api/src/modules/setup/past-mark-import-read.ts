@@ -106,7 +106,8 @@ export function pastMarkAmountOf(
 
 /** A class membership of a student: its branch, the grade of its class, its half-open days. */
 export interface PastMarkMembership {
-  branchId: string;
+  /** The branch of the import, or `null` for another branch (`past_mark_students` names no other). */
+  branchId: string | null;
   grade: number;
   validFrom: string;
   validUntil: string;
@@ -118,8 +119,8 @@ export interface PastMarkStudent {
   uid: string;
   lastName: string;
   firstName: string;
-  /** The student's present branch. */
-  branchId: string;
+  /** The student's present branch when it is the branch of the import; `null` otherwise. */
+  branchId: string | null;
   /** Every class membership, in every branch, by its start. */
   memberships: readonly PastMarkMembership[];
 }

@@ -269,6 +269,8 @@ const SECURITY_DEFINER_FUNCTIONS: Record<string, string> = {
     "The branches of a child's class memberships over a span of dates, with the part of the span each covers, only for a child in the account's scope (task 11.2, decision 6 of pull request #294): a branch move accepted ahead keeps the old branch until it takes effect, so a week can lie in two branches. Ids and dates only.",
   'portal_past_mark_branches(uuid,uuid,timestamp with time zone)':
     'The branches holding the standing past marks of a child from before go-live, only for a child in the account\'s scope at that moment (10, Past marks from before go-live; edge/academic-year: "a branch move keeps them"; task 11.26, plan decision 1, Look first): the family of a child who moved still sees them. Ids only.',
+  'past_mark_students(uuid,text[],boolean)':
+    "The students a file of past marks from before go-live names by UID, for the branch of the request only: those of the branch now, or with a class membership there that holds days (a student who moved away is imported by the branch where the lesson was; task 11.26, review correction 1 of the plan, Look first). Their name and the grade and days of each class membership; another branch is never named. Takes the rows for key share for the confirm.",
   'digest_children(uuid,timestamp with time zone)':
     'The children a parents\' digest may name at a moment: those of portal_children whose link also has "receives notices" on, read before any branch is known (10, The parents\' digest, Privacy; task 11.5, pull request #299). The same columns as portal_children, without the last name.',
   'announcement_recipients(uuid,timestamp with time zone,uuid)':

@@ -254,11 +254,12 @@ grant execute on function portal_past_mark_branches(uuid, uuid, timestamptz) to 
 -- The students a file of past marks names (review correction 1 of the plan): the record of a
 -- student is of their present branch, so a student who moved from A to B after A's go-live is not
 -- readable from A, though A imports A's own lessons for them. For the UIDs given, the students
--- whose present branch is the branch of the import or who have a class membership there, each
--- with their name and every class membership (branch, grade and days only); nobody else. Called
--- with `lock` by the confirm: the rows are taken `for key share` in the order of their id, so a
--- merge or a branch move of one of them waits for the confirm, or commits first and the confirm
--- reads it.
+-- whose present branch is the branch of the import or who have a class membership there that
+-- holds days, each with their name and every class membership (grade and days; the branch only
+-- when it is the branch of the import, `null` otherwise); nobody else. The branch must be one of
+-- the transaction's (the branch of the request). Called with `lock` by the confirm: the rows are
+-- taken `for key share` in the order of their id, so a merge or a branch move of one of them
+-- waits for the confirm, or commits first and the confirm reads it.
 
 create function past_mark_students(branch uuid, uids text[], lock boolean)
 returns table (
@@ -277,20 +278,26 @@ as $$
 declare
   found uuid[];
 begin
+  if not (branch = any ((select public.app_branch_ids())::uuid[])) then
+    raise exception 'past_mark_students reads the branch of the request only.'
+      using errcode = 'insufficient_privilege';
+  end if;
   select coalesce(array_agg(s.id order by s.id), '{}') into found
   from public.students s
   where s.uid = any (uids)
     and (s.branch_id = branch
          or exists (select 1 from public.class_memberships m
-                    where m.student_id = s.id and m.branch_id = branch));
+                    where m.student_id = s.id and m.branch_id = branch
+                      and m.valid_from < m.valid_until));
   if lock then
     perform 1 from public.students s where s.id = any (found) order by s.id for key share;
   end if;
   return query
-    select s.id, s.uid, s.last_name, s.first_name, s.branch_id,
+    select s.id, s.uid, s.last_name, s.first_name,
+      case when s.branch_id = branch then s.branch_id end,
       coalesce((
         select jsonb_agg(jsonb_build_object(
-            'branchId', m.branch_id, 'grade', c.grade,
+            'branchId', case when m.branch_id = branch then m.branch_id end, 'grade', c.grade,
             'validFrom', m.valid_from, 'validUntil', m.valid_until)
           order by m.valid_from)
         from public.class_memberships m
@@ -301,7 +308,8 @@ begin
     where s.id = any (found)
       and (s.branch_id = branch
            or exists (select 1 from public.class_memberships m
-                      where m.student_id = s.id and m.branch_id = branch));
+                      where m.student_id = s.id and m.branch_id = branch
+                        and m.valid_from < m.valid_until));
 end;
 $$;
 

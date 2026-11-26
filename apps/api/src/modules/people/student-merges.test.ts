@@ -1421,6 +1421,9 @@ describe('the merge of two student records', () => {
         fields: { phone: '+998902220002', address: 'Yunusobod 4' },
       });
       const oldRows = await classRowsOf(old.id);
+      // Task 11.26 (review finding 8): a past mark of the merged record in the South, another
+      // branch than the request's, is carried there and named by id in the South's entry.
+      const southUpload = await pastMarks(t.south, again.id);
       const seen = await previewOf(old.id, again.uid);
       expect(seen.branch).toEqual({ id: t.south, name: 'South' });
       const result = merged(
@@ -1460,6 +1463,14 @@ describe('the merge of two student records', () => {
       for (const value of ['+998901110001', '+998902220002', 'Yunusobod 4']) {
         expect(northText).not.toContain(value);
       }
+      for (const rows of await pastOf(southUpload)) {
+        expect(rows.map((one) => [one.student_id, one.branch_id])).toEqual([[old.id, t.south]]);
+      }
+      const carried = (south?.new_value as { rows?: { carried?: Record<string, string[]> } } | null)
+        ?.rows?.carried;
+      expect(carried?.past_attendance).toHaveLength(1);
+      expect(carried?.past_works).toHaveLength(1);
+      expect(northText).not.toContain('Dictation');
       expect(north?.new_value).not.toHaveProperty('filled');
       expect(north?.new_value).not.toHaveProperty('leftValues');
       expect(south?.new_value).toMatchObject({
