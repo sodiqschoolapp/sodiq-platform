@@ -138,11 +138,11 @@ Neither was done by hand (owner, 29 October 2026, issue #42). In their place: th
 
 ## The routes in numbers
 
-- Routes of the application: 561, each called by the role harness as the 15 roles, an account without a role, a Parent account (task 11.1) and nobody, in the own and in another branch.
-- Without sign-in: 5. For the own account: 24. The parent portal: 8. With a permission of the table: 523.
-- Open to integration keys: 98 (tasks 10.10 and 10.11).
-- Routes with a limit inside the route: 167.
-- Routes that take an id: 431, with 881 ids (branch 760, school 78, own 20, none 23).
+- Routes of the application: 560, each called by the role harness as the 15 roles, an account without a role, a Parent account (task 11.1) and nobody, in the own and in another branch.
+- Without sign-in: 5. For the own account: 24. The parent portal: 8. With a permission of the table: 522.
+- Open to integration keys: 97 (tasks 10.10 and 10.11).
+- Routes with a limit inside the route: 166.
+- Routes that take an id: 430, with 877 ids (branch 756, school 78, own 20, none 23).
 - Areas of the permission table: 66.
 
 ## Routes without a role
@@ -271,7 +271,6 @@ A request made with an integration key acts for the person it names, with only t
 | `POST /api/journal/lessons/:lessonId/scores` | the journal: attendance, works and their totals, numbers, topics, comments |
 | `POST /api/journal/lessons/:lessonId/unlocks` | unlock requests, sent by the Teacher and decided by the Head Teacher |
 | `POST /api/journal/lessons/:lessonId/works` | the journal: attendance, works and their totals, numbers, topics, comments |
-| `POST /api/journal/lessons/:lessonId/works/carry` | the journal: attendance, works and their totals, numbers, topics, comments |
 | `POST /api/journal/unlocks/:unlockId/decide` | unlock requests, sent by the Teacher and decided by the Head Teacher |
 | `POST /api/journal/unlocks/:unlockId/withdraw` | unlock requests, sent by the Teacher and decided by the Head Teacher |
 | `POST /api/notifications/:id/read` | the person’s notifications (task 10.11), only those sent for the Teacher, Head Teacher or Senior Head Teacher role |
@@ -585,8 +584,6 @@ For every route that lets in a role for less than its whole branch, the limit of
 | `POST /api/journal/lessons/:lessonId/unlocks` | head_teacher, senior_head_teacher | own_lessons | 02, Head Teacher / Senior Head Teacher: "Also works as a Teacher"; an unlock is asked for a lesson or rating exam the person enters (task 8.4, decision 8) | `src/modules/journal/scope-refusals.test.ts > refuses a Head Teacher and a Senior Head Teacher of the subject an unlock of a lesson and of a rating exam they do not teach, writing nothing` |
 | `POST /api/journal/lessons/:lessonId/works` | tutor, class_teacher | own_lessons | 07, Who can do what, Tutor: "Enters attendance in own Maʼnaviyat soati and Homework slot journals"; 02, Tutor: holds those lessons of own class | `src/modules/journal/scope-refusals.test.ts > refuses the %s of the class every write of a graded lesson of the class, its rating exam and its comments, writing nothing` |
 | `POST /api/journal/lessons/:lessonId/works` | teacher | own_lessons | 07, Who can do what, Teacher: "Enters and edits in own journals inside the edit period"; Substitute teacher: "Enters for the substituted lesson only" | `src/modules/journal/scope-refusals.test.ts > refuses a teacher of another journal every write of the lesson, its rating exam and its comments, writing nothing` |
-| `POST /api/journal/lessons/:lessonId/works/carry` | tutor, class_teacher | own_lessons | 07, Who can do what, Tutor: "Enters attendance in own Maʼnaviyat soati and Homework slot journals"; 02, Tutor: holds those lessons of own class | `src/modules/journal/scope-refusals.test.ts > refuses the %s of the class every write of a graded lesson of the class, its rating exam and its comments, writing nothing` |
-| `POST /api/journal/lessons/:lessonId/works/carry` | teacher | own_lessons | 07, Who can do what, Teacher: "Enters and edits in own journals inside the edit period"; Substitute teacher: "Enters for the substituted lesson only" | `src/modules/journal/scope-refusals.test.ts > refuses a teacher of another journal every write of the lesson, its rating exam and its comments, writing nothing` |
 | `POST /api/journal/unlocks/:unlockId/decide` | head_teacher, senior_head_teacher | subjects | 02, Head Teachers and Senior Head Teachers, Who approves: "A teacher's unlock ... goes to the Head Teacher of the subject"; the Senior Head Teacher of the subject sees it too | `src/modules/journal/scope-refusals.test.ts > lists, decides and withdraws only own requests and those of own subjects, refusing the rest and writing nothing, with a %s` |
 | `POST /api/journal/unlocks/:unlockId/withdraw` | tutor, class_teacher, teacher, head_teacher, senior_head_teacher | own_requests | 02, Own requests; task 8.4: only the person who sent a request withdraws it | `src/modules/journal/scope-refusals.test.ts > lists, decides and withdraws only own requests and those of own subjects, refusing the rest and writing nothing, with a %s` |
 | `POST /api/people/relatives/:id/show` | academic_vice_principal | narrower | edge/people, Personal data: the logged show is the Principal’s; a reader who sees the fields is refused it | `src/modules/people/relatives.test.ts > hides workplace and email from the Principal behind a logged show (decision 5)` |
@@ -1025,10 +1022,6 @@ For every id a route takes, in its path, its query or its body, the record it na
 | `POST /api/journal/lessons/:lessonId/undo` | `body:students[].cells[].workId` | journal work | branch | `src/modules/journal/journal-saves.test.ts > refuses an undo beyond the largest action, before the start, on a cancelled lesson, outside the scope, and ids of another branch or unknown` |
 | `POST /api/journal/lessons/:lessonId/unlocks` | `path:lessonId` | lesson | branch | `src/modules/journal/journal-locks.test.ts > answers 404 with every row and the audit unchanged, as the Super Admin too` |
 | `POST /api/journal/lessons/:lessonId/works` | `path:lessonId` | lesson | branch | `src/modules/journal/journal-works.test.ts > refuses another teacher, an attendance-only subject, another branch’s ids and unknown ones, leaving every row and the audit log as they were` |
-| `POST /api/journal/lessons/:lessonId/works/carry` | `path:lessonId` | lesson | branch | `src/modules/journal/journal-works.test.ts > refuses another teacher, an attendance-only subject, another branch’s ids and unknown ones, leaving every row and the audit log as they were` |
-| `POST /api/journal/lessons/:lessonId/works/carry` | `body:column.workId` | journal work | branch | `src/modules/journal/journal-works.test.ts > refuses another teacher, an attendance-only subject, another branch’s ids and unknown ones, leaving every row and the audit log as they were` |
-| `POST /api/journal/lessons/:lessonId/works/carry` | `body:column.planWorkId` | plan work | branch | `src/modules/journal/journal-works.test.ts > refuses another teacher, an attendance-only subject, another branch’s ids and unknown ones, leaving every row and the audit log as they were` |
-| `POST /api/journal/lessons/:lessonId/works/carry` | `body:column.sourceLessonId` | lesson | branch | `src/modules/journal/journal-works.test.ts > refuses another teacher, an attendance-only subject, another branch’s ids and unknown ones, leaving every row and the audit log as they were` |
 | `POST /api/journal/orphans/:lessonId/assign` | `path:lessonId` | lesson | branch | `src/modules/journal/lesson-status.test.ts > refuses an inactive teacher and the caller’s own staff record, lists no orphan lesson of another branch, and answers 404 for a lesson, a staff record or an assignment of another branch or unknown, leaving every row of both branches as it was` |
 | `POST /api/journal/orphans/:lessonId/assign` | `body:staffId` | staff | branch | `src/modules/journal/lesson-status.test.ts > refuses an inactive teacher and the caller’s own staff record, lists no orphan lesson of another branch, and answers 404 for a lesson, a staff record or an assignment of another branch or unknown, leaving every row of both branches as it was` |
 | `POST /api/journal/orphans/assignments/:assignmentId/withdraw` | `path:assignmentId` | orphan lesson assignment | branch | `src/modules/journal/lesson-status.test.ts > refuses an inactive teacher and the caller’s own staff record, lists no orphan lesson of another branch, and answers 404 for a lesson, a staff record or an assignment of another branch or unknown, leaving every row of both branches as it was` |

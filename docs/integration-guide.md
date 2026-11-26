@@ -588,17 +588,6 @@ Answer `200`:
     title: string | null;
     description: string | null;
     notGiven: boolean;
-    checkAt: {
-      lessonId: uuid;
-      date: date;
-      slot: integer | null;  // min 1
-    } | null;
-    checkedSameDay: boolean;
-    ungraded: "year_end" | "group_closed";
-  }[];
-  checkedToday: {
-    title: string | null;
-    givenOn: date | null;
   }[];
   delivery: {
     notDelivered: boolean;
@@ -897,7 +886,6 @@ Answer `200`:
       unplanned: boolean;
       total: integer | null;  // min 1, max 1000
       notHeld: boolean;
-      carriedFrom: uuid | null;
       version: integer | null;  // min 1
     }[];
     canEnter: boolean;
@@ -930,15 +918,12 @@ Answer `200`:
       unplanned: boolean;
       total: integer | null;  // min 1, max 1000
       notHeld: boolean;
-      carriedFrom: uuid | null;
       version: integer | null;  // min 1
     }[];
     given: {
       workId: uuid | null;
       planWorkId: uuid | null;
       title: string | null;
-      checkAt: uuid | null;
-      ungraded: "year_end" | "group_closed";
       notGiven: boolean;
     }[];
   }[];
@@ -1383,8 +1368,8 @@ Answer `200`:
       accountId: uuid;
       login: string | null;
       name: string | null;
-    };
-    changedHow: "entry" | "late_entry" | "correction" | "exemption" | "transfer" | "cancellation" | "not_held" | "offline_entry" | "undo" | "restored" | "forced_delete" | "leaving";
+    } | null;
+    changedHow: "entry" | "late_entry" | "correction" | "exemption" | "transfer" | "cancellation" | "not_held" | "offline_entry" | "undo" | "restored" | "forced_delete" | "leaving" | "homework_move";
     changedAt: date-time;
     viaKey: {
       name: string;
@@ -1412,7 +1397,7 @@ Answer `200`:
     notHeldAfter: boolean | null;
     titleBefore: string | null;
     titleAfter: string | null;
-    changedHow: "entry" | "not_held" | "carry" | "move" | "takeover" | "separation" | "restored" | "deleted" | "forced_delete";
+    changedHow: "entry" | "not_held" | "carry" | "move" | "takeover" | "separation" | "restored" | "deleted" | "forced_delete" | "homework_move";
     changedBy: {
       accountId: uuid;
       login: string | null;
@@ -1563,7 +1548,6 @@ Answer `200`:
   kind: "classwork" | "homework";
   total: integer | null;  // min 1, max 1000
   notHeld: boolean;
-  carriedFrom: uuid | null;
   title: string | null;
   version: integer;  // min 1
 }
@@ -1619,7 +1603,6 @@ Answer `200`:
   kind: "classwork" | "homework";
   total: integer | null;  // min 1, max 1000
   notHeld: boolean;
-  carriedFrom: uuid | null;
   title: string | null;
   version: integer;  // min 1
 }
@@ -1662,54 +1645,12 @@ Answer `200`:
   kind: "classwork" | "homework";
   total: integer | null;  // min 1, max 1000
   notHeld: boolean;
-  carriedFrom: uuid | null;
   title: string | null;
   version: integer;  // min 1
 }
 ```
 
-#### 27. `POST /api/journal/lessons/{lessonId}/works/carry`
-
-At the check lesson, choose for a homework "not checked" or "check at the next lesson" (once).
-
-Needs `X-Branch-Id`.
-
-| Parameter | In | Required | Type |
-| --- | --- | --- | --- |
-| `lessonId` | path | yes | `uuid` |
-
-Request body (`application/json`):
-
-```ts
-{
-  column: {
-    workId: uuid;
-  } | {
-    planWorkId: uuid;
-    sourceLessonId: uuid;
-  };
-  version: integer | null;  // min 1
-  correction?: {
-    reason: string;  // length ≥ 1, length ≤ 500
-  };
-}
-```
-
-Answer `200`:
-
-```ts
-{
-  id: uuid;
-  kind: "classwork" | "homework";
-  total: integer | null;  // min 1, max 1000
-  notHeld: boolean;
-  carriedFrom: uuid | null;
-  title: string | null;
-  version: integer;  // min 1
-}
-```
-
-#### 28. `POST /api/journal/lessons/{lessonId}/scores`
+#### 27. `POST /api/journal/lessons/{lessonId}/scores`
 
 Save the numbers typed for the works of a lesson, each with the version of the cell as read.
 
@@ -1758,14 +1699,13 @@ Answer `200`:
     kind: "classwork" | "homework";
     total: integer | null;  // min 1, max 1000
     notHeld: boolean;
-    carriedFrom: uuid | null;
     title: string | null;
     version: integer;  // min 1
   }[];
 }
 ```
 
-#### 29. `POST /api/journal/lessons/{lessonId}/not-graded`
+#### 28. `POST /api/journal/lessons/{lessonId}/not-graded`
 
 Set the lesson's empty cells to "not graded" in one call. This completes the lesson and leaves them out of the average.
 
@@ -1804,7 +1744,7 @@ Answer `200`:
 
 ### Journal: rating exam
 
-#### 30. `POST /api/journal/journals/{journalId}/rating/{quarterId}/unlocks`
+#### 29. `POST /api/journal/journals/{journalId}/rating/{quarterId}/unlocks`
 
 A Teacher asks to unlock the rating exam entries of a quarter, with a reason.
 
@@ -1863,7 +1803,7 @@ Answer `201`:
 }
 ```
 
-#### 31. `PUT /api/journal/journals/{journalId}/rating/{quarterId}/date`
+#### 30. `PUT /api/journal/journals/{journalId}/rating/{quarterId}/date`
 
 Set the date of the quarter's rating exam for a journal.
 
@@ -1934,7 +1874,7 @@ Answer `200`:
 }
 ```
 
-#### 32. `PUT /api/journal/journals/{journalId}/rating/{quarterId}/not-held`
+#### 31. `PUT /api/journal/journals/{journalId}/rating/{quarterId}/not-held`
 
 Mark the quarter's rating exam "not held" for a journal, or undo it.
 
@@ -1955,9 +1895,9 @@ Request body (`application/json`):
 }
 ```
 
-Answer `200`: the same shape as the answer of #31.
+Answer `200`: the same shape as the answer of #30.
 
-#### 33. `POST /api/journal/journals/{journalId}/rating/{quarterId}/entries`
+#### 32. `POST /api/journal/journals/{journalId}/rating/{quarterId}/entries`
 
 Save a student's rating exam entry: a score, "did not sit" or "exempt".
 
@@ -1987,9 +1927,9 @@ Request body (`application/json`):
 }
 ```
 
-Answer `200`: the same shape as the answer of #31.
+Answer `200`: the same shape as the answer of #30.
 
-#### 34. `GET /api/journal/journals/{journalId}/rating/{quarterId}/students/{studentId}/history`
+#### 33. `GET /api/journal/journals/{journalId}/rating/{quarterId}/students/{studentId}/history`
 
 The history of one student's rating exam entry.
 
@@ -2040,7 +1980,7 @@ Answer `200`:
 
 ### Journal: comments
 
-#### 35. `PUT /api/journal/comments`
+#### 34. `PUT /api/journal/comments`
 
 Save a comment on a student's cell, lesson or journal.
 
@@ -2095,7 +2035,7 @@ Answer `200`:
 }
 ```
 
-#### 36. `GET /api/journal/comments/history`
+#### 35. `GET /api/journal/comments/history`
 
 The history of a comment.
 
@@ -2121,7 +2061,7 @@ Answer `200`:
     visibilityBefore: "staff" | "parents";
     visibilityAfter: "staff" | "parents";
     changedBy: string | null;
-    changedHow: "entry" | "restored" | "forced_delete";
+    changedHow: "entry" | "restored" | "forced_delete" | "homework_move";
     changedAt: date-time;
     viaKey: {
       name: string;
@@ -2132,7 +2072,7 @@ Answer `200`:
 
 ### Journal: unlock requests
 
-#### 37. `GET /api/journal/unlocks`
+#### 36. `GET /api/journal/unlocks`
 
 Unlock requests: the person's own, or those waiting for their decision (`view`).
 
@@ -2184,7 +2124,7 @@ Answer `200`:
 }
 ```
 
-#### 38. `POST /api/journal/lessons/{lessonId}/unlocks`
+#### 37. `POST /api/journal/lessons/{lessonId}/unlocks`
 
 A Teacher asks to unlock a locked lesson, with a reason.
 
@@ -2202,9 +2142,9 @@ Request body (`application/json`):
 }
 ```
 
-Answer `201`: the same shape as the answer of #30.
+Answer `201`: the same shape as the answer of #29.
 
-#### 39. `POST /api/journal/unlocks/{unlockId}/decide`
+#### 38. `POST /api/journal/unlocks/{unlockId}/decide`
 
 A Head Teacher or Senior Head Teacher approves or refuses an unlock request.
 
@@ -2228,9 +2168,9 @@ Request body (`application/json`):
 }
 ```
 
-Answer `200`: the same shape as the answer of #30.
+Answer `200`: the same shape as the answer of #29.
 
-#### 40. `POST /api/journal/unlocks/{unlockId}/withdraw`
+#### 39. `POST /api/journal/unlocks/{unlockId}/withdraw`
 
 A Teacher withdraws their own unlock request.
 
@@ -2248,11 +2188,11 @@ Request body (`application/json`):
 }
 ```
 
-Answer `200`: the same shape as the answer of #30.
+Answer `200`: the same shape as the answer of #29.
 
 ### Journal: discipline report
 
-#### 41. `GET /api/journal/discipline`
+#### 40. `GET /api/journal/discipline`
 
 Journal discipline report (Head Teacher, Senior Head Teacher): counts per teacher of their subjects between two dates.
 
@@ -2301,7 +2241,7 @@ Answer `200`:
 }
 ```
 
-#### 42. `GET /api/journal/discipline/items`
+#### 41. `GET /api/journal/discipline/items`
 
 The lessons behind one count of one teacher in the discipline report.
 
@@ -2351,7 +2291,7 @@ Answer `200`:
 
 ### Lesson plans
 
-#### 43. `POST /api/plans/journals/{journalId}/not-covered/{itemId}/merge`
+#### 42. `POST /api/plans/journals/{journalId}/not-covered/{itemId}/merge`
 
 A "not covered" item at the end of a quarter is merged into a lesson of the plan.
 
@@ -2633,7 +2573,7 @@ Answer `200`:
 }
 ```
 
-#### 44. `POST /api/plans/journals/{journalId}/not-covered/{itemId}/carry`
+#### 43. `POST /api/plans/journals/{journalId}/not-covered/{itemId}/carry`
 
 A "not covered" item is carried to the next quarter (not in quarter 4).
 
@@ -2652,9 +2592,9 @@ Request body (`application/json`):
 }
 ```
 
-Answer `200`: the same shape as the answer of #43.
+Answer `200`: the same shape as the answer of #42.
 
-#### 45. `POST /api/plans/journals/{journalId}/not-covered/{itemId}/drop`
+#### 44. `POST /api/plans/journals/{journalId}/not-covered/{itemId}/drop`
 
 A "not covered" item is dropped with a reason. Only the approver can drop.
 
@@ -2674,9 +2614,9 @@ Request body (`application/json`):
 }
 ```
 
-Answer `200`: the same shape as the answer of #43.
+Answer `200`: the same shape as the answer of #42.
 
-#### 46. `POST /api/plans/journals/{journalId}/carried/{itemId}/place`
+#### 45. `POST /api/plans/journals/{journalId}/carried/{itemId}/place`
 
 A carried-in item of the next quarter's plan is placed on a lesson.
 
@@ -2697,9 +2637,9 @@ Request body (`application/json`):
 }
 ```
 
-Answer `200`: the same shape as the answer of #43.
+Answer `200`: the same shape as the answer of #42.
 
-#### 47. `GET /api/plans`
+#### 46. `GET /api/plans`
 
 The lesson plans the person may read in the year: a Teacher's own, a Head Teacher's subjects.
 
@@ -2760,7 +2700,7 @@ Answer `200`:
 }
 ```
 
-#### 48. `GET /api/plans/journals/{journalId}`
+#### 47. `GET /api/plans/journals/{journalId}`
 
 One journal's plan for a quarter: its items, one per lesson, with their works and files.
 
@@ -2771,9 +2711,9 @@ Needs `X-Branch-Id`.
 | `quarterId` | query | no | `uuid` |
 | `journalId` | path | yes | `uuid` |
 
-Answer `200`: the same shape as the answer of #43.
+Answer `200`: the same shape as the answer of #42.
 
-#### 49. `GET /api/plans/lessons/{lessonId}`
+#### 48. `GET /api/plans/lessons/{lessonId}`
 
 The plan item of one lesson.
 
@@ -2840,7 +2780,7 @@ Answer `200`:
 }
 ```
 
-#### 50. `POST /api/plans/journals/{journalId}/items`
+#### 49. `POST /api/plans/journals/{journalId}/items`
 
 Add an item to a plan.
 
@@ -2910,7 +2850,7 @@ Answer `201`:
 }
 ```
 
-#### 51. `POST /api/plans/journals/{journalId}/share`
+#### 50. `POST /api/plans/journals/{journalId}/share`
 
 Another journal of the same teacher joins this journal's plan (inside the window).
 
@@ -2929,9 +2869,9 @@ Request body (`application/json`):
 }
 ```
 
-Answer `200`: the same shape as the answer of #43.
+Answer `200`: the same shape as the answer of #42.
 
-#### 52. `POST /api/plans/journals/{journalId}/separate`
+#### 51. `POST /api/plans/journals/{journalId}/separate`
 
 The journal leaves its shared plan, keeping a copy of the items.
 
@@ -2949,9 +2889,9 @@ Request body (`application/json`):
 }
 ```
 
-Answer `200`: the same shape as the answer of #43.
+Answer `200`: the same shape as the answer of #42.
 
-#### 53. `POST /api/plans/journals/{journalId}/copy`
+#### 52. `POST /api/plans/journals/{journalId}/copy`
 
 The items of another plan are copied into this empty plan.
 
@@ -2979,9 +2919,9 @@ Request body (`application/json`):
 }
 ```
 
-Answer `200`: the same shape as the answer of #43.
+Answer `200`: the same shape as the answer of #42.
 
-#### 54. `PUT /api/plans/journals/{journalId}/queue`
+#### 53. `PUT /api/plans/journals/{journalId}/queue`
 
 Insert, delete, merge and reorder items of a plan.
 
@@ -3001,9 +2941,9 @@ Request body (`application/json`):
 }
 ```
 
-Answer `200`: the same shape as the answer of #43.
+Answer `200`: the same shape as the answer of #42.
 
-#### 55. `PUT /api/plans/items/{itemId}`
+#### 54. `PUT /api/plans/items/{itemId}`
 
 Save a plan item: topic, objectives and links, materials, works.
 
@@ -3050,9 +2990,9 @@ Request body (`application/json`):
 }
 ```
 
-Answer `200`: the same shape as the answer of #50.
+Answer `200`: the same shape as the answer of #49.
 
-#### 56. `POST /api/plans/items/{itemId}/clear`
+#### 55. `POST /api/plans/items/{itemId}/clear`
 
 Clear a plan item.
 
@@ -3066,7 +3006,7 @@ No request body.
 
 Answer `204`, no body.
 
-#### 57. `PUT /api/plans/items/{itemId}/files`
+#### 56. `PUT /api/plans/items/{itemId}/files`
 
 Attach a file to a plan item, or to one of its works (`workId`). The body is the file itself; `name` is its file name.
 
@@ -3092,7 +3032,7 @@ Answer `200`:
 }
 ```
 
-#### 58. `GET /api/plans/files/{fileId}`
+#### 57. `GET /api/plans/files/{fileId}`
 
 Download a file of a plan item.
 
@@ -3104,7 +3044,7 @@ Needs `X-Branch-Id`.
 
 Answer `200`: the file, with its own `Content-Type`.
 
-#### 59. `DELETE /api/plans/files/{fileId}`
+#### 58. `DELETE /api/plans/files/{fileId}`
 
 Remove a file of a plan item.
 
@@ -3118,7 +3058,7 @@ Answer `204`, no body.
 
 ### Lesson plans: windows, minimums and edit requests
 
-#### 60. `GET /api/plans/minimums`
+#### 59. `GET /api/plans/minimums`
 
 The minimum number of classworks and homeworks a plan must hold per quarter, by subject.
 
@@ -3146,7 +3086,7 @@ Answer `200`:
 }
 ```
 
-#### 61. `GET /api/plans/windows`
+#### 60. `GET /api/plans/windows`
 
 The plan windows of the year: when plans of each quarter can be written freely.
 
@@ -3186,7 +3126,7 @@ Answer `200`:
 }
 ```
 
-#### 62. `GET /api/plans/requests`
+#### 61. `GET /api/plans/requests`
 
 Plan edit requests: the person's own, or those waiting for their decision (`view`).
 
@@ -3266,7 +3206,7 @@ Answer `200`:
 }
 ```
 
-#### 63. `POST /api/plans/journals/{journalId}/requests`
+#### 62. `POST /api/plans/journals/{journalId}/requests`
 
 A Teacher sends a request to edit their plan after the window: which lessons, and the reason.
 
@@ -3345,7 +3285,7 @@ Answer `201`:
 }
 ```
 
-#### 64. `POST /api/plans/journals/{journalId}/requests/prepared`
+#### 63. `POST /api/plans/journals/{journalId}/requests/prepared`
 
 A Teacher sends the request the system prepared at the window's end, stored on the plan.
 
@@ -3364,9 +3304,9 @@ Request body (`application/json`):
 }
 ```
 
-Answer `200`: the same shape as the answer of #63.
+Answer `200`: the same shape as the answer of #62.
 
-#### 65. `POST /api/plans/journals/{journalId}/requests/prepared/decide`
+#### 64. `POST /api/plans/journals/{journalId}/requests/prepared/decide`
 
 An approver decides that same prepared request at once, without waiting for the Teacher to send it.
 
@@ -3399,9 +3339,9 @@ Request body (`application/json`):
 }
 ```
 
-Answer `200`: the same shape as the answer of #63.
+Answer `200`: the same shape as the answer of #62.
 
-#### 66. `POST /api/plans/requests/{requestId}/send`
+#### 65. `POST /api/plans/requests/{requestId}/send`
 
 A Teacher sends a request the system prepared (after a cancelled lesson, a day off, a new teacher taking over).
 
@@ -3419,9 +3359,9 @@ Request body (`application/json`):
 }
 ```
 
-Answer `200`: the same shape as the answer of #63.
+Answer `200`: the same shape as the answer of #62.
 
-#### 67. `POST /api/plans/requests/{requestId}/decide`
+#### 66. `POST /api/plans/requests/{requestId}/decide`
 
 An approver (Head Teacher, Senior Head Teacher) approves a request with a number of school days, or refuses it with a reason.
 
@@ -3451,9 +3391,9 @@ Request body (`application/json`):
 }
 ```
 
-Answer `200`: the same shape as the answer of #63.
+Answer `200`: the same shape as the answer of #62.
 
-#### 68. `POST /api/plans/requests/decide-event`
+#### 67. `POST /api/plans/requests/decide-event`
 
 An approver decides together every waiting request of one event (for example one day off), by subject if chosen.
 
@@ -3479,7 +3419,7 @@ Answer `200`:
 }
 ```
 
-#### 69. `POST /api/plans/requests/{requestId}/finish`
+#### 68. `POST /api/plans/requests/{requestId}/finish`
 
 A Teacher presses "finished" on an approved request to lock the plan again early.
 
@@ -3491,11 +3431,11 @@ Needs `X-Branch-Id`.
 
 No request body.
 
-Answer `200`: the same shape as the answer of #63.
+Answer `200`: the same shape as the answer of #62.
 
 ### Lesson plans: master plans
 
-#### 70. `GET /api/plans/masters`
+#### 69. `GET /api/plans/masters`
 
 Master plans the person may read, filtered by year, subject, grade or quarter.
 
@@ -3557,7 +3497,7 @@ Answer `200`:
 }
 ```
 
-#### 71. `POST /api/plans/masters`
+#### 70. `POST /api/plans/masters`
 
 A Head Teacher or Senior Head Teacher creates a master plan.
 
@@ -3621,7 +3561,7 @@ Answer `200`:
 }
 ```
 
-#### 72. `GET /api/plans/masters/{masterId}`
+#### 71. `GET /api/plans/masters/{masterId}`
 
 One master plan with its items.
 
@@ -3631,9 +3571,9 @@ Needs `X-Branch-Id`.
 | --- | --- | --- | --- |
 | `masterId` | path | yes | `uuid` |
 
-Answer `200`: the same shape as the answer of #71.
+Answer `200`: the same shape as the answer of #70.
 
-#### 73. `PATCH /api/plans/masters/{masterId}`
+#### 72. `PATCH /api/plans/masters/{masterId}`
 
 Rename a master plan.
 
@@ -3652,9 +3592,9 @@ Request body (`application/json`):
 }
 ```
 
-Answer `200`: the same shape as the answer of #71.
+Answer `200`: the same shape as the answer of #70.
 
-#### 74. `POST /api/plans/masters/{masterId}/archive`
+#### 73. `POST /api/plans/masters/{masterId}/archive`
 
 Archive a master plan.
 
@@ -3672,9 +3612,9 @@ Request body (`application/json`):
 }
 ```
 
-Answer `200`: the same shape as the answer of #71.
+Answer `200`: the same shape as the answer of #70.
 
-#### 75. `POST /api/plans/masters/{masterId}/restore`
+#### 74. `POST /api/plans/masters/{masterId}/restore`
 
 Restore an archived master plan.
 
@@ -3692,9 +3632,9 @@ Request body (`application/json`):
 }
 ```
 
-Answer `200`: the same shape as the answer of #71.
+Answer `200`: the same shape as the answer of #70.
 
-#### 76. `POST /api/plans/masters/{masterId}/items`
+#### 75. `POST /api/plans/masters/{masterId}/items`
 
 Add an item to a master plan.
 
@@ -3726,9 +3666,9 @@ Request body (`application/json`):
 }
 ```
 
-Answer `200`: the same shape as the answer of #71.
+Answer `200`: the same shape as the answer of #70.
 
-#### 77. `PUT /api/plans/masters/{masterId}/items/{itemId}`
+#### 76. `PUT /api/plans/masters/{masterId}/items/{itemId}`
 
 Save an item of a master plan.
 
@@ -3760,9 +3700,9 @@ Request body (`application/json`):
 }
 ```
 
-Answer `200`: the same shape as the answer of #71.
+Answer `200`: the same shape as the answer of #70.
 
-#### 78. `POST /api/plans/masters/{masterId}/items/{itemId}/remove`
+#### 77. `POST /api/plans/masters/{masterId}/items/{itemId}/remove`
 
 Remove an item from a master plan.
 
@@ -3781,9 +3721,9 @@ Request body (`application/json`):
 }
 ```
 
-Answer `200`: the same shape as the answer of #71.
+Answer `200`: the same shape as the answer of #70.
 
-#### 79. `PUT /api/plans/masters/{masterId}/order`
+#### 78. `PUT /api/plans/masters/{masterId}/order`
 
 Reorder the items of a master plan.
 
@@ -3802,9 +3742,9 @@ Request body (`application/json`):
 }
 ```
 
-Answer `200`: the same shape as the answer of #71.
+Answer `200`: the same shape as the answer of #70.
 
-#### 80. `GET /api/plans/journals/{journalId}/master-compare`
+#### 79. `GET /api/plans/journals/{journalId}/master-compare`
 
 The "master updated" comparison of a plan: what changed in its master since the plan took it.
 
@@ -3861,7 +3801,7 @@ Answer `200`:
 }
 ```
 
-#### 81. `POST /api/plans/journals/{journalId}/master-take`
+#### 80. `POST /api/plans/journals/{journalId}/master-take`
 
 The plan takes the master's changes.
 
@@ -3880,9 +3820,9 @@ Request body (`application/json`):
 }
 ```
 
-Answer `200`: the same shape as the answer of #43.
+Answer `200`: the same shape as the answer of #42.
 
-#### 82. `POST /api/plans/journals/{journalId}/master-keep`
+#### 81. `POST /api/plans/journals/{journalId}/master-keep`
 
 The plan keeps its own text after a master change.
 
@@ -3901,9 +3841,9 @@ Request body (`application/json`):
 }
 ```
 
-Answer `200`: the same shape as the answer of #43.
+Answer `200`: the same shape as the answer of #42.
 
-#### 83. `GET /api/plans/parallel`
+#### 82. `GET /api/plans/parallel`
 
 The parallel classes of a grade in a subject and quarter (for sharing or comparing plans).
 
@@ -3944,7 +3884,7 @@ Answer `200`:
 
 ### Lesson plans: reports
 
-#### 84. `GET /api/plans/reports/completeness`
+#### 83. `GET /api/plans/reports/completeness`
 
 Plan completeness report (Head Teacher, Senior Head Teacher): how complete the plans of their subjects are.
 
@@ -4067,7 +4007,7 @@ Answer `200`:
 }
 ```
 
-#### 85. `GET /api/plans/reports/progress`
+#### 84. `GET /api/plans/reports/progress`
 
 Plan progress report (Head Teacher, Senior Head Teacher): how far the lessons held follow the plans.
 
@@ -4150,7 +4090,7 @@ Answer `200`:
 }
 ```
 
-#### 86. `GET /api/plans/reports/requests`
+#### 85. `GET /api/plans/reports/requests`
 
 Plan edit requests report (Head Teacher, Senior Head Teacher).
 
@@ -4221,7 +4161,7 @@ Answer `200`:
 
 ### Results: rating, early warning and reports
 
-#### 87. `GET /api/results/rating/choices`
+#### 86. `GET /api/results/rating/choices`
 
 What the person may open in the rating: years, quarters, journals and classes.
 
@@ -4284,7 +4224,7 @@ Answer `200`:
 }
 ```
 
-#### 88. `GET /api/results/rating/subject`
+#### 87. `GET /api/results/rating/subject`
 
 The rating of one journal's students in a quarter.
 
@@ -4351,7 +4291,7 @@ Answer `200`:
 }
 ```
 
-#### 89. `GET /api/results/rating/class`
+#### 88. `GET /api/results/rating/class`
 
 The rating of one class in a quarter.
 
@@ -4404,7 +4344,7 @@ Answer `200`:
 }
 ```
 
-#### 90. `GET /api/results/rating/classes`
+#### 89. `GET /api/results/rating/classes`
 
 The ratings of the classes of a grade in a quarter.
 
@@ -4453,7 +4393,7 @@ Answer `200`:
 }
 ```
 
-#### 91. `GET /api/results/early-warning`
+#### 90. `GET /api/results/early-warning`
 
 The early-warning list: students whose results or attendance need attention, with the reasons.
 
@@ -4547,7 +4487,7 @@ Answer `200`:
 }
 ```
 
-#### 92. `POST /api/results/early-warning/handled`
+#### 91. `POST /api/results/early-warning/handled`
 
 Add a staff-only note and mark one reason of an entry "handled".
 
@@ -4573,7 +4513,7 @@ Answer `200`:
 }
 ```
 
-#### 93. `GET /api/results/reports/choices`
+#### 92. `GET /api/results/reports/choices`
 
 What the person may open in the results reports.
 
@@ -4624,7 +4564,7 @@ Answer `200`:
 }
 ```
 
-#### 94. `GET /api/results/reports/results-table`
+#### 93. `GET /api/results/reports/results-table`
 
 The results table of one class in a quarter (Head Teacher, Senior Head Teacher: their subjects).
 
@@ -4687,7 +4627,7 @@ Answer `200`:
 }
 ```
 
-#### 95. `GET /api/results/reports/subject-mastery`
+#### 94. `GET /api/results/reports/subject-mastery`
 
 Subject mastery for a subject in a quarter (Head Teacher, Senior Head Teacher).
 
@@ -4767,7 +4707,7 @@ Answer `200`:
 
 ### Notifications
 
-#### 96. `GET /api/notifications`
+#### 95. `GET /api/notifications`
 
 The person’s latest notifications, newest first, and how many are unread: only those sent to them as a Teacher, Head Teacher or Senior Head Teacher. The notices of every branch.
 
@@ -4790,7 +4730,7 @@ Answer `200`:
 }
 ```
 
-#### 97. `POST /api/notifications/read-all`
+#### 96. `POST /api/notifications/read-all`
 
 Mark read every notification the list shows through the key; the others stay unread.
 
@@ -4800,7 +4740,7 @@ No request body.
 
 Answer `204`, no body.
 
-#### 98. `POST /api/notifications/{id}/read`
+#### 97. `POST /api/notifications/{id}/read`
 
 Mark one notification read. A notification the list does not show through the key answers 404 and stays unread.
 
