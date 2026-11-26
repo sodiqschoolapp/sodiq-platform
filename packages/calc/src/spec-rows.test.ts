@@ -120,6 +120,14 @@ const CALCULATION: readonly Row[] = [
     tests: [['quarter.test.ts']],
     tasks: [],
   },
+  // The spec change of 25 November 2026 (decimal scores): the calculation of a score with
+  // decimals is built by task 11.25, which places its test here.
+  {
+    case: 'A score with decimals: 8.25 out of 11, and 7.5 and 9.75 out of 10 in one quarter.',
+    rule: '2cf8d73c4b04dc40',
+    tests: [],
+    tasks: ['11.25'],
+  },
   {
     case: 'Which value gives the grade?',
     rule: '5b613fe1c843087e',
