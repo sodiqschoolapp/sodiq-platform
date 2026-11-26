@@ -415,6 +415,18 @@ export const PERMISSIONS = freezeTable({
     // Task 11.14: approved by the owner in chat on 21 November 2026 (stop-list item 5).
     teacher: ['view'],
   }),
+  /**
+   * `past_marks` (task 11.26; `10`, Past marks from before go-live: "By the Super Admin, and by
+   * the Academic Vice Principal for their own branch"; `02`, Academic Vice Principal). A new area
+   * for new routes, approved by the owner in chat on 25 November 2026 (stop-list item 5, build
+   * plan 11.26), that area only: `view` (the list of uploads and the template), `create` (upload,
+   * preview, confirm), `archive` (withdrawal). No other role reads past marks (`10`, Where they
+   * never appear).
+   */
+  past_marks: rows({
+    super_admin: ['view', 'create', 'archive'],
+    academic_vice_principal: ['view', 'create', 'archive'],
+  }),
   subjects: rows({
     super_admin: ['view', 'create', 'edit', 'archive', 'export'],
     principal: ['view', 'export'],

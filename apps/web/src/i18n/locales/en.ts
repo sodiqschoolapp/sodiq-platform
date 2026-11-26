@@ -5235,6 +5235,11 @@ export const en = {
         upload: 'Staff import file uploaded',
         confirm: 'Staff import confirmed',
       },
+      past_marks: {
+        upload: 'Past marks file uploaded',
+        confirm: 'Past marks import confirmed',
+        withdraw: 'Past marks upload withdrawn',
+      },
       subject_import: {
         upload: 'Subject import file uploaded',
         confirm: 'Subject import confirmed',

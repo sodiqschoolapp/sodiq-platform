@@ -5284,6 +5284,11 @@ export const uz: Texts<'one' | 'other'> = {
         upload: 'Xodimlar importi fayli yuklandi',
         confirm: 'Xodimlar importi tasdiqlandi',
       },
+      past_marks: {
+        upload: 'Oʻtgan baholar fayli yuklandi',
+        confirm: 'Oʻtgan baholar importi tasdiqlandi',
+        withdraw: 'Oʻtgan baholar yuklamasi qaytarib olindi',
+      },
       subject_import: {
         upload: 'Fanlar importi fayli yuklandi',
         confirm: 'Fanlar importi tasdiqlandi',

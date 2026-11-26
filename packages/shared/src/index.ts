@@ -2607,6 +2607,8 @@ export {
 
 export * from './subject-import.js';
 
+export * from './past-marks.js';
+
 export * from './parent-accounts.js';
 export { latinSpelling } from './names.js';
 export * from './portal.js';

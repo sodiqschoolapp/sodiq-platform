@@ -1,5 +1,6 @@
 import {
   ASSISTANT_UPLOAD_MAX_BYTES,
+  PAST_MARK_IMPORT_MAX_BYTES,
   ASSISTANT_UPLOAD_TYPES,
   EXEMPTION_FILE_MAX_BYTES,
   EXEMPTION_FILE_TYPES,
@@ -184,6 +185,19 @@ export const ASSISTANT_FILE_ROUTE: FileRoute = {
   tooLarge: 'assistant_file_too_large',
 };
 
+/**
+ * The upload of a filled template of past marks from before go-live (task 11.26, plan decision
+ * 2, confirmed at review): an Excel workbook of at most 10 MB, since 50,000 rows of 13 columns can
+ * pass the 5 MB of the other imports. The file's name travels in the query.
+ */
+export const PAST_MARK_IMPORT_ROUTE: FileRoute = {
+  method: 'PUT',
+  path: '/api/setup/past-marks/imports',
+  types: STUDENT_IMPORT_TYPES,
+  maxBytes: PAST_MARK_IMPORT_MAX_BYTES,
+  tooLarge: 'import_file_too_large',
+};
+
 export const FILE_ROUTES: readonly FileRoute[] = [
   STAFF_PHOTO_ROUTE,
   OWN_PHOTO_ROUTE,
@@ -196,6 +210,7 @@ export const FILE_ROUTES: readonly FileRoute[] = [
   SUBJECT_IMPORT_ROUTE,
   LOAD_IMPORT_ROUTE,
   PATTERN_IMPORT_ROUTE,
+  PAST_MARK_IMPORT_ROUTE,
   ASSISTANT_FILE_ROUTE,
 ];
 

@@ -267,6 +267,8 @@ const SECURITY_DEFINER_FUNCTIONS: Record<string, string> = {
     "The children a Parent account may see at a moment (open link, portal access on, relative not archived or merged, student active), each with its present branch, first and last name and class: the child scope of every portal route, read before any branch is known, since a parent's session names none and a child may be in any branch (10, What parents see; task 11.2, decisions 3 and 4 of pull request #294, Look first). Nothing else of the student.",
   'portal_child_branches(uuid,uuid,date,date,timestamp with time zone)':
     "The branches of a child's class memberships over a span of dates, with the part of the span each covers, only for a child in the account's scope (task 11.2, decision 6 of pull request #294): a branch move accepted ahead keeps the old branch until it takes effect, so a week can lie in two branches. Ids and dates only.",
+  'portal_past_mark_branches(uuid,uuid,timestamp with time zone)':
+    'The branches holding the standing past marks of a child from before go-live, only for a child in the account\'s scope at that moment (10, Past marks from before go-live; edge/academic-year: "a branch move keeps them"; task 11.26, plan decision 1, Look first): the family of a child who moved still sees them. Ids only.',
   'digest_children(uuid,timestamp with time zone)':
     'The children a parents\' digest may name at a moment: those of portal_children whose link also has "receives notices" on, read before any branch is known (10, The parents\' digest, Privacy; task 11.5, pull request #299). The same columns as portal_children, without the last name.',
   'announcement_recipients(uuid,timestamp with time zone,uuid)':
