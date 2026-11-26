@@ -438,7 +438,101 @@ describe('codes for topics and works (task 11.27)', () => {
     expect(entry?.new_value).toEqual({ topicCode: 'F2' });
   });
 
-  it('copies the codes with a plan from another class, also while off (09, Codes, Copies)', async () => {
+  it('refuses a first code saved on an older read with no code, in the plan and in the journal (edge/lesson-plans)', async () => {
+    const s = await plannedScene();
+    await switchCodes(s.scene, true);
+    const held = await t.database.migrator
+      .selectFrom('lessons')
+      .select('id')
+      .where('class_id', '=', s.scene.classId)
+      .where('subject_id', '=', s.scene.subject)
+      .where('lesson_date', '=', '2026-10-26')
+      .executeTakeFirstOrThrow();
+    await as(s.owner, s.scene.branch, teacherOf(s), async (api) => {
+      // Two tabs read the item with no code; the first sets F1, the second's F2 is stale.
+      const item = planItemSchema.parse(ok(await create(api, s, 1, {}), 201));
+      ok(
+        await api.put(`/api/plans/items/${item.id}`, {
+          base: baseOf(item),
+          values: values({ topicCode: 'F1' }),
+        }),
+      );
+      const stale = await api.put(`/api/plans/items/${item.id}`, {
+        base: baseOf(item),
+        values: values({ topicCode: 'F2' }),
+      });
+      expect([stale.status, codeOf(stale)]).toEqual([409, 'plan_item_stale']);
+      // The journal's topic, read with no code.
+      ok(
+        await api.put(`/api/journal/lessons/${held.id}/topic`, {
+          topic: 'Maps',
+          baseTopic: '',
+          topicCode: 'M1',
+          baseTopicCode: null,
+        }),
+      );
+      const staleTopic = await api.put(`/api/journal/lessons/${held.id}/topic`, {
+        topic: 'Maps',
+        baseTopic: 'Maps',
+        topicCode: 'M2',
+        baseTopicCode: null,
+      });
+      expect([staleTopic.status, codeOf(staleTopic)]).toEqual([409, 'plan_item_stale']);
+      // A work added in the journal, renamed on a read with no code.
+      const added = workAddedSchema.parse(
+        ok(
+          await api.post(`/api/journal/lessons/${held.id}/works`, {
+            kind: 'classwork',
+            title: 'Quiz',
+          }),
+        ),
+      );
+      const path = `/api/journal/lessons/${held.id}/plan-works/${added.planWorkId}/title`;
+      ok(await api.put(path, { title: 'Quiz', baseTitle: 'Quiz', code: 'Q1', baseCode: null }));
+      const staleWork = await api.put(path, {
+        title: 'Quiz',
+        baseTitle: 'Quiz',
+        code: 'Q2',
+        baseCode: null,
+      });
+      expect([staleWork.status, codeOf(staleWork)]).toEqual([409, 'work_stale']);
+    });
+  });
+
+  it('refuses a code of 21 characters on a save and in the journal (09, Codes)', async () => {
+    const s = await plannedScene();
+    await switchCodes(s.scene, true);
+    const held = await t.database.migrator
+      .selectFrom('lessons')
+      .select('id')
+      .where('class_id', '=', s.scene.classId)
+      .where('subject_id', '=', s.scene.subject)
+      .where('lesson_date', '=', '2026-10-26')
+      .executeTakeFirstOrThrow();
+    await as(s.owner, s.scene.branch, teacherOf(s), async (api) => {
+      const item = planItemSchema.parse(ok(await create(api, s, 1, {}), 201));
+      const save = await api.put(`/api/plans/items/${item.id}`, {
+        base: baseOf(item),
+        values: values({ topicCode: 'A'.repeat(21) }),
+      });
+      expect([save.status, codeOf(save)]).toEqual([400, 'validation_failed']);
+      const add = await api.post(`/api/journal/lessons/${held.id}/works`, {
+        kind: 'homework',
+        title: 'Read',
+        code: 'B'.repeat(21),
+      });
+      expect([add.status, codeOf(add)]).toEqual([400, 'validation_failed']);
+      const topic = await api.put(`/api/journal/lessons/${held.id}/topic`, {
+        topic: 'Maps',
+        baseTopic: '',
+        topicCode: 'C'.repeat(21),
+      });
+      expect([topic.status, codeOf(topic)]).toEqual([400, 'validation_failed']);
+      expect((await storedCodes(item.id)).topic).toBeNull();
+    });
+  });
+
+  it('copies the codes with a plan into another quarter of the journal, also while off (09, Codes, Copies)', async () => {
     const s = await plannedScene();
     await switchCodes(s.scene, true);
     await as(s.owner, s.scene.branch, teacherOf(s), async (api) => {

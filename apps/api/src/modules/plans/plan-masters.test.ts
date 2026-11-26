@@ -2180,6 +2180,9 @@ describe('master plans', () => {
         expect([refused.status, codeOf(refused)]).toEqual([400, 'validation_failed']);
         expect(apiErrorSchema.parse(refused.body).error.details?.[0]?.code).toBe('unknown_work');
       }
+      // A code of 21 characters (`09`, Codes: "at most 20 characters").
+      const long = await saveItem(x, master, values('M1', { topicCode: 'A'.repeat(21) }));
+      expect([long.status, codeOf(long)]).toEqual([400, 'validation_failed']);
       expect(await rowsOf({ branch: x.s.branch, subject: x.s.subject })).toEqual(before);
     });
 
