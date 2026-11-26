@@ -91,17 +91,17 @@ describe('workPercent', () => {
   it('always refuses more than two digits after the point', () => {
     fc.assert(
       fc.property(
-        fc
-          .double({ noNaN: true, noDefaultInfinity: true, min: 0, max: 1000 })
-          .filter((value) => {
-            const text = String(value);
-            return /^\d+\.\d{3,}$/.test(text) || /e/.test(text);
-          }),
+        fc.double({ noNaN: true, noDefaultInfinity: true, min: 0, max: 1000 }).filter((value) => {
+          const text = String(value);
+          return /^\d+\.\d{3,}$/.test(text) || /e/.test(text);
+        }),
         (decimal) => {
           const code = codeOf(() => workPercent(decimal, 1000));
           const total = codeOf(() => workPercent(0, decimal));
           expect(['more_than_two_decimals', 'not_whole_number']).toContain(code);
-          expect(['more_than_two_decimals', 'not_whole_number', 'total_below_one']).toContain(total);
+          expect(['more_than_two_decimals', 'not_whole_number', 'total_below_one']).toContain(
+            total,
+          );
         },
       ),
     );

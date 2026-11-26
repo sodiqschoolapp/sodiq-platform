@@ -10,8 +10,6 @@ import type { Transaction } from '../../database/transactions.js';
 import { insertBranch, setEditDays } from '../../testing/branch-filter-sql.js';
 import { CellsKit } from '../../testing/cells-kit.js';
 import { closeQuarter } from '../../testing/closing-kit.js';
-import { FixedClock } from '../../testing/fixed-clock.js';
-import { heldEntry } from '../../testing/held-entry.js';
 import { createTestDatabase, type TestDatabase } from '../../testing/test-database.js';
 
 const MIGRATIONS = path.resolve(
@@ -115,7 +113,6 @@ describe('migration 0189 switches every work score and total to its exact twin',
   let exemption: string;
   let quarter: string;
   let journal: string;
-  let digestId: string;
   let storeBefore: string;
   let before: Record<string, unknown[]>;
 
@@ -333,7 +330,6 @@ describe('migration 0189 switches every work score and total to its exact twin',
       })
       .returning('id')
       .executeTakeFirstOrThrow();
-    digestId = digest.id;
     const entry = {
       digest_id: digest.id,
       account_id: teacher,
@@ -360,7 +356,6 @@ describe('migration 0189 switches every work score and total to its exact twin',
     // Quarter 1 closed, and the lesson of 10 November locked (5 edit days at 20 November).
     await closeQuarter(database, { branchId: branch, quarterId: quarter, accountId: teacher });
     await setEditDays(migrator, branch, 5);
-
 
     // A forced-delete store written before the switch: its cell and work hold whole numbers.
     storeBefore = await kept(database.migrator, branch, teacher, lessons.open, {
@@ -418,7 +413,10 @@ describe('migration 0189 switches every work score and total to its exact twin',
         select format_type(atttypid, atttypmod) as type from pg_attribute
         where attrelid = ${table}::regclass and attname = ${column} and not attisdropped
       `.execute(database.migrator);
-      expect(rows.map((one) => one.type), `${table}.${column}`).toEqual([type]);
+      expect(
+        rows.map((one) => one.type),
+        `${table}.${column}`,
+      ).toEqual([type]);
     }
     // The partitions of the history tables follow their parent.
     const partitions = await sql<{ type: string }>`
@@ -461,15 +459,14 @@ describe('migration 0189 switches every work score and total to its exact twin',
       /journal_cells_attendance_check/,
     );
     expect(
-      (await alone('journal_cells', 'not_graded = true', `id = '${cells.open}'`))
-        .message,
+      (await alone('journal_cells', 'not_graded = true', `id = '${cells.open}'`)).message,
     ).toMatch(/journal_cells_not_graded_check/);
     expect((await alone('exemption_clears', 'score = null', 'mark is null')).message).toMatch(
       /exemption_clears_value_check/,
     );
-    expect(
-      (await alone('digest_entries', 'sent_score = 1', `state = 'removed'`)).message,
-    ).toMatch(/digest_entries_removed_check/);
+    expect((await alone('digest_entries', 'sent_score = 1', `state = 'removed'`)).message).toMatch(
+      /digest_entries_removed_check/,
+    );
     expect((await alone('journal_cells', 'score = 4.555', `id = '${cells.open}'`)).message).toMatch(
       /work_amount_check/,
     );
@@ -564,7 +561,8 @@ async function kept(
   lesson: string,
   values: { score: number; total: number },
 ): Promise<string> {
-  const work = '019a0000-0000-7000-8000-0000000' + String(Math.round(values.total * 100)).padStart(5, '0');
+  const work =
+    '019a0000-0000-7000-8000-0000000' + String(Math.round(values.total * 100)).padStart(5, '0');
   const row = await at(migrator, BEFORE, (transaction: Transaction) =>
     transaction
       .insertInto('forced_deletes')

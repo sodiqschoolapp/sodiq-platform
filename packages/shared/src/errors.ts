@@ -1561,7 +1561,11 @@ export const errorDetailSchema = z.object({
     .optional(),
   /** The stored work, on a `work_stale` (task 8.1): its total, "not held" mark and version. `recordId` is the work. */
   storedWork: z
-    .object({ total: workTotalAmountSchema.nullable(), notHeld: z.boolean(), version: z.int().min(1) })
+    .object({
+      total: workTotalAmountSchema.nullable(),
+      notHeld: z.boolean(),
+      version: z.int().min(1),
+    })
     .optional(),
   /** The lock moment of the lesson or rating exam, on a `journal_locked` (task 8.4). */
   locksAt: z.string().optional(),

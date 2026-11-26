@@ -563,9 +563,7 @@ describe('classwork and homework', () => {
             }),
           ),
         );
-        expect(
-          typed.cells.map((one) => [one.workId, one.score, one.percent]).sort(),
-        ).toEqual(
+        expect(typed.cells.map((one) => [one.workId, one.score, one.percent]).sort()).toEqual(
           [
             [halves, 7.5, 75],
             [short, 6, 80],
