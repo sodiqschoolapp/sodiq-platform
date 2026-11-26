@@ -130,7 +130,8 @@ export function SharedWith({ plan }: { plan: Plan }) {
                   number: one.next.number,
                   date: schoolDateText(one.next.date, i18n.language, false),
                   // Task 11.27: "code · topic" with a code shown.
-                  topic: one.next.topic === null ? '' : codedName(one.next.topicCode, one.next.topic),
+                  topic:
+                    one.next.topic === null ? '' : codedName(one.next.topicCode, one.next.topic),
                 })}
             {one.notCovered > 0 && (
               <>

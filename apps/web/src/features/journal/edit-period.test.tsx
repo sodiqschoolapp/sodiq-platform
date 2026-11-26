@@ -80,6 +80,7 @@ const lesson = (id: string, date: string, canEnter: boolean, lock: EditLock) => 
   planItem: true,
   number: null,
   topic: null,
+  topicCode: null,
   notDelivered: false,
   addedInJournal: [],
   copyFrom: null,
@@ -90,6 +91,7 @@ const lesson = (id: string, date: string, canEnter: boolean, lock: EditLock) => 
 
 const gridOf = (old: EditLock, students = [student(1, 'Zokirov')]): JournalGrid => ({
   journal: {
+    codesOn: false,
     id: JOURNAL,
     unit: UNIT,
     subject: SUBJECT,

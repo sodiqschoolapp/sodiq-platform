@@ -32,6 +32,7 @@ const TODAY = '2026-10-10';
 const texts = en.people.vacancies.fill;
 
 const MATHEMATICS: Subject = {
+  codesOn: false,
   departmentSince: null,
   departmentMove: null,
   id: uid(21),

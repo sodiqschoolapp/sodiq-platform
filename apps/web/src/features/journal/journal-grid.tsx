@@ -1162,7 +1162,10 @@ export function JournalGridView({
         const enterable = works !== undefined && lesson.canEnterWorks && work.total !== null;
         // Task 10.7: the column's accessible name and its hover name the kind in full.
         const kindWord = t(`journal.grid.kind.${work.kind}.word`);
-        const label = t('journal.grid.workLabel', { kind: kindWord, title: codedName(work.code, title) });
+        const label = t('journal.grid.workLabel', {
+          kind: kindWord,
+          title: codedName(work.code, title),
+        });
         // Task 8.7 (From 8.6): an optional cell of a locked lesson open now takes its number.
         const openCell = (cell: JournalStudent['cells'][number] | undefined) =>
           works !== undefined && work.total !== null && cell?.open === true;

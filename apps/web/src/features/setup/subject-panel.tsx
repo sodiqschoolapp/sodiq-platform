@@ -30,7 +30,12 @@ import { SubjectForm, type DepartmentChoice } from './subject-form';
 import { invalidateSubjects, quarterWeightsQuery } from './subjects-api';
 import { WeightsForm, weightsText, type WeightPart, type Weights } from './weights-form';
 import { schoolDateText } from '@/lib/dates';
-import { CHECKBOX, CHECKBOX_TARGET, SECTION_TITLE, SUBSECTION_TITLE } from '@/components/ui/control';
+import {
+  CHECKBOX,
+  CHECKBOX_TARGET,
+  SECTION_TITLE,
+  SUBSECTION_TITLE,
+} from '@/components/ui/control';
 
 const THREE: readonly WeightPart[] = ['attendance', 'classwork', 'homework'];
 const FOUR: readonly WeightPart[] = ['attendance', 'classwork', 'homework', 'ratingExam'];

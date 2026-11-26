@@ -19,6 +19,7 @@ const TODAY = '2026-10-10';
 const texts = en.people.vacancies.acting;
 
 const PHYSICS: Subject = {
+  codesOn: false,
   departmentSince: null,
   departmentMove: null,
   id: uid(21),

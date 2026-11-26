@@ -908,7 +908,11 @@ function LessonMode({
                   className="mr-2 inline-flex items-center gap-1"
                 >
                   <WorkKindTag kind={one.kind} />
-                  <CodedName short code={one.title === null ? null : one.code} name={workName(one)} />
+                  <CodedName
+                    short
+                    code={one.title === null ? null : one.code}
+                    name={workName(one)}
+                  />
                 </span>
               ))}
           </p>
@@ -924,7 +928,11 @@ function LessonMode({
                   className="mr-2 inline-flex items-center gap-1"
                 >
                   <WorkKindTag kind={one.kind} />
-                  <CodedName short code={one.title === null ? null : one.code} name={workName(one)} />
+                  <CodedName
+                    short
+                    code={one.title === null ? null : one.code}
+                    name={workName(one)}
+                  />
                 </span>
               ))}
           </p>

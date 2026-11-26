@@ -34,6 +34,7 @@ const QUARTER = {
 };
 
 const lesson: JournalLesson = {
+  topicCode: null,
   id: LESSON,
   date: '2026-10-26',
   start: 480,
@@ -115,6 +116,7 @@ const EXAM: RatingExam = {
 
 const GRID: JournalGrid = {
   journal: {
+    codesOn: false,
     id: JOURNAL,
     unit: UNIT,
     subject: SUBJECT,

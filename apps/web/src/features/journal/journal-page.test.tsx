@@ -93,6 +93,7 @@ const student = (
 
 const GRID: JournalGrid = {
   journal: {
+    codesOn: false,
     id: JOURNAL,
     unit: UNIT,
     subject: SUBJECT,
@@ -130,6 +131,7 @@ const GRID: JournalGrid = {
       canEnter: false,
       works: [
         {
+          code: null,
           id: uid(70),
           planWorkId: uid(71),
           sourceLessonId: uid(60),
@@ -146,6 +148,7 @@ const GRID: JournalGrid = {
       planItem: true,
       number: null,
       topic: null,
+      topicCode: null,
       notDelivered: false,
       addedInJournal: [],
       copyFrom: null,
@@ -154,6 +157,7 @@ const GRID: JournalGrid = {
       given: [],
     },
     {
+      topicCode: null,
       id: uid(61),
       date: '2026-10-19',
       start: 480,
@@ -177,6 +181,7 @@ const GRID: JournalGrid = {
       given: [],
     },
     {
+      topicCode: null,
       id: uid(62),
       date: '2026-10-26',
       start: 480,

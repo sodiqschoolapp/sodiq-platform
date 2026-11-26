@@ -156,6 +156,7 @@ const SUPPORT: JournalSupport = {
   lessons: [
     {
       lesson: {
+        topicCode: null,
         id: LESSON,
         date: '2026-10-26',
         start: 480,
@@ -275,7 +276,7 @@ const SUPPORT: JournalSupport = {
       kind: 'work',
       at: '2026-10-27T05:01:00.000Z',
       lessonId: LESSON,
-      work: { id: uid(60), kind: 'classwork', title: 'Fractions' },
+      work: { code: null, id: uid(60), kind: 'classwork', title: 'Fractions' },
       totalBefore: null,
       totalAfter: 20,
       notHeldBefore: false,

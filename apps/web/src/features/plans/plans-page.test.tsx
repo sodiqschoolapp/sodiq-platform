@@ -90,15 +90,17 @@ const ITEM: PlanItem = {
   id: uid(40),
   position: 1,
   topic: 'Fractions',
+  topicCode: null,
   objectives: '',
   links: [],
-  classworks: [{ id: uid(41), title: 'Exercise 1', description: '' }],
+  classworks: [{ code: null, id: uid(41), title: 'Exercise 1', description: '' }],
   homeworks: [],
   files: [],
   addedInJournal: [],
 };
 
 const planOf = (canEdit: boolean, item: PlanItem | null = ITEM): Plan => ({
+  codesOn: false,
   journalId: JOURNAL,
   unit: { kind: 'class', id: uid(6), name: '7 Oxford' },
   subject,
@@ -297,6 +299,7 @@ describe('Lesson plans', () => {
         lessonId: LESSONS[1],
         values: {
           topic: 'Decimals',
+          topicCode: null,
           objectives: '',
           links: [],
           classworks: [],
@@ -321,6 +324,7 @@ describe('Lesson plans', () => {
               id: uid(50),
               position: 2,
               topic: 'Decimals',
+              topicCode: null,
               classworks: [],
               homeworks: [homework],
             },
@@ -540,7 +544,7 @@ describe('Lesson plans', () => {
         {
           journalId: OTHER,
           unit: { kind: 'class', id: uid(8), name: '7 Princeton' },
-          next: { number: 2, date: '2026-10-19', topic: 'Ratios' },
+          next: { topicCode: null, number: 2, date: '2026-10-19', topic: 'Ratios' },
           notCovered: 1,
         },
       ],
@@ -751,6 +755,7 @@ describe('the outcomes of items not covered', () => {
       carryClosed: true,
       outcomes: [
         {
+          topicCode: null,
           id: uid(80),
           itemId: uid(81),
           topic: 'Decimals',
@@ -762,6 +767,7 @@ describe('the outcomes of items not covered', () => {
           decidedAt: '2026-10-31T13:00:00.000Z',
         },
         {
+          topicCode: null,
           id: uid(82),
           itemId: uid(83),
           topic: 'Angles',

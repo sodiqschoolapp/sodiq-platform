@@ -27,6 +27,7 @@ const QUARTER = {
 
 /** A column of the plan with no row yet (task 8.1: written at its first write). */
 const TEST: JournalWork = {
+  code: null,
   id: null,
   planWorkId: uid(70),
   sourceLessonId: PLANNED,
@@ -54,6 +55,7 @@ const lesson = (id: string, date: string, more: Partial<JournalLesson> = {}): Jo
   planItem: true,
   number: null,
   topic: null,
+  topicCode: null,
   notDelivered: false,
   addedInJournal: [],
   copyFrom: null,
@@ -116,6 +118,7 @@ const student = (n: number, lastName: string): JournalStudent => ({
 
 const GRID: JournalGrid = {
   journal: {
+    codesOn: false,
     id: JOURNAL,
     unit: UNIT,
     subject: SUBJECT,
@@ -628,8 +631,8 @@ describe('classwork and homework in the grid', () => {
           ...(GRID.lessons[0] as JournalLesson),
           works: [TEST, given, planned],
           given: [
-            { workId: null, planWorkId: uid(72), title: 'Read', notGiven: false },
-            { workId: uid(81), planWorkId: null, title: null, notGiven: false },
+            { code: null, workId: null, planWorkId: uid(72), title: 'Read', notGiven: false },
+            { code: null, workId: uid(81), planWorkId: null, title: null, notGiven: false },
           ],
         },
         GRID.lessons[1] as JournalLesson,

@@ -50,6 +50,7 @@ const academic = (departments = [STEAM, TUTORS]): Division => ({
 });
 
 const MATHS: Subject = {
+  codesOn: false,
   departmentSince: null,
   departmentMove: null,
   id: uid(21),

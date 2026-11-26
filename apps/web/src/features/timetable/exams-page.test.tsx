@@ -55,6 +55,7 @@ const HALL = room(0, 'Hall');
 const ROOM_14 = room(1, 'Room 14');
 
 const MATHS: Subject = {
+  codesOn: false,
   departmentSince: null,
   departmentMove: null,
   id: uid(200),

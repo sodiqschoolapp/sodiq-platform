@@ -396,7 +396,11 @@ function WorkRow({
     <div className="grid gap-2" data-editor-work={work.id ?? work.planWorkId ?? ''}>
       <div className="flex flex-wrap items-center gap-2">
         <WorkKindTag kind={work.kind} />
-        <CodedName className="min-w-0 flex-1 break-words font-medium" code={work.code} name={name} />
+        <CodedName
+          className="min-w-0 flex-1 break-words font-medium"
+          code={work.code}
+          name={name}
+        />
         {extra !== null && <span className="text-muted-foreground">{extra}</span>}
         <label className="flex items-center gap-1.5">
           <span className="text-muted-foreground">{t('journal.editor.total')}</span>

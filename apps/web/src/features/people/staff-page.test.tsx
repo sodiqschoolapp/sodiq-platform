@@ -37,6 +37,7 @@ const MANAGEMENT: Division = {
 };
 
 const MATHEMATICS: Subject = {
+  codesOn: false,
   departmentSince: null,
   departmentMove: null,
   id: uid(21),

@@ -50,6 +50,7 @@ const OXFORD: SchoolClass = {
 };
 
 const subject = (n: number, fields: Partial<Subject> = {}): Subject => ({
+  codesOn: false,
   departmentSince: null,
   departmentMove: null,
   id: uid(200 + n),

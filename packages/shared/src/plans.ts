@@ -137,7 +137,9 @@ export const planWorkSchema = z.object({
 });
 
 /** Task 11.27: a work of the base; a client that never read a code leaves it out. */
-const planBaseWorkSchema = planWorkSchema.extend({ code: z.string().nullable().optional() }).strict();
+const planBaseWorkSchema = planWorkSchema
+  .extend({ code: z.string().nullable().optional() })
+  .strict();
 
 export type PlanWork = z.infer<typeof planWorkSchema>;
 

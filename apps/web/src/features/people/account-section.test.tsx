@@ -124,6 +124,7 @@ const ACCOUNT: AccountDetail = {
 };
 
 const subjectOf = (n: number, en: string, uz: string, ru: string, archived = false): Subject => ({
+  codesOn: false,
   departmentSince: null,
   departmentMove: null,
   id: uid(n),

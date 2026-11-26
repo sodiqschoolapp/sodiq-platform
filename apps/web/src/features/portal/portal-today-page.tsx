@@ -1,4 +1,9 @@
-import { codedName, type PortalMark, type PortalScore, type PortalSubjectGrades } from '@sodiq/shared';
+import {
+  codedName,
+  type PortalMark,
+  type PortalScore,
+  type PortalSubjectGrades,
+} from '@sodiq/shared';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useParams } from '@tanstack/react-router';
 import type { TFunction } from 'i18next';

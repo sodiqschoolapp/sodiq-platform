@@ -32,6 +32,7 @@ const QUARTER = {
 
 /** A column of the plan with no row yet (task 8.1: written at its first write). */
 const TEST: JournalWork = {
+  code: null,
   id: null,
   planWorkId: uid(70),
   sourceLessonId: PLANNED,
@@ -67,6 +68,7 @@ const lesson = (id: string, date: string, more: Partial<JournalLesson> = {}): Jo
   planItem: true,
   number: null,
   topic: null,
+  topicCode: null,
   notDelivered: false,
   addedInJournal: [],
   copyFrom: null,
@@ -129,6 +131,7 @@ const student = (n: number, lastName: string): JournalStudent => ({
 
 const GRID: JournalGrid = {
   journal: {
+    codesOn: false,
     id: JOURNAL,
     unit: UNIT,
     subject: SUBJECT,
@@ -151,14 +154,8 @@ const GRID: JournalGrid = {
       works: [TEST, READ],
       number: 7,
       topic: 'Fractions and their common denominators in practice',
-      given: [
-        {
-          workId: null,
-          planWorkId: uid(71),
-          title: 'Read',
-          notGiven: false,
-        },
-      ],
+      topicCode: null,
+      given: [{ code: null, workId: null, planWorkId: uid(71), title: 'Read', notGiven: false }],
     }),
     lesson(NO_PLAN, '2026-10-26', { planItem: false, number: 8 }),
   ],
@@ -177,6 +174,7 @@ const GRID: JournalGrid = {
 };
 
 const CARD: LessonCard = {
+  codesOn: false,
   lessonId: PLANNED,
   journalId: JOURNAL,
   number: 7,
@@ -187,13 +185,15 @@ const CARD: LessonCard = {
   held: true,
   planItem: true,
   topic: 'Fractions and their common denominators in practice',
+  topicCode: null,
   whole: true,
-  classworks: [{ id: uid(70), title: 'Test', description: 'Ten sums' }],
+  classworks: [{ code: null, id: uid(70), title: 'Test', description: 'Ten sums' }],
   objectives: 'Add fractions',
   links: [],
   files: [],
   givenToday: [
     {
+      code: null,
       planWorkId: uid(71),
       title: 'Read',
       description: 'Pages 10 to 12',

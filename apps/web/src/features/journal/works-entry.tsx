@@ -471,7 +471,9 @@ export function useWorksEntry(
                 saveLessonTopic(lesson.id, {
                   topic,
                   baseTopic: lesson.topic ?? '',
-                  ...(code === undefined ? {} : { topicCode: code, baseTopicCode: lesson.topicCode }),
+                  ...(code === undefined
+                    ? {}
+                    : { topicCode: code, baseTopicCode: lesson.topicCode }),
                   ...(correctionOf(lesson.id) === undefined
                     ? {}
                     : { correction: correctionOf(lesson.id) }),

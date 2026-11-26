@@ -74,6 +74,7 @@ const lesson = (id: string, date: string, canEnter: boolean) => ({
   planItem: true,
   number: null,
   topic: null,
+  topicCode: null,
   notDelivered: false,
   addedInJournal: [],
   copyFrom: null,
@@ -85,6 +86,7 @@ const lesson = (id: string, date: string, canEnter: boolean) => ({
 /** An attendance-only journal (a Ma'naviyat soati of a class): today's lesson entered, an older one read. */
 const GRID: JournalGrid = {
   journal: {
+    codesOn: false,
     id: JOURNAL,
     unit: UNIT,
     subject: SUBJECT,

@@ -269,9 +269,7 @@ export const SETUP_IDS: RouteIds = {
     school('body:departmentId', 'department', SCHOOL_WIDE),
   ],
   // Task 11.27: the codes switch.
-  'PUT /api/setup/subjects/:id/codes': [
-    school('path:id', 'subject', SUBJECTS, [SUBJECT_CODES]),
-  ],
+  'PUT /api/setup/subjects/:id/codes': [school('path:id', 'subject', SUBJECTS, [SUBJECT_CODES])],
   'POST /api/setup/subjects/:id/archive': [school('path:id', 'subject', SUBJECTS, [SUBJECT])],
   'POST /api/setup/subjects/:id/restore': [school('path:id', 'subject', SUBJECTS, [SUBJECT])],
   'GET /api/setup/subjects/:id/quarter-weights': [

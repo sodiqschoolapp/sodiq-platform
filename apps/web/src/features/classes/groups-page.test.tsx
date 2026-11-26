@@ -55,6 +55,7 @@ const YALE = schoolClass(3, { name: 'Yale', language: 'ru' });
 const BROWN = schoolClass(4, { grade: 8, name: 'Brown' });
 
 const subject = (n: number, fields: Partial<Subject> = {}): Subject => ({
+  codesOn: false,
   departmentSince: null,
   departmentMove: null,
   id: uid(200 + n),

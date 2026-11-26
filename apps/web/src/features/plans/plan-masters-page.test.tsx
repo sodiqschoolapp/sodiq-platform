@@ -52,6 +52,7 @@ const MASTERS: PlanMasters = {
 };
 
 const MASTER_ONE: PlanMaster = {
+  codesOn: false,
   ...summary,
   revision: 4,
   masterItems: [
@@ -59,12 +60,14 @@ const MASTER_ONE: PlanMaster = {
       id: uid(40),
       position: 1,
       topic: 'Fractions',
+      topicCode: null,
       objectives: '',
       links: [],
-      classworks: [{ id: uid(41), title: 'Quiz 1', description: '' }],
+      classworks: [{ code: null, id: uid(41), title: 'Quiz 1', description: '' }],
       homeworks: [],
     },
     {
+      topicCode: null,
       id: uid(42),
       position: 2,
       topic: 'Decimals',
@@ -77,6 +80,7 @@ const MASTER_ONE: PlanMaster = {
 };
 
 const PLAN: Plan = {
+  codesOn: false,
   journalId: JOURNAL,
   unit: { kind: 'class', id: uid(6), name: '7 Oxford' },
   subject,
@@ -291,6 +295,7 @@ describe('Master plans', () => {
         revision: 4,
         values: {
           topic: 'Fractions, part 1',
+          topicCode: null,
           objectives: '',
           links: [],
           classworks: [{ title: 'Quiz 1', description: '' }],
@@ -337,6 +342,7 @@ describe('Master plans', () => {
           change: 'changed',
           masterItemId: uid(40),
           master: {
+            topicCode: null,
             topic: 'Fractions, part 1',
             objectives: '',
             links: [],
@@ -344,6 +350,7 @@ describe('Master plans', () => {
             homeworks: [],
           },
           plan: {
+            topicCode: null,
             itemId: uid(50),
             topic: 'Fractions',
             objectives: '',
@@ -358,6 +365,7 @@ describe('Master plans', () => {
           masterItemId: uid(42),
           master: null,
           plan: {
+            topicCode: null,
             itemId: uid(51),
             topic: 'Decimals',
             objectives: '',
@@ -420,8 +428,8 @@ describe('Master plans', () => {
           unit: PLAN.unit,
           grades: [7],
           rows: 8,
-          reached: { number: 3, date: '2026-09-21', topic: 'Percent' },
-          next: { number: 4, date: '2026-09-28', topic: null },
+          reached: { topicCode: null, number: 3, date: '2026-09-21', topic: 'Percent' },
+          next: { topicCode: null, number: 4, date: '2026-09-28', topic: null },
         },
         {
           journalId: uid(2),
