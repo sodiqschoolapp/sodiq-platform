@@ -53,8 +53,16 @@ import { CodedName } from '@/components/coded-name';
 /** A new item's works have no id; task 11.27: their codes go with them. */
 const withoutIds = (values: PlanItemValues) => ({
   ...values,
-  classworks: values.classworks.map(({ id: _id, ...work }) => work),
-  homeworks: values.homeworks.map(({ id: _id, ...work }) => work),
+  classworks: values.classworks.map(({ title, code, description }) => ({
+    title,
+    ...(code === undefined ? {} : { code }),
+    description,
+  })),
+  homeworks: values.homeworks.map(({ title, code, description }) => ({
+    title,
+    ...(code === undefined ? {} : { code }),
+    description,
+  })),
 });
 
 /**

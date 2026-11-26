@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { codedName } from '@sodiq/shared';
 import { cn } from '@/lib/utils';
 import { FOCUS_RING } from '@/components/ui/control';
 
@@ -46,7 +47,7 @@ export function CodedName({
       <button
         type="button"
         title={name}
-        aria-label={`${code} ${name}`}
+        aria-label={codedName(code, name)}
         aria-expanded={open}
         data-code=""
         className={cn('min-w-0 truncate rounded-sm font-semibold', FOCUS_RING)}
