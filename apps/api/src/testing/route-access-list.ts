@@ -28,6 +28,7 @@ const SETTINGS_WRITERS: readonly Role[] = ['super_admin', 'academic_vice_princip
 // Task 2.1, the owner's answer 4 and decision 1: the area `subjects`.
 const SUBJECT_VIEWERS = SETUP_VIEWERS;
 const SUBJECT_WRITERS: readonly Role[] = ['super_admin', 'academic_vice_principal'];
+const PAST_MARK_IMPORTERS: readonly Role[] = ['super_admin', 'academic_vice_principal'];
 
 // Task 2.2a, decision 2 of pull request #53: the areas `staff` and
 // `staff_teaching`. The server further keeps the branches and the status to
@@ -490,6 +491,14 @@ export const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
   'POST /api/setup/subjects': { branch: 'request', roles: SUBJECT_WRITERS },
   // The subject import (the owner's change of 7 November 2026, #316): `subjects` create, and the
   // service also `subjects` edit; both held by the Super Admin and the Academic Vice Principal.
+  // Task 11.26: the import of past marks from before go-live (`past_marks`, the owner's approval
+  // of 25 November 2026, stop-list item 5): the Super Admin and the Academic Vice Principal.
+  'GET /api/setup/past-marks/import-template': { branch: 'request', roles: PAST_MARK_IMPORTERS },
+  'GET /api/setup/past-marks/imports': { branch: 'request', roles: PAST_MARK_IMPORTERS },
+  'PUT /api/setup/past-marks/imports': { branch: 'request', roles: PAST_MARK_IMPORTERS },
+  'POST /api/setup/past-marks/imports/:id/preview': { branch: 'request', roles: PAST_MARK_IMPORTERS },
+  'POST /api/setup/past-marks/imports/:id/confirm': { branch: 'request', roles: PAST_MARK_IMPORTERS },
+  'POST /api/setup/past-marks/imports/:id/withdraw': { branch: 'request', roles: PAST_MARK_IMPORTERS },
   'GET /api/setup/subjects/import-template': { branch: 'request', roles: SUBJECT_WRITERS },
   'PUT /api/setup/subjects/imports': { branch: 'request', roles: SUBJECT_WRITERS },
   'POST /api/setup/subjects/imports/:id/preview': { branch: 'request', roles: SUBJECT_WRITERS },
