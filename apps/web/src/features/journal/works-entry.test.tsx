@@ -271,17 +271,54 @@ describe('classwork and homework in the grid', () => {
     });
   });
 
-  it('refuses a total that is not a whole number from 1 to 1000 in the field', async () => {
+  // Task 11.25b (Look first, decision 1: until then this test refused 2.5): a total is from 1
+  // to 1000 with at most two digits after the point (`07`, The total; `edge/journal`, "A total of
+  // 3000 is typed"), each refusal with its reason (review correction 2).
+  it('refuses a total out of 1 to 1000, with a comma or with three decimals, with its reason', async () => {
     const calls = open();
     fireEvent.click(await screen.findByRole('button', { name: 'Work: Test' }));
     const dialog = await screen.findByRole('dialog');
     const field = within(dialog).getByLabelText(totalOf('Test'));
-    for (const value of ['1001', '0', '2.5']) {
+    for (const [value, reason] of [
+      ['1001', en.journal.works.totalAmount],
+      ['0', en.journal.works.totalAmount],
+      ['0.5', en.journal.works.totalAmount],
+      ['2,5', en.journal.refusals.comma],
+      ['2.555', en.journal.refusals.decimals],
+      ['abc', en.journal.refusals.notNumber],
+    ] as const) {
       fireEvent.change(field, { target: { value } });
       fireEvent.keyDown(field, { key: 'Enter' });
       expect(field.getAttribute('aria-invalid')).toBe('true');
+      expect(field.getAttribute('title')).toBe(reason);
     }
     expect(sent(calls, `PUT /api/journal/lessons/${PLANNED}/works/total`)).toEqual([]);
+  });
+
+  // Task 11.25b, review correction 1: the total field has a point key of its own and takes 7.5.
+  it('types a point in the total with its own key and sends a total of 7.5', async () => {
+    const calls = open({
+      [`PUT /api/journal/lessons/${PLANNED}/works/total`]: () => json(SAVED),
+    });
+    fireEvent.click(await screen.findByRole('button', { name: 'Work: Test' }));
+    const dialog = await screen.findByRole('dialog');
+    const field = within(dialog).getByLabelText<HTMLInputElement>(totalOf('Test'));
+    fireEvent.change(field, { target: { value: '7' } });
+    field.setSelectionRange(1, 1);
+    fireEvent.click(within(dialog).getByRole('button', { name: en.journal.refusals.point }));
+    expect(field.value).toBe('7.');
+    fireEvent.change(field, { target: { value: '7.5' } });
+    fireEvent.keyDown(field, { key: 'Enter' });
+    await waitFor(() => {
+      expect(sent(calls, `PUT /api/journal/lessons/${PLANNED}/works/total`)).toEqual([
+        {
+          column: { planWorkId: uid(70), sourceLessonId: PLANNED },
+          total: 7.5,
+          version: null,
+          confirm: false,
+        },
+      ]);
+    });
   });
 
   it('saves the topic of the lesson on the topic read', async () => {
@@ -605,8 +642,27 @@ describe('classwork and homework in the grid', () => {
     }
     expect(typedWorkEntry('12', 30)).toBe(12);
     expect(typedWorkEntry('', 30)).toBeNull();
-    expect(typedWorkEntry('--', 30)).toBeUndefined();
-    expect(typedWorkEntry('-1', 30)).toBeUndefined();
+    // Task 11.25b: a refused entry gives its reason in place of `undefined`.
+    expect(typedWorkEntry('--', 30)).toEqual({ reason: 'notNumber', min: 0, max: 30 });
+    expect(typedWorkEntry('-1', 30)).toEqual({ reason: 'notNumber', min: 0, max: 30 });
+  });
+
+  // Task 11.25b; `07`, The total; `edge/journal`, "The teacher types "1" then "2" for 12.";
+  // `14`, Rule tests ("scores and totals with one and two decimals (7.5 and 8.25) and a comma
+  // refused").
+  it('reads up to two digits after a point in the cell of a work, and refuses a comma, three decimals and letters', () => {
+    expect(typedWorkEntry('7.5', 10)).toBe(7.5);
+    expect(typedWorkEntry('8.25', 11)).toBe(8.25);
+    expect(typedWorkEntry('8.', 10)).toBe(8);
+    expect(typedWorkEntry(' 10 ', 10)).toBe(10);
+    expect(typedWorkEntry('0.01', 10)).toBe(0.01);
+    expect(typedWorkEntry('7,5', 10)).toEqual({ reason: 'comma', min: 0, max: 10 });
+    expect(typedWorkEntry('7.555', 10)).toEqual({ reason: 'decimals', min: 0, max: 10 });
+    expect(typedWorkEntry('abc', 10)).toEqual({ reason: 'notNumber', min: 0, max: 10 });
+    expect(typedWorkEntry('1.2.3', 10)).toEqual({ reason: 'notNumber', min: 0, max: 10 });
+    expect(typedWorkEntry('.5', 10)).toEqual({ reason: 'notNumber', min: 0, max: 10 });
+    expect(typedWorkEntry('10.01', 10)).toEqual({ reason: 'range', min: 0, max: 10 });
+    expect(typedWorkEntry('6', 7.5)).toBe(6);
   });
 
   it('folds the journal’s reminders under their title, with the count of each kind (task 8.7, 07: "A panel on the journal")', async () => {

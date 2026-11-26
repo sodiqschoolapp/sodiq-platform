@@ -101,10 +101,15 @@ function lineText(
       };
     case 'refusal': {
       const cell = attendance(line.field === 'attendance' ? null : { kind: 'work' });
+      // The value as recorded, as text (task 11.25b, decision 12): a refused 7.555 shows as sent.
       const sent =
         line.field === 'rating'
-          ? String(line.valueSent ?? '—')
-          : cellValueText(t, cell, line.valueSent);
+          ? (line.valueSent ?? '—')
+          : line.valueSent === null
+            ? t('journal.cleared')
+            : line.field === 'attendance'
+              ? cellValueText(t, cell, Number(line.valueSent))
+              : line.valueSent;
       return {
         what: t('journal.support.refused', {
           cell: line.field === 'rating' ? t('journal.support.rating') : workText(t, line.work),

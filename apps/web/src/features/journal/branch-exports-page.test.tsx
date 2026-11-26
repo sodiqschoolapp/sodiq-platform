@@ -238,7 +238,7 @@ const SUPPORT: JournalSupport = {
       lessonId: LESSON,
       field: 'attendance',
       work: null,
-      valueSent: 1,
+      valueSent: '1',
       versionSent: null,
       code: 'journal_locked',
       by,
