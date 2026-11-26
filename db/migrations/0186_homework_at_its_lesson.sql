@@ -30,6 +30,8 @@
 --    homework to move lies in a closed or closing quarter, at a lesson whose
 --    edit period has ended, at a cancelled source, or when a planned homework
 --    would gain a column at such a lesson.
+-- 5. A restore of a forced delete kept before this migration puts a homework
+--    back at the lesson where it was given (journal_restore_names).
 
 create function journal_homework_move_on() returns boolean
 language sql
@@ -642,6 +644,534 @@ create trigger journal_cells_lesson_move
   for each row
   when (old.lesson_id is distinct from new.lesson_id)
   execute function journal_cells_lesson_move();
+
+-- ---------------------------------------------------------------------------
+-- A forced-delete store written before this migration may keep a homework at
+-- the lesson that checked it, given at another lesson. A work is stored at the
+-- lesson where it was given, so its restore puts it, with its cells and
+-- comments, back at that lesson while the lesson exists (the plan of 11.24,
+-- decision 13). The writers of the journal take a row of a store restored in
+-- this transaction at the lesson the store names, or, for a work of the store
+-- and its cells and comments, at the lesson where that work was given; nothing
+-- else passes, and a cell and a work with data are still matched to the store
+-- by their id and values. The bodies are those above and of 0111 to 0157, with
+-- that one change.
+
+create function journal_restore_names(lesson_ref uuid, work_ref uuid) returns boolean
+language sql
+stable
+set search_path = pg_catalog, public
+as $$
+  select forced_restore_names('lesson', lesson_ref) or (
+    work_ref is not null and exists (
+      select 1 from forced_deletes f
+      cross join lateral forced_store_works(f) w
+      where f.restored_xact = pg_current_xact_id()
+        and f.record_type = 'lesson'
+        and w.id = work_ref
+        and w.source_lesson_id = lesson_ref
+    )
+  )
+$$;
+
+grant execute on function journal_restore_names(uuid, uuid) to sodiq_app;
+
+create or replace function journal_cells_edit_guard()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SET search_path TO 'pg_catalog', 'public'
+AS $function$
+declare
+  lock_at timestamptz;
+  plan_work uuid;
+begin
+  -- The homework move of 0186 (the migrator only) is checked by the migration.
+  if journal_homework_move_on() then
+    if tg_op = 'DELETE' then
+      return old;
+    end if;
+    return new;
+  end if;
+  if tg_op = 'DELETE' then
+    -- Only the clearing of an empty lesson and the works triggers delete a cell (0108, 0119).
+    return old;
+  end if;
+  if tg_op = 'INSERT' and journal_restore_names(new.lesson_id, new.work_id) then
+    return new;
+  end if;
+  lock_at := journal_lesson_lock(new.lesson_id);
+  if new.changed_how in ('entry', 'offline_entry', 'not_held', 'undo')
+    and coalesce(journal_correction_reason(), '') = ''
+    and lock_at is not null and class_tutors_moment() >= lock_at
+    and (exemption_reopened_open(new.lesson_id, new.student_id)
+      or journal_optional_open(new.lesson_id, new.student_id)) then
+    new.changed_how := case when new.changed_how = 'undo' then 'undo' else 'late_entry' end;
+    return new;
+  end if;
+  if new.work_id is not null then
+    select w.plan_work_id into plan_work from journal_works w where w.id = new.work_id;
+  end if;
+  new.changed_how := journal_edit_judge_work(
+    new.branch_id, lock_at, new.changed_how, new.changed_by,
+    journal_correction_reason(), new.lesson_id, plan_work
+  );
+  return new;
+end;
+$function$;
+
+create or replace function journal_cells_not_graded()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SET search_path TO 'pg_catalog', 'public'
+AS $function$
+declare
+  lesson_row lessons;
+  work_row journal_works;
+begin
+  if new.score is not null then
+    new.not_graded := false;
+    return new;
+  end if;
+  -- An attendance cell is refused by journal_cells_not_graded_check.
+  if new.work_id is null or not new.not_graded or (tg_op = 'UPDATE' and old.not_graded) then
+    return new;
+  end if;
+  -- A restore of a forced delete gives back the cells as stored (0111).
+  if new.changed_how = 'restored'
+    or (tg_op = 'INSERT' and journal_restore_names(new.lesson_id, new.work_id)) then
+    return new;
+  end if;
+  select * into work_row from journal_works w where w.id = new.work_id for share;
+  if work_row.total is null then
+    raise exception 'journal_cell_no_total'
+      using errcode = 'check_violation', constraint = 'journal_cell_no_total';
+  end if;
+  if work_row.not_held then
+    raise exception 'journal_cell_not_held'
+      using errcode = 'check_violation', constraint = 'journal_cell_not_held';
+  end if;
+  select * into lesson_row from lessons l where l.id = new.lesson_id;
+  perform 1 from class_memberships m
+    where lesson_row.class_id is not null
+      and m.class_id = lesson_row.class_id
+      and m.student_id = new.student_id
+    for share;
+  perform 1 from group_memberships m
+    where lesson_row.group_id is not null
+      and m.group_id = lesson_row.group_id
+      and m.student_id = new.student_id
+    for share;
+  if not lesson_student_expected(new.lesson_id, new.student_id) then
+    raise exception 'journal_cell_not_member'
+      using errcode = 'check_violation', constraint = 'journal_cell_not_member';
+  end if;
+  return new;
+end;
+$function$;
+
+create or replace function journal_cells_write()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SET search_path TO 'pg_catalog', 'public'
+AS $function$
+declare
+  moment timestamptz;
+  lesson_row lessons;
+  work_row journal_works;
+  stored_version integer;
+  restorer uuid;
+begin
+  moment := class_tutors_moment();
+  if moment is null then
+    raise exception 'journal_cell_moment'
+      using errcode = 'check_violation', constraint = 'journal_cell_moment';
+  end if;
+  if tg_op = 'INSERT' and journal_restore_names(new.lesson_id, new.work_id) then
+    select c.version, f.restored_by into stored_version, restorer
+      from forced_deletes f
+      cross join lateral forced_store_cells(f) c
+      where f.restored_xact = pg_current_xact_id()
+        and f.record_type = 'lesson'
+        and (f.record_id = new.lesson_id or exists (
+          select 1 from forced_store_works(f) w
+          where w.id = new.work_id and w.source_lesson_id = new.lesson_id
+        ))
+        and c.id = new.id
+        and c.student_id = new.student_id
+        and c.work_id is not distinct from new.work_id
+        and c.mark is not distinct from new.mark
+        and c.score is not distinct from new.score
+      limit 1;
+    if stored_version is null then
+      raise exception 'journal_cell_restore'
+        using errcode = 'check_violation', constraint = 'journal_cell_restore';
+    end if;
+    new.version := stored_version
+      + case when new.mark is null and new.score is null then 1 else 2 end;
+    new.changed_by := restorer;
+    new.changed_how := 'restored';
+    new.changed_at := moment;
+    return new;
+  end if;
+  if tg_op = 'INSERT' then
+    new.version := 1;
+  else
+    new.version := old.version + 1;
+  end if;
+  new.changed_at := moment;
+  select * into lesson_row from lessons l where l.id = new.lesson_id;
+  if lesson_row.cancel_cause is not null then
+    raise exception 'journal_cell_cancelled'
+      using errcode = 'check_violation', constraint = 'journal_cell_cancelled';
+  end if;
+  if new.mark is null and new.score is null then
+    -- A cleared value: allowed on a lesson that is not cancelled, the old
+    -- value stays in the history.
+    return new;
+  end if;
+  if new.work_id is not null then
+    select * into work_row from journal_works w where w.id = new.work_id for share;
+    if work_row.total is null then
+      raise exception 'journal_cell_no_total'
+        using errcode = 'check_violation', constraint = 'journal_cell_no_total';
+    end if;
+    if new.score > work_row.total then
+      raise exception 'journal_cell_above_total'
+        using errcode = 'check_violation', constraint = 'journal_cell_above_total';
+    end if;
+    if work_row.not_held then
+      raise exception 'journal_cell_not_held'
+        using errcode = 'check_violation', constraint = 'journal_cell_not_held';
+    end if;
+  end if;
+  perform 1 from class_memberships m
+    where lesson_row.class_id is not null
+      and m.class_id = lesson_row.class_id
+      and m.student_id = new.student_id
+    for share;
+  perform 1 from group_memberships m
+    where lesson_row.group_id is not null
+      and m.group_id = lesson_row.group_id
+      and m.student_id = new.student_id
+    for share;
+  if not lesson_student_expected(new.lesson_id, new.student_id) then
+    raise exception 'journal_cell_not_member'
+      using errcode = 'check_violation', constraint = 'journal_cell_not_member';
+  end if;
+  return new;
+end;
+$function$;
+
+create or replace function journal_comments_write()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SET search_path TO 'pg_catalog', 'public'
+AS $function$
+declare
+  moment timestamptz;
+  lesson_row lessons;
+begin
+  if tg_op = 'INSERT' and new.changed_how = 'restored' then
+    if not journal_restore_names(new.lesson_id, new.work_id) then
+      raise exception 'journal_comment_restore'
+        using errcode = 'check_violation', constraint = 'journal_comment_restore';
+    end if;
+    return new;
+  end if;
+  moment := class_tutors_moment();
+  if moment is null then
+    raise exception 'journal_cell_moment'
+      using errcode = 'check_violation', constraint = 'journal_cell_moment';
+  end if;
+  if tg_op = 'INSERT' then
+    new.version := 1;
+  else
+    if new.body is not distinct from old.body and new.visibility = old.visibility then
+      -- A move of the work's lesson (on update cascade), or a write that changes
+      -- nothing: no version, no moment, no author and no check, so the history
+      -- writes no line (code review round 1, defect 2).
+      new.changed_by := old.changed_by;
+      new.changed_how := old.changed_how;
+      return new;
+    end if;
+    new.version := old.version + 1;
+  end if;
+  new.changed_at := moment;
+  if new.body is null then
+    return new;
+  end if;
+  if new.lesson_id is not null then
+    select * into lesson_row from lessons l where l.id = new.lesson_id;
+    if lesson_row.cancel_cause is not null then
+      raise exception 'journal_cell_cancelled'
+        using errcode = 'check_violation', constraint = 'journal_cell_cancelled';
+    end if;
+    perform 1 from class_memberships m
+      where lesson_row.class_id is not null
+        and m.class_id = lesson_row.class_id
+        and m.student_id = new.student_id
+      for share;
+    perform 1 from group_memberships m
+      where lesson_row.group_id is not null
+        and m.group_id = lesson_row.group_id
+        and m.student_id = new.student_id
+      for share;
+    if not lesson_student_expected(new.lesson_id, new.student_id) then
+      raise exception 'journal_cell_not_member'
+        using errcode = 'check_violation', constraint = 'journal_cell_not_member';
+    end if;
+  end if;
+  return new;
+end;
+$function$;
+
+create or replace function journal_works_edit_guard()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SET search_path TO 'pg_catalog', 'public'
+AS $function$
+begin
+  -- The homework move of 0186 (the migrator only) is checked by the migration.
+  if journal_homework_move_on() then
+    if tg_op = 'DELETE' then
+      return old;
+    end if;
+    return new;
+  end if;
+  if tg_op = 'DELETE' then
+    if pg_trigger_depth() > 1 or forced_delete_names('lesson', old.lesson_id) then
+      return old;
+    end if;
+    perform journal_edit_judge(
+      old.branch_id, journal_lesson_lock(old.lesson_id), 'deleted', old.changed_by,
+      journal_correction_reason(), old.lesson_id, null, null
+    );
+    return old;
+  end if;
+  if tg_op = 'INSERT' and journal_restore_names(new.lesson_id, new.id) then
+    return new;
+  end if;
+  if tg_op = 'UPDATE' and new.lesson_id is distinct from old.lesson_id then
+    perform journal_edit_judge_work(
+      old.branch_id, journal_lesson_lock(old.lesson_id), new.changed_how, new.changed_by,
+      journal_correction_reason(), old.lesson_id, new.plan_work_id
+    );
+  end if;
+  new.changed_how := journal_edit_judge_work(
+    new.branch_id, journal_lesson_lock(new.lesson_id), new.changed_how, new.changed_by,
+    journal_correction_reason(), new.lesson_id, new.plan_work_id
+  );
+  return new;
+end;
+$function$;
+
+create or replace function journal_works_history()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SET search_path TO 'pg_catalog', 'public'
+AS $function$
+declare
+  moment timestamptz;
+  author uuid;
+begin
+  if tg_op = 'INSERT' then
+    if new.changed_how = 'restored' or journal_restore_names(new.lesson_id, new.id) then
+      insert into journal_work_history (
+        branch_id, work_id, lesson_id, source_lesson_id, kind, version, total_after,
+        not_held_after, carried_from_after, plan_work_after, title_after, changed_by,
+        changed_how, changed_at
+      ) values (
+        new.branch_id, new.id, new.lesson_id, new.source_lesson_id, new.kind, new.version,
+        new.total, new.not_held, new.carried_from_lesson_id, new.plan_work_id, new.title,
+        new.changed_by, 'restored', coalesce(class_tutors_moment(), new.changed_at)
+      );
+    end if;
+    return null;
+  end if;
+  if tg_op = 'UPDATE' then
+    if new.total is not distinct from old.total
+      and new.not_held = old.not_held
+      and new.lesson_id = old.lesson_id
+      and new.carried_from_lesson_id is not distinct from old.carried_from_lesson_id
+      and new.plan_work_id is not distinct from old.plan_work_id
+      and new.title is not distinct from old.title then
+      return null;
+    end if;
+    insert into journal_work_history (
+      branch_id, work_id, lesson_id, source_lesson_id, kind, version,
+      total_before, total_after, not_held_before, not_held_after, lesson_before,
+      carried_from_after, plan_work_before, plan_work_after, title_before, title_after,
+      changed_by, changed_how, changed_at, reason, unlock_id, orphan_assignment_id,
+      plan_request_id
+    ) values (
+      new.branch_id, new.id, new.lesson_id, new.source_lesson_id, new.kind, new.version,
+      old.total, new.total, old.not_held, new.not_held,
+      case when new.lesson_id <> old.lesson_id then old.lesson_id end,
+      new.carried_from_lesson_id, old.plan_work_id, new.plan_work_id, old.title, new.title,
+      case when journal_homework_move_on() then null else new.changed_by end,
+      case when journal_homework_move_on() then 'homework_move' else new.changed_how end, new.changed_at,
+      journal_line_reason(new.changed_how), journal_line_unlock(new.changed_how),
+      journal_line_orphan(new.changed_how), journal_line_plan_request(new.changed_how)
+    );
+    return null;
+  end if;
+  moment := class_tutors_moment();
+  select f.deleted_by into author from forced_deletes f
+    where f.created_xact = pg_current_xact_id()
+      and f.record_type = 'lesson'
+      and f.record_id = old.lesson_id
+    limit 1;
+  if author is null and pg_trigger_depth() > 1 and old.total is null and not old.not_held then
+    return null;
+  end if;
+  if moment is null then
+    if session_user <> 'sodiq_app' then
+      return null;
+    end if;
+    raise exception 'journal_cell_moment'
+      using errcode = 'check_violation', constraint = 'journal_cell_moment';
+  end if;
+  insert into journal_work_history (
+    branch_id, work_id, lesson_id, source_lesson_id, kind, version,
+    total_before, not_held_before, plan_work_before, title_before, changed_by, changed_how,
+    changed_at, reason, unlock_id, orphan_assignment_id
+  ) values (
+    old.branch_id, old.id, old.lesson_id, old.source_lesson_id, old.kind, old.version + 1,
+    old.total, old.not_held, old.plan_work_id, old.title, coalesce(author, old.changed_by),
+    case when author is null then 'deleted' else 'forced_delete' end, moment,
+    case when author is null then journal_line_reason('deleted') end,
+    case when author is null then journal_line_unlock('deleted') end,
+    case when author is null then journal_line_orphan('deleted') end
+  );
+  return null;
+end;
+$function$;
+
+create or replace function journal_works_title_required()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SET search_path TO 'pg_catalog', 'public'
+AS $function$
+begin
+  if session_user = 'sodiq_app'
+    and new.plan_work_id is null
+    and new.title is null
+    and not journal_restore_names(new.lesson_id, new.id) then
+    raise exception 'journal_work_title_required'
+      using errcode = 'check_violation', constraint = 'journal_work_title_required';
+  end if;
+  return new;
+end;
+$function$;
+
+create or replace function journal_works_write()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SET search_path TO 'pg_catalog', 'public'
+AS $function$
+declare
+  moment timestamptz;
+begin
+  moment := class_tutors_moment();
+  if moment is null and session_user = 'sodiq_app' then
+    raise exception 'journal_cell_moment'
+      using errcode = 'check_violation', constraint = 'journal_cell_moment';
+  end if;
+  if tg_op = 'INSERT' then
+    if new.carried_from_lesson_id is not null then
+      raise exception 'journal_work_fixed'
+        using errcode = 'check_violation', constraint = 'journal_work_fixed';
+    end if;
+    if not journal_restore_names(new.lesson_id, new.id) then
+      new.version := 1;
+      new.changed_at := moment;
+    end if;
+    return new;
+  end if;
+  if new.kind is distinct from old.kind
+    or new.source_lesson_id is distinct from old.source_lesson_id
+      and new.source_lesson_id is not null then
+    raise exception 'journal_work_fixed'
+      using errcode = 'check_violation', constraint = 'journal_work_fixed';
+  end if;
+  if new.lesson_id is distinct from old.lesson_id then
+    if not (journal_homework_move_on() and new.lesson_id = old.source_lesson_id) then
+      raise exception 'journal_work_fixed'
+        using errcode = 'check_violation', constraint = 'journal_work_fixed';
+    end if;
+  end if;
+  if new.carried_from_lesson_id is distinct from old.carried_from_lesson_id and not (
+    new.carried_from_lesson_id is null and (
+      journal_homework_move_on()
+      or not exists (select 1 from lessons l where l.id = old.carried_from_lesson_id)
+    )
+  ) then
+    raise exception 'journal_work_fixed'
+      using errcode = 'check_violation', constraint = 'journal_work_fixed';
+  end if;
+  if journal_homework_move_on() then
+    -- The row keeps its own kind and author; the move is in its history line.
+    new.changed_how := old.changed_how;
+    new.changed_by := old.changed_by;
+  end if;
+  if new.total is null and old.total is not null then
+    raise exception 'journal_work_total_cleared'
+      using errcode = 'check_violation', constraint = 'journal_work_total_cleared';
+  end if;
+  if new.total is distinct from old.total and exists (
+    select 1 from journal_cells c where c.work_id = new.id and c.score > new.total
+  ) then
+    raise exception 'journal_work_total_below'
+      using errcode = 'check_violation', constraint = 'journal_work_total_below';
+  end if;
+  if new.plan_work_id is distinct from old.plan_work_id then
+    if new.plan_work_id is null or (
+      old.plan_work_id is not null and not exists (
+        select 1 from lesson_plan_works nw
+        join lesson_plan_items ni on ni.id = nw.item_id
+        join lesson_plan_works ow on ow.id = old.plan_work_id
+        where nw.id = new.plan_work_id
+          and ni.copied_from = ow.item_id
+          and nw.kind = ow.kind
+          and nw.position = ow.position
+      )
+    ) then
+      raise exception 'journal_work_plan_link'
+        using errcode = 'check_violation', constraint = 'journal_work_plan_link';
+    end if;
+  end if;
+  new.version := old.version + 1;
+  new.changed_at := moment;
+  return new;
+end;
+$function$;
+
+create or replace function journal_works_insert_data()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SET search_path TO 'pg_catalog', 'public'
+AS $function$
+begin
+  if session_user <> 'sodiq_app' or (new.total is null and not new.not_held) then
+    return new;
+  end if;
+  if not exists (
+    select 1 from forced_deletes f
+    cross join lateral forced_store_works(f) w
+    where f.restored_xact = pg_current_xact_id()
+      and f.record_type = 'lesson'
+      and (f.record_id = new.lesson_id or w.source_lesson_id = new.lesson_id)
+      and w.id = new.id
+      and w.kind = new.kind
+      and w.total is not distinct from new.total
+      and w.not_held = new.not_held
+  ) then
+    raise exception 'journal_work_insert_data'
+      using errcode = 'check_violation', constraint = 'journal_work_insert_data';
+  end if;
+  return new;
+end;
+$function$;
 
 -- ---------------------------------------------------------------------------
 -- The move.
