@@ -2,6 +2,21 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 26 November 2026: task 11.27, codes for topics and works
+
+- **0191**: `subjects.codes_on` (off by default), `topic_code` on plan and master items and `work_code` on their works, each at most 20 characters with no space at either end, `null` for none. Columns and checks only.
+- **The switch**: `PUT /api/setup/subjects/:id/codes`, area `subject_codes` (the Super Admin's alone), audited `subject.codes`; on the subject panel read only for everyone else; an action of the assistant (on at the start); not in the subject edit or the import.
+- **The rules** (`plans/plan-codes.ts`): `shownCode` answers a code only while its subject's codes are on (`null` otherwise); `codeToWrite`/`newCode` refuse a code sent while off (`409 plan_codes_off`) and leave a code left out, or as read, untouched. The plan item save, the master item save (works named by `id`), the journal's add, topic and rename follow them; every copy carries the stored codes. The Audit log leaves an off subject's codes out on read.
+- **Readers**: the plan, plans list, shared-with, parallel view, impact preview, master and "master updated", lesson card, journal grid, support view, results breakdown (and the assistant's `explain_result`), the portal's Grades, Homework and Today, the plan and journal exports ("code · name"), the plan requests report. `plan-codes-readers.test.ts` pins the files that name the columns.
+- **Web**: `CodedName` (code first; short form with the name on hover or a tap) in the plan screens, the journal headers, lesson mode, the lesson editor (a code beside the topic and each title), the support view, results and the portal; the code fields show only while the subject's codes are on.
+
+Left out: notifications and the digest show names alone (plan decision 7); works outside the plan take no code (decision 3); the browser test proves the switch on the subject panel only (seeding a branch of its own for codes in the journal was left out; the routes and the web tests prove the rest).
+
+The next sessions must know:
+
+- A new reader of a plan topic or a plan work's title reads the code through `shownCode` with its subject's switch, and goes into `READERS` of `plan-codes-readers.test.ts`; a new copy of items goes into `COPIES` and carries the stored codes.
+- A write that sends a code compares it with the code as read (`codeToWrite`); a write that writes works again (the master save) keeps a hidden code by the work's `id`.
+
 ## 26 November 2026: task 11.26, past marks from before go-live
 
 - **0190**: `past_mark_uploads`, `past_attendance`, `past_works` (branch, upload, year; partial unique indexes over standing rows; `title_key` generated; `withdrawn_at` set once with the upload), `portal_past_mark_branches` and `past_mark_students` (SECURITY DEFINER, on the allow-list). Tables and functions only.
