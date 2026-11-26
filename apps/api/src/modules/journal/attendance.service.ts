@@ -436,10 +436,22 @@ export class AttendanceService {
         ])
         .where('journal_cell_history.student_id', '=', student.id)
         // A cell's lines follow it: a homework moved to the lesson where it was given (0186,
-        // task 11.24) keeps the lines written at the lesson it was saved at.
+        // task 11.24) keeps the lines written at the lesson it was saved at, shown at its lesson
+        // now and never at the one it left.
         .where((eb) =>
           eb.or([
-            eb('journal_cell_history.lesson_id', '=', lesson.id),
+            eb.and([
+              eb('journal_cell_history.lesson_id', '=', lesson.id),
+              eb.not(
+                eb.exists(
+                  eb
+                    .selectFrom('journal_cells as now')
+                    .select('now.id')
+                    .whereRef('now.id', '=', 'journal_cell_history.cell_id')
+                    .where('now.lesson_id', '<>', lesson.id),
+                ),
+              ),
+            ]),
             eb(
               'journal_cell_history.cell_id',
               'in',

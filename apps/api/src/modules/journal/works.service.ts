@@ -65,6 +65,10 @@ const CHECK_VIOLATION = '23514';
 const WORK_REFUSALS = {
   journal_work_total_below: 'total_below_numbers',
   journal_works_limit: 'journal_works_limit',
+  // Task 11.24 (0186): a work stays at the lesson where it was given. No route writes a work's
+  // lesson (the application has no right to); mapped so that no path can answer 500.
+  journal_work_fixed: 'work_not_in_lesson',
+  journal_works_at_source: 'work_not_in_lesson',
   journal_cell_delete: 'work_holds_data',
   // Task 8.8 (decision 4): a planned homework marked "not given" takes no entry (0130).
   journal_work_not_given: 'journal_work_not_given',

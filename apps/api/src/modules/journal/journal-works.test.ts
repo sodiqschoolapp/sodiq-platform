@@ -945,6 +945,19 @@ describe('classwork and homework', () => {
           version: given.version,
         });
         expect(codeOf(elsewhere)).toBe('work_not_in_lesson');
+        // "Not held" through a lesson of the same journal that does not show it: refused, nothing
+        // written (permission review of the branch, should-fix 1).
+        const rows = await rowsOf(s.branch);
+        const entries = await journalEntries();
+        const notHeld = await calls.put(`/api/journal/lessons/${s.third}/works/not-held`, {
+          column: { workId: given.id },
+          notHeld: true,
+          version: given.version,
+          confirm: false,
+        });
+        expect(codeOf(notHeld)).toBe('work_not_in_lesson');
+        expect(await rowsOf(s.branch)).toEqual(rows);
+        expect(await journalEntries()).toEqual(entries);
         ok(
           await calls.put(`/api/journal/lessons/${s.second}/works/total`, {
             column: { workId: given.id },

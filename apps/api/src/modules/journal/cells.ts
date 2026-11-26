@@ -17,6 +17,9 @@ export const CELL_REFUSALS: Readonly<Record<string, ErrorCode>> = {
   // Task 8.4 (0122): the guard of the edit period, which the routes decide first.
   journal_locked: 'journal_locked',
   journal_correction_role: 'journal_correction_role',
+  // Task 11.24 (0186): a cell's lesson changes only by the cascade of the one-time move; no route
+  // writes it (the application has no right to). Mapped so that no path can answer 500.
+  journal_cell_lesson_fixed: 'work_not_in_lesson',
 };
 
 /** One cell to save: the attendance cell (`workId` null) or a work's cell. */
