@@ -1833,7 +1833,6 @@ describe('lesson status, reminders and the counts per teacher', () => {
           `/api/journal/lessons/${lessonId}/works/not-held`,
           { column, notHeld: false, version: null },
         ],
-        ['post', `/api/journal/lessons/${lessonId}/works/carry`, { column, version: null }],
         [
           'post',
           `/api/journal/lessons/${lessonId}/works`,

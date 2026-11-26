@@ -874,9 +874,6 @@ export const en = {
     work_planned:
       'This work comes from the lesson plan and takes its title from it. Change the title in the plan.',
     journal_work_title_required: 'Type a title for the work, at most 60 characters.',
-    work_holds_numbers: 'This homework already has numbers at this lesson, so it is checked here.',
-    work_carried: 'This homework was already moved to the next lesson once.',
-    no_next_lesson: 'The journal has no later lesson to check this homework at.',
     work_total_missing: 'Set the total of the work first, then type the numbers.',
     score_above_total:
       'The number is above the total of the work. Type a number from 0 to the total.',

@@ -2216,7 +2216,8 @@ export class ClosingService {
       push('no_attendance', entry.journalId, entry.teacherId, { lessons: entry.lessons });
     }
     // A counted work of the lesson with no total, or a number waited for missing (07, Lesson
-    // status; the homework checked at a lesson is counted there, never where it was given).
+    // status; task 11.24: a homework is counted at the lesson where it was given, so homework of
+    // the last lesson of a quarter is that quarter's, `07`, Closing a quarter).
     for (const entry of grouped((id) => (statuses.get(id)?.counts?.worksMissing ?? 0) > 0)) {
       push('numbers_missing', entry.journalId, entry.teacherId, { lessons: entry.lessons });
     }

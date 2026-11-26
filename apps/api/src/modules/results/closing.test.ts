@@ -1524,10 +1524,11 @@ describe('the closing checklist (07, Closing a quarter)', () => {
     expect(await closingAudit()).toBe(before);
   });
 
-  it('leaves homework given at the last lesson of the quarter out of the open items', async () => {
+  it('counts homework given at the last lesson of the quarter as an open item of that quarter', async () => {
     const b = await base();
-    // 07: "Homework given at the last lesson of the quarter is not an open item; it belongs to
-    // the next quarter." A homework given by hand on the 26th (stored where it is given).
+    // Task 11.24 (07, Closing a quarter): "Homework given at the last lesson of the quarter
+    // belongs to that quarter, like every work of that lesson." A homework given by hand on the
+    // 26th, the quarter's last lesson, with no number for Aziz.
     await t.database.migrator
       .insertInto('journal_works')
       .values({
@@ -1546,13 +1547,21 @@ describe('the closing checklist (07, Closing a quarter)', () => {
     const list = await vice(b.s.branch, async ({ get }) =>
       checklistOf(await get(b.s.branch, path(b.q1))),
     );
-    expect(lessonsWith(list)).toEqual([b.lessons.l12.id]);
-    // A classwork of the 26th with no number for Aziz is an open item: the check can fail.
-    await work(b.s.branch, b.lessons.l26.id);
+    expect(lessonsWith(list)).toEqual([b.lessons.l12.id, b.lessons.l26.id]);
+    // Once Aziz has a number for it, the 26th is no open item: the homework was what it lacked.
+    const homework = await t.database.migrator
+      .selectFrom('journal_works')
+      .select('id')
+      .where('lesson_id', '=', b.lessons.l26.id)
+      .where('kind', '=', 'homework')
+      .executeTakeFirstOrThrow();
+    await saveOn(b.s.branch, b.lessons.l26.date, [
+      { lessonId: b.lessons.l26.id, studentId: b.aziz, workId: homework.id, value: 8 },
+    ]);
     const after = await vice(b.s.branch, async ({ get }) =>
       checklistOf(await get(b.s.branch, path(b.q1))),
     );
-    expect(lessonsWith(after)).toEqual([b.lessons.l12.id, b.lessons.l26.id]);
+    expect(lessonsWith(after)).toEqual([b.lessons.l12.id]);
   });
 
   it('warns of a lesson plan that is not complete (07; From 8.8)', async () => {

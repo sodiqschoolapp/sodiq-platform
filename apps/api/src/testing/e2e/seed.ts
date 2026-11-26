@@ -8900,7 +8900,8 @@ try {
         .insertInto('journal_works')
         .values({
           branch_id: portalBranch,
-          lesson_id: lessonOn.get(-1) ?? '',
+          // Task 11.24 (0186): a homework is stored at the lesson where it was given.
+          lesson_id: lessonOn.get(-2) ?? '',
           source_lesson_id: lessonOn.get(-2) ?? '',
           kind: 'homework',
           title: 'Read pages 20 to 24',

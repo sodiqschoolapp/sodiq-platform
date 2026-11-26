@@ -888,10 +888,6 @@ export const uz: Texts<'one' | 'other'> = {
     work_planned:
       'Bu ish dars rejasidan olingan va nomi ham rejadan olinadi. Nomni rejada oʻzgartiring.',
     journal_work_title_required: 'Ish nomini kiriting, koʻpi bilan 60 ta belgi.',
-    work_holds_numbers:
-      'Bu uyga vazifaning shu darsda sonlari bor, shuning uchun u shu yerda tekshiriladi.',
-    work_carried: 'Bu uyga vazifa bir marta keyingi darsga koʻchirilgan.',
-    no_next_lesson: 'Jurnalda bu uyga vazifani tekshirish uchun keyingi dars yoʻq.',
     work_total_missing: 'Avval ishning jamini belgilang, soʻng sonlarni kiriting.',
     score_above_total: 'Son ishning jamidan katta. 0 dan jamigacha son kiriting.',
     work_not_held:

@@ -568,23 +568,10 @@ describe('the edit period in the database', () => {
           .then((row) => row.id),
       );
 
-    it('refuses a carry, a total and the delete of a work after the lock', async () => {
+    // Task 11.24: the carry is gone (the application has no right to write it, 0186).
+    it('refuses a total and the delete of a work after the lock', async () => {
       const { lesson: id } = await scene();
       const homework = await work(BEFORE, id);
-      const carry = await refusal(
-        inBranch(north, LOCKED, (transaction) =>
-          transaction
-            .updateTable('journal_works')
-            .set({
-              carried_from_lesson_id: id,
-              changed_by: teacher.accountId,
-              changed_how: 'carry',
-            })
-            .where('id', '=', homework)
-            .execute(),
-        ),
-      );
-      expect(carry.constraint).toBe('journal_locked');
       const total = await refusal(
         inBranch(north, LOCKED, (transaction) =>
           transaction
@@ -701,7 +688,7 @@ describe('the edit period in the database', () => {
       ]);
     });
 
-    it('writes a carry under an unlock as late_entry with the unlock in its line', async () => {
+    it('writes a total under an unlock as late_entry with the unlock in its line', async () => {
       const { lesson: id } = await scene();
       const homework = await work(BEFORE, id);
       const unlock = await unlocked(id);

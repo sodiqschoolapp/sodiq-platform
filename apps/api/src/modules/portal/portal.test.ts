@@ -786,15 +786,15 @@ describe('the parent portal', () => {
       }
     });
 
-    it('shows a homework added by hand with the title typed for it (10.6)', async () => {
+    // Task 11.24: by the date it was given, with no due date (`10`, Homework).
+    it('shows a homework added by hand with the title typed for it (10.6), by the date given', async () => {
       const given = a.lessons.find((one) => one.date === '2026-10-12');
-      const checked = a.lessons.find((one) => one.date === '2026-10-19');
-      if (given === undefined || checked === undefined) throw new Error('The scene has them.');
+      if (given === undefined) throw new Error('The scene has it.');
       const work = await t.database.migrator
         .insertInto('journal_works')
         .values({
           branch_id: a.branch,
-          lesson_id: checked.id,
+          lesson_id: given.id,
           source_lesson_id: given.id,
           kind: 'homework',
           title: 'Read chapter 3',
@@ -803,9 +803,10 @@ describe('the parent portal', () => {
         .executeTakeFirstOrThrow();
       try {
         const week = await homeworkOf(child, '2026-10-12');
-        expect(week.homework.map((one) => [one.title, one.dueOn, one.files])).toEqual([
-          ['Read chapter 3', '2026-10-19', []],
+        expect(week.homework.map((one) => [one.givenOn, one.title, one.files])).toEqual([
+          ['2026-10-12', 'Read chapter 3', []],
         ]);
+        expect(Object.keys(week.homework[0] ?? {})).not.toContain('dueOn');
       } finally {
         await t.database.migrator.deleteFrom('journal_works').where('id', '=', work.id).execute();
       }
@@ -813,13 +814,12 @@ describe('the parent portal', () => {
 
     it('shows a homework added by hand before 10.6 with no title, by its number', async () => {
       const given = a.lessons.find((one) => one.date === '2026-10-19');
-      const checked = a.lessons.find((one) => one.date === '2026-10-26');
-      if (given === undefined || checked === undefined) throw new Error('The scene has them.');
+      if (given === undefined) throw new Error('The scene has it.');
       const work = await t.database.migrator
         .insertInto('journal_works')
         .values({
           branch_id: a.branch,
-          lesson_id: checked.id,
+          lesson_id: given.id,
           source_lesson_id: given.id,
           kind: 'homework',
         })
