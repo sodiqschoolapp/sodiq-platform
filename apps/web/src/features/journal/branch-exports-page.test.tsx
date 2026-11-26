@@ -243,6 +243,18 @@ const SUPPORT: JournalSupport = {
       code: 'journal_locked',
       by,
     },
+    // Task 11.25b, decision 12: a refused number as sent, as text.
+    {
+      kind: 'refusal',
+      at: '2026-10-26T04:02:00.000Z',
+      lessonId: LESSON,
+      field: 'score',
+      work: { id: uid(60), kind: 'classwork', title: 'Fractions' },
+      valueSent: '7.555',
+      versionSent: null,
+      code: 'score_decimals',
+      by,
+    },
     {
       kind: 'cell',
       at: '2026-10-27T05:00:00.000Z',
@@ -463,6 +475,12 @@ describe('the support view', () => {
         'refusal',
         'Refused: Attendance, sent 1 (Present)',
         en.errors.journal_locked,
+        'Karimova Aziza',
+      ],
+      [
+        'refusal',
+        'Refused: Classwork: Fractions, sent 7.555',
+        en.errors.score_decimals,
         'Karimova Aziza',
       ],
       [

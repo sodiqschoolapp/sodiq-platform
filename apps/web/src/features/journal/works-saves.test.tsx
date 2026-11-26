@@ -269,6 +269,41 @@ describe('saving a number of a work', () => {
     expect(keys[1]).toBe(keys[0]);
   });
 
+  // Task 11.25b (`07`, Saving: "entries wait on the device and are sent when it returns";
+  // `.claude/rules/journal.md`: "Nothing a teacher typed may be lost"): an unsent 7.5 stays 7.5 on
+  // screen and is sent again as 7.5, never rounded.
+  it('keeps an unsent 7.5 as 7.5 and sends it again as 7.5', async () => {
+    let answered = false;
+    const calls = fakeApi({
+      [SCORES]: () => {
+        if (!answered) {
+          answered = true;
+          throw new TypeError('Failed to fetch');
+        }
+        return answer(7.5, 2);
+      },
+    });
+    const { client, type, state } = draw();
+    type(7.5);
+    await waitFor(() => {
+      expect(state()).toBe('failed');
+    });
+    expect(scoreOf(client)).toBe(7.5);
+    const notice = document.querySelector<HTMLElement>('[data-unsent-cells]');
+    fireEvent.click(
+      within(notice as HTMLElement).getByRole('button', { name: en.journal.saving.retry }),
+    );
+    await waitFor(() => {
+      expect(state()).toBe('saved');
+    });
+    const bodies = calls.filter((call) => call.route === SCORES).map((call) => call.body);
+    expect(bodies).toHaveLength(2);
+    for (const body of bodies) {
+      expect(body).toMatchObject({ saves: [{ studentId: ZOKIROV, score: 7.5 }] });
+    }
+    expect(scoreOf(client)).toBe(7.5);
+  });
+
   it('keeps a number refused as from an outdated page "not saved" (edge/system-behaviour)', async () => {
     fakeApi({ [SCORES]: () => refusal('app_outdated', 409) });
     const { client, type, state } = draw();
