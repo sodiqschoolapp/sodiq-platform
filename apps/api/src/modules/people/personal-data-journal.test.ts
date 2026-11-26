@@ -74,6 +74,30 @@ describe('the marks and attendance of the student report', () => {
     await t.close();
   });
 
+  // Task 11.25b (`.claude/rules/api.md`: "A value that the task reads in a new way has a test at
+  // every reader of it, the personal-data report … included"): a number and a total with decimals
+  // are in the report exactly as typed.
+  it('holds a number of 6.25 out of a total of 7.5 exactly, in the cells and the history', async () => {
+    const [pupil] = await cells.lessons.pupils(t.north, classId, 1);
+    const studentId = pupil ?? '';
+    const lesson = await cells.lesson(t.north, year, classId, '2026-10-14');
+    const work = await workWithTotal(t.database.migrator, {
+      branchId: t.north,
+      lessonId: lesson,
+      total: 7.5,
+    });
+    await save(
+      t.north,
+      [{ lessonId: lesson, studentId, workId: work, value: 6.25, version: null }],
+      '2026-10-14T10:00:00+05:00',
+    );
+    const { journal } = await report(studentId);
+    expect(journal.cells.map((cell) => [cell.workKind, cell.total, cell.value])).toEqual([
+      ['classwork', 7.5, 6.25],
+    ]);
+    expect(journal.history.map((line) => [line.before, line.after])).toEqual([[null, 6.25]]);
+  });
+
   it('holds the cells with a value and every line of the student, also of a cell now empty', async () => {
     const [pupil, other] = await cells.lessons.pupils(t.north, classId, 2);
     const studentId = pupil ?? '';

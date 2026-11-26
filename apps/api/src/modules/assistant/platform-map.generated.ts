@@ -13729,6 +13729,34 @@ export const PLATFORM_MAP_SOURCE: unknown = {
    "description": "Sets the student's cell of this work to not graded (-); pressing it again clears it."
   },
   {
+   "id": "features/journal/lesson-mode-score.tsx#button:journal.refusals.point",
+   "kind": "button",
+   "label": {
+    "uz": "Nuqta qoʻyish",
+    "ru": "Поставить точку",
+    "en": "Type a point"
+   },
+   "pages": [
+    "/journal/$journalId"
+   ],
+   "parent": null,
+   "roles": [
+    "super_admin",
+    "principal",
+    "academic_vice_principal",
+    "spiritual_vice_principal",
+    "head_tutor",
+    "tutor",
+    "class_teacher",
+    "senior_head_teacher",
+    "head_teacher",
+    "teacher"
+   ],
+   "operations": [],
+   "opens": null,
+   "description": "Types a point in the number field beside it, for a number with decimals such as 7.5."
+  },
+  {
    "id": "features/journal/orphans-page.tsx#button:journal.orphans.withdraw",
    "kind": "button",
    "label": {

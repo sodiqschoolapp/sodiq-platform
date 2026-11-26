@@ -486,6 +486,65 @@ describe('classwork and homework in the grid', () => {
     },
   );
 
+  // Task 11.25b (`edge/journal`, "The teacher types "1" then "2" for 12.": "Letters, a comma, …
+  // and more than two digits after the point are refused in the cell"): the grid's cell names the
+  // reason, and a number with a point is sent as typed.
+  it('refuses 7,5 and 7.555 typed in a grid cell with their reasons, and sends 7.5', async () => {
+    const grid: JournalGrid = {
+      ...GRID,
+      lessons: GRID.lessons.map((one, index) =>
+        index > 0
+          ? one
+          : { ...one, works: one.works.map((work) => ({ ...work, id: uid(80), total: 10 })) },
+      ),
+    };
+    const calls = fakeApi({
+      'GET /api/auth/session': () =>
+        json(sessionOf({ assignments: [{ role: 'teacher', branchId: NORTH.id }] })),
+      [`GET /api/journal/journals/${JOURNAL}`]: () => json(grid),
+    });
+    renderApp(`/journal/${JOURNAL}`);
+    const type = async (text: string) => {
+      const cell = await waitFor(() => {
+        const found = document.querySelector<HTMLElement>(
+          `[row-id="${uid(101)}"] [col-id="${PLANNED}:${uid(80)}"]`,
+        );
+        expect(found).not.toBeNull();
+        return found as HTMLElement;
+      });
+      fireEvent.click(cell);
+      fireEvent.keyDown(cell, { key: 'Enter', code: 'Enter' });
+      const input = await waitFor(() => {
+        const found = cell.querySelector<HTMLInputElement>('input');
+        expect(found).not.toBeNull();
+        return found as HTMLInputElement;
+      });
+      // The grid's editor reads its value from the input event.
+      fireEvent.input(input, { target: { value: text } });
+      fireEvent.keyDown(input, { key: 'Enter', code: 'Enter' });
+    };
+    await type('7,5');
+    expect((await screen.findByRole('alert')).textContent).toBe(en.journal.refusals.comma);
+    await type('7.555');
+    await waitFor(() => {
+      expect(document.querySelector('[data-refused-number]')?.textContent).toBe(
+        en.journal.refusals.decimals,
+      );
+    });
+    expect(
+      calls.filter((call) => call.route === `POST /api/journal/lessons/${PLANNED}/scores`),
+    ).toEqual([]);
+    await type('7.5');
+    await waitFor(() => {
+      expect(
+        calls.filter((call) => call.route === `POST /api/journal/lessons/${PLANNED}/scores`)[0]
+          ?.body,
+      ).toMatchObject({
+        saves: [{ studentId: uid(101), column: { workId: uid(80) }, score: 7.5, version: null }],
+      });
+    });
+  });
+
   it('asks before deleting a work with numbers, naming the count, and keeps it out of the journal with its numbers in the history', async () => {
     const grid: JournalGrid = {
       ...GRID,

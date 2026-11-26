@@ -96,12 +96,13 @@ describe('workPercent', () => {
           return /^\d+\.\d{3,}$/.test(text) || /e/.test(text);
         }),
         (decimal) => {
-          const code = codeOf(() => workPercent(decimal, 1000));
-          const total = codeOf(() => workPercent(0, decimal));
-          expect(['more_than_two_decimals', 'not_whole_number']).toContain(code);
-          expect(['more_than_two_decimals', 'not_whole_number', 'total_below_one']).toContain(
-            total,
-          );
+          // Three or more digits after the point: `more_than_two_decimals`; an exponent form
+          // (1e-7): `not_whole_number`, as version 8 refused it. The total is read first.
+          const expected = /e/.test(String(decimal))
+            ? 'not_whole_number'
+            : 'more_than_two_decimals';
+          expect(codeOf(() => workPercent(decimal, 1000))).toBe(expected);
+          expect(codeOf(() => workPercent(0, decimal))).toBe(expected);
         },
       ),
     );

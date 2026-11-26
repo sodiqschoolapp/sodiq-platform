@@ -223,6 +223,8 @@ export const DESCRIPTIONS: Readonly<Record<string, string>> = {
     'Chooses the academic year whose journals are listed.',
   'features/journal/journals-page.tsx#tab:journal.page.tabs':
     'Switches the list between the journals of classes and those of groups.',
+  'features/journal/lesson-mode-score.tsx#button:journal.refusals.point':
+    'Types a point in the number field beside it, for a number with decimals such as 7.5.',
   'features/journal/lesson-mode-score.tsx#button:journal.notGraded.typeFor':
     "Sets the student's cell of this work to not graded (-); pressing it again clears it.",
   'features/journal/orphans-page.tsx#button:journal.orphans.withdraw':

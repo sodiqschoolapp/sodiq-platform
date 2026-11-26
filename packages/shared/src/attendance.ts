@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { workAmountSchema } from './work-amount.js';
 import { schoolDateSchema } from './academic-year.js';
 import { correctionSchema } from './journal-correction.js';
 import {
@@ -118,8 +119,9 @@ export const cellHistorySchema = z.object({
       /** `null`: the attendance cell. */
       work: z.object({ id: z.uuid(), kind: cellWorkKindSchema }).nullable(),
       version: z.int().min(1),
-      before: z.int().nullable(),
-      after: z.int().nullable(),
+      /** A mark, or a work's number with up to two decimals (task 11.25b). */
+      before: workAmountSchema.nullable(),
+      after: workAmountSchema.nullable(),
       /** `null` for a line the platform wrote: the homework move of 25 November 2026 (0186). */
       changedBy: accountNamedSchema.nullable(),
       changedHow: cellChangeSchema,

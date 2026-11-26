@@ -1,11 +1,13 @@
 import { z } from 'zod';
 
 /**
- * A score or a total of a classwork or homework (task 11.25b). The journal's limits are
- * `WORK_TOTAL_MIN` and `WORK_TOTAL_MAX` of `journal-works.ts`; this file holds the rule of the
- * value itself, imported by every schema that carries one.
+ * A score or a total of a classwork or homework (task 11.25b): the rule of the value, imported by
+ * every schema that carries one.
  */
-export const WORK_AMOUNT_MAX = 1000;
+
+/** `edge/journal`: "A total is from 1 to 1000" (`journal_works_total_check`, 0108; `work_amount`, 0188). */
+export const WORK_TOTAL_MIN = 1;
+export const WORK_TOTAL_MAX = 1000;
 
 /**
  * A score or a total as `String` writes it: digits, and at most two digits after a point
@@ -20,32 +22,24 @@ export function isWorkAmount(value: number): boolean {
   return (
     Number.isFinite(value) &&
     value >= 0 &&
-    value <= WORK_AMOUNT_MAX &&
+    value <= WORK_TOTAL_MAX &&
     WORK_AMOUNT_TEXT.test(String(value))
   );
 }
 
-/**
- * A score or a total as a person reads it: a point in every language, no trailing zeros (`07`,
- * The total: "shown with a point, without trailing zeros (7.50 shows 7.5)"). `String` writes
- * every value of `isWorkAmount` that way, never with an exponent.
- */
-export function formatWorkAmount(value: number): string {
-  return String(value);
-}
 
 /** A score or a total as stored (0 to 1000, at most two decimals). */
 export const workAmountSchema = z
   .number()
   .min(0)
-  .max(WORK_AMOUNT_MAX)
+  .max(WORK_TOTAL_MAX)
   .multipleOf(0.01)
   .refine(isWorkAmount, { message: 'At most two digits after the point.' });
 
 /** A work's total: from 1 to 1000, with at most two digits after the point. */
 export const workTotalAmountSchema = z
   .number()
-  .min(1)
-  .max(WORK_AMOUNT_MAX)
+  .min(WORK_TOTAL_MIN)
+  .max(WORK_TOTAL_MAX)
   .multipleOf(0.01)
   .refine(isWorkAmount, { message: 'At most two digits after the point.' });

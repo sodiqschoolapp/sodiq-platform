@@ -6,7 +6,9 @@ import { sql } from 'kysely';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { Database } from '../../database/database.js';
 import { migrate } from '../../database/migrate.js';
-import type { Transaction } from '../../database/transactions.js';
+import { createDatabase } from '../../database/database.js';
+import { Transactions, type Transaction } from '../../database/transactions.js';
+import { FixedClock } from '../../testing/fixed-clock.js';
 import { insertBranch, setEditDays } from '../../testing/branch-filter-sql.js';
 import { CellsKit } from '../../testing/cells-kit.js';
 import { closeQuarter } from '../../testing/closing-kit.js';
@@ -115,6 +117,25 @@ describe('migration 0189 switches every work score and total to its exact twin',
   let journal: string;
   let storeBefore: string;
   let before: Record<string, unknown[]>;
+  /** One connection of the application, held across the migration as a running version holds it. */
+  let single: Database;
+  let pidBefore: number;
+
+  /** A save of a number as the application writes it, on the one connection, at a moment. */
+  const save = (moment: string, score: number) =>
+    new Transactions(single, new FixedClock(moment)).run([branch], async (transaction) => {
+      await transaction
+        .insertInto('audit_log')
+        .values({ occurred_at: new Date(moment), branch_id: branch, action: 'test.save' })
+        .execute();
+      await transaction
+        .updateTable('journal_cells')
+        .set({ score, changed_by: teacher, changed_how: 'entry' })
+        .where('id', '=', cells.open)
+        .execute();
+      const pid = await sql<{ pid: number }>`select pg_backend_pid() as pid`.execute(transaction);
+      return pid.rows[0]?.pid ?? -1;
+    });
 
   beforeAll(async () => {
     database = await createTestDatabase({ empty: true });
@@ -363,6 +384,11 @@ describe('migration 0189 switches every work score and total to its exact twin',
       total: 5,
     });
 
+    // The application saves the number 5 again on its one connection before the switch: its
+    // session compiles the cell triggers with `score` as `integer`.
+    single = createDatabase(database.appUrl, { max: 1 });
+    pidBefore = await save(BEFORE, 5);
+
     before = await snapshot(migrator);
     await copyFile(path.join(MIGRATIONS, SWITCH), path.join(directory, SWITCH));
     await migrate({ connectionString: database.migrationUrl, directory });
@@ -370,6 +396,7 @@ describe('migration 0189 switches every work score and total to its exact twin',
   }, 120_000);
 
   afterAll(async () => {
+    await single.destroy();
     await database.destroy();
   });
 
@@ -527,13 +554,8 @@ describe('migration 0189 switches every work score and total to its exact twin',
   // trigger functions still hold `score` as `integer` and the write fails ("type of parameter …
   // does not match that when preparing the plan").
   it('keeps a number of 4.5 written after the switch as 4.5, with its history line, on a session that wrote before it', async () => {
-    await at(database.migrator, AFTER, (transaction: Transaction) =>
-      transaction
-        .updateTable('journal_cells')
-        .set({ score: 4.5, changed_by: teacher, changed_how: 'entry' })
-        .where('id', '=', cells.open)
-        .execute(),
-    );
+    // The same connection of the application that saved before the switch.
+    expect(await save(AFTER, 4.5)).toBe(pidBefore);
     const cell = await database.migrator
       .selectFrom('journal_cells')
       .select(['score', sql<string>`score::text`.as('text')])

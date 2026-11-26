@@ -5,6 +5,8 @@ import {
   BRANCH_HEADER,
   attendanceSavedSchema,
   cellHistorySchema,
+  journalSupportSchema,
+  studentResultLessonsSchema,
   journalGridSchema,
   lessonCardSchema,
   planItemFileSchema,
@@ -597,6 +599,55 @@ describe('classwork and homework', () => {
         .where('lesson_id', '=', s.first)
         .execute();
       expect(totals.map((one) => one.stored).sort()).toEqual(['10', '11', '7.5']);
+      // Every reader of the numbers answers them exactly (`.claude/rules/api.md`: a value read in a
+      // new way has a test at every reader): the cell history, the support view (its lines and
+      // the stored values) and the lessons a result is based on.
+      await as(owner, s.branch, teacherIn(s), async (calls) => {
+        const history = cellHistorySchema.parse(
+          ok(await calls.get(`/api/journal/lessons/${s.first}/students/${s.ahmedov}/history`)),
+        );
+        expect(
+          history.lines.flatMap((line) => (line.work === null ? [] : [line.after])).sort(),
+        ).toEqual([6, 7.5, 8.25]);
+      });
+      const date = (
+        await t.database.migrator
+          .selectFrom('lessons')
+          .select('lesson_date')
+          .where('id', '=', s.first)
+          .executeTakeFirstOrThrow()
+      ).lesson_date;
+      const admin = await account();
+      await as(admin, s.branch, [{ role: 'super_admin' }], async (calls) => {
+        const view = journalSupportSchema.parse(
+          ok(
+            await calls.get(
+              `/api/journal/support?studentId=${s.ahmedov}&journalId=${s.journal}&date=${date}`,
+            ),
+          ),
+        );
+        expect(
+          view.lines
+            .flatMap((line) => (line.kind === 'cell' && line.work !== null ? [line.after] : []))
+            .sort(),
+        ).toEqual([6, 7.5, 8.25]);
+        expect(
+          view.lessons.flatMap((one) => one.stored.works.map((work) => work.score)).sort(),
+        ).toEqual([6, 7.5, 8.25]);
+        const trace = studentResultLessonsSchema.parse(
+          ok(
+            await calls.get(
+              `/api/results/students/${s.ahmedov}/lessons?subjectId=${s.subject}&quarterId=${s.q1}`,
+            ),
+          ),
+        );
+        const traced = trace.lessons.find((one) => one.lessonId === s.first);
+        expect(traced?.classworks.map((work) => [work.score, work.total, work.percent])).toEqual([
+          [7.5, 10, 75],
+          [6, 7.5, 80],
+          [8.25, 11, 75],
+        ]);
+      });
     });
 
     // Task 11.25b (0189): the readers of a forced-delete store return `work_amount`, and the delete
@@ -787,7 +838,9 @@ describe('classwork and homework', () => {
           ),
         );
         expect(confirmed.total).toBe(100);
-        for (const total of [0, 1001, 2.5]) {
+        // Task 11.25b (decision 1, Look first): 2.5 was refused here until then; a total now takes
+        // two decimals, so three decimals stand in its place.
+        for (const total of [0, 1001, 2.555]) {
           const refused = await calls.put(`/api/journal/lessons/${s.first}/works/total`, {
             column: { workId: work.id },
             total,

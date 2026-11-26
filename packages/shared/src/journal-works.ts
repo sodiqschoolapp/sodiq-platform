@@ -2,7 +2,12 @@ import { z } from 'zod';
 import { correctionSchema } from './journal-correction.js';
 import { cellWorkKindSchema } from './reset-entries.js';
 import { PLAN_TOPIC_MAX_LENGTH } from './plans.js';
-import { workAmountSchema, workTotalAmountSchema } from './work-amount.js';
+import {
+  WORK_TOTAL_MAX,
+  WORK_TOTAL_MIN,
+  workAmountSchema,
+  workTotalAmountSchema,
+} from './work-amount.js';
 
 /**
  * Classwork and homework in the journal (task 8.1, pull request #217; `07`,
@@ -11,9 +16,7 @@ import { workAmountSchema, workTotalAmountSchema } from './work-amount.js';
  * lesson whose item holds it.
  */
 
-/** `edge/journal`: "A total is from 1 to 1000" (`journal_works_total_check`, 0108). */
-export const WORK_TOTAL_MIN = 1;
-export const WORK_TOTAL_MAX = 1000;
+export { WORK_TOTAL_MAX, WORK_TOTAL_MIN };
 
 /** `edge/journal`: "at most 10 classworks and at most 10 homeworks given" (`journal_works_limit`, 0119). */
 export const LESSON_WORKS_MAX = 10;

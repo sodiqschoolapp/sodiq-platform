@@ -382,26 +382,29 @@ function WorkRow({
             }}
           />
           {/* A point of its own (task 11.25b, review correction 1): a keypad may give a comma. */}
-          <button
-            type="button"
-            className="size-10 shrink-0 rounded-md font-semibold text-muted-foreground hover:bg-muted"
-            data-editor-total-point="true"
-            aria-label={t('journal.refusals.point')}
-            title={t('journal.refusals.point')}
-            disabled={!enter || busy}
-            // The field keeps the focus: its blur would send the total before the point.
-            onMouseDown={(event) => event.preventDefault()}
-            onClick={() => {
-              const input = field.current;
-              if (input === null) return;
-              const at = (input.selectionStart ?? input.value.length) + 1;
-              setTyped({ from: shown, text: withPoint(input) });
-              input.focus();
-              requestAnimationFrame(() => input.setSelectionRange(at, at));
-            }}
-          >
-            .
-          </button>
+          {enter && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="font-semibold"
+              data-editor-total-point="true"
+              aria-label={t('journal.refusals.point')}
+              title={t('journal.refusals.point')}
+              disabled={busy}
+              // The field keeps the focus: its blur would send the total before the point.
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => {
+                const input = field.current;
+                if (input === null) return;
+                const at = (input.selectionStart ?? input.value.length) + 1;
+                setTyped({ from: shown, text: withPoint(input) });
+                input.focus();
+                requestAnimationFrame(() => input.setSelectionRange(at, at));
+              }}
+            >
+              .
+            </Button>
+          )}
         </label>
         {enter && renamable && (
           <Button

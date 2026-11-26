@@ -1499,7 +1499,8 @@ export const errorDetailSchema = z.object({
    */
   storedCell: z
     .object({
-      value: z.int().min(0).nullable(),
+      /** A mark, or a work's number with up to two decimals (task 11.25b). */
+      value: workAmountSchema.nullable(),
       version: z.int().min(1),
       changedBy: z.uuid(),
       /** Who saved it, by login and name, as the cell history names them (task 8.3a, decision 5). */
