@@ -1255,11 +1255,41 @@ async function lockStoredQuarter(
   branchId: string,
   rows: LessonRows,
 ): Promise<void> {
+  // Task 11.24 (review round 1, finding 1): a homework a store kept from before 0186 comes back at
+  // the lesson where it was given (`restoreCells`), so the quarters of those lessons are locked
+  // open too, from the earliest day to the stored lesson's, in the one order of the days.
+  const lessonDate = rows.lesson.lesson_date;
+  const sources = [
+    ...new Set(
+      (rows.works ?? []).flatMap((one) =>
+        one.source_lesson_id == null || one.source_lesson_id === rows.lesson.id
+          ? []
+          : [one.source_lesson_id],
+      ),
+    ),
+  ];
+  const sourceDates =
+    sources.length === 0
+      ? []
+      : (
+          await transaction
+            .selectFrom('lessons')
+            .select(sql<string>`lesson_date::text`.as('date'))
+            .where('id', 'in', sources)
+            .where('branch_id', '=', branchId)
+            .execute()
+        ).map((one) => one.date);
+  const days = [...sourceDates, lessonDate].sort();
+  const first = days[0] ?? lessonDate;
+  const last = days.at(-1) ?? lessonDate;
+  if (first !== lessonDate || last !== lessonDate) {
+    await lockOpenQuarters(transaction, branchId, first, last);
+  }
   if (rows.block !== null) {
     await lockOpenQuarter(transaction, rows.block.quarter_id);
     return;
   }
-  await lockOpenQuarters(transaction, branchId, rows.lesson.lesson_date, rows.lesson.lesson_date);
+  await lockOpenQuarters(transaction, branchId, lessonDate, lessonDate);
 }
 
 /** Refuses a change of a lesson of a closed year: its timetable is read only (decision 6). */
