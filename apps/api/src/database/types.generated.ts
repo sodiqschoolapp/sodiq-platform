@@ -1405,6 +1405,7 @@ export interface LessonPlanItems {
   objectives: Generated<string>;
   plan_id: string;
   topic: string;
+  topic_code: string | null;
 }
 
 export interface LessonPlanJournals {
@@ -1429,6 +1430,7 @@ export interface LessonPlanMasterItems {
   removed_revision: number | null;
   scope_key: Generated<string>;
   topic: string;
+  topic_code: string | null;
 }
 
 export interface LessonPlanMasters {
@@ -1456,6 +1458,7 @@ export interface LessonPlanMasterWorks {
   position: number;
   scope_key: Generated<string>;
   title: string;
+  work_code: string | null;
 }
 
 export interface LessonPlanOutcomes {
@@ -1600,6 +1603,7 @@ export interface LessonPlanWorks {
   kind: string;
   position: number;
   title: string;
+  work_code: string | null;
 }
 
 export interface Lessons {
@@ -2373,6 +2377,7 @@ export interface SubjectQuarterWeights {
 
 export interface Subjects {
   archived_at: Timestamp | null;
+  codes_on: Generated<boolean>;
   colour: string;
   created_at: Generated<Timestamp>;
   demanding: Generated<boolean>;
