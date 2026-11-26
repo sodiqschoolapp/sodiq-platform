@@ -16,6 +16,9 @@ import { dayTemplatesKit, START, type DayTemplatesKit } from '../../testing/day-
 import { LoadKit } from '../../testing/load-kit.js';
 import { MembersKit } from '../../testing/members-kit.js';
 import { publishedScene } from '../../testing/published-scene.js';
+import { Transactions } from '../../database/transactions.js';
+import { checkBranch, type CheckFound } from '../results/daily/result-check.js';
+import { cellsAsSaved } from './saved-cells.js';
 
 const MOVE = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -58,6 +61,22 @@ describe('the readers of the lines of the homework move', () => {
   let admin: string;
   let adminAccount: string;
   let vice: string;
+  /** The nightly check of the branch and the cells as saved, read before the move. */
+  let checkBefore: CheckFound;
+  let savedBefore: Awaited<ReturnType<typeof cellsAsSaved>>;
+  const kept = async () =>
+    t.database.migrator
+      .selectFrom('journal_cells')
+      .select(['id', 'version'])
+      .where('work_id', '=', work)
+      .where('student_id', '=', stays)
+      .execute();
+  const readCheck = () =>
+    t.app.get(Transactions).run([branch], (transaction) => checkBranch(transaction, branch));
+  const readSaved = async () => {
+    const cells = await kept();
+    return t.app.get(Transactions).run([branch], (transaction) => cellsAsSaved(transaction, cells));
+  };
 
   const asTeacher = (lesson: string, route: string, body: object, method: 'post' | 'put') =>
     (method === 'post'
@@ -187,6 +206,8 @@ describe('the readers of the lines of the homework move', () => {
       admin,
     );
     expect(reset.status, JSON.stringify(reset.body)).toBe(200);
+    checkBefore = await readCheck();
+    savedBefore = await readSaved();
     // The move, as the migration runs it.
     const block = await moveBlock();
     await t.database.migrator.transaction().execute(async (transaction) => {
@@ -214,6 +235,16 @@ describe('the readers of the lines of the homework move', () => {
       .set({ created_at: new Date(READ_AT), last_used_at: new Date(READ_AT) })
       .execute();
   };
+
+  // Spec review of the code, must-fix 4 (a): the readers of "the line of the cell's version" give
+  // the same answer after the move (the move line keeps that version; the writing line wins).
+  it('gives the nightly check and the cells as saved the same answer after the move', async () => {
+    const checkAfter = await readCheck();
+    expect(checkAfter.differences).toEqual(checkBefore.differences);
+    expect(checkAfter.differences.filter((one) => one.kind === 'cell_history')).toEqual([]);
+    expect(await readSaved()).toEqual(savedBefore);
+    expect(savedBefore).toEqual([expect.objectContaining({ studentId: stays, value: 7 })]);
+  });
 
   it('moved the homework, its kept number and its cleared one', async () => {
     const cells = await t.database.migrator

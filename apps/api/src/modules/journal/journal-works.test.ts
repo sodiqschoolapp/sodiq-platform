@@ -1,4 +1,6 @@
 import {
+  remindersSchema,
+  type Reminder,
   REQUEST_KEY_HEADER,
   BRANCH_HEADER,
   attendanceSavedSchema,
@@ -19,7 +21,8 @@ import {
   type WorkColumn,
 } from '@sodiq/shared';
 import { sql } from 'kysely';
-import type { Transaction } from '../../database/transactions.js';
+import { Transactions, type Transaction } from '../../database/transactions.js';
+import { Audit } from '../audit/audit.service.js';
 import { randomUUID } from 'node:crypto';
 import request, { type Response } from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -425,7 +428,7 @@ describe('classwork and homework', () => {
     it('shows the homework of the last lesson of a quarter at that lesson, in that quarter', async () => {
       const owner = await account();
       const s = await scene({ teacher: owner.account.id });
-      await itemAt(s, s.third, { homeworks: ['Holiday reading'] });
+      const item = await itemAt(s, s.third, { homeworks: ['Holiday reading'] });
       await as(owner, s.branch, teacherIn(s), async (calls) => {
         const quarters = await t.database.migrator
           .selectFrom('quarters')
@@ -437,6 +440,28 @@ describe('classwork and homework', () => {
         expect(lessonIn(grid, s.third).works.map((one) => one.title)).toEqual(['Holiday reading']);
         const next = await gridOf(calls, s, quarters.id);
         expect(lessonIn(next, s.fourth).works).toEqual([]);
+        // Spec review of the code, must-fix 4 (c): its missing numbers are a reminder of that
+        // lesson, the quarter's last (07, Reminders: "planned works whose numbers are missing").
+        ok(
+          await calls.post(`/api/journal/lessons/${s.third}/attendance`, {
+            saves: [{ studentId: s.ahmedov, mark: 1, version: null }],
+          }),
+        );
+        ok(
+          await calls.put(`/api/journal/lessons/${s.third}/works/total`, {
+            column: planned(item.homeworks[0] ?? '', s.third),
+            total: 5,
+            version: null,
+          }),
+        );
+        const reminders = (
+          remindersSchema.parse(ok(await calls.get('/api/journal/reminders')))
+            .reminders as Reminder[]
+        ).flatMap((one) =>
+          one.kind === 'numbers_missing' && one.lesson.id !== undefined ? [one.lesson.id] : [],
+        );
+        expect(reminders).toContain(s.third);
+        expect(reminders).not.toContain(s.fourth);
       });
     });
   });
@@ -828,9 +853,81 @@ describe('classwork and homework', () => {
     });
   });
 
+  // Task 11.24 (spec review of the code, must-fix 4 (b); `edge/journal`: "A student was exempt
+  // ... at the lesson where the homework was given ... their cell is closed like every cell of
+  // that lesson"): an exemption on the 12th closes the homework cell of the 12th, never another.
+  describe('a student exempt at the lesson where the homework was given', () => {
+    it('closes the homework cell of the exempt student and takes the number of the others', async () => {
+      const owner = await account();
+      const s = await scene({ teacher: owner.account.id });
+      const item = await itemAt(s, s.first, { homeworks: ['Read'] });
+      const exemptOne = await student(s.branch, s.classId, 'Yoqubov', '2026-09-01');
+      const writer = owner.account.id;
+      await t.app.get(Transactions).run([s.branch], async (transaction) => {
+        await sql`select set_config('app.now', ${new Date(MOMENT).toISOString()}, true)`.execute(
+          transaction,
+        );
+        await t.app.get(Audit).record(transaction, {
+          branchId: s.branch,
+          actorId: writer,
+          action: 'exemption.create',
+        });
+        await transaction
+          .insertInto('exemptions')
+          .values({
+            branch_id: s.branch,
+            student_id: exemptOne,
+            year_id: s.year,
+            batch_id: randomUUID(),
+            kind: 'temporary',
+            all_subjects: true,
+            start_date: '2026-10-12',
+            end_date: '2026-10-12',
+            category: 'illness',
+            detail: 'A certificate from the clinic',
+            granted_by: writer,
+            granted_at: new Date(0),
+            version: 0,
+            changed_at: new Date(0),
+          })
+          .execute();
+      });
+      await as(owner, s.branch, teacherIn(s), async (calls) => {
+        const work = workSavedSchema.parse(
+          ok(
+            await calls.put(`/api/journal/lessons/${s.first}/works/total`, {
+              column: planned(item.homeworks[0] ?? '', s.first),
+              total: 5,
+              version: null,
+            }),
+          ),
+        );
+        const refused = await calls.post(`/api/journal/lessons/${s.first}/scores`, {
+          saves: [{ studentId: exemptOne, column: { workId: work.id }, score: 4, version: null }],
+        });
+        expect(codeOf(refused)).toBe('cell_closed');
+        ok(
+          await calls.post(`/api/journal/lessons/${s.first}/scores`, {
+            saves: [{ studentId: s.ahmedov, column: { workId: work.id }, score: 4, version: null }],
+          }),
+        );
+        expect(
+          (
+            await t.database.migrator
+              .selectFrom('journal_cells')
+              .select(['student_id', 'score'])
+              .where('work_id', '=', work.id)
+              .where('score', 'is not', null)
+              .execute()
+          ).map((one) => [one.student_id, one.score]),
+        ).toEqual([[s.ahmedov, 4]]);
+      });
+    });
+  });
+
   describe('works added by hand', () => {
     // The owner, 20 November 2026: at a lesson with a plan item too (task 10.8 refused it).
-    it('adds classworks and "homework given" at a lesson into its plan item, also one with an item, at most 10 of each', async () => {
+    it('adds classworks and homeworks at a lesson into its plan item, also one with an item, at most 10 of each', async () => {
       const owner = await account();
       const s = await scene({ teacher: owner.account.id });
       await itemAt(s, s.first, { classworks: ['Test'] });
@@ -918,7 +1015,7 @@ describe('classwork and homework', () => {
     });
 
     // Task 11.24: a homework given by hand is a column of the lesson that gave it, and of no other.
-    it('removes an empty homework given by hand at its own lesson, and refuses it through the next', async () => {
+    it('removes an empty homework added by hand at its own lesson, and refuses it through the next', async () => {
       const owner = await account();
       const s = await scene({ teacher: owner.account.id });
       await as(owner, s.branch, teacherIn(s), async (calls) => {
@@ -934,7 +1031,7 @@ describe('classwork and homework', () => {
       expect((await t.entries('journal.work_delete', s.third)).length).toBe(0);
     });
 
-    it('grades a homework given by hand at its own lesson, and refuses its total through the next', async () => {
+    it('grades a homework added by hand at its own lesson, and refuses its total through the next', async () => {
       const owner = await account();
       const s = await scene({ teacher: owner.account.id });
       const homework = await as(owner, s.branch, teacherIn(s), async (calls) => {
@@ -1093,7 +1190,7 @@ describe('classwork and homework', () => {
       });
     });
 
-    it('keeps a homework given by hand at its lesson when a later lesson is removed by a version change', async () => {
+    it('keeps a homework added by hand at its lesson when a later lesson is removed by a version change', async () => {
       const owner = await account();
       const s = await scene({ teacher: owner.account.id });
       // Task 10.8: a homework added by hand before 7 November 2026.
@@ -1540,7 +1637,7 @@ describe('classwork and homework', () => {
   });
 
   describe('a reader of attendance only (permission review of the code, should-fix 4)', () => {
-    it('shows the Head Tutor no works, no works "not held", no homework given and no work lines', async () => {
+    it('shows the Head Tutor no works, no works "not held", no homeworks of the lesson and no work lines', async () => {
       const owner = await account();
       const s = await scene({ teacher: owner.account.id });
       const item = await itemAt(s, s.first, { classworks: ['Test', 'Quiz'], homeworks: ['Read'] });
@@ -2689,7 +2786,7 @@ describe('classwork and homework', () => {
     });
 
     // Task 11.24: a homework given by hand is a column of the lesson that gave it, and of no other.
-    it('shows the typed title as the column title, and a homework given by hand at the lesson that gave it only', async () => {
+    it('shows the typed title as the column title, and a homework added by hand at its own lesson only', async () => {
       const owner = await account();
       const s = await scene({ teacher: owner.account.id });
       await as(owner, s.branch, teacherIn(s), async (calls) => {

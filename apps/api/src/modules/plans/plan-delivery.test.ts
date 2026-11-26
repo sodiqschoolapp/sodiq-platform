@@ -353,7 +353,7 @@ describe('plans in the journal', () => {
   });
 
   describe('the journal header and the lesson card', () => {
-    it('shows the number and topic of each lesson, and the card with given today and checked today', async () => {
+    it('shows the number and topic of each lesson, and the card with the one homework line of its item', async () => {
       const owner = await account();
       const s = await scene({ teacher: owner.account.id });
       const first = await itemAt(s, s.first, {
