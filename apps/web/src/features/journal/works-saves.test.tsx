@@ -279,4 +279,18 @@ describe('saving a number of a work', () => {
     expect(scoreOf(client)).toBe(6);
     expect(document.querySelector('[data-unsent-cells]')).not.toBeNull();
   });
+
+  // Task 11.24, decision 9: an entry typed at a homework's old check lesson, refused because the
+  // lesson no longer shows the work, is kept "not saved" on the device with its reason.
+  it('keeps a number refused as not a work of the lesson "not saved", with the reason', async () => {
+    fakeApi({ [SCORES]: () => refusal('work_not_in_lesson', 409) });
+    const { client, type, state } = draw();
+    type(8);
+    await screen.findByText(en.errors.work_not_in_lesson);
+    await waitFor(() => {
+      expect(state()).toBe('failed');
+    });
+    expect(scoreOf(client)).toBe(8);
+    expect(document.querySelector('[data-unsent-cells]')).not.toBeNull();
+  });
 });

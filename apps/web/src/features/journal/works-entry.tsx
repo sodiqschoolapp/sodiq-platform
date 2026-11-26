@@ -205,6 +205,15 @@ export function useWorksEntry(
         saves.keepUnsent(key, { retry: () => score.mutate(input) });
         return;
       }
+      // Task 11.24, decision 9: an entry sent against a lesson that no longer shows its work (a
+      // homework typed at its old check lesson before the move) stays "not saved" with the
+      // reason; the teacher types it again at the lesson where the homework was given.
+      if (error instanceof ApiFailure && error.code === 'work_not_in_lesson') {
+        saves.set(key, 'failed');
+        saves.keepUnsent(key, { retry: () => score.mutate(input) });
+        setFailure(error);
+        return;
+      }
       saves.set(key, null);
       saves.keepUnsent(key, null);
       if (error instanceof ApiFailure && error.code === 'cell_stale') {

@@ -889,7 +889,7 @@ export const en = {
       'The copy of this topic in "not covered" was already changed or placed in the plan, so the mark cannot be undone. Change the plan through an edit request instead.',
     homework_not_in_lesson: 'This homework is not one given at this lesson.',
     homework_has_entries:
-      'This homework already has a total, numbers, a carry or a "not held" mark in the journal, so it cannot be marked "not given". Mark it "not held" instead.',
+      'This homework already has a total, numbers or a "not held" mark in the journal, so it cannot be marked "not given". Mark it "not held" instead.',
     journal_work_not_given: 'This homework was marked "not given", so nothing is entered for it.',
     plan_minimum_stale:
       'Someone changed this minimum since you opened the page. Reload it and try again.',

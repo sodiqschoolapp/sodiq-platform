@@ -905,7 +905,7 @@ export const uz: Texts<'one' | 'other'> = {
       '«Oʻtilmagan» roʻyxatidagi bu mavzu nusxasi allaqachon oʻzgartirilgan yoki rejaga qoʻyilgan, shuning uchun belgini bekor qilib boʻlmaydi. Rejani tahrir soʻrovi orqali oʻzgartiring.',
     homework_not_in_lesson: 'Bu uyga vazifa shu darsda berilmagan.',
     homework_has_entries:
-      'Bu uyga vazifaning jurnalda allaqachon maksimal balli, ballari, koʻchirilishi yoki «oʻtkazilmadi» belgisi bor, shuning uchun uni «berilmadi» deb belgilab boʻlmaydi. Uni «oʻtkazilmadi» deb belgilang.',
+      'Bu uyga vazifaning jurnalda allaqachon maksimal balli, ballari yoki «oʻtkazilmadi» belgisi bor, shuning uchun uni «berilmadi» deb belgilab boʻlmaydi. Uni «oʻtkazilmadi» deb belgilang.',
     journal_work_not_given:
       'Bu uyga vazifa «berilmadi» deb belgilangan, shuning uchun unga hech narsa kiritilmaydi.',
     plan_minimum_stale:
@@ -7922,9 +7922,9 @@ export const uz: Texts<'one' | 'other'> = {
       calculation: 'Natija qanday hisoblangan',
       noLessons: 'Bu sanada jurnalda dars yoʻq.',
       quarterFigures:
-        'Chorak: davomat {{attendance}} · sinf ishi {{classwork}} · uy ishi {{homework}} · reyting imtihoni {{ratingExam}} · natija {{result}}',
+        'Chorak: davomat {{attendance}} · sinf ishi {{classwork}} · uyga vazifa {{homework}} · reyting imtihoni {{ratingExam}} · natija {{result}}',
       quarterly:
-        'Chorak ulushlari: davomat {{attendance}} · sinf ishi {{classwork}} · uy ishi {{homework}} · reyting imtihoni {{ratingExam}}',
+        'Chorak ulushlari: davomat {{attendance}} · sinf ishi {{classwork}} · uyga vazifa {{homework}} · reyting imtihoni {{ratingExam}}',
       values: 'Kechikish {{late}}, darsga kirmaslik {{skipped}} hisoblanadi',
       lines: 'Saqlashlar, rad etishlar va hodisalar',
       noLines: 'Bu katakchalar uchun hech narsa saqlanmagan va rad etilmagan.',
@@ -8340,7 +8340,7 @@ export const uz: Texts<'one' | 'other'> = {
         uid: 'UID',
         attendance: 'Davomat',
         classwork: 'Sinf ishi oʻrtachasi',
-        homework: 'Uy ishi oʻrtachasi',
+        homework: 'Uyga vazifa oʻrtachasi',
         ratingExam: 'Reyting imtihoni',
         result: 'Natija',
         grade: 'Baho',
@@ -8400,7 +8400,7 @@ export const uz: Texts<'one' | 'other'> = {
       parts: {
         attendance: 'Davomat',
         classwork: 'Sinf ishi',
-        homework: 'Uy ishi',
+        homework: 'Uyga vazifa',
         ratingExam: 'Reyting imtihoni',
       },
       grade: 'Baho',
@@ -8436,11 +8436,11 @@ export const uz: Texts<'one' | 'other'> = {
       weights: 'Ulushlar',
       attendanceOnly: 'Faqat davomat: ulush, natija va baho yoʻq.',
       quarterly:
-        'Chorak natijasi: davomat {{attendance}} · sinf ishi {{classwork}} · uy ishi {{homework}}',
+        'Chorak natijasi: davomat {{attendance}} · sinf ishi {{classwork}} · uyga vazifa {{homework}}',
       quarterlyNoRating:
-        'Chorak natijasi: davomat {{attendance}} · sinf ishi {{classwork}} · uy ishi {{homework}}; 0- va 1-sinflarda reyting imtihoni yoʻq, qolgan ulushlar mutanosib oshiriladi',
+        'Chorak natijasi: davomat {{attendance}} · sinf ishi {{classwork}} · uyga vazifa {{homework}}; 0- va 1-sinflarda reyting imtihoni yoʻq, qolgan ulushlar mutanosib oshiriladi',
       quarterlyRating:
-        'Chorak natijasi: davomat {{attendance}} · sinf ishi {{classwork}} · uy ishi {{homework}} · reyting imtihoni {{ratingExam}}',
+        'Chorak natijasi: davomat {{attendance}} · sinf ishi {{classwork}} · uyga vazifa {{homework}} · reyting imtihoni {{ratingExam}}',
       changedOn: '({{date}} kuni oʻzgartirilgan)',
       markers:
         '{{provisional}}: taxminiy, ulushli qismda hali maʼlumot yoʻq; {{leftOut}}: qism hisobga olinmagan.',
@@ -8663,7 +8663,7 @@ export const uz: Texts<'one' | 'other'> = {
     },
     attendance: 'Davomat',
     classwork: 'Sinf ishi',
-    homework: 'Uy ishi',
+    homework: 'Uyga vazifa',
     removedWork: 'Oʻchirilgan ish',
     cleared: 'boʻsh',
     cancelled: 'bekor qilingan',
@@ -9075,7 +9075,7 @@ export const uz: Texts<'one' | 'other'> = {
       subject: 'Fan',
       attendance: 'Davomat',
       classwork: 'Sinf ishi',
-      homework: 'Uy ishi',
+      homework: 'Uyga vazifa',
       ratingExam: 'Reyting imtihoni',
       result: 'Natija',
       grade: 'Baho',
@@ -9086,7 +9086,7 @@ export const uz: Texts<'one' | 'other'> = {
     parts: {
       attendance: 'davomat',
       classwork: 'sinf ishi',
-      homework: 'uy ishi',
+      homework: 'uyga vazifa',
       ratingExam: 'reyting imtihoni',
       result: 'natija',
     },
