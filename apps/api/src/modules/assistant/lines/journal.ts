@@ -107,7 +107,7 @@ export const JOURNAL_LINES: Readonly<Record<string, AssistantRouteLine>> = {
     kind: 'change',
     group: 'journal',
     description:
-      'Adds a classwork or a “homework given” with a title (at most 60 characters) to a held lesson; it is written into the lesson’s plan item.',
+      'Adds a classwork or a homework with a title (at most 60 characters) to a held lesson; it is written into the lesson’s plan item.',
     basis: { kind: 'create' },
     records: ['path:lessonId'],
   },
@@ -167,15 +167,6 @@ export const JOURNAL_LINES: Readonly<Record<string, AssistantRouteLine>> = {
     group: 'journal',
     description:
       'Marks a work of one lesson “not held”, or takes the mark off. Give the column and the work’s version as read. A work that has numbers is refused for the screen to confirm.',
-    basis: { kind: 'own' },
-    outdatedCodes: ['work_stale'],
-    records: ['path:lessonId'],
-  },
-  'POST /api/journal/lessons/:lessonId/works/carry': {
-    kind: 'change',
-    group: 'journal',
-    description:
-      'Moves the check of a homework of one lesson to the next lesson. Give the column and the work’s version as read.',
     basis: { kind: 'own' },
     outdatedCodes: ['work_stale'],
     records: ['path:lessonId'],

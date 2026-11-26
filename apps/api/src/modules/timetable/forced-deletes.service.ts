@@ -458,7 +458,6 @@ export class LessonForcedDeletes implements OnModuleInit {
           'source_lesson_id',
           'plan_work_id',
           'position',
-          'carried_from_lesson_id',
           // Task 10.6: the title of a work added by hand goes and comes back with it.
           'title',
           'version',
@@ -970,39 +969,32 @@ async function restoreCells(
   const works = rows.works ?? [];
   const cells = rows.cells ?? [];
   if (works.length > 0) {
-    // Task 8.1 (spec review should-fix 9): a source or carry lesson, or a plan
-    // work, gone since comes back as none; the row is then a column of its own.
-    const lessonsNamed = works.flatMap((one) => [
-      one.source_lesson_id ?? null,
-      one.carried_from_lesson_id ?? null,
-    ]);
-    const named = lessonsNamed.filter((one): one is string => one !== null && one !== lessonId);
-    const lessonsThere = new Set(
-      named.length === 0
-        ? []
-        : (
-            await transaction
-              .selectFrom('lessons')
-              .select('id')
-              .where('id', 'in', [...new Set(named)])
-              .execute()
-          ).map((one) => one.id),
-    );
-    lessonsThere.add(lessonId);
+    // Task 8.1 (spec review should-fix 9): a plan work gone since comes back as none; the row
+    // is then a column of its own. Task 11.24 (0186): a work is stored at the lesson where it
+    // was given, so every work comes back as a work of the restored lesson. A homework a store
+    // kept from before 0186 at its check lesson (given at another lesson) comes back as a
+    // column of this lesson with no plan link (the link names the other lesson's item) and its
+    // plan title.
     const planNamed = works.flatMap((one) => (one.plan_work_id == null ? [] : [one.plan_work_id]));
-    const plansThere = new Set(
+    const plansThere = new Map(
       planNamed.length === 0
         ? []
         : (
             await transaction
               .selectFrom('lesson_plan_works')
-              .select('id')
+              .select(['id', 'title'])
               .where('id', 'in', [...new Set(planNamed)])
               .execute()
-          ).map((one) => one.id),
+          ).map((one) => [one.id, one.title]),
     );
-    const there = (id: string | null | undefined, set: Set<string>) =>
-      id != null && set.has(id) ? id : null;
+    const givenHere = (one: StoredWork) =>
+      one.source_lesson_id === undefined ||
+      one.source_lesson_id === null ||
+      one.source_lesson_id === lessonId;
+    const linkOf = (one: StoredWork) =>
+      givenHere(one) && one.plan_work_id != null && plansThere.has(one.plan_work_id)
+        ? one.plan_work_id
+        : null;
     // Code review round 1, finding 2: while the lesson was gone, a first write at the next
     // check lesson may have taken the work's plan link, or an add by hand its place. The
     // restored row then comes back with no plan link at a free place, a column of its own;
@@ -1015,13 +1007,16 @@ async function restoreCells(
       not_held: one.not_held,
       branch_id: branchId,
       lesson_id: lessonId,
-      source_lesson_id:
-        one.source_lesson_id === undefined ? lessonId : there(one.source_lesson_id, lessonsThere),
-      plan_work_id: there(one.plan_work_id, plansThere),
+      source_lesson_id: lessonId,
+      plan_work_id: linkOf(one),
       position: one.position ?? 1,
-      carried_from_lesson_id: there(one.carried_from_lesson_id, lessonsThere),
-      // Task 10.6: absent from a store row written before 0157, brought back as none.
-      title: one.title ?? null,
+      // Task 10.6: absent from a store row written before 0157, brought back as none. Task
+      // 11.24: a planned work coming back unplanned keeps its plan's title.
+      title:
+        one.title ??
+        (linkOf(one) === null && one.plan_work_id != null
+          ? (plansThere.get(one.plan_work_id) ?? null)
+          : null),
       version: one.version ?? 1,
       changed_by: one.changed_by ?? null,
       changed_how: 'restored',

@@ -78,8 +78,8 @@ import { passGate } from './plan-gate.js';
  *   substitute or the teacher sets 'topic not delivered' and marks the
  *   item's homeworks 'not given', all or some of them, inside the edit
  *   period. This is not a plan edit. A copy of the item goes to 'not
- *   covered', a request is prepared, and the next lesson gets no column for
- *   a homework not given." Only the lesson's teacher (decision 6): the
+ *   covered', a request is prepared, and a homework not given has no
+ *   column" (task 11.24). Only the lesson's teacher (decision 6): the
  *   owner on the date or the substitute in force; never a correction.
  */
 
@@ -257,37 +257,18 @@ export class PlanDelivery {
       const columns = plan.journals.get(journal.id);
       const own_ = columns?.columns.get(lesson.id);
       const lessonsById = new Map((columns?.lessons ?? []).map((one) => [one.id, one]));
-      const yearRows = new Map<string, number | null>();
-      // The slot of a check lesson in this quarter (the warning names it), else none.
-      for (const one of rows) yearRows.set(one.lessonId, one.slot);
       const descriptionOf = (planWorkId: string | null): string | null =>
         planWorkId === null
           ? null
           : (item?.homeworks.find((work) => work.id === planWorkId)?.description ?? null);
-      const givenToday = (own_?.given ?? []).map((one) => {
-        const check = one.checkAt === null ? undefined : lessonsById.get(one.checkAt);
-        return {
-          planWorkId: one.planWorkId,
-          title: one.title,
-          description: whole ? descriptionOf(one.planWorkId) : null,
-          notGiven: one.notGiven,
-          checkAt:
-            check === undefined
-              ? null
-              : { lessonId: check.id, date: check.date, slot: yearRows.get(check.id) ?? null },
-          checkedSameDay: check !== undefined && check.date === lesson.date,
-          ungraded: one.ungraded,
-        };
-      });
-      const checkedToday = (own_?.columns ?? [])
-        .filter((column) => column.kind === 'homework')
-        .map((column) => ({
-          title: column.title,
-          givenOn:
-            column.carriedFrom !== null || column.sourceLessonId === null
-              ? null
-              : (lessonsById.get(column.sourceLessonId)?.date ?? null),
-        }));
+      // Task 11.24: the one homework list, the homeworks of this lesson's own item, which are
+      // this lesson's homework columns (`09`, In the journal).
+      const givenToday = (own_?.given ?? []).map((one) => ({
+        planWorkId: one.planWorkId,
+        title: one.title,
+        description: whole ? descriptionOf(one.planWorkId) : null,
+        notGiven: one.notGiven,
+      }));
       const delivery = await transaction
         .selectFrom('journal_lesson_deliveries')
         .select(['not_delivered', 'version'])
@@ -328,7 +309,6 @@ export class PlanDelivery {
         files: whole ? (item?.files ?? []) : [],
         addedInJournal: whole ? (item?.addedInJournal ?? []) : [],
         givenToday,
-        checkedToday,
         delivery: {
           notDelivered: delivery?.not_delivered ?? false,
           version: delivery?.version ?? null,

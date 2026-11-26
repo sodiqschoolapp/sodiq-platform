@@ -87,15 +87,6 @@ export const workNotHeldSchema = z.strictObject({
 
 export type WorkNotHeld = z.input<typeof workNotHeldSchema>;
 
-export const workCarrySchema = z.strictObject({
-  column: workColumnSchema,
-  version: workVersionSchema,
-  /** Task 8.4: a correction with its reason. */
-  correction: correctionSchema.optional(),
-});
-
-export type WorkCarry = z.infer<typeof workCarrySchema>;
-
 /** Task 10.6: the new title of a work added by hand, on the version it was typed on. */
 export const workRenameSchema = z.strictObject({
   title: workTitleSchema,
@@ -154,7 +145,6 @@ export const workSavedSchema = z.object({
   kind: cellWorkKindSchema,
   total: z.int().min(WORK_TOTAL_MIN).max(WORK_TOTAL_MAX).nullable(),
   notHeld: z.boolean(),
-  carriedFrom: z.uuid().nullable(),
   /** Task 10.6: the title typed for a work added by hand; `null` for a planned work or one added before. */
   title: z.string().nullable(),
   version: z.int().min(1),

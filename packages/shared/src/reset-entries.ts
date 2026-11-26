@@ -26,6 +26,8 @@ export const CELL_CHANGES = [
   'forced_delete',
   // Task 8.6 (0127): a value voided by a leaving; named in the support view (task 8.9).
   'leaving',
+  // Task 11.24 (0186): the one-time move of a homework to the lesson where it was given.
+  'homework_move',
 ] as const;
 
 export const cellChangeSchema = z.enum(CELL_CHANGES);
@@ -88,6 +90,8 @@ export const WORK_CHANGES = [
   'restored',
   'deleted',
   'forced_delete',
+  // Task 11.24 (0186): the one-time move of a homework to the lesson where it was given.
+  'homework_move',
 ] as const;
 
 export const workChangeSchema = z.enum(WORK_CHANGES);
@@ -155,7 +159,8 @@ export const commentLineSchema = z.strictObject({
   bodyBefore: z.string().nullable(),
   bodyAfter: z.string().nullable(),
   visibility: z.enum(COMMENT_VISIBILITIES).nullable(),
-  changedHow: z.enum(['entry', 'restored', 'forced_delete']),
+  /** `homework_move`: cleared by the homework move of 25 November 2026 (0186). */
+  changedHow: z.enum(['entry', 'restored', 'forced_delete', 'homework_move']),
   /** `null` for a line no person wrote. */
   changedBy: accountNamedSchema.nullable(),
 });

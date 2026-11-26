@@ -150,9 +150,13 @@ export class CellActionsService {
                 candidates.map((one) => one.row.id),
               )
               .execute();
-      const lineOf = new Map(
-        lines.map((line) => [`${line.cell_id}/${String(line.version)}`, line]),
-      );
+      // A line of the homework move (0186, task 11.24) keeps the version of the line that wrote
+      // the value; that line is the one an undo judges.
+      const lineOf = new Map<string, (typeof lines)[number]>();
+      for (const line of lines) {
+        const key = `${line.cell_id}/${String(line.version)}`;
+        if (line.changed_how !== 'homework_move' || !lineOf.has(key)) lineOf.set(key, line);
+      }
       const undone: (Undone['undone'][number] & { cellId: string })[] = [];
       const skipped: Undone['skipped'] = [];
       const undoable = new Set<string>();

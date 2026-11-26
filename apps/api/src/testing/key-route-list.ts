@@ -73,7 +73,6 @@ export const KEY_ROUTES: Readonly<Record<string, string>> = {
   'POST /api/journal/lessons/:lessonId/scores': JOURNAL,
   'POST /api/journal/lessons/:lessonId/unlocks': UNLOCKS,
   'POST /api/journal/lessons/:lessonId/works': JOURNAL,
-  'POST /api/journal/lessons/:lessonId/works/carry': JOURNAL,
   'POST /api/journal/unlocks/:unlockId/decide': UNLOCKS,
   'POST /api/journal/unlocks/:unlockId/withdraw': UNLOCKS,
   'POST /api/plans/items/:itemId/clear': PLANS,

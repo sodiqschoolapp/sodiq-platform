@@ -1987,7 +1987,6 @@ export {
   scoresSaveSchema,
   scoresSavedSchema,
   workAddSchema,
-  workCarrySchema,
   workRenameSchema,
   workTitleSchema,
   workTitleLength,
@@ -2000,7 +1999,6 @@ export {
   type ScoresSave,
   type ScoresSaved,
   type WorkAdd,
-  type WorkCarry,
   type WorkRename,
   type WorkColumn,
   type WorkNotHeld,
@@ -2258,7 +2256,6 @@ export {
   type StatusLesson,
 } from './journal-status.js';
 export {
-  cardCheckedSchema,
   cardGivenSchema,
   homeworkGivenAnswerSchema,
   homeworkGivenSchema,

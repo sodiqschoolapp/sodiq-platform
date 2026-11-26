@@ -8,32 +8,15 @@ import { planItemFileSchema, planItemSchema, planWorkSchema } from './plans.js';
  * delivered" and "homework not given".
  */
 
-/** A homework given at the lesson (`09`: "given today"). */
+/** A homework of the lesson's plan item, a homework column of this lesson (`09`, In the journal; task 11.24). */
 export const cardGivenSchema = z.object({
   /** `null` for a homework given by hand at a lesson with no plan item. */
   planWorkId: z.uuid().nullable(),
   title: z.string().nullable(),
   /** The plan's description; `null` for a reader of topic and homework only. */
   description: z.string().nullable(),
-  /** Marked "not given": the next lesson has no column for it. */
+  /** Marked "not given": it has no column (`edge/lesson-plans`, substitute). */
   notGiven: z.boolean(),
-  /** The lesson that checks it, with its date and slot; `null` when none does. */
-  checkAt: z
-    .object({ lessonId: z.uuid(), date: schoolDateSchema, slot: z.int().min(1).nullable() })
-    .nullable(),
-  /**
-   * `edge/lesson-plans`, "A double lesson": "Homework on the first of two same-day lessons shows
-   * the warning 'will be checked today in slot N'".
-   */
-  checkedSameDay: z.boolean(),
-  ungraded: z.enum(['year_end', 'group_closed']).nullable(),
-});
-
-/** A homework checked at the lesson (`09`: "checked today", given at the previous lesson). */
-export const cardCheckedSchema = z.object({
-  title: z.string().nullable(),
-  /** The date of the lesson it was given at, `null` for a homework carried in. */
-  givenOn: schoolDateSchema.nullable(),
 });
 
 export const lessonCardSchema = z.object({
@@ -64,7 +47,6 @@ export const lessonCardSchema = z.object({
   /** Task 10.8: the works of the item added in the journal (`09`, In the journal). */
   addedInJournal: z.array(z.uuid()),
   givenToday: z.array(cardGivenSchema),
-  checkedToday: z.array(cardCheckedSchema),
   /** "Topic not delivered" and the version a change of it is sent on (`null` before the first). */
   delivery: z.object({ notDelivered: z.boolean(), version: z.int().min(1).nullable() }),
   /** The reader may set the marks now: the lesson's teacher, held, inside the edit period. */

@@ -125,7 +125,7 @@ async function historyDifferences(
     join lesson_blocks b on b.id = l.block_id
     left join lateral (
       select x.version, x.mark_after, x.score_after from journal_cell_history x
-      where x.cell_id = c.id order by x.version desc limit 1
+      where x.cell_id = c.id order by x.version desc, x.changed_how = 'homework_move' limit 1
     ) h on true
     where b.quarter_id = ${quarter.id}::uuid
       and (

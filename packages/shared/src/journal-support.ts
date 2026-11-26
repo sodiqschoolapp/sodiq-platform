@@ -51,7 +51,8 @@ export const supportLineSchema = z.discriminatedUnion('kind', [
     notGradedBefore: z.boolean(),
     notGradedAfter: z.boolean(),
     how: cellChangeSchema,
-    by: accountNamedSchema,
+    /** `null` for a line the platform wrote: the homework move of 25 November 2026 (0186). */
+    by: accountNamedSchema.nullable(),
     /** The reason of a correction, a void or a forced delete. */
     reason: z.string().nullable(),
     /** A late entry under an unlock: who approved it (`edge/journal`: "with the approver's name"). */

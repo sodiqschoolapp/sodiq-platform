@@ -340,7 +340,6 @@ describe('the routes that work without sign-in', () => {
       'POST /api/journal/lessons/:lessonId/undo',
       'POST /api/journal/lessons/:lessonId/unlocks',
       'POST /api/journal/lessons/:lessonId/works',
-      'POST /api/journal/lessons/:lessonId/works/carry',
       'POST /api/journal/orphans/:lessonId/assign',
       'POST /api/journal/orphans/assignments/:assignmentId/withdraw',
       'POST /api/journal/unlocks/:unlockId/decide',

@@ -1125,7 +1125,6 @@ export const ROUTE_ACCESS: Record<string, ExpectedAccess> = {
     branch: 'request',
     roles: JOURNAL_WRITERS,
   },
-  'POST /api/journal/lessons/:lessonId/works/carry': { branch: 'request', roles: JOURNAL_WRITERS },
   'POST /api/journal/lessons/:lessonId/scores': { branch: 'request', roles: JOURNAL_WRITERS },
   // Task 8.2: the rating exam and comments.
   'PUT /api/journal/journals/:journalId/rating/:quarterId/date': {

@@ -434,8 +434,23 @@ export class AttendanceService {
           'journal_cell_history.changed_at',
           viaKeyIdColumn('journal_cell_history'),
         ])
-        .where('journal_cell_history.lesson_id', '=', lesson.id)
-        .where('journal_cell_history.student_id', '=', student.id);
+        .where('journal_cell_history.student_id', '=', student.id)
+        // A cell's lines follow it: a homework moved to the lesson where it was given (0186,
+        // task 11.24) keeps the lines written at the lesson it was saved at.
+        .where((eb) =>
+          eb.or([
+            eb('journal_cell_history.lesson_id', '=', lesson.id),
+            eb(
+              'journal_cell_history.cell_id',
+              'in',
+              eb
+                .selectFrom('journal_cells')
+                .select('journal_cells.id')
+                .where('journal_cells.lesson_id', '=', lesson.id)
+                .where('journal_cells.student_id', '=', student.id),
+            ),
+          ]),
+        );
       if (shape === 'attendance') query = query.where('journal_cell_history.work_id', 'is', null);
       const rows = await query
         .orderBy('journal_cell_history.changed_at')
@@ -474,11 +489,14 @@ export class AttendanceService {
               : { id: row.work_id, kind: row.kind === 'homework' ? 'homework' : 'classwork' },
           version: row.version,
           ...lineValues(row),
-          changedBy: names.get(row.changed_by) ?? {
-            accountId: row.changed_by,
-            login: null,
-            name: null,
-          },
+          changedBy:
+            row.changed_by === null
+              ? null
+              : (names.get(row.changed_by) ?? {
+                  accountId: row.changed_by,
+                  login: null,
+                  name: null,
+                }),
           changedHow: cellChange(row.changed_how),
           changedAt: new Date(row.changed_at).toISOString(),
           viaKey: viaKeyOf(keyNames, row.via_key_id),

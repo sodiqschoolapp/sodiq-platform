@@ -146,7 +146,7 @@ export async function studentJournal(
       workKind: line.work_id === null ? null : (works.get(line.work_id)?.kind ?? null),
       ...lineValues(line),
       changedHow: cellChange(line.changed_how),
-      changedBy: named(line.changed_by),
+      changedBy: line.changed_by === null ? null : named(line.changed_by),
     })),
     historyLeftOut:
       leftOut > 0 && rest.oldest !== null

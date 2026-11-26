@@ -391,7 +391,7 @@ export class SupportView {
         notGradedBefore: one.not_graded_before,
         notGradedAfter: one.not_graded_after,
         how: cellChange(one.changed_how),
-        by: named(one.changed_by),
+        by: one.changed_by === null ? null : named(one.changed_by),
         reason: one.reason,
         approvedBy: approver === null ? null : named(approver),
         orphanAssignment: one.orphan_assignment_id !== null,
