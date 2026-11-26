@@ -1060,7 +1060,7 @@ describe('attendance entry', () => {
           [null, 2, 'entry'],
           [2, 1, 'entry'],
         ]);
-        expect(attendance[0]?.changedBy.accountId).toBe(owner.account.id);
+        expect(attendance[0]?.changedBy?.accountId).toBe(owner.account.id);
         expect(history.lines.some((line) => line.work?.id === work)).toBe(true);
       });
       const headTutor = await account();
