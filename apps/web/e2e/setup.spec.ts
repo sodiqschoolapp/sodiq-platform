@@ -1135,25 +1135,10 @@ test('the Academic Vice Principal adds a graded subject with no daily distributi
 
   await panel.getByRole('button', { name: texts.copy, exact: true }).click();
   await expect(panel.locator('[data-quarter="4"]')).toContainText('10 · 30 · 20 · 40');
-  // Task 11.27 (`09`, Codes: "a switch on the subject, off by default", the Super Admin's): the
-  // switch starts off, is saved when ticked and still on after a reload, and off again.
+  // Task 11.27 (`09`, Codes: "a switch on the subject, off by default"; `02`, Academic Vice
+  // Principal: "subjects (except the codes switch)"): the new subject's codes are off, and this
+  // Academic Vice Principal sees the switch read only, with no control to change it.
   const codes = panel.getByRole('region', { name: texts.codes.title, exact: true });
-  const codesSwitch = codes.getByRole('checkbox', { name: texts.codes.switch, exact: true });
-  await expect(codesSwitch).not.toBeChecked();
-  await codesSwitch.check();
-  await expect(codesSwitch).toBeChecked();
-  await expect(codesSwitch).toBeEnabled();
-  await page.reload();
-  await page
-    .getByRole('row')
-    .filter({ hasText: 'Astronomy' })
-    .getByRole('button', { name: 'Astronomy' })
-    .click();
-  const again = page
-    .getByRole('complementary', { name: 'Astronomy' })
-    .getByRole('region', { name: texts.codes.title, exact: true })
-    .getByRole('checkbox', { name: texts.codes.switch, exact: true });
-  await expect(again).toBeChecked();
-  await again.uncheck();
-  await expect(again).not.toBeChecked();
+  await expect(codes.getByText(texts.codes.off, { exact: true })).toBeVisible();
+  await expect(codes.getByRole('checkbox')).toHaveCount(0);
 });
