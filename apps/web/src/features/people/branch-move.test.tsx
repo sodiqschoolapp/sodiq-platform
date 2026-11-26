@@ -192,6 +192,7 @@ function open(
           },
         ],
         mayMoveDepartment: false,
+        maySwitchCodes: false,
       }),
     ...extra,
   });

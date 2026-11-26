@@ -18,6 +18,15 @@ export const DESCRIPTIONS: Readonly<Record<string, string>> = {
     'Web links for the lesson, one per line; each must be a valid address.',
   'features/plans/plan-item-editor.tsx#field:plans.panel.objectives':
     'The objectives of the lesson and the materials it uses, as free text.',
+  // Task 11.27 (`09`, Codes): the code fields, shown while the subject's codes are on.
+  'features/plans/plan-item-editor.tsx#field:plans.codes.topicCode':
+    'A short code of the topic, of at most 20 characters, shown first in the journal and the plan; only in a subject whose codes the Super Admin switched on.',
+  'features/plans/plan-item-editor.tsx#field:plans.codes.workCode':
+    'A short code of this classwork or homework, of at most 20 characters, shown alone in the journal column header with the full title on hover or a tap.',
+  'features/plans/plan-master-page.tsx#field:plans.codes.topicCode':
+    "A short code of the master item's topic, copied with it into the plans made from the master.",
+  'features/plans/plan-master-page.tsx#field:plans.codes.workCode':
+    "A short code of the master item's classwork or homework, copied with it into the plans.",
   'features/plans/plan-item-editor.tsx#field:plans.plan.topic':
     'The topic of the lesson in this plan row.',
   'features/plans/plan-master-page.tsx#button:form.edit':

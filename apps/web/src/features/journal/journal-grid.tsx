@@ -1171,7 +1171,7 @@ export function JournalGridView({
           works !== undefined && work.total !== null && cell?.open === true;
         children.push({
           colId: `${lesson.id}:${workKey(work)}`,
-          headerName: coded === undefined ? title : coded.code,
+          headerName: title,
           headerTooltip: label,
           headerComponentParams: {
             ...(coded === undefined ? {} : { coded }),

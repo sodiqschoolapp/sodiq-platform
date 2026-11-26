@@ -1282,6 +1282,7 @@ describe('adding a student', () => {
             },
           ],
           mayMoveDepartment: false,
+          maySwitchCodes: false,
         }),
       'POST /api/people/students': () =>
         Response.json(

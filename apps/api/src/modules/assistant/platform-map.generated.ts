@@ -23401,6 +23401,54 @@ export const PLATFORM_MAP_SOURCE: unknown = {
    "description": "Fills the topic with the topic of the previous lesson on the same day, for a double lesson."
   },
   {
+   "id": "features/plans/plan-item-editor.tsx#field:plans.codes.topicCode",
+   "kind": "field",
+   "label": {
+    "uz": "Mavzu kodi",
+    "ru": "Код темы",
+    "en": "Topic code"
+   },
+   "pages": [
+    "/plans/$journalId"
+   ],
+   "parent": null,
+   "roles": [
+    "super_admin",
+    "principal",
+    "academic_vice_principal",
+    "senior_head_teacher",
+    "head_teacher",
+    "teacher"
+   ],
+   "operations": [],
+   "opens": null,
+   "description": "A short code of the topic, of at most 20 characters, shown first in the journal and the plan; only in a subject whose codes the Super Admin switched on."
+  },
+  {
+   "id": "features/plans/plan-item-editor.tsx#field:plans.codes.workCode",
+   "kind": "field",
+   "label": {
+    "uz": "Kod …",
+    "ru": "Код …",
+    "en": "Code …"
+   },
+   "pages": [
+    "/plans/$journalId"
+   ],
+   "parent": null,
+   "roles": [
+    "super_admin",
+    "principal",
+    "academic_vice_principal",
+    "senior_head_teacher",
+    "head_teacher",
+    "teacher"
+   ],
+   "operations": [],
+   "opens": null,
+   "description": "A short code of this classwork or homework, of at most 20 characters, shown alone in the journal column header with the full title on hover or a tap."
+  },
+  {
    "id": "features/plans/plan-item-editor.tsx#field:plans.panel.classworkTitle",
    "kind": "field",
    "label": {
@@ -23498,6 +23546,30 @@ export const PLATFORM_MAP_SOURCE: unknown = {
   },
   {
    "id": "features/plans/plan-item-editor.tsx#field:plans.plan.topic",
+   "kind": "field",
+   "label": {
+    "uz": "Mavzu",
+    "ru": "Тема",
+    "en": "Topic"
+   },
+   "pages": [
+    "/plans/$journalId"
+   ],
+   "parent": null,
+   "roles": [
+    "super_admin",
+    "principal",
+    "academic_vice_principal",
+    "senior_head_teacher",
+    "head_teacher",
+    "teacher"
+   ],
+   "operations": [],
+   "opens": null,
+   "description": "The topic of the lesson in this plan row."
+  },
+  {
+   "id": "features/plans/plan-item-editor.tsx#field:plans.plan.topic:2",
    "kind": "field",
    "label": {
     "uz": "Mavzu",
@@ -23842,6 +23914,54 @@ export const PLATFORM_MAP_SOURCE: unknown = {
    "description": "The topic of the master item; pressing it opens the item in the side panel."
   },
   {
+   "id": "features/plans/plan-master-page.tsx#field:plans.codes.topicCode",
+   "kind": "field",
+   "label": {
+    "uz": "Mavzu kodi",
+    "ru": "Код темы",
+    "en": "Topic code"
+   },
+   "pages": [
+    "/plans/masters/$masterId"
+   ],
+   "parent": null,
+   "roles": [
+    "super_admin",
+    "principal",
+    "academic_vice_principal",
+    "senior_head_teacher",
+    "head_teacher",
+    "teacher"
+   ],
+   "operations": [],
+   "opens": null,
+   "description": "A short code of the master item's topic, copied with it into the plans made from the master."
+  },
+  {
+   "id": "features/plans/plan-master-page.tsx#field:plans.codes.workCode",
+   "kind": "field",
+   "label": {
+    "uz": "Kod …",
+    "ru": "Код …",
+    "en": "Code …"
+   },
+   "pages": [
+    "/plans/masters/$masterId"
+   ],
+   "parent": null,
+   "roles": [
+    "super_admin",
+    "principal",
+    "academic_vice_principal",
+    "senior_head_teacher",
+    "head_teacher",
+    "teacher"
+   ],
+   "operations": [],
+   "opens": null,
+   "description": "A short code of the master item's classwork or homework, copied with it into the plans."
+  },
+  {
    "id": "features/plans/plan-master-page.tsx#field:plans.masters.name",
    "kind": "field",
    "label": {
@@ -23963,6 +24083,30 @@ export const PLATFORM_MAP_SOURCE: unknown = {
   },
   {
    "id": "features/plans/plan-master-page.tsx#field:plans.plan.topic",
+   "kind": "field",
+   "label": {
+    "uz": "Mavzu",
+    "ru": "Тема",
+    "en": "Topic"
+   },
+   "pages": [
+    "/plans/masters/$masterId"
+   ],
+   "parent": null,
+   "roles": [
+    "super_admin",
+    "principal",
+    "academic_vice_principal",
+    "senior_head_teacher",
+    "head_teacher",
+    "teacher"
+   ],
+   "operations": [],
+   "opens": null,
+   "description": "The topic of the master item."
+  },
+  {
+   "id": "features/plans/plan-master-page.tsx#field:plans.plan.topic:2",
    "kind": "field",
    "label": {
     "uz": "Mavzu",

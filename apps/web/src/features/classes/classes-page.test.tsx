@@ -1173,7 +1173,8 @@ describe('the students of a class', () => {
               readsFinancial: false,
               today: TODAY,
             }),
-          'GET /api/setup/subjects': () => json({ subjects, mayMoveDepartment: false }),
+          'GET /api/setup/subjects': () =>
+            json({ subjects, mayMoveDepartment: false, maySwitchCodes: false }),
           [`POST /api/classes/${OXFORD.id}/members`]: () =>
             Response.json(
               {

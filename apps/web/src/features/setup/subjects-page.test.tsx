@@ -151,6 +151,7 @@ async function openList({
   extra = {},
   language = 'en',
   mayMoveDepartment = true,
+  maySwitchCodes = true,
   path = PATH,
 }: {
   session?: ReturnType<typeof superAdmin>;
@@ -161,6 +162,7 @@ async function openList({
   extra?: Record<string, (body: unknown) => Response>;
   language?: 'en' | 'ru';
   mayMoveDepartment?: boolean;
+  maySwitchCodes?: boolean;
   path?: string;
 } = {}) {
   const account = { ...session, language };
@@ -173,7 +175,10 @@ async function openList({
   const listed = [...subjects];
   const calls = fakeApi({
     'GET /api/auth/session': () => json(account),
-    'GET /api/setup/subjects': () => json({ subjects: listed, mayMoveDepartment }),
+    'GET /api/setup/subjects': () => json({ subjects: listed, mayMoveDepartment, maySwitchCodes }),
+    // Task 11.27: the codes switch.
+    [`PUT /api/setup/subjects/${MATHS.id}/codes`]: (body) =>
+      json({ ...MATHS, ...(body as object) }),
     'GET /api/setup/divisions': () => json({ divisions, staffCounts: [] }),
     'GET /api/setup/academic-years': () => json({ years }),
     [`GET /api/setup/subjects/${MATHS.id}/quarter-weights`]: () => json(answer(quarters)),
@@ -402,7 +407,8 @@ describe('the subjects page', () => {
     };
     await openList({
       extra: {
-        'GET /api/setup/subjects': () => json({ subjects, mayMoveDepartment: true }),
+        'GET /api/setup/subjects': () =>
+          json({ subjects, mayMoveDepartment: true, maySwitchCodes: false }),
         [`PUT /api/setup/subjects/${PHYSICS.id}`]: saveOne(PHYSICS),
       },
     });
@@ -798,6 +804,7 @@ describe('the subjects page', () => {
         branches: [NORTH],
       }),
       mayMoveDepartment: false,
+      maySwitchCodes: false,
     });
     fireEvent.click(rowButton('Mathematics'));
     const panel = await screen.findByRole('complementary', { name: 'Mathematics' });
@@ -805,6 +812,37 @@ describe('the subjects page', () => {
     const form = await edit(panel, 'Mathematics');
     expect(within(form).getByLabelText(subjectsText.department)).toHaveProperty('disabled', true);
     expect(within(form).getByText(subjectsText.departmentLocked)).toBeDefined();
+  });
+
+  // Task 11.27 (`09`, Codes; `02`, Academic Vice Principal: "subjects (except the codes switch)"):
+  // the Super Admin ticks the switch and it is saved; every other reader sees it read only.
+  it('lets the Super Admin switch codes on, and shows the switch read only to the Academic Vice Principal', async () => {
+    const { calls } = await openList();
+    fireEvent.click(rowButton('Mathematics'));
+    const panel = await screen.findByRole('complementary', { name: 'Mathematics' });
+    const codes = within(panel).getByRole('region', { name: subjectsText.codes.title });
+    fireEvent.click(within(codes).getByRole('checkbox', { name: subjectsText.codes.switch }));
+    await waitFor(() => {
+      expect(
+        calls.find((call) => call.route.startsWith('PUT') && call.route.endsWith('/codes'))?.body,
+      ).toEqual({ codesOn: true });
+    });
+  });
+
+  it('shows the codes switch read only when the server says the reader may not switch it', async () => {
+    const { calls } = await openList({
+      session: sessionOf({
+        assignments: [{ role: 'academic_vice_principal', branchId: NORTH.id }],
+        branches: [NORTH],
+      }),
+      maySwitchCodes: false,
+    });
+    fireEvent.click(rowButton('Mathematics'));
+    const panel = await screen.findByRole('complementary', { name: 'Mathematics' });
+    const codes = within(panel).getByRole('region', { name: subjectsText.codes.title });
+    expect(within(codes).queryByRole('checkbox')).toBeNull();
+    expect(within(codes).getByText(subjectsText.codes.off)).toBeDefined();
+    expect(calls.some((call) => call.route.endsWith('/codes'))).toBe(false);
   });
 
   // The review of #52: the server decides the move from every current
@@ -819,6 +857,7 @@ describe('the subjects page', () => {
         branches: [NORTH],
       }),
       mayMoveDepartment: true,
+      maySwitchCodes: false,
     });
     fireEvent.click(rowButton('Mathematics'));
     const panel = await screen.findByRole('complementary', { name: 'Mathematics' });

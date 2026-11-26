@@ -154,7 +154,11 @@ async function openList(
       json({ classes: options.classes ?? [OXFORD, PRINCETON, YALE, BROWN] }),
     'GET /api/setup/academic-years': () => json({ years: options.years ?? [YEAR] }),
     'GET /api/setup/subjects': () =>
-      json({ subjects: options.subjects ?? [MATHS, ENGLISH], mayMoveDepartment: false }),
+      json({
+        subjects: options.subjects ?? [MATHS, ENGLISH],
+        mayMoveDepartment: false,
+        maySwitchCodes: false,
+      }),
     ...Object.fromEntries(
       groups.map((one) => [`GET /api/groups/${one.id}`, () => json(detailOf(one))]),
     ),
