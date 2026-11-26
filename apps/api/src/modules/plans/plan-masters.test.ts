@@ -2012,4 +2012,173 @@ describe('master plans', () => {
       expect((await parallelOf(7, x.vice)).units).toHaveLength(3);
     });
   });
+  // Task 11.27 (pull request #399; `09`, Codes: "in master plans"; "Codes are copied … from a
+  // master plan, and are part of \"master updated\""; "Switching off … keeps them"; plan review 1
+  // and 6: a master save writes its works again and keeps their hidden codes; a hidden code alone
+  // never raises "master updated").
+  describe('codes of a master (task 11.27)', () => {
+    const codesOn = (x: Scene, on: boolean) =>
+      t.database.migrator
+        .updateTable('subjects')
+        .set({ codes_on: on })
+        .where('id', '=', x.s.subject)
+        .execute();
+    const compareOf = (x: Scene) =>
+      at(NOV02, async () =>
+        planMasterCompareSchema.parse(
+          ok(
+            await send(
+              'get',
+              `/api/plans/journals/${x.journal}/master-compare?quarterId=${x.q2}`,
+              x.s.branch,
+              x.owner.cookie,
+            ),
+          ).body,
+        ),
+      );
+    const storedOf = async (masterItemId: string) => ({
+      topic: (
+        await t.database.migrator
+          .selectFrom('lesson_plan_master_items')
+          .select('topic_code')
+          .where('id', '=', masterItemId)
+          .executeTakeFirstOrThrow()
+      ).topic_code,
+      works: (
+        await t.database.migrator
+          .selectFrom('lesson_plan_master_works')
+          .select('work_code')
+          .where('item_id', '=', masterItemId)
+          .execute()
+      ).map((one) => one.work_code),
+    });
+    const saveItem = (x: Scene, master: PlanMaster, body: Record<string, unknown>) =>
+      at(NOV02, async () =>
+        send(
+          'put',
+          `/api/plans/masters/${master.id}/items/${masterItem(master, 1).id}`,
+          x.s.branch,
+          x.head.cookie,
+          { revision: master.revision, values: body },
+        ),
+      );
+
+    it('copies the codes into a plan, keeps them through a save while off, and compares them when on', async () => {
+      const x = await scene();
+      await codesOn(x, true);
+      let master = masterOf(await createMaster(x, x.head), 201);
+      master = masterOf(
+        await at(NOV02, async () =>
+          send('post', `/api/plans/masters/${master.id}/items`, x.s.branch, x.head.cookie, {
+            revision: master.revision,
+            position: 1,
+            values: values('M1', {
+              topicCode: 'T1',
+              classworks: [{ title: 'Quiz 1', description: '', code: 'Q1' }],
+            }),
+          }),
+        ),
+      );
+      expect([masterItem(master, 1).topicCode, masterItem(master, 1).classworks[0]?.code]).toEqual([
+        'T1',
+        'Q1',
+      ]);
+      ok(await copyMaster(x, master.id));
+      const copied = (await planOf(x, NOV02)).rows[0]?.item;
+      expect([copied?.topicCode, copied?.classworks[0]?.code]).toEqual(['T1', 'Q1']);
+
+      // Off: the master hides its codes; a save of the topic with the works named keeps them.
+      await codesOn(x, false);
+      master = masterOf(
+        await at(NOV02, async () =>
+          send('get', `/api/plans/masters/${master.id}`, x.s.branch, x.head.cookie),
+        ),
+      );
+      expect([master.codesOn, masterItem(master, 1).topicCode]).toEqual([false, null]);
+      const item = masterItem(master, 1);
+      master = masterOf(
+        await saveItem(
+          x,
+          master,
+          values('M1 revised', {
+            classworks: item.classworks.map((work) => ({
+              id: work.id,
+              title: work.title,
+              description: work.description,
+            })),
+          }),
+        ),
+      );
+      expect(await storedOf(item.id)).toEqual({ topic: 'T1', works: ['Q1'] });
+      // A code sent while off is refused.
+      const refused = await saveItem(x, master, values('M1 revised', { topicCode: 'T2' }));
+      expect([refused.status, codeOf(refused)]).toEqual([409, 'plan_codes_off']);
+
+      // On: a change of the code alone is a change of the item, shown side by side.
+      await codesOn(x, true);
+      // Read again, as the page does: a page read while off sends no code (`planFormSchema`).
+      master = masterOf(
+        await at(NOV02, async () =>
+          send('get', `/api/plans/masters/${master.id}`, x.s.branch, x.head.cookie),
+        ),
+      );
+      master = masterOf(
+        await saveItem(
+          x,
+          master,
+          values('M1 revised', {
+            topicCode: 'T2',
+            classworks: masterItem(master, 1).classworks.map((work) => ({
+              id: work.id,
+              title: work.title,
+              code: work.code,
+              description: work.description,
+            })),
+          }),
+        ),
+      );
+      const rows = (await compareOf(x)).rows;
+      expect(rows.map((row) => [row.change, row.master?.topicCode, row.plan?.topicCode])).toEqual([
+        ['changed', 'T2', 'T1'],
+      ]);
+      // The take carries the master's codes into the plan, while off too (plan decision 2).
+      await codesOn(x, false);
+      ok(
+        await at(NOV02, async () =>
+          send('post', `/api/plans/journals/${x.journal}/master-take`, x.s.branch, x.owner.cookie, {
+            quarterId: x.q2,
+            revision: master.revision,
+          }),
+        ),
+      );
+      await codesOn(x, true);
+      const taken = (await planOf(x, NOV02)).rows[0]?.item;
+      expect([taken?.topic, taken?.topicCode, taken?.classworks[0]?.code]).toEqual([
+        'M1 revised',
+        'T2',
+        'Q1',
+      ]);
+    });
+
+    it('raises no "master updated" for codes hidden while off', async () => {
+      const x = await scene();
+      await codesOn(x, true);
+      let master = masterOf(await createMaster(x, x.head), 201);
+      master = masterOf(
+        await at(NOV02, async () =>
+          send('post', `/api/plans/masters/${master.id}/items`, x.s.branch, x.head.cookie, {
+            revision: master.revision,
+            position: 1,
+            values: values('M1', { topicCode: 'T1' }),
+          }),
+        ),
+      );
+      ok(await copyMaster(x, master.id));
+      master = masterOf(await saveItem(x, master, values('M1', { topicCode: 'T9' })));
+      expect((await compareOf(x)).rows.map((row) => row.change)).toEqual(['changed']);
+      await codesOn(x, false);
+      expect((await compareOf(x)).rows).toEqual([]);
+      expect((await planOf(x, NOV02)).master?.updated).toBe(false);
+    });
+  });
 });
