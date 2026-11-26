@@ -60,6 +60,10 @@ const KEPT = [
   // Task 6.3: a reason of absence stays in the branch of its date.
   'student_absence_reasons',
   'student_moves',
+  // Task 11.26: a past mark stays in the branch of its upload (`edge/academic-year`: "a branch
+  // move keeps them").
+  'past_attendance',
+  'past_works',
 ];
 /**
  * The tables whose key names the student under another column follow the
@@ -334,7 +338,10 @@ describe('branch moves in the database', () => {
           one !== 'early_warning_handled' &&
           one !== 'student_absence_reasons' &&
           one !== 'exemptions' &&
-          one !== 'exemption_move_offers',
+          one !== 'exemption_move_offers' &&
+          // Task 11.26: the kit writes no past mark; the portal test keeps them across a move.
+          one !== 'past_attendance' &&
+          one !== 'past_works',
       )) {
         expect((await branchOf(table, student)).sort()).toEqual([north, south].sort());
       }

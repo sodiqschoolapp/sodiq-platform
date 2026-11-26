@@ -1,10 +1,16 @@
 import type { NestExpressApplication } from '@nestjs/platform-express';
-import { BRANCH_HEADER, pastMarkConfirmResultSchema, pastMarkPreviewSchema } from '@sodiq/shared';
+import {
+  BRANCH_HEADER,
+  pastMarkConfirmResultSchema,
+  pastMarkPreviewSchema,
+  STUDENT_EXPORT_COLUMNS,
+} from '@sodiq/shared';
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createTestApp } from '../create-test-app.js';
 import { FixedClock } from '../fixed-clock.js';
 import { filledPastMarkTemplate, type PastMarkTemplateRow } from '../past-marks-kit.js';
+import { binary, readSheet } from '../xlsx-kit.js';
 import { createTestDatabase, type TestDatabase } from '../test-database.js';
 import { SETUP_MOMENT } from './data.js';
 import { fillJournals } from './journal.js';
@@ -98,6 +104,50 @@ describe('the figures of the demo school across an import of past marks', () => 
       for (const one of classes) {
         await read(`/api/results/reports/results-table?quarterId=${quarter.id}&classId=${one.id}`);
         await read(`/api/results/rating/class?quarterId=${quarter.id}&classId=${one.id}`);
+      }
+      // Spec review must-fix 3: the journal grids, a journal's Excel export and the student
+      // export, the staff screens and files nearest to the marks.
+      const journals = await migrator
+        .selectFrom('journals')
+        .select('id')
+        .where('branch_id', '=', branch.id)
+        .orderBy('id')
+        .execute();
+      for (const journal of journals) {
+        await read(`/api/journal/journals/${journal.id}?quarterId=${quarter.id}`);
+      }
+      const fileOf = async (path: string, body: object) => {
+        const response = await request(app.getHttpServer())
+          .post(path)
+          .set('Cookie', school.superAdmin.caller.cookies)
+          .set(BRANCH_HEADER, branch.id)
+          .send(body)
+          .buffer(true)
+          .parse(binary);
+        expect(response.status, path).toBe(200);
+        const sheet = await readSheet(response.body as Buffer);
+        lines.push(`${branch.id} ${path} ${JSON.stringify(sheet)}`);
+      };
+      for (const journal of journals.slice(0, 3)) {
+        await fileOf(`/api/journal/journals/${journal.id}/export`, {
+          format: 'xlsx',
+          quarterId: quarter.id,
+        });
+      }
+      const students = await migrator
+        .selectFrom('students')
+        .select('id')
+        .where('branch_id', '=', branch.id)
+        .orderBy('id')
+        .execute();
+      if (students.length > 0) {
+        await fileOf('/api/people/students/export', {
+          ids: students.map((one) => one.id),
+          columns: [...STUDENT_EXPORT_COLUMNS],
+          selection: 'ticked',
+          search: '',
+          filters: {},
+        });
       }
     }
     return lines;
