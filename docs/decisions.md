@@ -65,6 +65,21 @@ The owner's answers to the decided-ahead questions for Phase 10, given in chat o
 19. Production deploys only after 18:00 or at the weekend, Tashkent time.
 20. The test environment stays after go-live; every change is tried there first.
 
+## 26 November 2026: decimal scores and totals, the switch (task 11.25b)
+
+Plan approved on pull request #397 with corrections 1 (the total field takes the parser and a point key) and 2 (the total field's own text, 1 to 1000). Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first.** The pinned tests the requirement changed: `work.test.ts` (`workPercent(1, 2.5)` and `workPercent(4.5, 5)` valid; "always refuses a decimal" now "more than two digits after the point"), the version 7/8 comparison of `closing.test.ts` moved to 8/9, the 0188 test and `homework-move.test.ts` without the `_exact` columns, the total field's web test (2.5 valid) | The spec change of 25 November 2026; 0189 removes the columns |
+| **Look first.** The calc reads a JS number through `String(n)`; more than two decimals is `more_than_two_decimals`, every other refusal keeps its code; a whole total above (2^53 − 1)/100 is now refused | Correction 3 of #395; nothing is rounded |
+| **Look first.** 0189 drops the old columns with their checks and renames the twins and twin checks; the store readers are created again, `execute` revoked from `public` | Same expressions, valid since 0188; the revoke tightens |
+| A score with three decimals passes the body schema and is refused by the domain as `409 score_decimals`, recorded as sent; a total with three decimals is refused 400 by its schema | "A refused 7.555 is still recorded as sent" |
+| 0189 compiles every PL/pgSQL function again in every session (`alter function … cost` of its own cost) | The running version's sessions keep the old column type in their compiled triggers |
+| A point key of its own beside the lesson-mode field and the total field | A phone's decimal key may be a comma, which the spec refuses |
+| The support view reads `value_sent` as text (`valueSent: string`) | A value refused as sent may not read back as a JS number |
+| The demo is built on 0188 and read before and after 0189; version 8 is its arithmetic | The code of 11.25a cannot run on this branch; the demo cannot be closed (no rating exams) |
+
 ## 26 November 2026: decimal scores and totals, the exact columns beside the old ones (task 11.25a)
 
 Plan approved on pull request #395 with corrections 1 (`journal_save_refusals.value_sent_exact` is plain `numeric`: a refused value is recorded as sent, a refused 1500 included), 2 (the test that the user triggers are on again reads every partition) and 3 (11.25b's calc reader reads the shortest decimal text, never arithmetic on the number). Flagged on issue #42.
