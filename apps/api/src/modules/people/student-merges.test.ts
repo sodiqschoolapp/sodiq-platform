@@ -897,6 +897,9 @@ describe('the merge of two student records', () => {
       const b = await pastMarks(east, twice.id, { subjectId: subject });
       const seen = await previewOf(first.id, twice.uid, east);
       expect(seen.refusal?.code).toBe('student_merge_past_marks_overlap');
+      // The preview names the two uploads to withdraw first (review finding 2).
+      expect(seen.refusal?.uploads).toHaveLength(2);
+      expect(seen.refusal?.uploads?.every((name) => /^Past \d+\.xlsx$/.test(name))).toBe(true);
       const before = await rowsOf();
       const response = await post(
         first.id,

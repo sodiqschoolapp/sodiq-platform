@@ -182,7 +182,14 @@ export const studentMergePreviewSchema = z.object({
       }),
     ),
   }),
-  refusal: z.object({ code: z.string(), day: schoolDateSchema.nullable() }).nullable(),
+  refusal: z
+    .object({
+      code: z.string(),
+      day: schoolDateSchema.nullable(),
+      /** Task 11.26: the files of the uploads of past marks to withdraw first, when they refuse it. */
+      uploads: z.array(z.string()).optional(),
+    })
+    .nullable(),
   digest: z.string(),
 });
 

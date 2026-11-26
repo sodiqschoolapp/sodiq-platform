@@ -174,7 +174,10 @@ export class PastMarks {
         if (!result.clean) {
           throw new RolledBack(await this.previewOf(transaction, record, result, 1));
         }
-        const counts = await this.save(transaction, record, result.rows);
+        if (result.yearId === null) {
+          throw new Error('A clean run has the current year it checked against.');
+        }
+        const counts = await this.save(transaction, record, result.yearId, result.rows);
         const moment = await transactionMoment(transaction);
         await transaction
           .updateTable('past_mark_uploads')
@@ -554,14 +557,11 @@ export class PastMarks {
   private async save(
     transaction: Transaction,
     record: UploadRecord,
+    yearId: string,
     rows: readonly ParsedPastMarkRow[],
   ): Promise<{ attendance: number; works: number }> {
-    const year = await transaction
-      .selectFrom('academic_years')
-      .select('id')
-      .where('branch_id', '=', record.branchId)
-      .where('status', '=', 'current')
-      .executeTakeFirstOrThrow();
+    // The year the rows were checked against (review should-fix 1), never read again.
+    const year = { id: yearId };
     const attendance: {
       branch_id: string;
       upload_id: string;

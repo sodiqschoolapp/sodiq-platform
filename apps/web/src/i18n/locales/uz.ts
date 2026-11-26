@@ -2518,6 +2518,7 @@ export const uz: Texts<'one' | 'other'> = {
       monitoring: 'Yashirin: kirish va saqlash tekshiruvi',
     },
     branch: {
+      goLiveUploads: 'Avval qaytarib olinadigan oʻtgan baholar yuklamalari:',
       goLiveTitle: 'Ishga tushirish sanasi',
       goLiveDate: 'Ishga tushirish sanasi',
       goLiveNotSet: 'Belgilanmagan',

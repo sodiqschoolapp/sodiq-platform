@@ -2486,6 +2486,7 @@ export const en = {
       monitoring: 'Hidden: the sign-in-and-save check',
     },
     branch: {
+      goLiveUploads: 'Uploads of past marks to withdraw first:',
       goLiveTitle: 'Go-live date',
       goLiveDate: 'Go-live date',
       goLiveNotSet: 'Not set',

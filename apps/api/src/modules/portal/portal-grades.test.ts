@@ -611,6 +611,7 @@ describe('the portal grades and attendance', () => {
         comment: 'Good start, parents',
         // Saved the evening of the lesson (`saveOn`, 18:00 Tashkent).
         savedAt: '2026-10-12T13:00:00.000Z',
+        past: false,
       },
       {
         date: '2026-10-19',
@@ -623,6 +624,7 @@ describe('the portal grades and attendance', () => {
         // The staff-only comment on this score is not sent.
         comment: null,
         savedAt: '2026-10-19T13:00:00.000Z',
+        past: false,
       },
     ]);
     expect(maths?.ratingComments).toEqual(['Exam on Friday, parents']);

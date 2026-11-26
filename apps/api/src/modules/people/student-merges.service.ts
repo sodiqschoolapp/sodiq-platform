@@ -871,6 +871,9 @@ export class StudentMerges {
           : {
               code: plan.refusal.code,
               day: plan.refusal.details?.find((detail) => detail.day !== undefined)?.day ?? null,
+              ...(plan.refusal.code === 'student_merge_past_marks_overlap'
+                ? { uploads: (plan.refusal.details ?? []).map((detail) => detail.message) }
+                : {}),
             },
       values: await this.valuesOf(transaction, plan),
       digest: plan.digest,

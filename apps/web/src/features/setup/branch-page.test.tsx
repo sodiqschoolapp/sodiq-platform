@@ -367,6 +367,47 @@ describe('the branch page', () => {
       expect(await within(goLive()).findByText(en.errors.go_live_outside_year)).toBeDefined();
     });
 
+    // Task 11.26 (`edge/academic-year`, Past marks: "refused, naming the uploads to withdraw first").
+    it('names the uploads of past marks that refuse a new date', async () => {
+      fakeApi({
+        'GET /api/auth/session': () => json(superAdmin()),
+        'GET /api/setup/branch': () => json(BRANCH),
+        'GET /api/setup/academic-years': () => json({ years: [YEAR] }),
+        'PUT /api/setup/branch/go-live': () =>
+          Response.json(
+            {
+              error: {
+                code: 'go_live_past_marks',
+                message: 'ENGLISH TEXT FOR THE DEVELOPER',
+                requestId: 'test-request',
+                details: [
+                  {
+                    path: 'goLiveDate',
+                    code: 'go_live_past_marks',
+                    message: 'September 7 Oxford.xlsx',
+                    recordId: '0199a000-0000-7000-8000-000000000401',
+                  },
+                ],
+              },
+            },
+            { status: 409 },
+          ),
+      });
+      renderApp(PATH);
+      await screen.findByRole('form', { name: en.setup.branch.goLiveTitle });
+      type(field(goLive(), en.setup.branch.goLiveDate), '2026-09-01');
+      fireEvent.click(within(goLive()).getByRole('button', { name: en.form.save }));
+      const list = await waitFor(() => {
+        const found = document.querySelector('[data-go-live-uploads]');
+        if (found === null) throw new Error('no list yet');
+        return found;
+      });
+      expect(list.textContent).toContain(en.setup.branch.goLiveUploads);
+      expect([...list.querySelectorAll('li')].map((one) => one.textContent)).toEqual([
+        'September 7 Oxford.xlsx',
+      ]);
+    });
+
     // edge/academic-year: "An action whose prerequisite is missing is switched off and says what is missing."
     it('is switched off, saying what is missing, while the branch has no planned or current year', async () => {
       fakeApi({

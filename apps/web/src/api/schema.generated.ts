@@ -143496,6 +143496,7 @@ export interface operations {
                             code: string;
                             /** Format: date */
                             day: string | null;
+                            uploads?: string[];
                         } | null;
                         digest: string;
                     };
@@ -149251,7 +149252,11 @@ export interface operations {
                                 fileName: string;
                                 /** Format: date */
                                 date: string;
-                                subject: string;
+                                subject: {
+                                    uz: string;
+                                    ru: string;
+                                    en: string;
+                                };
                                 lessonNumber: number;
                                 mark: number;
                                 /** Format: date-time */
@@ -149262,7 +149267,11 @@ export interface operations {
                                 fileName: string;
                                 /** Format: date */
                                 date: string;
-                                subject: string;
+                                subject: {
+                                    uz: string;
+                                    ru: string;
+                                    en: string;
+                                };
                                 lessonNumber: number;
                                 /** @enum {string} */
                                 kind: "classwork" | "homework";

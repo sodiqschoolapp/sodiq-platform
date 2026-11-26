@@ -15,6 +15,7 @@ const SOUTH = '019a0000-0000-7000-8000-00000000000b';
 const STUDENT = '019a0000-0000-7000-8000-0000000000c1';
 const MOVED = '019a0000-0000-7000-8000-0000000000c2';
 const LOOSE = '019a0000-0000-7000-8000-0000000000c3';
+const ENDED = '019a0000-0000-7000-8000-0000000000c4';
 const HISTORY = '019a0000-0000-7000-8000-0000000000d1';
 const PE = '019a0000-0000-7000-8000-0000000000d2';
 const TWIN_A = '019a0000-0000-7000-8000-0000000000d3';
@@ -80,6 +81,20 @@ const CONTEXT: PastMarkContext = {
         memberships: [
           { branchId: NORTH, grade: 8, validFrom: '2026-09-02', validUntil: '2026-10-01' },
           { branchId: SOUTH, grade: 8, validFrom: '2026-10-01', validUntil: 'infinity' },
+        ],
+      },
+    ],
+    [
+      '2600104',
+      {
+        // In grade 7 of the north until 5 September only, now of no branch class.
+        id: ENDED,
+        uid: '2600104',
+        lastName: 'Rahimova',
+        firstName: 'Zilola',
+        branchId: null,
+        memberships: [
+          { branchId: NORTH, grade: 7, validFrom: '2026-09-02', validUntil: '2026-09-05' },
         ],
       },
     ],
@@ -247,6 +262,14 @@ describe('reading a row of past marks', () => {
         { ...CONTEXT, branchId: SOUTH },
       ).problems,
     ).toEqual([{ column: 'uid', code: 'student_other_branch' }]);
+  });
+
+  it('decides a student whose classes all ended earlier by the last of them (build decision)', () => {
+    const ended = { uid: '2600104', lastName: 'Rahimova', firstName: 'Zilola', attendance: '1' };
+    expect(parsePastMarkRow(row(ended), CONTEXT).problems).toEqual([]);
+    expect(parsePastMarkRow(row(ended), { ...CONTEXT, branchId: SOUTH }).problems).toEqual([
+      { column: 'uid', code: 'student_other_branch' },
+    ]);
   });
 
   it('refuses unknown and shared subject names, and a work on an attendance-only subject', () => {

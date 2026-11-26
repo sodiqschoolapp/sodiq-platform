@@ -109,7 +109,7 @@ create table past_attendance (
 -- One standing attendance mark per lesson (`edge/academic-year`: "A lesson … has at most one
 -- attendance mark … in the file and across the uploads that stand").
 create unique index past_attendance_standing_idx
-  on past_attendance (student_id, subject_id, school_date, lesson_number)
+  on past_attendance (branch_id, student_id, subject_id, school_date, lesson_number)
   where withdrawn_at is null;
 create index past_attendance_student_idx on past_attendance (student_id, school_date);
 create index past_attendance_upload_idx on past_attendance (upload_id);
@@ -156,7 +156,7 @@ create table past_works (
 
 -- A work (the same lesson, kind and title) appears once across the uploads that stand.
 create unique index past_works_standing_idx
-  on past_works (student_id, subject_id, school_date, lesson_number, kind, title_key)
+  on past_works (branch_id, student_id, subject_id, school_date, lesson_number, kind, title_key)
   where withdrawn_at is null;
 create index past_works_student_idx on past_works (student_id, school_date);
 create index past_works_upload_idx on past_works (upload_id);

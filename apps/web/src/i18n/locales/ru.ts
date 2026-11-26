@@ -2525,6 +2525,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       monitoring: 'Скрыт: проверка входа и сохранения',
     },
     branch: {
+      goLiveUploads: 'Сначала отзовите загрузки прошлых оценок:',
       goLiveTitle: 'Дата запуска',
       goLiveDate: 'Дата запуска',
       goLiveNotSet: 'Не задана',

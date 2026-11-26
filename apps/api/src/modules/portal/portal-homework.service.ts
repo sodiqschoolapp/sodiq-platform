@@ -80,7 +80,8 @@ export class PortalHomeworkService {
           description: null,
           files: [],
           itemId: null,
-          // A day holds platform lessons or past marks, never both: the lesson number orders them.
+          // The internal sort key of a row (never sent): a day holds platform lessons or past
+          // marks, never both (past marks lie before go-live), so the lesson number orders them.
           start: one.lessonNumber,
         });
       }

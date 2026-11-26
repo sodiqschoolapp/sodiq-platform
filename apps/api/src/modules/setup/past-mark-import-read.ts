@@ -177,16 +177,17 @@ export interface ParsedPastMarkRow {
 
 /**
  * The class membership that decides a row (review correction 1, plan decision 19): the one on
- * the row's date, or else the first one after it; `null` when the student has none then.
+ * the row's date, or else the first one after it, or else the last one before it (a student whose
+ * classes all ended earlier; build decision); `null` only for a student with no membership at
+ * all, who is checked against the record's branch.
  */
 export function membershipFor(student: PastMarkStudent, date: string): PastMarkMembership | null {
   const on = student.memberships.find((one) => one.validFrom <= date && date < one.validUntil);
   if (on !== undefined) return on;
-  return (
-    [...student.memberships]
-      .filter((one) => one.validFrom > date && one.validFrom < one.validUntil)
-      .sort((a, b) => a.validFrom.localeCompare(b.validFrom))[0] ?? null
-  );
+  const ordered = [...student.memberships]
+    .filter((one) => one.validFrom < one.validUntil)
+    .sort((a, b) => a.validFrom.localeCompare(b.validFrom));
+  return ordered.find((one) => one.validFrom > date) ?? ordered.at(-1) ?? null;
 }
 
 /** The one subject a name stands for, or why there is none (`10`: "by its name in any of the three languages"). */

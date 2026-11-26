@@ -467,7 +467,7 @@ const PAST_MARK_NAMES = ['absent', 'present', 'late', 'skipped', 'exempt', 'exem
  * decision 21): the student's past marks of every branch, withdrawn ones marked.
  */
 function StudentPastMarks({ report, words }: { report: StudentReport; words: Words }) {
-  const { t } = words;
+  const { t, language } = words;
   const { attendance, works } = report.pastMarks;
   const withdrawn = (at: string | null) =>
     at === null ? '' : ` · ${t('people.report.pastWithdrawn', { moment: words.moment(at) })}`;
@@ -483,7 +483,7 @@ function StudentPastMarks({ report, words }: { report: StudentReport; words: Wor
               {[
                 one.branch,
                 words.date(one.date),
-                one.subject,
+                one.subject[isLanguage(language) ? language : 'uz'],
                 t('portal.attendance.lessonNumber', { number: one.lessonNumber }),
                 t(`portal.attendance.marks.${PAST_MARK_NAMES[one.mark] ?? 'exempt'}`),
                 one.fileName,
@@ -496,7 +496,7 @@ function StudentPastMarks({ report, words }: { report: StudentReport; words: Wor
               {[
                 one.branch,
                 words.date(one.date),
-                one.subject,
+                one.subject[isLanguage(language) ? language : 'uz'],
                 t('portal.attendance.lessonNumber', { number: one.lessonNumber }),
                 `${t(`portal.grades.kinds.${one.kind}`)} “${one.title}”: ${String(one.score)} / ${String(one.total)}`,
                 one.fileName,
