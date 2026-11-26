@@ -254,7 +254,10 @@ function latestScores(
   subjects: readonly PortalSubjectGrades[],
 ): { subject: PortalSubjectGrades; score: PortalScore }[] {
   return subjects
-    .flatMap((subject) => subject.scores.map((score) => ({ subject, score })))
+    // Task 11.26 (`10`, What parents see, Today: "never past marks").
+    .flatMap((subject) =>
+      subject.scores.filter((score) => !score.past).map((score) => ({ subject, score })),
+    )
     .sort((a, b) => savedOf(b.score) - savedOf(a.score) || b.score.date.localeCompare(a.score.date))
     .slice(0, LATEST_SCORES);
 }

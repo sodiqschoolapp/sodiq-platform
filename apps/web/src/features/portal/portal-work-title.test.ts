@@ -13,6 +13,7 @@ const score = (kind: PortalScore['kind'], title: string | null): PortalScore => 
   percent: 90,
   comment: null,
   savedAt: null,
+  past: false,
 });
 
 // Owner, 19 November 2026: a title alone ("10-mashq") does not say whether a work was done in

@@ -68,6 +68,8 @@ const SECRET_ROUTES: readonly string[] = [
 ];
 
 const NOT_HEAVY: Readonly<Record<string, string>> = {
+  'POST /api/setup/past-marks/imports/:id/withdraw':
+    'withdraws an upload of past marks from before go-live (task 11.26), shown to parents only; not a timetable withdrawal',
   'POST /api/people/staff/:id/status':
     "a status change (leave, dismissal, re-hire): not on 02's list; a re-hire's slip goes through the floor (plan review correction 2)",
   'POST /api/classes/:id/members/:memberId/withdraw':

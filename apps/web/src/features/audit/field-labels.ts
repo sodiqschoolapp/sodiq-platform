@@ -234,6 +234,15 @@ const LABELS: Record<string, Record<string, ParseKeys>> = {
   assistant_conversation: {
     restoredAt: 'assistant.conversationsPage.restoredAt',
   },
+  // Task 11.26: an upload of past marks, its confirm and its withdrawal.
+  past_mark_upload: {
+    fileName: 'setup.pastMarks.fileName',
+    fileSha256: 'setup.pastMarks.fields.fileSha256',
+    rowCount: 'setup.pastMarks.rows',
+    attendance: 'setup.pastMarks.fields.attendance',
+    works: 'setup.pastMarks.fields.works',
+    reason: 'setup.pastMarks.reason',
+  },
   // Task 11.22: a file of a conversation, uploaded or downloaded.
   assistant_file: {
     kind: 'assistant.files.fields.kind',

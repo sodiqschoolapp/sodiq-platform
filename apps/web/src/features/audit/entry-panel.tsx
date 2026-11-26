@@ -54,6 +54,8 @@ const RECORD_TYPES = [
   'assistant_conversation',
   // Task 11.22: a file attached, recorded or exported in a conversation.
   'assistant_file',
+  // Task 11.26: an upload of past marks from before go-live.
+  'past_mark_upload',
 ] as const;
 
 /** The name of a kind of record; a kind the list does not hold shows as stored. */

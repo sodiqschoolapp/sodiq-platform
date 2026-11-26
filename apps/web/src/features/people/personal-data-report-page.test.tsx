@@ -74,6 +74,7 @@ const REPORT: StudentReport = {
     account: { createdAt: '2026-09-01T05:00:00.000Z', switchedOn: false },
   },
   // Task 6.1c: the marks and attendance.
+  pastMarks: { attendance: [], works: [] },
   journal: {
     cells: [
       {

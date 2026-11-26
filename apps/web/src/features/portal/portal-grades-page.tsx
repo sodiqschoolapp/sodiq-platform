@@ -244,10 +244,13 @@ function RowResult({ subject }: { subject: PortalSubjectGrades }): React.JSX.Ele
   const { t } = useTranslation();
   const figures = subject.figures;
   if (figures === null) {
-    return (
+    // Task 11.26: a subject with past scores only (a quarter "not in the system") has no result.
+    return subject.attendanceOnly ? (
       <span className="text-right text-sm text-muted-foreground">
         {t('portal.grades.attendanceOnlyShort')}
       </span>
+    ) : (
+      <span />
     );
   }
   if (figures.outcome.kind !== 'number') {
@@ -372,9 +375,11 @@ function SubjectDetails({
     <>
       {reopened && <p className="text-sm">{t('portal.grades.reopened')}</p>}
       {figures === null ? (
-        <dl className="grid grid-cols-2 gap-2">
-          {figure(t('results.columns.attendance'), subject.attendance, 'attendance')}
-        </dl>
+        subject.attendanceOnly && (
+          <dl className="grid grid-cols-2 gap-2">
+            {figure(t('results.columns.attendance'), subject.attendance, 'attendance')}
+          </dl>
+        )
       ) : (
         <dl className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           {figure(t('results.columns.attendance'), figures.attendance, 'attendance')}

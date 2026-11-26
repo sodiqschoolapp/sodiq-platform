@@ -31,6 +31,8 @@ import { BranchesPage } from '@/features/setup/branches-page';
 import { BuildingsPage } from '@/features/setup/buildings-page';
 import { DivisionsPage } from '@/features/setup/divisions-page';
 import { SubjectsPage } from '@/features/setup/subjects-page';
+import { PastMarkImportPage } from '@/features/setup/past-mark-import-page';
+import { PastMarksPage } from '@/features/setup/past-marks-page';
 import { SubjectImportPage } from '@/features/setup/subject-import-page';
 import { LoadImportPage } from '@/features/timetable/load-import-page';
 import { PatternImportPage } from '@/features/timetable/pattern-import-page';
@@ -445,6 +447,22 @@ const divisionsRoute = createRoute({
   path: '/setup/divisions',
   validateSearch: listSearch,
   component: guarded('divisions', DivisionsPage),
+});
+
+/** The uploads of past marks from before go-live (task 11.26). */
+const pastMarksRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/setup/past-marks',
+  validateSearch: listSearch,
+  component: guarded('past_marks', PastMarksPage),
+});
+
+/** The import of past marks from the system's template (task 11.26). */
+const pastMarkImportRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/setup/past-marks/import',
+  validateSearch: listSearch,
+  component: guarded('past_marks', PastMarkImportPage, 'create'),
 });
 
 /** The subject import from the system's template (the owner's change of 7 November 2026, #316). */
@@ -1083,6 +1101,8 @@ const routeTree = rootRoute.addChildren([
     travelTimesRoute,
     subjectsRoute,
     subjectImportRoute,
+    pastMarksRoute,
+    pastMarkImportRoute,
     classesRoute,
     groupsRoute,
     groupPlacementRoute,

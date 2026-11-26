@@ -136,6 +136,7 @@ const ATTENDANCE: PortalAttendanceWeek = {
       date: '2026-10-26',
       start: 480,
       end: 525,
+      lessonNumber: null,
       subject: maths,
       mark: 'late',
       comment: null,
@@ -154,6 +155,7 @@ const score = (date: string, title: string, value: number, savedAt = `${date}T13
   percent: value * 10,
   comment: null,
   savedAt,
+  past: false,
 });
 
 const GRADES: PortalGrades = {

@@ -114,7 +114,7 @@ export function PortalAttendancePage(): React.JSX.Element {
                   .filter((one) => one.date === day)
                   .map((one) => (
                     <LessonRow
-                      key={`${one.date}-${String(one.start)}-${one.subject.id}`}
+                      key={`${one.date}-${String(one.start)}-${String(one.lessonNumber)}-${one.subject.id}`}
                       lesson={one}
                       language={language}
                     />
@@ -139,7 +139,13 @@ function LessonRow({ lesson, language }: { lesson: PortalAttendanceLesson; langu
             <span className="truncate">{lesson.subject.names[language]}</span>
           </span>
           <span className="text-sm text-muted-foreground tabular-nums">
-            {t('portal.attendance.time', { from: clockOf(lesson.start), to: clockOf(lesson.end) })}
+            {lesson.start === null || lesson.end === null
+              ? // Task 11.26: a past mark from before go-live has no time, only its lesson's number.
+                t('portal.attendance.lessonNumber', { number: lesson.lessonNumber ?? 1 })
+              : t('portal.attendance.time', {
+                  from: clockOf(lesson.start),
+                  to: clockOf(lesson.end),
+                })}
           </span>
         </span>
         <MarkLabel mark={lesson.mark} />

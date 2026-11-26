@@ -2901,6 +2901,32 @@ export const GENERATED_TOOLS: Readonly<Record<string, GeneratedTool>> = {
     "path": "/api/setup/divisions",
     "parameters": []
   },
+  "GET /api/setup/past-marks/import-template": {
+    "name": "PastMarksController_template",
+    "method": "GET",
+    "path": "/api/setup/past-marks/import-template",
+    "parameters": [
+      {
+        "name": "language",
+        "in": "query",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "enum": [
+            "uz",
+            "ru",
+            "en"
+          ]
+        }
+      }
+    ]
+  },
+  "GET /api/setup/past-marks/imports": {
+    "name": "PastMarksController_list",
+    "method": "GET",
+    "path": "/api/setup/past-marks/imports",
+    "parameters": []
+  },
   "GET /api/setup/rooms": {
     "name": "RoomsController_list",
     "method": "GET",
@@ -16421,6 +16447,88 @@ export const GENERATED_TOOLS: Readonly<Record<string, GeneratedTool>> = {
       }
     ]
   },
+  "POST /api/setup/past-marks/imports/:id/confirm": {
+    "name": "PastMarksController_confirm",
+    "method": "POST",
+    "path": "/api/setup/past-marks/imports/:id/confirm",
+    "parameters": [
+      {
+        "name": "id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+        }
+      }
+    ],
+    "body": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    }
+  },
+  "POST /api/setup/past-marks/imports/:id/preview": {
+    "name": "PastMarksController_preview",
+    "method": "POST",
+    "path": "/api/setup/past-marks/imports/:id/preview",
+    "parameters": [
+      {
+        "name": "id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+        }
+      }
+    ],
+    "body": {
+      "type": "object",
+      "properties": {
+        "page": {
+          "default": 1,
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "POST /api/setup/past-marks/imports/:id/withdraw": {
+    "name": "PastMarksController_withdraw",
+    "method": "POST",
+    "path": "/api/setup/past-marks/imports/:id/withdraw",
+    "parameters": [
+      {
+        "name": "id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+        }
+      }
+    ],
+    "body": {
+      "type": "object",
+      "properties": {
+        "reason": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        }
+      },
+      "required": [
+        "reason"
+      ],
+      "additionalProperties": false
+    }
+  },
   "POST /api/setup/quarters/:id/attendance-values/preview": {
     "name": "SettingsController_previewAttendanceValues",
     "method": "POST",
@@ -23127,6 +23235,23 @@ export const GENERATED_TOOLS: Readonly<Record<string, GeneratedTool>> = {
         "name"
       ]
     }
+  },
+  "PUT /api/setup/past-marks/imports": {
+    "name": "PastMarksController_upload",
+    "method": "PUT",
+    "path": "/api/setup/past-marks/imports",
+    "parameters": [
+      {
+        "name": "name",
+        "in": "query",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        }
+      }
+    ]
   },
   "PUT /api/setup/quarters/:id/attendance-values": {
     "name": "SettingsController_setAttendanceValues",

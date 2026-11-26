@@ -47,6 +47,8 @@ export const SETUP_PAGES: readonly (IndexedPage & { area?: string; action?: Acti
   // Task 10.5: the demo time of the test environment, the Super Admin's.
   { titleKey: 'setup.demoClock.title', to: '/setup/demo-clock', area: 'demo_clock' },
   { titleKey: 'setup.subjects.title', to: '/setup/subjects' },
+  // Task 11.26: the past marks from before go-live.
+  { titleKey: 'setup.pastMarks.title', to: '/setup/past-marks', area: 'past_marks' },
   // Task 5.8b: the Super Admin's deleted lessons.
   { titleKey: 'forcedDeletes.title', to: '/forced-deletes', area: 'forced_deletes' },
   // Pull request #361: the Super Admin's feedback reports and system status.
