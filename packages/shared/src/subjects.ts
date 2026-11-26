@@ -192,9 +192,19 @@ export const subjectSchema = subjectFieldsSchema.extend({
    * (finding 20; task 2.7b-1, decision 8); `null` exactly when it is.
    */
   quarterCount: z.int().min(0).nullable(),
+  /**
+   * Task 11.27: the codes switch (`05`, Subject: "codes switch (off by default; set by the
+   * Super Admin only)"; `09`, Codes). Written only by `PUT /api/setup/subjects/:id/codes`.
+   */
+  codesOn: z.boolean(),
 });
 
 export type Subject = z.infer<typeof subjectSchema>;
+
+/** Task 11.27: the body of the codes switch (`09`, Codes: "a switch on the subject"). */
+export const subjectCodesSchema = z.strictObject({ codesOn: z.boolean() });
+
+export type SubjectCodes = z.infer<typeof subjectCodesSchema>;
 
 export const subjectListSchema = z.object({
   subjects: z.array(subjectSchema),
@@ -204,6 +214,11 @@ export const subjectListSchema = z.object({
    * every current assignment, so the screen follows this, not the role shown.
    */
   mayMoveDepartment: z.boolean(),
+  /**
+   * Task 11.27: whether the account may switch a subject's codes (`subject_codes` `edit`, the
+   * Super Admin's), decided by the server; the screen shows the switch read only otherwise.
+   */
+  maySwitchCodes: z.boolean(),
 });
 
 export type SubjectList = z.infer<typeof subjectListSchema>;

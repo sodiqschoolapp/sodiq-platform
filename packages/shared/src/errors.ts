@@ -1379,6 +1379,8 @@ export const ERROR_CODES = [
   'past_marks_not_standing',
   /** Task 11.26: another import of past marks was saved at the same moment; nothing was saved, run the preview again. */
   'past_marks_changed',
+  /** Task 11.27: a code was sent for a subject whose codes for topics and works are off (`09`, Codes: "While a subject's codes are off, no code can be set in it"); `path` names the field. */
+  'plan_codes_off',
   /** Any other refusal that has no code of its own yet. */
   'request_refused',
   /** A fault on the server. The answer says nothing about it; the log does. */

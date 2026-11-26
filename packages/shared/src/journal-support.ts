@@ -67,7 +67,13 @@ export const supportLineSchema = z.discriminatedUnion('kind', [
     kind: z.literal('work'),
     at: z.iso.datetime(),
     lessonId: z.uuid(),
-    work: z.object({ id: z.uuid(), kind: cellWorkKindSchema, title: z.string().nullable() }),
+    work: z.object({
+      id: z.uuid(),
+      kind: cellWorkKindSchema,
+      title: z.string().nullable(),
+      /** Task 11.27: the plan work's code shown; `null` when none or off. */
+      code: z.string().nullable(),
+    }),
     totalBefore: workTotalAmountSchema.nullable(),
     totalAfter: workTotalAmountSchema.nullable(),
     notHeldBefore: z.boolean().nullable(),

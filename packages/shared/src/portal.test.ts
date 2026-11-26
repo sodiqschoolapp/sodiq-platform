@@ -74,6 +74,7 @@ describe('the portal schemas of grades and attendance (task 11.3)', () => {
       date: '2026-10-12',
       kind: 'classwork',
       title: null,
+      code: null,
       position: 1,
       score: 12,
       total: 30,

@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { correctionSchema } from './journal-correction.js';
 import { cellWorkKindSchema } from './reset-entries.js';
-import { PLAN_TOPIC_MAX_LENGTH } from './plans.js';
+import { PLAN_TOPIC_MAX_LENGTH, planCodeSchema } from './plans.js';
 import {
   WORK_TOTAL_MAX,
   WORK_TOTAL_MIN,
@@ -59,6 +59,11 @@ export const workTitleSchema = z
 export const workAddSchema = z.strictObject({
   kind: cellWorkKindSchema,
   title: workTitleSchema,
+  /**
+   * Task 11.27 (`edge/journal`: "in a subject with codes on, a code of at most 20 characters may
+   * be added"); refused `plan_codes_off` while the subject's codes are off.
+   */
+  code: planCodeSchema.optional(),
   correction: correctionSchema.optional(),
 });
 
@@ -113,6 +118,9 @@ export type JournalPlanWorkParams = z.infer<typeof journalPlanWorkParamsSchema>;
 export const planWorkRenameSchema = z.strictObject({
   title: workTitleSchema,
   baseTitle: z.string(),
+  /** Task 11.27: the code, on the code read (`baseCode`); left out, or equal to its base, not touched. */
+  code: planCodeSchema.optional(),
+  baseCode: z.string().nullable().optional(),
 });
 
 export type PlanWorkRename = z.infer<typeof planWorkRenameSchema>;
@@ -124,12 +132,20 @@ export type PlanWorkRename = z.infer<typeof planWorkRenameSchema>;
 export const lessonTopicSchema = z.strictObject({
   topic: z.string().max(PLAN_TOPIC_MAX_LENGTH),
   baseTopic: z.string(),
+  /** Task 11.27: the topic code, on the code read; left out, or equal to its base, not touched. */
+  topicCode: planCodeSchema.optional(),
+  baseTopicCode: z.string().nullable().optional(),
   correction: correctionSchema.optional(),
 });
 
 export type LessonTopic = z.infer<typeof lessonTopicSchema>;
 
-export const lessonTopicSavedSchema = z.object({ itemId: z.uuid(), topic: z.string() });
+export const lessonTopicSavedSchema = z.object({
+  itemId: z.uuid(),
+  topic: z.string(),
+  /** Task 11.27: the topic code shown (`null` when none or off). */
+  topicCode: z.string().nullable(),
+});
 
 export type LessonTopicSaved = z.infer<typeof lessonTopicSavedSchema>;
 
@@ -139,6 +155,8 @@ export const workAddedSchema = z.object({
   itemId: z.uuid(),
   kind: cellWorkKindSchema,
   title: z.string(),
+  /** Task 11.27: the code shown (`null` when none or off). */
+  code: z.string().nullable(),
 });
 
 export type WorkAdded = z.infer<typeof workAddedSchema>;

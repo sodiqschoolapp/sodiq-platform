@@ -183,6 +183,8 @@ export type StudentAttendance = z.infer<typeof studentAttendanceSchema>;
 const traceWorkSchema = z.object({
   workId: z.uuid(),
   title: z.string().nullable(),
+  /** Task 11.27: the plan work's code shown (`09`, Codes); `null` when none or off. */
+  code: z.string().nullable(),
   position: z.int().min(1),
   score: workAmountSchema.nullable(),
   total: workTotalAmountSchema,

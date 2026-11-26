@@ -113,8 +113,12 @@ export const portalHomeworkSchema = z.strictObject({
   subject,
   /** The topic of the lesson it was given at (`09`: parents see the topic and the homework). */
   topic: z.string().nullable(),
+  /** Task 11.27: the topic code shown (`09`, Codes: "in the parent portal"); `null` when none or off. */
+  topicCode: z.string().nullable(),
   /** `null` for a work added by hand before task 10.6: shown "HW n" with `number`. */
   title: z.string().nullable(),
+  /** Task 11.27: the homework's code shown; `null` when none or off. */
+  code: z.string().nullable(),
   /** Its place among the homeworks given at that lesson, from 1. */
   number: z.int().min(1),
   /** The text of the task, from the plan; `null` for none. */
@@ -213,6 +217,8 @@ export const portalScoreSchema = z.strictObject({
   kind: z.enum(PORTAL_WORK_KINDS),
   /** The work's title; `null` for a work without one, shown "Classwork n" or "Homework n". */
   title: z.string().nullable(),
+  /** Task 11.27: the work's code shown; `null` when none, off, or a past mark (decision 8). */
+  code: z.string().nullable(),
   position: z.int().min(1),
   score: workAmountSchema,
   total: workTotalAmountSchema,
