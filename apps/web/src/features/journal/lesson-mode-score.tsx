@@ -4,7 +4,8 @@ import { useTranslation } from 'react-i18next';
 import { FIELD } from '@/components/ui/control';
 import { cn } from '@/lib/utils';
 import { SaveSign } from './cell-saves';
-import { NOT_GRADED_TEXT, storedWorkEntry, typedWorkEntry } from './journal-grid';
+import { isRefusal, NOT_GRADED_TEXT, storedWorkEntry, typedWorkEntry } from './journal-grid';
+import { refusalText, withPoint, type NumberRefusal } from './work-amount';
 import { useWorkLabel } from './work-kind-tag';
 import type { WorksEntry } from './works-entry';
 
@@ -41,7 +42,7 @@ export function LessonModeScore({
   /** The work's name in a sentence: the plan's title, or "CW 1" / "HW 1". */
   name: string;
   works: WorksEntry;
-  onRefusedNumber: (total: number) => void;
+  onRefusedNumber: (refusal: NumberRefusal) => void;
 }) {
   const { t } = useTranslation();
   const workLabel = useWorkLabel();
@@ -54,7 +55,8 @@ export function LessonModeScore({
   // The same entry, read at once: Enter sends it and moves the focus on, and the blur that follows
   // must not send it a second time (a second save on the old version was refused as stale).
   const unsent = useRef<{ from: string; text: string } | null>(null);
-  const [refused, setRefused] = useState(false);
+  const [refused, setRefused] = useState<NumberRefusal | null>(null);
+  const field = useRef<HTMLInputElement>(null);
 
   /** Sends what was typed; false when the number is refused, so Enter stays on it. */
   const send = (): boolean => {
@@ -62,15 +64,15 @@ export function LessonModeScore({
     unsent.current = null;
     if (entry === null || entry.from !== shown) return true;
     const value = typedWorkEntry(entry.text, work.total);
-    if (value === undefined) {
+    if (isRefusal(value)) {
       // The refused number stays in its field, marked, until it is corrected: on a phone the
       // page's message is out of view.
-      setRefused(true);
-      onRefusedNumber(work.total);
+      setRefused(value);
+      onRefusedNumber(value);
       return false;
     }
     setTyped(null);
-    setRefused(false);
+    setRefused(null);
     if (value !== stored) works.score(lesson, work, student, value);
     return true;
   };
@@ -78,6 +80,7 @@ export function LessonModeScore({
   return (
     <span className="flex shrink-0 items-center gap-2" data-lesson-mode-work={work.id ?? ''}>
       <input
+        ref={field}
         className={cn(FIELD, 'w-20 text-center text-lg font-semibold')}
         inputMode="numeric"
         enterKeyHint="next"
@@ -91,17 +94,13 @@ export function LessonModeScore({
         // Its own save and the read after it are on their way: a second number would be sent on
         // the old version. Read only, not switched off, so the focus and keyboard stay.
         readOnly={works.waiting(lesson.id, student.id, work)}
-        aria-invalid={refused && typed !== null ? true : undefined}
-        title={
-          refused && typed !== null
-            ? t('journal.works.wholeNumber', { total: work.total })
-            : undefined
-        }
+        aria-invalid={refused !== null && typed !== null ? true : undefined}
+        title={refused !== null && typed !== null ? refusalText(t, refused) : undefined}
         onChange={(event) => {
           const next = { from: shown, text: event.target.value };
           unsent.current = next;
           setTyped(next);
-          setRefused(false);
+          setRefused(null);
         }}
         onBlur={() => {
           send();
@@ -127,6 +126,30 @@ export function LessonModeScore({
           }
         }}
       />
+      {/* A point of its own (task 11.25b, decision 11): the keypad's decimal key may be a comma. */}
+      <button
+        type="button"
+        className="size-11 shrink-0 rounded-md text-lg font-semibold text-muted-foreground hover:bg-muted"
+        data-lesson-mode-point="true"
+        aria-label={t('journal.refusals.point')}
+        title={t('journal.refusals.point')}
+        disabled={works.waiting(lesson.id, student.id, work)}
+        // The field keeps the focus, so the keypad stays open and the blur sends nothing yet.
+        onMouseDown={(event) => event.preventDefault()}
+        onClick={() => {
+          const input = field.current;
+          if (input === null) return;
+          const at = (input.selectionStart ?? input.value.length) + 1;
+          const next = { from: shown, text: withPoint(input) };
+          unsent.current = next;
+          setTyped(next);
+          setRefused(null);
+          input.focus();
+          requestAnimationFrame(() => input.setSelectionRange(at, at));
+        }}
+      >
+        .
+      </button>
       <button
         type="button"
         className="size-11 shrink-0 rounded-md text-lg font-semibold text-muted-foreground hover:bg-muted"
@@ -140,7 +163,7 @@ export function LessonModeScore({
         onClick={() => {
           unsent.current = null;
           setTyped(null);
-          setRefused(false);
+          setRefused(null);
           works.score(lesson, work, student, stored === 'notGraded' ? null : 'notGraded');
         }}
       >

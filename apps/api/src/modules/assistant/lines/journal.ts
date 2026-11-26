@@ -157,7 +157,7 @@ export const JOURNAL_LINES: Readonly<Record<string, AssistantRouteLine>> = {
     kind: 'change',
     group: 'journal',
     description:
-      'Sets the total (the highest score) of a work of one lesson. Give the column (workId, or planWorkId with sourceLessonId) and the work’s version as read (null for a column with no row yet). A total of a work that already has numbers is refused for the screen to confirm.',
+      'Sets the total (the highest score) of a work of one lesson: from 1 to 1000, with at most two digits after a point (7.5). Give the column (workId, or planWorkId with sourceLessonId) and the work’s version as read (null for a column with no row yet). A total of a work that already has numbers is refused for the screen to confirm.',
     basis: { kind: 'own' },
     outdatedCodes: ['work_stale'],
     records: ['path:lessonId'],
@@ -175,7 +175,7 @@ export const JOURNAL_LINES: Readonly<Record<string, AssistantRouteLine>> = {
     kind: 'change',
     group: 'journal',
     description:
-      'Saves the numbers of the works of one lesson: one entry per student and column, a whole number from 0 to the work’s total, null to clear, or notGraded with null. Give each cell’s version as read in the journal (null for a cell never saved). A correction of a locked lesson carries correction with its reason.',
+      'Saves the numbers of the works of one lesson: one entry per student and column, a number from 0 to the work’s total with at most two digits after a point (7.5, never 7,5), null to clear, or notGraded with null. Give each cell’s version as read in the journal (null for a cell never saved). A correction of a locked lesson carries correction with its reason.',
     basis: { kind: 'own' },
     outdatedCodes: ['cell_stale'],
     records: ['path:lessonId'],

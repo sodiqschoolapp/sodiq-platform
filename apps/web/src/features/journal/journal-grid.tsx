@@ -25,6 +25,7 @@ import {
   type IHeaderParams,
 } from 'ag-grid-community';
 import { AgGridReact } from 'ag-grid-react';
+import { readWorkAmount, type NumberRefusal } from './work-amount';
 import { cn } from 'cn';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -397,9 +398,9 @@ function LessonHeader(
 }
 
 /**
- * The number typed in a work's cell (`07`: "The number typed is a whole number"; `edge/journal`:
- * "Letters, decimals and numbers above the total are refused in the cell"): the number, `null`
- * for an emptied cell, or `undefined` for what is refused.
+ * A whole number typed in a cell: the rating exam score (`edge/journal`: "A rating exam score
+ * takes whole numbers only"): the number, `null` for an emptied cell, or `undefined` for what is
+ * refused.
  */
 export function typedScore(typed: unknown, total: number): number | null | undefined {
   const text =
@@ -417,13 +418,20 @@ export const NOT_GRADED_TEXT = '-';
 export type WorkEntry = number | 'notGraded' | null;
 
 /**
- * The entry typed in a work's cell: `typedScore`, and a "-" (or a dash a keyboard gives for it)
- * for "not graded" (the owner, 20 November 2026: the teacher types "-" in place of the button).
+ * The entry typed in a work's cell: a number from 0 to the total with at most two digits after a
+ * point (`readWorkAmount`, task 11.25b), and a "-" (or a dash a keyboard gives for it) for "not
+ * graded" (the owner, 20 November 2026: the teacher types "-" in place of the button). A refused
+ * number gives its refusal, for the cell's message.
  */
-export function typedWorkEntry(typed: unknown, total: number): WorkEntry | undefined {
+export function typedWorkEntry(typed: unknown, total: number): WorkEntry | NumberRefusal {
   if (typeof typed === 'string' && /^[-–—−]$/.test(typed.trim())) return 'notGraded';
-  return typedScore(typed, total);
+  const read = readWorkAmount(typed, 0, total);
+  return read.kind === 'value' ? read.value : { reason: read.reason, min: 0, max: total };
 }
+
+/** Whether an entry typed in a work's cell was refused. */
+export const isRefusal = (entry: WorkEntry | NumberRefusal): entry is NumberRefusal =>
+  entry !== null && typeof entry === 'object';
 
 /** The entry a work's cell holds now, as `typedWorkEntry` gives it. */
 export const storedWorkEntry = (
@@ -458,8 +466,8 @@ interface GridProps {
   readonly entry?: AttendanceEntry | undefined;
   /** Works and numbers (task 8.1): a lesson with `canEnterWorks` takes them. */
   readonly works?: WorksEntry | undefined;
-  /** A number refused in the cell (a letter, a decimal, above the total). */
-  readonly onRefusedNumber?: (total: number) => void;
+  /** A number refused in the cell (a letter, a comma, three decimals, above the total). */
+  readonly onRefusedNumber?: (refusal: NumberRefusal) => void;
   /** The rating exam of the quarter (task 8.2): the column takes scores when `canEnter`. */
   readonly rating?: RatingInput | undefined;
   /** Comments (task 8.2): a marker on a cell with one, and the dialog at `KeyC`. */
@@ -828,7 +836,7 @@ export function JournalGridView({
               if (rating === undefined || row?.kind !== 'student') return false;
               const value = typedScore(params.newValue, RATING_SCORE_MAX);
               if (value === undefined) {
-                onRefusedNumber?.(RATING_SCORE_MAX);
+                onRefusedNumber?.({ reason: 'whole', min: 0, max: RATING_SCORE_MAX });
                 return false;
               }
               const before = ratingEntryOf(rating.exam, row.student.id)?.entry ?? null;
@@ -1184,8 +1192,8 @@ export function JournalGridView({
             const row = params.data;
             if (works === undefined || row?.kind !== 'student' || work.total === null) return false;
             const value = typedWorkEntry(params.newValue, work.total);
-            if (value === undefined) {
-              onRefusedNumber?.(work.total);
+            if (isRefusal(value)) {
+              onRefusedNumber?.(value);
               return false;
             }
             const before = storedWorkEntry(row.student.cells[index]?.works[workIndex]);

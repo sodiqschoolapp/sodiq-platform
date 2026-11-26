@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { workAmountSchema, workTotalAmountSchema } from './work-amount.js';
 import { schoolDateSchema } from './academic-year.js';
 import {
   figuresSchema,
@@ -46,8 +47,9 @@ export const supportLineSchema = z.discriminatedUnion('kind', [
     lessonId: z.uuid(),
     work: lineWorkSchema,
     version: z.int().min(1),
-    before: z.int().nullable(),
-    after: z.int().nullable(),
+    /** A mark, a work's number (up to two decimals, task 11.25b) or nothing. */
+    before: workAmountSchema.nullable(),
+    after: workAmountSchema.nullable(),
     notGradedBefore: z.boolean(),
     notGradedAfter: z.boolean(),
     how: cellChangeSchema,
@@ -66,8 +68,8 @@ export const supportLineSchema = z.discriminatedUnion('kind', [
     at: z.iso.datetime(),
     lessonId: z.uuid(),
     work: z.object({ id: z.uuid(), kind: cellWorkKindSchema, title: z.string().nullable() }),
-    totalBefore: z.int().nullable(),
-    totalAfter: z.int().nullable(),
+    totalBefore: workTotalAmountSchema.nullable(),
+    totalAfter: workTotalAmountSchema.nullable(),
     notHeldBefore: z.boolean().nullable(),
     notHeldAfter: z.boolean().nullable(),
     /** Task 10.6: the title of a work added by hand before and after (a rename, a takeover). */
@@ -95,7 +97,11 @@ export const supportLineSchema = z.discriminatedUnion('kind', [
     lessonId: z.uuid().nullable(),
     field: z.enum(['attendance', 'score', 'rating']),
     work: lineWorkSchema,
-    valueSent: z.int().nullable(),
+    /**
+     * The value as sent, as recorded (task 11.25b, decision 12): text, since a refused value may
+     * be any number ("7.555", "0.0000001") that does not read back as a JS number.
+     */
+    valueSent: z.string().nullable(),
     versionSent: z.int().nullable(),
     code: z.string(),
     by: accountNamedSchema,
@@ -106,7 +112,7 @@ export const supportLineSchema = z.discriminatedUnion('kind', [
     at: z.iso.datetime(),
     lessonId: z.uuid(),
     work: lineWorkSchema,
-    value: z.int(),
+    value: workAmountSchema,
     exemption: supportExemptionSchema,
   }),
   z.object({
@@ -114,7 +120,7 @@ export const supportLineSchema = z.discriminatedUnion('kind', [
     at: z.iso.datetime(),
     lessonId: z.uuid(),
     work: lineWorkSchema,
-    value: z.int(),
+    value: workAmountSchema,
     exemption: supportExemptionSchema,
   }),
   /** A value voided by a move, a leaving or a merge (0127), and its give-back. */
@@ -125,7 +131,7 @@ export const supportLineSchema = z.discriminatedUnion('kind', [
     lessonId: z.uuid().nullable(),
     work: lineWorkSchema,
     target: z.enum(['cell', 'comment', 'rating']),
-    value: z.int().nullable(),
+    value: workAmountSchema.nullable(),
     source: z.enum(SUPPORT_VOID_SOURCES),
     reason: z.string().nullable(),
     by: accountNamedSchema,
@@ -136,7 +142,7 @@ export const supportLineSchema = z.discriminatedUnion('kind', [
     lessonId: z.uuid().nullable(),
     work: lineWorkSchema,
     target: z.enum(['cell', 'comment', 'rating']),
-    value: z.int().nullable(),
+    value: workAmountSchema.nullable(),
     source: z.enum(SUPPORT_VOID_SOURCES),
     by: accountNamedSchema,
   }),
@@ -176,7 +182,7 @@ export const journalSupportSchema = z.object({
       /** The values stored in the cells, also those an exemption hides. */
       stored: z.object({
         mark: z.int().nullable(),
-        works: z.array(z.object({ workId: z.uuid(), score: z.int().nullable() })),
+        works: z.array(z.object({ workId: z.uuid(), score: workAmountSchema.nullable() })),
       }),
       /** The exemption that hides the stored values ("what hid it"); `null` when none does. */
       hiddenBy: supportExemptionSchema.nullable(),

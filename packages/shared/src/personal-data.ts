@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { workAmountSchema, workTotalAmountSchema } from './work-amount.js';
 import { announcementDeliveryStatusSchema } from './announcements.js';
 import { studentMergeFieldSchema } from './student-merges.js';
 import { schoolDateSchema } from './academic-year.js';
@@ -218,8 +219,9 @@ export const studentReportSchema = z.strictObject({
         attendance: z.boolean(),
         workKind: cellWorkKindSchema.nullable(),
         /** The work's total, when set. */
-        total: z.int().nullable(),
-        value: z.int(),
+        total: workTotalAmountSchema.nullable(),
+        /** A mark or a work's number (up to two decimals, task 11.25b). */
+        value: workAmountSchema,
         version: z.int(),
         changedAt: z.iso.datetime(),
         changedHow: cellChangeSchema,

@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { correctionSchema } from './journal-correction.js';
 import { cellWorkKindSchema } from './reset-entries.js';
 import { PLAN_TOPIC_MAX_LENGTH } from './plans.js';
+import { workAmountSchema, workTotalAmountSchema } from './work-amount.js';
 
 /**
  * Classwork and homework in the journal (task 8.1, pull request #217; `07`,
@@ -65,7 +66,7 @@ const workVersionSchema = z.int().min(1).nullable();
 
 export const workTotalSchema = z.strictObject({
   column: workColumnSchema,
-  total: z.int().min(WORK_TOTAL_MIN).max(WORK_TOTAL_MAX),
+  total: workTotalAmountSchema,
   version: workVersionSchema,
   /** Sent after a `total_confirm`: the change of a total with numbers. */
   confirm: z.boolean().default(false),
@@ -143,7 +144,7 @@ export type WorkAdded = z.infer<typeof workAddedSchema>;
 export const workSavedSchema = z.object({
   id: z.uuid(),
   kind: cellWorkKindSchema,
-  total: z.int().min(WORK_TOTAL_MIN).max(WORK_TOTAL_MAX).nullable(),
+  total: workTotalAmountSchema.nullable(),
   notHeld: z.boolean(),
   /** Task 10.6: the title typed for a work added by hand; `null` for a planned work or one added before. */
   title: z.string().nullable(),
@@ -160,7 +161,12 @@ export const scoresSaveSchema = z
         z.strictObject({
           studentId: z.uuid(),
           column: workColumnSchema,
-          score: z.int().min(0).max(WORK_TOTAL_MAX).nullable(),
+          /**
+           * Task 11.25b, decision 5: any number from 0 to 1000 passes here; one with more than two
+           * digits after the point is refused by the database (`work_amount`) as
+           * `409 score_decimals` and recorded as sent (`edge/journal`, "My grade disappeared").
+           */
+          score: z.number().min(0).max(WORK_TOTAL_MAX).nullable(),
           /**
            * The owner, 20 November 2026: a "-" typed in the cell, "not graded" (`07`, Lesson
            * status). Only with `score: null`; a number or a clear ends it.
@@ -208,7 +214,7 @@ export const scoresSavedSchema = z.object({
     z.object({
       studentId: z.uuid(),
       workId: z.uuid(),
-      score: z.int().min(0).nullable(),
+      score: workAmountSchema.nullable(),
       /** The percent shown (`packages/calc`), `null` when the cell is empty. */
       percent: z.int().min(0).max(100).nullable(),
       /** The cell holds "not graded" (a "-"). */

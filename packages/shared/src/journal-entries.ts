@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { workAmountSchema } from './work-amount.js';
 import { schoolDateSchema } from './academic-year.js';
 
 /**
@@ -66,8 +67,8 @@ export const journalEntryDetailSchema = z.object({
   subject: localTextSchema,
   /** The attendance mark (0 to 3), when the entry is one. */
   mark: z.int().min(0).max(3).nullable(),
-  /** The number of a work, or the rating score. */
-  score: z.int().min(0).nullable(),
+  /** The number of a work (up to two decimals, task 11.25b), or the rating score. */
+  score: workAmountSchema.nullable(),
   /** A rating entry's "did not sit". */
   didNotSit: z.boolean(),
   voidable: z.boolean(),

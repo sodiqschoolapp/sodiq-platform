@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { workAmountSchema, workTotalAmountSchema } from './work-amount.js';
 import { schoolDateSchema } from './academic-year.js';
 import { absenceCategorySchema } from './attendance.js';
 import { cellMarkerSchema, editLockSchema } from './journal-correction.js';
@@ -13,7 +14,8 @@ import { reminderSchema } from './journal-status.js';
  * journal, Layout, Who can do what). One journal per class or group and
  * subject in a year (0081); its columns are the dated lessons of a quarter.
  * Every figure is calculated on the server with `packages/calc` and sent as it
- * is shown (decision 7): whole numbers, grades and markers, never a fraction.
+ * is shown (decision 7): whole numbers, grades and markers, never a fraction; a
+ * score or a total as typed, with at most two digits after the point (task 11.25b).
  */
 
 export { journalSubjectSchema, journalUnitSchema };
@@ -127,7 +129,7 @@ const journalWorkSchema = z.object({
   /** Added by hand at a lesson with no plan item (`edge/journal`: listed as "unplanned"). */
   unplanned: z.boolean(),
   /** `null` while the teacher has not set it: "Soni" with no number (review correction 2). */
-  total: z.int().min(1).max(1000).nullable(),
+  total: workTotalAmountSchema.nullable(),
   notHeld: z.boolean(),
   /** The work's version, `null` before its first write. */
   version: z.int().min(1).nullable(),
@@ -224,7 +226,7 @@ export const journalCellSchema = z.object({
   /** In the order of the lesson's `works`: the number typed and its percent shown. */
   works: z.array(
     z.object({
-      score: z.int().min(0).nullable(),
+      score: workAmountSchema.nullable(),
       percent: z.int().min(0).max(100).nullable(),
       /** The cell's version, `null` while never saved (task 8.1: the version a number is sent with). */
       version: z.int().min(1).nullable(),
@@ -382,7 +384,7 @@ export const journalGridSchema = z.object({
   reminders: z.array(reminderSchema),
   students: z.array(journalStudentSchema),
   /** The last total the reader set in this journal, offered for the next work (`07`, The total; task 8.1, decision 9). */
-  lastTotal: z.int().min(1).max(1000).nullable(),
+  lastTotal: workTotalAmountSchema.nullable(),
   /** `null` when the reader may not see the averages (a Tutor of a mixed group, a lesson reader). */
   bottom: z
     .object({ quarter: bottomSchema, months: z.record(z.string(), bottomSchema) })

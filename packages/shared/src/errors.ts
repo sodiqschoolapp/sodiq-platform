@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { workAmountSchema, workTotalAmountSchema } from './work-amount.js';
 import { quarterItemSchema } from './academic-year.js';
 import { heldDataSchema } from './held-data.js';
 import { journalEntryDetailSchema } from './journal-entries.js';
@@ -1089,6 +1090,8 @@ export const ERROR_CODES = [
   'work_total_missing',
   /** A number above the work's total (07: "A number above the total is refused"; task 8.1). */
   'score_above_total',
+  /** A number with more than two digits after the point (07, The total: "up to two digits after the decimal point"; the domain `work_amount`, 0188; task 11.25b). */
+  'score_decimals',
   /** The work is marked "not held": its numbers are out of the averages and no number is typed (task 8.1). */
   'work_not_held',
   /** A change from present or late to absent or skipped for students with numbers: the details list them, and the save is sent again with `numbers` "keep" or "clear" (edge/journal, "An attendance mark is changed after numbers were typed"; task 8.1, decision 15). */
@@ -1536,7 +1539,7 @@ export const errorDetailSchema = z.object({
    */
   workScore: z
     .object({
-      score: z.int().min(0),
+      score: workAmountSchema,
       percentBefore: z.int().min(0).max(100).nullable(),
       percentAfter: z.int().min(0).max(100).nullable(),
     })
@@ -1558,7 +1561,7 @@ export const errorDetailSchema = z.object({
     .optional(),
   /** The stored work, on a `work_stale` (task 8.1): its total, "not held" mark and version. `recordId` is the work. */
   storedWork: z
-    .object({ total: z.int().nullable(), notHeld: z.boolean(), version: z.int().min(1) })
+    .object({ total: workTotalAmountSchema.nullable(), notHeld: z.boolean(), version: z.int().min(1) })
     .optional(),
   /** The lock moment of the lesson or rating exam, on a `journal_locked` (task 8.4). */
   locksAt: z.string().optional(),

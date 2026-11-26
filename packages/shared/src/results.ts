@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { workAmountSchema, workTotalAmountSchema } from './work-amount.js';
 import { schoolDateSchema } from './academic-year.js';
 import { JOURNAL_PARTS, journalSubjectSchema, journalUnitSchema } from './journal.js';
 
@@ -183,8 +184,8 @@ const traceWorkSchema = z.object({
   workId: z.uuid(),
   title: z.string().nullable(),
   position: z.int().min(1),
-  score: z.int().min(0).nullable(),
-  total: z.int().min(1),
+  score: workAmountSchema.nullable(),
+  total: workTotalAmountSchema,
   percent: z.int().min(0).max(100).nullable(),
 });
 

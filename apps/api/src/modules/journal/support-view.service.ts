@@ -277,7 +277,18 @@ export class SupportView {
       : [];
     let refusalQuery = transaction
       .selectFrom('journal_save_refusals')
-      .selectAll()
+      // The value as sent is read as text (task 11.25b, decision 12): a refused value may be any
+      // number (0.0000001) that the reader of `numeric` refuses to turn into a JS number.
+      .select([
+        'refused_at',
+        'lesson_id',
+        'kind',
+        'work_id',
+        'version_sent',
+        'code',
+        'account_id',
+        sql<string | null>`value_sent::text`.as('value_sent'),
+      ])
       .where('journal_id', '=', scope.journalId)
       .where('student_id', '=', studentId);
     refusalQuery = refusalQuery.where((builder) =>
