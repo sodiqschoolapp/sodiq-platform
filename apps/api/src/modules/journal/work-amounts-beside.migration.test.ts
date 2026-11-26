@@ -40,6 +40,20 @@ const TWINS: readonly (readonly [table: string, column: string])[] = [
 ];
 const TABLES = [...new Set(TWINS.map(([table]) => table))];
 
+/**
+ * The twins of 0188, which 0189 (task 11.25b) renames into the old names: the generated types
+ * describe the schema after 0189, and this file reads a database migrated to 0188 only.
+ */
+type BesideTwins = {
+  journal_cells: { score_exact: number | null };
+  journal_save_refusals: { value_sent_exact: number | null };
+  digest_entries: { sent_score_exact: number | null; sent_total_exact: number | null };
+  journal_cell_history: { score_before_exact: number | null; score_after_exact: number | null };
+  journal_work_history: { total_before_exact: number | null; total_after_exact: number | null };
+};
+
+const twins = (migrator: Database) => migrator.withTables<BesideTwins>();
+
 /** Writes as the migrator at a moment, the way the code before 0188 wrote its rows. */
 const at = <T>(
   migrator: Database,
@@ -364,8 +378,10 @@ describe('migration 0188 puts an exact twin beside every work score and total', 
     await setEditDays(migrator, branch, 5);
 
     before = await snapshot(migrator);
+    // 0188 alone (task 11.25b): 0189 drops the twins this file reads.
+    await copyFile(path.join(MIGRATIONS, BESIDE), path.join(directory, BESIDE));
+    await migrate({ connectionString: database.migrationUrl, directory });
     await rm(directory, { recursive: true, force: true });
-    await migrate({ connectionString: database.migrationUrl, directory: MIGRATIONS });
   }, 120_000);
 
   afterAll(async () => {
@@ -385,7 +401,7 @@ describe('migration 0188 puts an exact twin beside every work score and total', 
     expect(Object.values(await differing(database.migrator)).every((count) => count === 0)).toBe(
       true,
     );
-    const stored = await database.migrator
+    const stored = await twins(database.migrator)
       .selectFrom('journal_cells')
       .select(['id', 'score', 'score_exact'])
       .where('id', 'in', [cells.closed, cells.locked, cells.open, cells.cleared])
@@ -398,7 +414,7 @@ describe('migration 0188 puts an exact twin beside every work score and total', 
         [cells.cleared, [null, null]],
       ]),
     );
-    const refusal1500 = await database.migrator
+    const refusal1500 = await twins(database.migrator)
       .selectFrom('journal_save_refusals')
       .select('value_sent_exact')
       .where('kind', '=', 'score')
@@ -655,32 +671,32 @@ describe('migration 0188 puts an exact twin beside every work score and total', 
       expect(await differing(database.migrator)).toEqual(
         Object.fromEntries(TWINS.map(([table, column]) => [`${table}.${column}`, 0])),
       );
-      const cleared = await database.migrator
+      const cleared = await twins(database.migrator)
         .selectFrom('journal_cells')
         .select(['score', 'score_exact'])
         .where('id', '=', cells.cleared)
         .executeTakeFirstOrThrow();
       expect(cleared).toEqual({ score: null, score_exact: null });
-      const inserted = await database.migrator
+      const inserted = await twins(database.migrator)
         .selectFrom('journal_cells')
         .select(['score', 'score_exact'])
         .where('id', '=', appCell)
         .executeTakeFirstOrThrow();
       expect(inserted).toEqual({ score: 9, score_exact: 9 });
-      const sent = await database.migrator
+      const sent = await twins(database.migrator)
         .selectFrom('digest_entries')
         .select(['sent_score_exact', 'sent_total_exact'])
         .where('source_id', '=', appCell)
         .executeTakeFirstOrThrow();
       expect(sent).toEqual({ sent_score_exact: 9, sent_total_exact: 12 });
-      const history = await database.migrator
+      const history = await twins(database.migrator)
         .selectFrom('journal_cell_history')
         .select(['score_before_exact', 'score_after_exact'])
         .where('cell_id', '=', cells.open)
         .where('changed_at', '=', new Date(AFTER))
         .executeTakeFirstOrThrow();
       expect(history).toEqual({ score_before_exact: 5, score_after_exact: 6 });
-      const total = await database.migrator
+      const total = await twins(database.migrator)
         .selectFrom('journal_work_history')
         .select(['total_before_exact', 'total_after_exact'])
         .where('work_id', '=', works.open)
