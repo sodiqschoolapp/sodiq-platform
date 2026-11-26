@@ -586,6 +586,32 @@ describe('the audit log page', () => {
       ).toEqual([]);
     });
 
+    // Task 11.26 (`.claude/rules/database.md`, a new audit action): the upload, the confirm and
+    // the withdrawal of past marks are named and found by the setup filter.
+    it('finds the entries of past marks under the setup', async () => {
+      const record = await newId();
+      const written: string[] = [];
+      for (const action of ['past_marks.upload', 'past_marks.confirm', 'past_marks.withdraw']) {
+        written.push(
+          await entry({
+            branch: t.north,
+            action,
+            record: { type: 'past_mark_upload', id: record },
+          }),
+        );
+      }
+      expect(
+        ids(
+          await readAll({ ...ofRecord(record, 'past_mark_upload'), group: 'setup' }, t.principal),
+        ),
+      ).toEqual([...written].sort());
+      expect(
+        ids(
+          await readAll({ ...ofRecord(record, 'past_mark_upload'), group: 'exports' }, t.principal),
+        ),
+      ).toEqual([]);
+    });
+
     it('pages 50 at a time, each entry once, newest first', async () => {
       const record = await newId();
       const written: string[] = [];
