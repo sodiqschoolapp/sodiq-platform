@@ -6,9 +6,9 @@ Newest entry first. Each finished task adds an entry: what was built, what was l
 
 - **0190**: `past_mark_uploads`, `past_attendance`, `past_works` (branch, upload, year; partial unique indexes over standing rows; `title_key` generated; `withdrawn_at` set once with the upload), `portal_past_mark_branches` and `past_mark_students` (SECURITY DEFINER, on the allow-list). Tables and functions only.
 - **Import** (`/api/setup/past-marks`, area `past_marks`: Super Admin, Academic Vice Principal): template, upload with a paged preview, confirm all or none (advisory lock, students and branch locked), list, withdrawal with a reason. The go-live save refuses `go_live_past_marks`; a merge carries past marks or refuses `student_merge_past_marks_overlap`; the personal data report lists them; the portal's Grades, Attendance and Homework read them through `portal-past-marks.query.ts` only; the assistant runs the import through its preview.
-- A source test (`past-marks-readers.test.ts`) pins the only files that name the tables; the demo school's figures are compared before and after an import (`testing/demo/past-marks.test.ts`).
+- A source test (`past-marks-readers.test.ts`) pins the only files that name the tables; the demo school's figures, journal grids and exports are compared before and after an import (`testing/demo/past-marks.test.ts`).
 
-Left out: nothing of the task.
+Left out: a branch move is tested with the kit's move, not the route (the route's service names no past-mark table: `past-marks-readers.test.ts`); no Homework week mixes the platform's homework with past homework (the order is by date, and a week of both lies across go-live). No later task named; the owner decides.
 
 The next sessions must know:
 

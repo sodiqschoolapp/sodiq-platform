@@ -154,6 +154,8 @@ describe('the figures of the demo school across an import of past marks', () => 
   }
 
   it('finds every figure the same after each branch imports past marks', async () => {
+    // The go-live date first, so both reads count from it: only the import lies between them.
+    await database.migrator.updateTable('branches').set({ go_live_date: GO_LIVE }).execute();
     clock.set(READ_AT);
     await new SignIns(app, clock, PASSWORD).again(school.superAdmin);
     const before = await figures();
@@ -170,11 +172,6 @@ describe('the figures of the demo school across an import of past marks', () => 
     const branches = await migrator.selectFrom('branches').select('id').orderBy('id').execute();
     let imported = 0;
     for (const branch of branches) {
-      await migrator
-        .updateTable('branches')
-        .set({ go_live_date: GO_LIVE })
-        .where('id', '=', branch.id)
-        .execute();
       const students = await migrator
         .selectFrom('students')
         .innerJoin('class_memberships', 'class_memberships.student_id', 'students.id')
