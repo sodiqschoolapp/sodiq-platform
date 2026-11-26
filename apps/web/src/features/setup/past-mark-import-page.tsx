@@ -253,7 +253,7 @@ export function PastMarkImportPage(): React.JSX.Element {
                   {t('setup.pastMarks.previous')}
                 </Button>
                 <span>
-                  {t('setup.pastMarks.page', { page: preview.page, count: preview.pageCount })}
+                  {t('setup.pastMarks.page', { page: preview.page, of: preview.pageCount })}
                 </span>
                 <Button
                   variant="secondary"

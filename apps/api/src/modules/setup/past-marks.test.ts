@@ -4,6 +4,7 @@ import {
   pastMarkPreviewSchema,
   pastMarkTitleKey,
   pastMarkUploadListSchema,
+  studentReportSchema,
   STUDENT_IMPORT_TYPES,
   type PastMarkPreview,
 } from '@sodiq/shared';
@@ -580,6 +581,24 @@ describe('the import of past marks', () => {
       .where('upload_id', '=', north.importId)
       .executeTakeFirstOrThrow();
     expect(row.branch_id).toBe(t.north);
+  });
+
+  it('lists past marks in the personal data report: withdrawn ones marked, and those of a branch moved from', async () => {
+    const report = async (studentId: string, branch: string) => {
+      const response = await t.post(`/api/people/students/${studentId}/report`, branch, {}, t.admin);
+      expect(response.status, JSON.stringify(response.body).slice(0, 400)).toBe(200);
+      return studentReportSchema.parse(response.body).pastMarks;
+    };
+    // Bea's poem upload was withdrawn: kept, and marked.
+    const bea_ = await report(bea.id, t.north);
+    const poem = bea_.works.find((one) => one.title === 'Poem');
+    expect(poem).toMatchObject({ fileName: 'poem.xlsx', kind: 'homework', score: 4, total: 5 });
+    expect(poem?.withdrawnAt).not.toBeNull();
+    // The moved student is of the south now; the north's past marks stay in her report.
+    const movedReport = await report(moved.id, t.south);
+    expect(movedReport.attendance.map((one) => [one.date, one.lessonNumber, one.mark, one.withdrawnAt])).toEqual([
+      ['2026-09-24', 1, 1, null],
+    ]);
   });
 
   it('answers 404 for an upload of another branch or an unknown one, changing nothing', async () => {

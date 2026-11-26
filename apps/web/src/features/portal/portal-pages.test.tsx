@@ -262,6 +262,38 @@ describe('the parent portal', () => {
     expect(listed.some((row) => row.includes('Test 2'))).toBe(false);
   });
 
+  it('never lists a past mark from before go-live among the latest scores (task 11.26)', async () => {
+    const [subject] = GRADES.subjects;
+    if (subject === undefined) throw new Error('A subject of the fixture.');
+    fakeApi({
+      'GET /api/auth/session': () => json(PARENT()),
+      'GET /api/portal/children': () => json(CHILDREN),
+      [`GET /api/portal/children/${ANVAR}/timetable`]: () => json(week([LESSON])),
+      [`GET /api/portal/children/${ANVAR}/attendance`]: () => json(ATTENDANCE),
+      [`GET /api/portal/children/${ANVAR}/homework`]: () => json(HOMEWORK),
+      [`GET /api/portal/children/${ANVAR}/grades`]: () =>
+        json({
+          ...GRADES,
+          subjects: [
+            {
+              ...subject,
+              scores: [
+                { ...score('2026-09-07', 'Past dictation', 9), savedAt: null, past: true },
+                score('2026-10-21', 'Test 6', 5),
+              ],
+            },
+          ],
+        }),
+    });
+    renderApp(`/portal/${ANVAR}/today`);
+    const scores = await screen.findByRole('region', { name: en.portal.today.latestScores });
+    await waitFor(() => {
+      expect(scores.querySelectorAll('li')).toHaveLength(1);
+    });
+    expect(scores.textContent).toContain('Test 6');
+    expect(scores.textContent).not.toContain('Past dictation');
+  });
+
   it('names the next school day when today has no lessons', async () => {
     fakeApi({
       'GET /api/auth/session': () => json(PARENT()),
