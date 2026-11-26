@@ -792,7 +792,11 @@ describe('the portal grades and attendance', () => {
       ['2026-10-26', s.subject, 'exempt'],
       ['2026-10-26', s.secondSubject, 'exempt'],
     ]);
-    expect(week.lessons.every((one) => one.start < one.end)).toBe(true);
+    expect(
+      week.lessons.every(
+        (one) => one.start !== null && one.end !== null && one.start < one.end && one.lessonNumber === null,
+      ),
+    ).toBe(true);
     // A week with no held lesson of the child.
     expect((await attendanceOf('2026-11-02')).lessons).toEqual([]);
   });

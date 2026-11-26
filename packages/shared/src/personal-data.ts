@@ -246,6 +246,38 @@ export const studentReportSchema = z.strictObject({
       .strictObject({ count: z.int().min(1), oldestAt: z.iso.datetime() })
       .nullable(),
   }),
+  /**
+   * Task 11.26 (`edge/people-roles-accounts`: "a personal data report per person, past marks
+   * from before go-live included"; plan decision 21): every past mark of the student in every
+   * branch, withdrawn ones included and marked, by date.
+   */
+  pastMarks: z.strictObject({
+    attendance: z.array(
+      z.strictObject({
+        branch: z.string(),
+        fileName: z.string(),
+        date: schoolDateSchema,
+        subject: z.string(),
+        lessonNumber: z.int().min(1),
+        mark: z.int().min(0).max(5),
+        withdrawnAt: z.iso.datetime({ offset: true }).nullable(),
+      }),
+    ),
+    works: z.array(
+      z.strictObject({
+        branch: z.string(),
+        fileName: z.string(),
+        date: schoolDateSchema,
+        subject: z.string(),
+        lessonNumber: z.int().min(1),
+        kind: z.enum(['classwork', 'homework']),
+        title: z.string(),
+        total: workTotalAmountSchema,
+        score: workAmountSchema,
+        withdrawnAt: z.iso.datetime({ offset: true }).nullable(),
+      }),
+    ),
+  }),
   /** Every relative ever linked to the student, with every link (decision 2). */
   relatives: z.array(
     z.strictObject({

@@ -26,6 +26,7 @@ import { ApiException } from '../../http/api-exception.js';
 import { notFound } from '../setup/setup-refusals.js';
 import { departmentInForce, todayOf } from './department-moves.js';
 import { studentJournal } from '../journal/student-cells.query.js';
+import { studentPastMarks } from './personal-data-past-marks.query.js';
 import { readPersonEntries, type ReportPerson } from './personal-data.query.js';
 import { branchOf, neverUsedAccounts } from './staff-account-records.js';
 import { FIELD_COLUMNS, textOf } from './student-merges.js';
@@ -202,6 +203,7 @@ export class PersonalData {
         ...frame,
         entries,
         journal,
+        pastMarks: await studentPastMarks(transaction, id),
         student: {
           id: student.id,
           uid: student.uid,
@@ -902,6 +904,7 @@ const SECTIONS: Readonly<Record<PersonalDataKind, readonly string[]>> = {
     'relatives',
     'photo',
     'journal',
+    'pastMarks',
     'entries',
   ],
   staff: [

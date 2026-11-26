@@ -315,6 +315,53 @@ export class Branches {
           ]);
         }
       }
+      // Task 11.26 (`edge/academic-year`, Past marks: "A past mark always lies before the go-live
+      // date: a change that would put one on or after it is refused, naming the uploads to
+      // withdraw first"; plan decision 13: no date clears no "before"). Read after the branch row
+      // is taken, in a statement of its own, so a confirm that committed meanwhile is seen.
+      const blocking = await transaction
+        .selectFrom('past_mark_uploads')
+        .select(['past_mark_uploads.id', 'past_mark_uploads.file_name'])
+        .where('past_mark_uploads.branch_id', '=', branchId)
+        .where('past_mark_uploads.confirmed_at', 'is not', null)
+        .where('past_mark_uploads.withdrawn_at', 'is', null)
+        .where((eb) =>
+          date === null
+            ? eb.lit(true)
+            : eb.or([
+                eb.exists(
+                  eb
+                    .selectFrom('past_attendance')
+                    .select('past_attendance.id')
+                    .whereRef('past_attendance.upload_id', '=', 'past_mark_uploads.id')
+                    .where('past_attendance.withdrawn_at', 'is', null)
+                    .where('past_attendance.school_date', '>=', date),
+                ),
+                eb.exists(
+                  eb
+                    .selectFrom('past_works')
+                    .select('past_works.id')
+                    .whereRef('past_works.upload_id', '=', 'past_mark_uploads.id')
+                    .where('past_works.withdrawn_at', 'is', null)
+                    .where('past_works.school_date', '>=', date),
+                ),
+              ]),
+        )
+        .orderBy('past_mark_uploads.confirmed_at')
+        .execute();
+      if (blocking.length > 0) {
+        throw new ApiException(
+          'go_live_past_marks',
+          409,
+          undefined,
+          blocking.map((upload) => ({
+            path: 'goLiveDate',
+            code: 'go_live_past_marks',
+            message: upload.file_name,
+            recordId: upload.id,
+          })),
+        );
+      }
       const updated = await transaction
         .updateTable('branches')
         .set({ go_live_date: date })

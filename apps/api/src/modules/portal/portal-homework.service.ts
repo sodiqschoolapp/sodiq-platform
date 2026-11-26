@@ -15,6 +15,7 @@ import { journalsColumns } from '../journal/journal-works.query.js';
 import { PHOTO_STORE, planFileKey, type PhotoStore } from '../people/photo-store.js';
 import { notFound } from '../setup/setup-refusals.js';
 import { childUnits } from './child-units.js';
+import { pastMarkBranches, pastWorksOf } from './portal-past-marks.query.js';
 import { childSpans, childWeekScope, inSpan, portalChild, type ChildSpan } from './portal-scope.js';
 
 /** A homework as read, with the plan item whose files it shows. */
@@ -54,6 +55,36 @@ export class PortalHomeworkService {
       childWeekScope(transaction, accountId, studentId, date),
     );
     const found: GivenRow[] = [];
+    // Task 11.26 (`10`, What parents see: "Past homework from before go-live is listed with the
+    // rest"): on the date it was given, its title and its place; no topic, task text or files.
+    const pastBranches = await this.transactions.run([], (transaction) =>
+      pastMarkBranches(transaction, accountId, scope.child.id),
+    );
+    const first = scope.dates[0] ?? scope.today;
+    const last = scope.dates[scope.dates.length - 1] ?? scope.today;
+    if (pastBranches.length > 0) {
+      const past = await this.transactions.run(pastBranches, (transaction) =>
+        pastWorksOf(transaction, scope.child.id, first, last, ['homework']),
+      );
+      for (const one of past) {
+        found.push({
+          givenOn: one.date,
+          subject: {
+            id: one.subject.id,
+            names: one.subject.names,
+            colour: subjectColourSchema.parse(one.subject.colour),
+          },
+          topic: null,
+          title: one.title,
+          number: one.position,
+          description: null,
+          files: [],
+          itemId: null,
+          // A day holds platform lessons or past marks, never both: the lesson number orders them.
+          start: one.lessonNumber,
+        });
+      }
+    }
     for (const span of scope.spans) {
       found.push(
         ...(await this.transactions.run([span.branchId], (transaction) =>
@@ -62,7 +93,11 @@ export class PortalHomeworkService {
       );
     }
     found.sort(
-      (a, b) => a.givenOn.localeCompare(b.givenOn) || a.start - b.start || a.number - b.number,
+      (a, b) =>
+        a.givenOn.localeCompare(b.givenOn) ||
+        a.start - b.start ||
+        a.subject.names.en.localeCompare(b.subject.names.en, 'en') ||
+        a.number - b.number,
     );
     return portalHomeworkWeekSchema.parse({
       today: scope.today,
