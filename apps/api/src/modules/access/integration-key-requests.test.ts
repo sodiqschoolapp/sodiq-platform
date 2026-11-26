@@ -493,6 +493,51 @@ describe('requests made through an integration key', () => {
       );
     });
 
+    // Task 11.27 (`02`, Integration keys: "A key sends what a person types: … and the codes of
+    // topics and works"; `09`, Codes: "While a subject's codes are off, no code can be set").
+    it('sets a code through a key only while the subject’s codes are on', async () => {
+      const codesOn = (on: boolean) =>
+        t.database.migrator
+          .updateTable('subjects')
+          .set({ codes_on: on })
+          .where('id', '=', x.subject)
+          .execute();
+      await at(
+        async () => {
+          refused(
+            await via('post', `/api/journal/lessons/${x.third}/works`, asOwner(x)).send({
+              kind: 'homework',
+              title: 'Reading',
+              code: 'R1',
+            }),
+            409,
+            'plan_codes_off',
+          );
+          await codesOn(true);
+          const work = ok(
+            await via('post', `/api/journal/lessons/${x.third}/works`, asOwner(x)).send({
+              kind: 'homework',
+              title: 'Reading',
+              code: 'R1',
+            }),
+          ).body as { planWorkId: string; code: string | null };
+          expect(work.code).toBe('R1');
+          const shownIn = async () =>
+            journalGridSchema
+              .parse(ok(await via('get', `/api/journal/journals/${x.journal}`, asOwner(x))).body)
+              .lessons.flatMap((lesson) => lesson.works)
+              .find((one) => one.planWorkId === work.planWorkId)?.code;
+          expect(await shownIn()).toBe('R1');
+          // Off hides it from the key's reads too (`09`: "the API included").
+          await codesOn(false);
+          expect(await shownIn()).toBeNull();
+        },
+        MOMENT,
+        [x.owner],
+      );
+      await codesOn(false);
+    });
+
     it('is refused on another teacher’s lesson, on a locked lesson and on an outdated cell version', async () => {
       await at(async () => {
         refused(
