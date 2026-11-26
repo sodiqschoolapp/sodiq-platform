@@ -312,6 +312,8 @@ export const AUDIT_ACTION_GROUPS = {
     'journal.work_takeover',
     // Task 10.6: a work added by hand renamed.
     'journal.work_rename',
+    // Task 11.24 (0186): the one-time move of a homework to the lesson where it was given.
+    'journal.homework_move',
     // Task 8.2: the rating exam's date and "not held", a student's entry, a comment.
     'journal.rating_date',
     'journal.rating_not_held',
