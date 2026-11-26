@@ -43,7 +43,10 @@ test('the teacher writes the topic and gives a homework in the lesson editor and
     .getByLabel(en.journal.works.homeworkTitle, { exact: true })
     .fill('Measure the route');
   await dialog.getByRole('button', { name: en.journal.works.add, exact: true }).click();
-  await expect(dialog.locator('[data-editor-given]')).toContainText('Measure the route');
+  // Task 11.24: the editor lists the homework in its one Homework section (`09`, In the journal).
+  await expect(
+    dialog.getByRole('region', { name: en.journal.card.homeworks, exact: true }),
+  ).toContainText('Measure the route');
   await dialog.getByRole('button', { name: en.journal.entry.close, exact: true }).click();
 
   // The plan holds the same item: its topic and the homework.

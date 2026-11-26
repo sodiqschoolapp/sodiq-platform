@@ -70,13 +70,15 @@ test('a homework is a column of the lesson where it was given: listed once on it
   await total.press('Enter');
   await dialog.getByRole('button', { name: en.journal.entry.close, exact: true }).click();
 
-  const drawn = page.getByRole('button', { name: /^Work: Draw the river/ });
-  await expect(drawn).toHaveCount(1);
-  const column = await drawn.locator('xpath=ancestor::*[@col-id][1]').getAttribute('col-id');
+  // The header of the new column; its col-id names the stored work once the total made its row
+  // (before, the plan work), so it is read after the total shows.
+  const header = page.locator('.ag-header-cell').filter({
+    has: page.getByRole('button', { name: /^Work: Draw the river/ }),
+  });
+  await expect(header).toHaveCount(1);
+  await expect(header).toContainText(en.journal.grid.total.replace('{{total}}', '10'));
+  const column = await header.getAttribute('col-id');
   expect(column?.startsWith(`${lessonId}:`)).toBe(true);
-  await expect(page.locator(`.ag-header-cell[col-id="${column ?? ''}"]`)).toContainText(
-    en.journal.grid.total.replace('{{total}}', '10'),
-  );
 
   // A number typed in that column is saved at that lesson, with its percent from the server.
   const student = await page
