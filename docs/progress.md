@@ -2,6 +2,19 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 26 November 2026: task 11.25a, decimal scores and totals: the exact columns beside the old ones
+
+- 11.25 split (pull request #395, decision 1, Look first) because of the deploy rule: 11.25a now, an owner gate line, then 11.25b.
+- **0188**: a domain `work_amount` (`numeric`, 0 to 1000, at most two decimals, refused never rounded); beside each work score and total (cells, works, their history, voids, exemption clears, digest entries) a twin `<name>_exact`, and `journal_save_refusals.value_sent_exact` as plain `numeric`; mirrors `<table>_zz_exact_mirror` (unconditional, last of the `BEFORE` triggers); the fill with user triggers off; twin checks; grants. The API reads `numeric` as an exact JS number (`exactNumeric`), codegen with `--numeric-parser number`.
+- Nothing a person sees changes; no calc, route or permission change.
+
+Left out: everything else of 11.25, to 11.25b (its entry in the build plan lists what the reviews added).
+
+The next sessions must know:
+
+- The owner deploys 11.25a to production, then deletes the gate line; 11.25b drops the mirrors and the old columns and renames the twins and their checks (`*_exact_check`) into the old names.
+- Until then the old columns are the source: code reads and writes `score` and `total`; never write a twin directly (the mirror overwrites it).
+
 ## 26 November 2026: task 11.24, homework graded at the lesson where it was given
 
 - **The column at its own lesson**: a lesson's homework columns are the homeworks of its own plan item and those added at it (`lesson-columns.ts`), under that lesson's lock, unlock and quarter. The check lesson, the carry and its route (`POST :lessonId/works/carry`), "checked today", "will not be graded", "not checked, group closed", the slot-N warning and the portal's due date are gone.

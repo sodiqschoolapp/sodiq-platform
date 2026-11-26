@@ -23,6 +23,8 @@ export type JsonPrimitive = boolean | number | string | null;
 
 export type JsonValue = JsonArray | JsonObject | JsonPrimitive;
 
+export type Numeric = ColumnType<number, number | string, number | string>;
+
 export type Timestamp = ColumnType<Date, Date | string, Date | string>;
 
 export interface Absences {
@@ -540,7 +542,9 @@ export interface DigestEntries {
   lesson_date: string | null;
   sent_mark: number | null;
   sent_score: number | null;
+  sent_score_exact: Numeric | null;
   sent_total: number | null;
+  sent_total_exact: Numeric | null;
   sent_version: number | null;
   source_id: string;
   state: string;
@@ -673,6 +677,7 @@ export interface ExemptionClears {
   lesson_id: string;
   mark: number | null;
   score: number | null;
+  score_exact: Numeric | null;
   student_id: string;
 }
 
@@ -900,7 +905,9 @@ export interface JournalCellHistory {
   plan_request_id: string | null;
   reason: string | null;
   score_after: number | null;
+  score_after_exact: Numeric | null;
   score_before: number | null;
+  score_before_exact: Numeric | null;
   student_id: string;
   unlock_id: string | null;
   version: number;
@@ -919,6 +926,7 @@ export interface JournalCells {
   mark: number | null;
   not_graded: Generated<boolean>;
   score: number | null;
+  score_exact: Numeric | null;
   student_id: string;
   version: number;
   work_id: string | null;
@@ -1148,6 +1156,7 @@ export interface JournalSaveRefusals {
   request_id: string | null;
   student_id: string;
   value_sent: number | null;
+  value_sent_exact: Numeric | null;
   version_sent: number | null;
   work_id: string | null;
 }
@@ -1191,6 +1200,7 @@ export interface JournalVoids {
   reason: string | null;
   return_status_id: string | null;
   score: number | null;
+  score_exact: Numeric | null;
   student_id: string;
   version: number;
   visibility: string | null;
@@ -1219,7 +1229,9 @@ export interface JournalWorkHistory {
   title_after: string | null;
   title_before: string | null;
   total_after: number | null;
+  total_after_exact: Numeric | null;
   total_before: number | null;
+  total_before_exact: Numeric | null;
   unlock_id: string | null;
   version: number;
   work_id: string;
@@ -1242,6 +1254,7 @@ export interface JournalWorks {
   source_lesson_id: string | null;
   title: string | null;
   total: number | null;
+  total_exact: Numeric | null;
   version: Generated<number>;
 }
 

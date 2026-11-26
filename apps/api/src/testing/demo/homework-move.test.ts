@@ -183,6 +183,9 @@ describe('the quarter results of the demo school across the homework move', () =
           position: 10,
           title: 'Holiday reading',
           total: 10,
+          // Task 11.25a: written with the user triggers off, so the mirror of 0188 does not fill
+          // the exact twin; it is written as the fill of 0188 leaves it.
+          total_exact: 10,
           changed_how: 'entry',
           version: 1,
           changed_at: new Date(READ_AT),
@@ -197,6 +200,7 @@ describe('the quarter results of the demo school across the homework move', () =
           student_id: member.id,
           work_id: work.id,
           score: 1,
+          score_exact: 1,
           version: 1,
           changed_by: school.superAdmin.accountId,
           changed_how: 'entry',

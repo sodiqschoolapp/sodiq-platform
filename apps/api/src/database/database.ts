@@ -23,7 +23,43 @@ function dateArrayAsText(value: string): (string | null)[] {
   return inner === '' ? [] : inner.split(',').map((item) => (item === 'NULL' ? null : item));
 }
 
+/**
+ * A `numeric` (task 11.25a: the exact scores and totals of `work_amount`, 0188) becomes a JS
+ * number, which holds every value of at most two decimals up to 1000 exactly as its shortest
+ * text. A text that does not read back the same (more digits than a number keeps) is refused,
+ * never rounded: no digit is lost silently (CLAUDE.md, Exact arithmetic).
+ */
+const NUMERIC_OID: number = types.builtins.NUMERIC;
+const NUMERIC_ARRAY_OID = 1231;
+const NUMERIC_TEXT = /^-?\d+(\.\d+)?$/;
+
+/** `7.50` becomes 7.5, `8` becomes 8; `12345678901234567.1` throws. */
+export function exactNumeric(value: string): number {
+  if (!NUMERIC_TEXT.test(value)) {
+    throw new Error(`A numeric value "${value}" is not a plain decimal.`);
+  }
+  const read = Number(value);
+  const canonical = value.includes('.') ? value.replace(/\.?0+$/, '') : value;
+  if (read === 0) {
+    return 0;
+  }
+  if (String(read) !== canonical.replace(/^(-?)0+(?=\d)/, '$1')) {
+    throw new Error(`A numeric value "${value}" cannot be held exactly as a number.`);
+  }
+  return read;
+}
+
+function numericArrayRefused(): never {
+  throw new Error('A numeric array is not supported.');
+}
+
 function parserFor(oid: number, format?: 'text' | 'binary'): unknown {
+  if (oid === NUMERIC_OID) {
+    return exactNumeric;
+  }
+  if (oid === NUMERIC_ARRAY_OID) {
+    return numericArrayRefused;
+  }
   if (oid === DATE_OID) {
     return keepText;
   }

@@ -16,7 +16,7 @@
     "assistant:eval": "vitest run --mode assistant-eval src/modules/assistant/eval/eval.test.ts",
     "security:checklist": "vitest run --mode checklist src/modules/access/permission-checklist.test.ts",
     "db:migrate": "node dist/database/cli.js migrate",
-    "db:codegen": "kysely-codegen --dialect postgres --env-file ../../.env --url \"env(DATABASE_MIGRATION_URL)\" --date-parser string --exclude-pattern \"pgboss.*\" --out-file src/database/types.generated.ts",
+    "db:codegen": "kysely-codegen --dialect postgres --env-file ../../.env --url \"env(DATABASE_MIGRATION_URL)\" --date-parser string --numeric-parser number --exclude-pattern \"pgboss.*\" --out-file src/database/types.generated.ts",
     "openapi": "node dist/openapi/cli.js",
     "first-account": "node dist/modules/auth/cli.js first-account",
     "monitoring-branch": "node dist/monitoring/cli.js monitoring-branch",

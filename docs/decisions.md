@@ -65,6 +65,20 @@ The owner's answers to the decided-ahead questions for Phase 10, given in chat o
 19. Production deploys only after 18:00 or at the weekend, Tashkent time.
 20. The test environment stays after go-live; every change is tried there first.
 
+## 26 November 2026: decimal scores and totals, the exact columns beside the old ones (task 11.25a)
+
+Plan approved on pull request #395 with corrections 1 (`journal_save_refusals.value_sent_exact` is plain `numeric`: a refused value is recorded as sent, a refused 1500 included), 2 (the test that the user triggers are on again reads every partition) and 3 (11.25b's calc reader reads the shortest decimal text, never arithmetic on the number). Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first.** 11.25 is split into 11.25a (the twins beside the old columns, the reader of `numeric`) and 11.25b (the switch, `packages/calc` and decimals everywhere), with an owner gate line between them until 11.25a runs on production | `docs/deploy.md`: "Every migration works with the version that is running"; the code before 11.25 reads the scores as integers and would get the text of a `numeric` |
+| **Look first.** A score and a total are held as SQL `numeric` under the domain `work_amount` (0 to 1000, `value = trunc(value, 2)`), not as hundredths and not as `numeric(6,2)` | Each value stays what it is (8 is 8); three decimals are refused, never rounded |
+| **Look first.** The fill of 0188 runs with each table's user triggers off for its statement only, inside the migration's transaction | The guards would judge, version, history and report every row; the fill writes only the twins, which no guard reads |
+| A mirror trigger per table, `<table>_zz_exact_mirror`, unconditional, runs after every other `BEFORE` row trigger: the old column is the source until 11.25b | One trigger cannot be missed by any writer, a trigger or a store included |
+| The twin checks are created in 0188, after the fill; 11.25b only renames them | Step 2 then scans nothing under an exclusive lock |
+| No audit entry and no history line for the fill | No value a person reads changes |
+| A `numeric` arrives in TypeScript as a JS number, refused (thrown) when its text does not read back the same; a `numeric[]` is refused | The question left by the date row; no digit is lost silently |
+
 ## 25 November 2026: helpers of the assistant (task 11.23)
 
 Plan approved on pull request #392 with corrections 1 (the ranking reorders the route's list only, the same set of ids), 2 (the clock-time test through the real route and the rule engine) and 3 (the figure check reads "82,5", "82%" and "82 %"; a figure it cannot match never passes). Flagged on issue #42.
@@ -5321,7 +5335,7 @@ Plan approved by the owner on pull request #30 (`[review] approved`, with the an
 | The runner uses the `pg` driver directly; everything else uses Kysely | It sends whole SQL files and holds a session lock on one connection. |
 | `pg` is the PostgreSQL driver; `kysely-codegen` (development only) writes the types | `pg` is what Kysely and pg-boss use. The owner approved both on 4 October 2026. |
 | `.env` is read with Node's own `process.loadEnvFile`, only if the file exists | No dotenv library. Variables already set win, so CI and the servers are not affected. Task 0.4 replaces this with configuration loading. |
-| A `date` column arrives in TypeScript as the text `YYYY-MM-DD`; a `timestamptz` as a `Date` | The driver's default turns a date into local midnight, which becomes another day in another time zone. School dates are dates, lesson times are moments (`CLAUDE.md`, Conventions). A `date[]` arrives as an array of such texts. The generated types make a `date` column accept text only, so a `Date` cannot be written into one by mistake. How `bigint` and `numeric` arrive is decided with the first table that has one. |
+| A `date` column arrives in TypeScript as the text `YYYY-MM-DD`; a `timestamptz` as a `Date` | The driver's default turns a date into local midnight, which becomes another day in another time zone. School dates are dates, lesson times are moments (`CLAUDE.md`, Conventions). A `date[]` arrives as an array of such texts. The generated types make a `date` column accept text only, so a `Date` cannot be written into one by mistake. How `bigint` arrives is decided with the first table that has one; a `numeric` arrives as a JS number, refused when its text does not read back the same (task 11.25a). |
 | Tests: one template database per run, built by the real runner from the real migrations; each test file copies it and connects as `sodiq_app` | Copying a template takes a fraction of a second, files stay independent and can run in parallel, and a missing right fails a test instead of production. `sodiq_migrator` may create databases for this, locally and in CI only. |
 | Every test database is named `sodiq_test_<start of the run>_<random>_...`; a run removes its own databases at the end and, at the start, those of runs older than an hour | Two runs at once (watch mode and `pnpm test`, or the owner and a Claude Code session) do not drop each other's databases, and an interrupted run does not leave databases for ever. |
 | The tests refuse to run unless `DATABASE_MIGRATION_URL` points at localhost | They create and force-drop databases. |
