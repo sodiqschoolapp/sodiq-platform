@@ -1080589,12 +1080589,17 @@
                                   "title": {
                                     "nullable": true,
                                     "type": "string"
+                                  },
+                                  "code": {
+                                    "nullable": true,
+                                    "type": "string"
                                   }
                                 },
                                 "required": [
                                   "id",
                                   "kind",
-                                  "title"
+                                  "title",
+                                  "code"
                                 ],
                                 "additionalProperties": false
                               },
@@ -1080975,12 +1080980,17 @@
                                   "title": {
                                     "nullable": true,
                                     "type": "string"
+                                  },
+                                  "code": {
+                                    "nullable": true,
+                                    "type": "string"
                                   }
                                 },
                                 "required": [
                                   "id",
                                   "kind",
-                                  "title"
+                                  "title",
+                                  "code"
                                 ],
                                 "additionalProperties": false
                               },
@@ -1081073,12 +1081083,17 @@
                                   "title": {
                                     "nullable": true,
                                     "type": "string"
+                                  },
+                                  "code": {
+                                    "nullable": true,
+                                    "type": "string"
                                   }
                                 },
                                 "required": [
                                   "id",
                                   "kind",
-                                  "title"
+                                  "title",
+                                  "code"
                                 ],
                                 "additionalProperties": false
                               },
@@ -1081165,12 +1081180,17 @@
                                   "title": {
                                     "nullable": true,
                                     "type": "string"
+                                  },
+                                  "code": {
+                                    "nullable": true,
+                                    "type": "string"
                                   }
                                 },
                                 "required": [
                                   "id",
                                   "kind",
-                                  "title"
+                                  "title",
+                                  "code"
                                 ],
                                 "additionalProperties": false
                               },
@@ -1081258,12 +1081278,17 @@
                                   "title": {
                                     "nullable": true,
                                     "type": "string"
+                                  },
+                                  "code": {
+                                    "nullable": true,
+                                    "type": "string"
                                   }
                                 },
                                 "required": [
                                   "id",
                                   "kind",
-                                  "title"
+                                  "title",
+                                  "code"
                                 ],
                                 "additionalProperties": false
                               },
@@ -1081373,12 +1081398,17 @@
                                   "title": {
                                     "nullable": true,
                                     "type": "string"
+                                  },
+                                  "code": {
+                                    "nullable": true,
+                                    "type": "string"
                                   }
                                 },
                                 "required": [
                                   "id",
                                   "kind",
-                                  "title"
+                                  "title",
+                                  "code"
                                 ],
                                 "additionalProperties": false
                               },

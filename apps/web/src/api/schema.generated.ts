@@ -191956,6 +191956,7 @@ export interface operations {
                                 /** @enum {string} */
                                 kind: "classwork" | "homework";
                                 title: string | null;
+                                code: string | null;
                             } | null;
                             version: number;
                             before: number | null;
@@ -192040,6 +192041,7 @@ export interface operations {
                                 /** @enum {string} */
                                 kind: "classwork" | "homework";
                                 title: string | null;
+                                code: string | null;
                             } | null;
                             valueSent: string | null;
                             versionSent: number | null;
@@ -192063,6 +192065,7 @@ export interface operations {
                                 /** @enum {string} */
                                 kind: "classwork" | "homework";
                                 title: string | null;
+                                code: string | null;
                             } | null;
                             value: number;
                             exemption: {
@@ -192086,6 +192089,7 @@ export interface operations {
                                 /** @enum {string} */
                                 kind: "classwork" | "homework";
                                 title: string | null;
+                                code: string | null;
                             } | null;
                             value: number;
                             exemption: {
@@ -192109,6 +192113,7 @@ export interface operations {
                                 /** @enum {string} */
                                 kind: "classwork" | "homework";
                                 title: string | null;
+                                code: string | null;
                             } | null;
                             /** @enum {string} */
                             target: "cell" | "comment" | "rating";
@@ -192135,6 +192140,7 @@ export interface operations {
                                 /** @enum {string} */
                                 kind: "classwork" | "homework";
                                 title: string | null;
+                                code: string | null;
                             } | null;
                             /** @enum {string} */
                             target: "cell" | "comment" | "rating";

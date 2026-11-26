@@ -27,7 +27,13 @@ import {
 
 /** A work of a lesson as the line names it; `null` for the attendance cell. */
 const lineWorkSchema = z
-  .object({ id: z.uuid(), kind: cellWorkKindSchema, title: z.string().nullable() })
+  .object({
+    id: z.uuid(),
+    kind: cellWorkKindSchema,
+    title: z.string().nullable(),
+    /** Task 11.27: the plan work's code shown; `null` when none or off. */
+    code: z.string().nullable(),
+  })
   .nullable();
 
 /** The exemption a line or a lesson names: the kind and the dates only (`07`, In the journal). */
