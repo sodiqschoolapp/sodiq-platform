@@ -191,17 +191,18 @@ describe('the import of past marks', () => {
     };
   }
 
-  /** Waits until `count` backends of this database wait on another. */
-  async function waiting(count: number): Promise<void> {
+  /** The backend of this database that waits on `pid`, once one does. */
+  async function waiterOf(pid: number): Promise<number> {
     for (let tries = 0; tries < 400; tries += 1) {
-      const found = await sql<{ count: number }>`
-        select count(*)::int as count from pg_stat_activity a
-        where a.datname = current_database() and cardinality(pg_blocking_pids(a.pid)) > 0
+      const found = await sql<{ pid: number }>`
+        select a.pid from pg_stat_activity a
+        where a.datname = current_database() and ${pid} = any(pg_blocking_pids(a.pid))
       `.execute(t.database.migrator);
-      if ((found.rows[0]?.count ?? 0) >= count) return;
+      const [first] = found.rows;
+      if (first !== undefined) return first.pid;
       await new Promise((resolve) => setTimeout(resolve, 25));
     }
-    throw new Error(`Fewer than ${String(count)} backends waited.`);
+    throw new Error('Nothing waited on the backend.');
   }
 
   /** Waits until a backend of this database waits on `pid`. */
@@ -846,10 +847,10 @@ describe('the import of past marks', () => {
         sql`select 1 from branches where id = ${t.north}::uuid for update`,
       ]);
       const confirming = started(() => confirm(answer.importId));
-      await waitingOn(held_.pid);
+      const confirmer = await waiterOf(held_.pid);
       const merging = started(() => mergeOf(first, twice, digest));
-      // The merge waits for the confirm's lock of the students.
-      await waiting(2);
+      // The merge waits for the confirm's own lock of the students.
+      await waiterOf(confirmer);
       await held_.release();
       const result = pastMarkConfirmResultSchema.parse((await confirming).body);
       expect(result.outcome).toBe('saved');
@@ -873,10 +874,10 @@ describe('the import of past marks', () => {
       // The class row held: the merge takes the students, then waits for the class.
       const held_ = await held([sql`select 1 from classes where id = ${north7}::uuid for update`]);
       const merging = started(() => mergeOf(first, twice, digest));
-      await waitingOn(held_.pid);
+      const merger = await waiterOf(held_.pid);
       const confirming = started(() => confirm(answer.importId));
-      // The confirm waits for the merge's lock of the students.
-      await waiting(2);
+      // The confirm waits for the merge's own lock of the students.
+      await waiterOf(merger);
       await held_.release();
       expect((await merging).status).toBe(200);
       const result = pastMarkConfirmResultSchema.parse((await confirming).body);
@@ -1058,6 +1059,97 @@ describe('the import of past marks', () => {
           ).id,
         })
         .execute();
+    });
+
+    it('shows the application the rows of the branches of its transaction only (the row filter)', async () => {
+      const read = (branch: string) =>
+        t.app.get(Transactions).run([branch], async (transaction) => ({
+          uploads: (
+            await transaction.selectFrom('past_mark_uploads').select('branch_id').execute()
+          ).map((one) => one.branch_id),
+          attendance: (
+            await transaction.selectFrom('past_attendance').select('branch_id').execute()
+          ).map((one) => one.branch_id),
+          works: (await transaction.selectFrom('past_works').select('branch_id').execute()).map(
+            (one) => one.branch_id,
+          ),
+        }));
+      const north = await read(t.north);
+      expect(north.attendance.length).toBeGreaterThan(0);
+      expect(north.works.length).toBeGreaterThan(0);
+      for (const rows of Object.values(north))
+        expect(rows.every((one) => one === t.north)).toBe(true);
+      // The south holds uploads of its own only: none of the north's marks.
+      const south = await read(t.south);
+      for (const rows of Object.values(south))
+        expect(rows.every((one) => one === t.south)).toBe(true);
+    });
+
+    it('confirms and withdraws an upload once, and writes a mark standing (each guard)', async () => {
+      const upload = await t.database.migrator
+        .insertInto('past_mark_uploads')
+        .values({
+          branch_id: t.north,
+          file_name: 'once.xlsx',
+          file_sha256: 'e'.repeat(64),
+          rows: JSON.stringify([]),
+          row_count: 1,
+          uploaded_by: creator,
+          uploaded_at: new Date(START),
+          confirmed_by: creator,
+          confirmed_at: new Date(START),
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      await expect(
+        t.database.migrator
+          .updateTable('past_mark_uploads')
+          .set({ confirmed_at: new Date('2026-10-11T10:00:00+05:00') })
+          .where('id', '=', upload.id)
+          .execute(),
+      ).rejects.toMatchObject({ constraint: 'past_mark_uploads_written_once' });
+      const year = await t.database.migrator
+        .selectFrom('academic_years')
+        .select('id')
+        .where('branch_id', '=', t.north)
+        .where('status', '=', 'current')
+        .executeTakeFirstOrThrow();
+      const base = {
+        branch_id: t.north,
+        upload_id: upload.id,
+        academic_year_id: year.id,
+        student_id: bea.id,
+        subject_id: history,
+        school_date: '2026-10-08',
+        lesson_number: 3,
+      };
+      await expect(
+        t.database.migrator
+          .insertInto('past_attendance')
+          .values({ ...base, mark: 1, withdrawn_at: new Date(START) })
+          .execute(),
+      ).rejects.toMatchObject({ constraint: 'past_marks_withdrawn_once' });
+      const work = { ...base, kind: 'classwork', position: 1, title: 'Limits', score: 0 };
+      await expect(
+        t.database.migrator
+          .insertInto('past_works')
+          .values({ ...work, total: 0 })
+          .execute(),
+      ).rejects.toMatchObject({ constraint: 'past_works_total_check' });
+      await expect(
+        t.database.migrator
+          .insertInto('past_works')
+          .values({ ...work, total: 1001 })
+          .execute(),
+      ).rejects.toMatchObject({ constraint: 'work_amount_check' });
+      expect((await withdraw(upload.id)).status).toBe(200);
+      await expect(
+        t.database.migrator
+          .updateTable('past_mark_uploads')
+          .set({ withdraw_reason: 'Another reason' })
+          .where('id', '=', upload.id)
+          .execute(),
+      ).rejects.toMatchObject({ constraint: 'past_mark_uploads_written_once' });
     });
 
     it('gives the application no delete and no change of a mark beyond its withdrawal and student', async () => {
