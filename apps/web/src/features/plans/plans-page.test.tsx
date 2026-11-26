@@ -299,7 +299,6 @@ describe('Lesson plans', () => {
         lessonId: LESSONS[1],
         values: {
           topic: 'Decimals',
-          topicCode: null,
           objectives: '',
           links: [],
           classworks: [],
@@ -313,7 +312,7 @@ describe('Lesson plans', () => {
   // attached while a row is being written"; plan decision 10): held in the form, uploaded to the
   // work the save made, never before.
   it('keeps a file attached while writing a new row with its homework, uploading it once the row is saved', async () => {
-    const homework = { id: uid(51), title: 'Read 3.1', description: '' };
+    const homework = { id: uid(51), title: 'Read 3.1', code: null, description: '' };
     const calls = open({
       path: `/plans/${JOURNAL}`,
       routes: {

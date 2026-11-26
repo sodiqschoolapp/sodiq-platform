@@ -30,7 +30,8 @@ export function CodedName({
 }) {
   const [open, setOpen] = useState(false);
   if (code === null || code === undefined || code === '') {
-    return <span className={className}>{name}</span>;
+    // The name alone, as it was drawn before codes (no element of its own without a class).
+    return className === undefined ? <>{name}</> : <span className={className}>{name}</span>;
   }
   if (!short) {
     return (

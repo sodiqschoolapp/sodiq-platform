@@ -266,7 +266,9 @@ describe('Master plans', () => {
     expect(screen.queryByRole('button', { name: ru.plans.masters.add })).toBeNull();
   });
 
-  it('edits an item of a master with its revision and works without ids, and moves it down', async () => {
+  // Task 11.27 (plan review 1, Look first): a save names the stored works it was read with (`id`), so
+  // the codes hidden while the subject's codes are off are kept; before, it sent no ids.
+  it('edits an item of a master with its revision and works named by their ids, and moves it down', async () => {
     const calls = open({
       path: `/plans/masters/${MASTER}`,
       routes: {
@@ -295,10 +297,9 @@ describe('Master plans', () => {
         revision: 4,
         values: {
           topic: 'Fractions, part 1',
-          topicCode: null,
           objectives: '',
           links: [],
-          classworks: [{ title: 'Quiz 1', description: '' }],
+          classworks: [{ id: uid(41), title: 'Quiz 1', description: '' }],
           homeworks: [],
         },
       });

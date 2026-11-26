@@ -1279,6 +1279,7 @@ describe('adding a student', () => {
               daily: { attendance: 10, classwork: 50, homework: 40 },
               quarterWeightsMissing: 0,
               quarterCount: 4,
+              codesOn: false,
             },
           ],
           mayMoveDepartment: false,
@@ -3770,6 +3771,7 @@ describe('the Results and Attendance tabs', () => {
               {
                 workId: uid(66),
                 title: 'Fractions',
+                code: null,
                 position: 1,
                 score: 9,
                 total: 10,
