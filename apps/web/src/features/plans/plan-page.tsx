@@ -1,4 +1,4 @@
-import type { PlanRow } from '@sodiq/shared';
+import { codedName, type PlanRow } from '@sodiq/shared';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate, useParams, useSearch } from '@tanstack/react-router';
 import { useMemo } from 'react';
@@ -19,6 +19,7 @@ import { NotCoveredSections } from './plan-outcomes';
 import { SharedWith, SharingActions } from './plan-sharing';
 import { exportPlan, planQuery } from './plans-api';
 import type { PlanSearch } from './plans-search';
+import { CodedName } from '@/components/coded-name';
 
 /** "Mon 9 Nov · slot 1": a row's date and lesson slot. */
 export function rowDateText(
@@ -75,17 +76,17 @@ export function PlanPage(): React.JSX.Element {
           ) : row.item.editedAfterLesson ? (
             // Task 7.2 (`09`: "it carries an \"edited after the lesson\" mark").
             <span className="grid">
-              <span>{row.item.topic}</span>
+              <CodedName code={row.item.topicCode} name={row.item.topic} />
               <span className="text-xs text-muted-foreground">
                 {t('plans.plan.editedAfterLesson')}
               </span>
             </span>
           ) : row.item.movedFrom === null ? (
-            row.item.topic
+            <CodedName code={row.item.topicCode} name={row.item.topic} />
           ) : (
             // Task 7.1b (edge/lesson-plans: 'with a "moved from [date]" mark').
             <span className="grid">
-              <span>{row.item.topic}</span>
+              <CodedName code={row.item.topicCode} name={row.item.topic} />
               <span className="text-xs text-muted-foreground">
                 {t('plans.plan.movedFrom', {
                   date: schoolDateText(row.item.movedFrom, language, false),
@@ -93,17 +94,20 @@ export function PlanPage(): React.JSX.Element {
               </span>
             </span>
           ),
-        searchText: (row) => row.item?.topic ?? '',
+        searchText: (row) =>
+          row.item === null ? '' : codedName(row.item.topicCode, row.item.topic),
       },
       {
         key: 'classworks',
         header: t('plans.plan.classworks'),
-        cell: (row) => (row.item?.classworks ?? []).map((one) => one.title).join(', '),
+        cell: (row) =>
+          (row.item?.classworks ?? []).map((one) => codedName(one.code, one.title)).join(', '),
       },
       {
         key: 'homeworks',
         header: t('plans.plan.homeworks'),
-        cell: (row) => (row.item?.homeworks ?? []).map((one) => one.title).join(', '),
+        cell: (row) =>
+          (row.item?.homeworks ?? []).map((one) => codedName(one.code, one.title)).join(', '),
       },
       {
         // Task 8.8: the journal's marks on a held row (`edge/lesson-plans`, "A substitute
@@ -118,7 +122,7 @@ export function PlanPage(): React.JSX.Element {
               : t('plans.marks.notGiven', {
                   titles: (row.item?.homeworks ?? [])
                     .filter((work) => row.notGiven.includes(work.id))
-                    .map((work) => work.title)
+                    .map((work) => codedName(work.code, work.title))
                     .join(', '),
                 }),
           ]

@@ -1,4 +1,10 @@
-import { planCopySchema, type Plan, type PlanCopy, type PlanMasterContent } from '@sodiq/shared';
+import {
+  codedName,
+  planCopySchema,
+  type Plan,
+  type PlanCopy,
+  type PlanMasterContent,
+} from '@sodiq/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRef, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -26,6 +32,7 @@ import {
   planMasterCompareQuery,
   planMastersQuery,
 } from './plans-api';
+import { CodedName } from '@/components/coded-name';
 
 /**
  * A plan and its master (task 7.3, pull request #216; `09`, Master plans):
@@ -167,10 +174,12 @@ export function MasterMark({ plan }: { plan: Plan }) {
 function ContentCell({ content }: { content: PlanMasterContent | null }) {
   const { t } = useTranslation();
   if (content === null) return <span className="text-muted-foreground">—</span>;
-  const works = [...content.classworks, ...content.homeworks].map((work) => work.title);
+  const works = [...content.classworks, ...content.homeworks].map((work) =>
+    codedName(work.code, work.title),
+  );
   return (
     <div className="grid gap-0.5">
-      <span>{content.topic}</span>
+      <CodedName code={content.topicCode} name={content.topic} />
       {works.length > 0 && (
         <span className="text-sm text-muted-foreground">
           {t('plans.updated.works', { works: works.join(', ') })}

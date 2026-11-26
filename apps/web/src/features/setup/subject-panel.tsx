@@ -30,7 +30,7 @@ import { SubjectForm, type DepartmentChoice } from './subject-form';
 import { invalidateSubjects, quarterWeightsQuery } from './subjects-api';
 import { WeightsForm, weightsText, type WeightPart, type Weights } from './weights-form';
 import { schoolDateText } from '@/lib/dates';
-import { SECTION_TITLE, SUBSECTION_TITLE } from '@/components/ui/control';
+import { CHECKBOX, CHECKBOX_TARGET, SECTION_TITLE, SUBSECTION_TITLE } from '@/components/ui/control';
 
 const THREE: readonly WeightPart[] = ['attendance', 'classwork', 'homework'];
 const FOUR: readonly WeightPart[] = ['attendance', 'classwork', 'homework', 'ratingExam'];
@@ -46,6 +46,8 @@ interface SubjectPanelProps {
   canArchive: boolean;
   /** The server's answer, from every current assignment (decision 17), not the role shown. */
   mayMoveDepartment: boolean;
+  /** Task 11.27: the server's answer: the codes switch is the Super Admin's alone. */
+  maySwitchCodes: boolean;
 }
 
 /**
@@ -62,6 +64,7 @@ export function SubjectPanel({
   canEdit,
   canArchive,
   mayMoveDepartment,
+  maySwitchCodes,
 }: SubjectPanelProps) {
   const { t, i18n } = useTranslation();
   const queryClient = useQueryClient();
@@ -193,6 +196,8 @@ export function SubjectPanel({
               </div>
             ))}
           </dl>
+
+          <CodesSwitch subject={subject} maySwitch={maySwitchCodes} onSaved={refresh} />
 
           {graded && <QuarterWeights subject={subject} canEdit={editable} panel={panel} />}
         </>
@@ -651,5 +656,59 @@ function TeachersOutside({ error }: { error: unknown }) {
         </p>
       )}
     </div>
+  );
+}
+
+/**
+ * Task 11.27 (`09`, Codes: "The Super Admin switches codes on for chosen subjects: a switch on the
+ * subject, off by default"; `02`, Academic Vice Principal: "subjects (except the codes switch)").
+ * Saved when ticked, as the server decides (`maySwitchCodes`); read only for every other reader.
+ */
+function CodesSwitch({
+  subject,
+  maySwitch,
+  onSaved,
+}: {
+  subject: Subject;
+  maySwitch: boolean;
+  onSaved: () => Promise<unknown>;
+}) {
+  const { t } = useTranslation();
+  const save = useMutation({
+    mutationFn: (codesOn: boolean) =>
+      answerOf(
+        api.PUT('/api/setup/subjects/{id}/codes', {
+          params: { header: branchHeader(), path: { id: subject.id } },
+          body: { codesOn },
+        }),
+      ),
+    onSuccess: onSaved,
+  });
+  return (
+    <section className="grid gap-2" aria-labelledby={`codes-${subject.id}`}>
+      <h3 id={`codes-${subject.id}`} className={SUBSECTION_TITLE}>
+        {t('setup.subjects.codes.title')}
+      </h3>
+      {maySwitch ? (
+        <label className={CHECKBOX_TARGET}>
+          <input
+            type="checkbox"
+            className={CHECKBOX}
+            checked={subject.codesOn}
+            disabled={save.isPending}
+            onChange={(event) => {
+              save.mutate(event.target.checked);
+            }}
+          />
+          <span>{t('setup.subjects.codes.switch')}</span>
+        </label>
+      ) : (
+        <p className="text-sm" data-codes-on={subject.codesOn ? 'on' : 'off'}>
+          {subject.codesOn ? t('setup.subjects.codes.on') : t('setup.subjects.codes.off')}
+        </p>
+      )}
+      <p className="text-sm text-muted-foreground">{t('setup.subjects.codes.help')}</p>
+      <FailureAlert error={save.error} />
+    </section>
   );
 }

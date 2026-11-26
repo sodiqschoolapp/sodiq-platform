@@ -1,4 +1,4 @@
-import { GRADES } from '@sodiq/shared';
+import { codedName, GRADES } from '@sodiq/shared';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -45,11 +45,16 @@ export function PlanParallelPage(): React.JSX.Element {
     ),
   );
   const date = (value: string) => schoolDateText(value, i18n.language, false);
-  const line = (row: { number: number; date: string; topic: string | null }) =>
+  const line = (row: {
+    number: number;
+    date: string;
+    topic: string | null;
+    topicCode: string | null;
+  }) =>
     t(row.topic === null ? 'plans.parallel.atEmpty' : 'plans.parallel.at', {
       number: row.number,
       date: date(row.date),
-      topic: row.topic ?? '',
+      topic: row.topic === null ? '' : codedName(row.topicCode, row.topic),
     });
   return (
     <>

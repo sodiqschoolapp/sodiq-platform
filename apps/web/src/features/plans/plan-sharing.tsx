@@ -1,4 +1,5 @@
 import {
+  codedName,
   planCopySchema,
   planShareSchema,
   type Plan,
@@ -128,7 +129,8 @@ export function SharedWith({ plan }: { plan: Plan }) {
               : t(one.next.topic === null ? 'plans.share.atEmpty' : 'plans.share.at', {
                   number: one.next.number,
                   date: schoolDateText(one.next.date, i18n.language, false),
-                  topic: one.next.topic ?? '',
+                  // Task 11.27: "code · topic" with a code shown.
+                  topic: one.next.topic === null ? '' : codedName(one.next.topicCode, one.next.topic),
                 })}
             {one.notCovered > 0 && (
               <>

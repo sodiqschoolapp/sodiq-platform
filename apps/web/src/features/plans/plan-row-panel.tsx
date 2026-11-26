@@ -15,6 +15,7 @@ import { FailureAlert } from '@/components/failure-alert';
 import { PanelActions } from '@/components/list/panel-actions';
 import { usePanelEditing } from '@/components/list/use-panel-editing';
 import { Button } from '@/components/ui/button';
+import { CodedName } from '@/components/coded-name';
 import { rowDateText } from './plan-page';
 import { CopiedFrom } from './plan-sharing';
 import { FilePicker, NotUploaded, PlanItemEditor, type HeldFile } from './plan-item-editor';
@@ -134,6 +135,7 @@ export function PlanRowPanel({ plan, row }: { plan: Plan; row: PlanRow }) {
           item={item}
           label={t('plans.plan.rowName', { number: row.number })}
           failureNotes={(failure, stored) => storedNotes(failure, stored, t)}
+          codesOn={plan.codesOn}
           {...(item === null &&
           previous !== undefined &&
           previous.date === row.date &&
@@ -152,7 +154,13 @@ export function PlanRowPanel({ plan, row }: { plan: Plan; row: PlanRow }) {
         <dl className="grid gap-3">
           <div className="grid gap-0.5">
             <dt className="text-sm text-muted-foreground">{t('plans.plan.topic')}</dt>
-            <dd>{item?.topic ?? t('plans.plan.emptyRow')}</dd>
+            <dd>
+              {item === null ? (
+                t('plans.plan.emptyRow')
+              ) : (
+                <CodedName code={item.topicCode} name={item.topic} />
+              )}
+            </dd>
           </div>
           {item !== null && item.objectives !== '' && (
             <div className="grid gap-0.5">
@@ -192,7 +200,7 @@ export function PlanRowPanel({ plan, row }: { plan: Plan; row: PlanRow }) {
                     {works(kind).map((work) => (
                       <li key={work.id} className="grid gap-1">
                         <span>
-                          {work.title}
+                          <CodedName code={work.code} name={work.title} />
                           {work.description !== '' && (
                             <span className="text-muted-foreground"> — {work.description}</span>
                           )}

@@ -32,6 +32,7 @@ import {
   mergeNotCovered,
   placeCarried,
 } from './plans-api';
+import { CodedName } from '@/components/coded-name';
 
 /**
  * The outcomes of "not covered" items and the "carried in" tray (task 9.2d, pull request #233;
@@ -113,7 +114,7 @@ function ItemsSection({
       <ul className="grid gap-2">
         {items.map((item) => (
           <li key={item.id} data-item={item.id} className="flex flex-wrap items-center gap-2">
-            <span>{item.topic}</span>
+            <CodedName code={item.topicCode} name={item.topic} />
             {item.notDeliveredFrom !== null && (
               <span className="text-xs text-muted-foreground">
                 {t('plans.marks.copyOf', {
@@ -211,7 +212,7 @@ function Outcomes({ outcomes }: { outcomes: readonly PlanOutcome[] }) {
       <ul className="grid gap-1 text-sm">
         {outcomes.map((outcome) => (
           <li key={outcome.id} data-outcome={outcome.kind}>
-            <span className="font-semibold">{outcome.topic}</span>
+            <CodedName className="font-semibold" code={outcome.topicCode} name={outcome.topic} />
             {' · '}
             {what(outcome)}
             {outcome.decidedBy !== null && (

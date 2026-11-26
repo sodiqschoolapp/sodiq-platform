@@ -380,6 +380,7 @@ export function SubjectsPage() {
             canEdit={canEdit}
             canArchive={canArchive}
             mayMoveDepartment={subjects.data?.mayMoveDepartment ?? false}
+            maySwitchCodes={subjects.data?.maySwitchCodes ?? false}
           />
         )}
       />
