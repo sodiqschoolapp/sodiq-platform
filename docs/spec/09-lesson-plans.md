@@ -11,9 +11,9 @@ Every teacher must have a lesson plan for each class or group they teach, for ea
 | --- | --- |
 | Lesson number | Order within the quarter. Given by the system. |
 | Date | The date of the dated lesson this item is attached to. Taken from the timetable, never typed. |
-| Topic | Required. |
-| Classwork | Optional, any number. Each classwork is a graded work done in class and becomes the title of its own classwork column in the journal. A lesson with no classwork has no classwork column. A classwork can carry its own files. |
-| Homework | Optional, any number. Each homework is a task given at this lesson and becomes a homework column of the next lesson. A lesson can have no homework; then the next lesson has no homework column. A homework can carry its own files; from Release 2 students and parents see them with the homework. |
+| Topic | Required. In a subject with codes on, an optional topic code beside it (Codes). |
+| Classwork | Optional, any number. Each classwork is a graded work done in class and becomes the title of its own classwork column in the journal. In a subject with codes on, it can have a code beside its title (Codes). A lesson with no classwork has no classwork column. A classwork can carry its own files. |
+| Homework | Optional, any number. Each homework is a task given at this lesson and becomes the title of its own homework column at this lesson, where it is graded. In a subject with codes on, it can have a code beside its title (Codes). A lesson with no homework has no homework column. A homework can carry its own files; from Release 2 students and parents see them with the homework. |
 | Objectives and materials | Optional: short text, links, and files for staff only ("Materials": the teacher's own files, such as slides or an answer key; never shown to students or parents). |
 
 - One plan for each class or group, subject and quarter. The form shows one row for every dated lesson of the quarter, with number and date already filled; the teacher fills in the rest. Files, of the materials and of each work, can be attached while a row is being written, not only after it is saved.
@@ -35,6 +35,16 @@ A Head Teacher can keep a master plan for one of their subjects, a grade, a lang
 - **Optional.** Teachers may start from the master, from a copy, or from an empty plan.
 - **Parallel classes.** The Head Teacher sees all classes of a grade side by side with the item each has reached.
 - **New year.** Masters are copied into the new academic year.
+
+## Codes
+
+The Super Admin switches codes on for chosen subjects: a switch on the subject, off by default (owner, 25 November 2026).
+
+- **What has a code.** In a subject with codes on, a plan item has an optional topic code beside its topic, and each classwork and homework an optional code beside its title: in the plan, in master plans, on the lesson card and wherever a work is added in the journal. A code is free text of at most 20 characters (spaces at either end are dropped); it need not be unique. It is edited under the same rules and history as the topic or title it stands beside.
+- **Where it shows.** Where a code is filled it is shown first, with the full name beside it: in the journal, on the lesson card, in plan lists and the plan editor, in reports, in exports and prints, and in the parent portal. Where space is short (journal column headers, the lesson header, lesson mode on a phone) the code is shown alone, with the full name on hover or on a tap. Where the code is empty, the name is shown alone.
+- **Switching off.** Switching codes off for a subject hides every code of that subject everywhere, exports and the API included, and keeps them; switching on again shows them. While a subject's codes are off, no code can be set in it. Other subjects are not affected.
+- **Copies.** Codes are copied with a plan (from another class, another teacher or last year) and from a master plan, and are part of "master updated".
+- **The assistant and keys.** The assistant and integration keys set and read codes wherever they set and read topics and titles. The switch on a subject is the Super Admin's, on the screen and through the assistant.
 
 ## The plan window
 
@@ -61,12 +71,12 @@ Nothing opens without an approved request, also when the school itself caused th
 ## In the journal
 
 - The header of each lesson shows the lesson number and the topic, shortened to fit. Clicking it opens the lesson card: number, date, slot, topic, classworks, homeworks, objectives, materials.
-- Columns follow the plan. A lesson has one classwork column for each classwork of its plan item, and one homework column for each homework of the previous lesson's plan item. A lesson with neither shows attendance only; no empty columns are shown. The titles come from the plan, so to grade a work the teacher only sets the total and types the numbers. If a planned work was not done or not checked, the teacher marks it "not held" and its column is removed from that lesson; this is kept in history. A work that was not in the plan is added on the lesson card or in the plan, under the rules below.
-- The lesson card shows two homework lines: "given today", the homeworks of this lesson's plan item, and "checked today", the homeworks given at the previous lesson, which are what the homework numbers of this lesson refer to.
+- Columns follow the plan. A lesson has one classwork column for each classwork of its plan item, and one homework column for each homework of its plan item. A lesson with neither shows attendance only; no empty columns are shown. The titles come from the plan, so to grade a work the teacher only sets the total and types the numbers. If a planned work was not done or not graded, the teacher marks it "not held" and its column is removed from that lesson; this is kept in history. A work that was not in the plan is added on the lesson card or in the plan, under the rules below.
+- The lesson card lists the homeworks of this lesson's plan item, which are this lesson's homework columns.
 - Future lessons are shown as columns with number and topic, so the teacher sees what comes next. Nothing can be entered in them.
 - In lesson mode on a phone, topic, classwork and homework are at the top of the screen.
 - The lesson card is a second way into the plan item of its lesson. The plan's owner can change the topic, the objectives and links, the materials and the works there, under the same rules as in the plan: freely while that row is open (inside the window, or for the days of an approved request); otherwise the card offers to send an edit request for that lesson.
-- One exception keeps a missing plan from blocking grading: at a held lesson whose plan item is missing (the plan is missing or the row is empty), whoever may enter the lesson's data, the teacher or the substitute, can add classworks and "homework given" in the journal at any time. Each is written into the lesson's plan item, created for it (with the plan, when there is none), and marked in the plan's history as added in the journal; the plan's editor shows it like any work. The item's topic stays empty until the owner writes it, so the plan stays incomplete until then.
+- One exception keeps a missing plan from blocking grading: at a held lesson whose plan item is missing (the plan is missing or the row is empty), whoever may enter the lesson's data, the teacher or the substitute, can add classworks and homeworks in the journal at any time. Each is written into the lesson's plan item, created for it (with the plan, when there is none), and marked in the plan's history as added in the journal; the plan's editor shows it like any work. The item's topic stays empty until the owner writes it, so the plan stays incomplete until then.
 - Students and parents see the topic and the homework from Release 2.
 
 ## When something else changes

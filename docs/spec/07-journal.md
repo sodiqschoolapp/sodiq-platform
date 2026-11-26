@@ -18,7 +18,7 @@ There is one journal for each class or group and subject in an academic year. It
 | --- | --- | --- |
 | Student list | Number, surname and name in alphabetical order, UID. | Fixed on the left. Filled by the system. |
 | Quarter results | Attendance average, classwork average, homework average, rating exam (rating subjects only), quarter result, grade 2–5. | Fixed next to the names. Calculated by the system; a switch shows the same figures for the selected month. |
-| Lessons | One block per dated lesson. Row 1: date, weekday, slot. Row 2: the attendance column, then one classwork column for each classwork of the lesson and one homework column for each homework checked at it, each with its title and, in front of the title, a small coloured tag with the letter of its kind (S for sinf ishi and U for uy vazifasi in Uzbek, К and Д in Russian, C and H in English; the full word on hover). Row 3: "all present" button; under each classwork and each homework, the total label and the total set by the teacher for that work (for example 30, 5 or 100). The short labels follow the person's language, with the full word on hover (table below). A lesson with no classwork and no homework is one narrow attendance column. | Scrolls sideways. Cancelled lessons are grey with the reason. |
+| Lessons | One block per dated lesson. Row 1: date, weekday, slot. Row 2: the attendance column, then one classwork column for each classwork of the lesson and one homework column for each homework given at it, each with its title (its code first where the subject has codes on and one is filled; `09`, Codes) and, in front of it, a small coloured tag with the letter of its kind (S for sinf ishi and U for uyga vazifa in Uzbek, К and Д in Russian, C and H in English; the full word on hover). Row 3: "all present" button; under each classwork and each homework, the total label and the total set by the teacher for that work (for example 30, 5 or 100). The short labels follow the person's language, with the full word on hover (table below). A lesson with no classwork and no homework is one narrow attendance column. | Scrolls sideways. Cancelled lessons are grey with the reason. |
 | Lesson cells | Attendance mark; for each classwork and each homework, the number typed by the teacher and next to it the percent. | The teacher types the attendance mark and the numbers. The system calculates the percents. |
 | Bottom row | Class or group averages: attendance, classwork, homework, rating exam, quarter result. | Calculated. |
 | Legend | Attendance marks, grade bands, and the weights in force for this subject and quarter. | Always visible under the grid. |
@@ -46,13 +46,13 @@ Students who left or moved are shown in a folded section at the bottom with thei
 | 5 | Fully exempt. Set by the system from an exemption; the teacher cannot type it. |
 
 - **Attendance.** "All present" marks 1 for every student who is not yet marked and not exempt; the teacher then types the exceptions: 0, 2 or 3. This takes seconds.
-- **Classwork and homework.** The columns come from the lesson plan, so a lesson shows only the works it really has. A lesson can have any number of classworks and any number of homeworks given, including none of one kind, for example three homeworks and no classwork. Each work has its own column and its own total. The teacher sets the total of a work, then types a number for each student. The system shows the percent next to the number. The rules are under "The total" below. A work added in the journal goes into the plan: in a lesson held while its plan item is missing, the teacher can add any number of classworks and of "homework given" in the journal, each with a title typed when adding it (required, at most 60 characters), and each is written into the lesson's plan item, created for it (with the plan, when there is none). So every work column comes from the plan (`09`, In the journal).
-- **Homework column.** The homework numbers in a lesson's homework columns are for the homeworks checked at that lesson, which are the tasks given at the previous lesson: one column for each homework given there. An empty homework column is never shown. So the first lesson of the year has none, and neither does a lesson after one where no homework was given. Homework given at the last lesson of a quarter is checked, and counted, in the next quarter.
+- **Classwork and homework.** The columns come from the lesson plan, so a lesson shows only the works it really has. A lesson can have any number of classworks and any number of homeworks, including none of one kind, for example three homeworks and no classwork. Each work has its own column and its own total. The teacher sets the total of a work, then types a number for each student. The system shows the percent next to the number. The rules are under "The total" below. A work added in the journal goes into the plan: in a lesson held while its plan item is missing, the teacher can add any number of classworks and homeworks in the journal, each with a title typed when adding it (required, at most 60 characters) and, in a subject with codes on, an optional code (`09`, Codes), and each is written into the lesson's plan item, created for it (with the plan, when there is none). So every work column comes from the plan (`09`, In the journal).
+- **Homework column.** A homework is graded at the lesson where it was given (owner, 25 November 2026). Each homework of a lesson's plan item is a homework column of that lesson: the teacher sets its total and types the numbers there, as for a classwork. No other lesson has a column for it. A homework column follows the edit period, locks and unlocks of its lesson and counts in that lesson's quarter, so homework given at the last lesson of a quarter belongs to that quarter, and homework given at the last lesson of the year has a column like any other.
 - **Topic.** Taken from the lesson plan. The plan's owner can change it on the lesson card, which changes the plan item under the plan's rules (`09`, In the journal).
 - **Rating exam.** One score from 0 to 100 per student per quarter, only in rating journals (grades 2–11).
 - **Comments.** A comment can be attached to any attendance mark or score, and a general note to a student for a lesson. Each comment is either "staff only" or "visible to parents".
 - **Saving.** Every cell saves by itself and shows a saved sign. There is no Save button. If the connection drops, entries wait on the device and are sent when it returns; the page warns before closing with unsent entries.
-- **Keyboard.** Arrows, Tab and Enter move between cells; digits type; a key opens the comment.
+- **Keyboard.** Arrows, Tab and Enter move between cells; digits and a point type; a key opens the comment.
 - **Lesson mode.** On a phone, one lesson is shown at a time as a list of students with large buttons: attendance, then each classwork, then each homework.
 
 ## The total: one flexible way to grade
@@ -64,10 +64,11 @@ Every classwork and homework has a total, set by the teacher in the column heade
 | Count completed questions | 30, the number of questions given | 12 | 40% |
 | Grade on a 5 scale | 5 | 4 | 80% |
 | Grade in percent | 100 | 85 | 85% |
+| Give half points | 10 | 7.5 | 75% |
 
-- The total is a whole number, 1 or more. Numbers cannot be typed for a work until its total is set.
+- The total is a number of 1 or more, with up to two digits after the decimal point, for example 30 or 7.5, typed and shown like a score (owner, 25 November 2026). Numbers cannot be typed for a work until its total is set.
 - The number typed is from 0 up to the total. A number above the total is refused.
-- The number typed is a whole number. Decimals are not accepted.
+- The number typed may have up to two digits after the decimal point, for example 7.5 or 8.25 (owner, 25 November 2026). The decimal separator is a point in every language; a comma is refused. The number is kept exactly as typed, enters every calculation as an exact fraction, and is shown with a point, without trailing zeros (7.50 shows 7.5).
 - The percent is shown as a whole number: 13 out of 30 shows 43%. The exact value is kept and used in every average.
 - Each work has its own total. A teacher can use 30 for one homework and 5 for the next. The last total the teacher used in that journal is offered for the next work.
 - The teacher can change a total inside the edit period. All percents of that work are recalculated at once. If a number already typed is above the new total, the change is refused and those students are listed.
@@ -169,7 +170,7 @@ The Academic Vice Principal closes a quarter from one checklist screen. It lists
 - A quarter cannot be closed before its last day. The checklist opens two weeks earlier so problems can be fixed in time.
 - Closing is never automatic. After the last day the Academic Vice Principal is reminded until the quarter is closed.
 - The whole branch is closed in one step.
-- Homework given at the last lesson of the quarter is not an open item; it belongs to the next quarter.
+- Homework given at the last lesson of the quarter belongs to that quarter, like every work of that lesson.
 
 ## Transfers
 
