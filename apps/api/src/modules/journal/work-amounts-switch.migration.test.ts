@@ -529,7 +529,7 @@ describe('migration 0189 switches every work score and total to its exact twin',
   // version writes across the deploy: without the recompile at the end of 0189, its cached
   // trigger functions still hold `score` as `integer` and the write fails ("type of parameter …
   // does not match that when preparing the plan").
-  it('keeps a number of 7.5 written after the switch as 7.5, with its history line, on a session that wrote before it', async () => {
+  it('keeps a number of 4.5 written after the switch as 4.5, with its history line, on a session that wrote before it', async () => {
     await at(database.migrator, AFTER, (transaction: Transaction) =>
       transaction
         .updateTable('journal_cells')

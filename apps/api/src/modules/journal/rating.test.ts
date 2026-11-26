@@ -341,6 +341,16 @@ describe('the rating exam and comments', () => {
           version: null,
         });
         expect(codeOf(above)).toBe('validation_failed');
+        // Task 11.25b: the rating exam score stays whole (`edge/journal`: "A rating exam score takes
+        // whole numbers only"; `edge/calculation`, The rating exam), while a work's number takes two
+        // decimals.
+        const half = await calls.post(`${base(s)}/entries`, {
+          studentId: s.boboyev,
+          entry: { kind: 'score', score: 7.5 },
+          reason: null,
+          version: null,
+        });
+        expect(codeOf(half)).toBe('validation_failed');
         // Attendance 100 and the exam 49 with weights 20 and 40, the works left out:
         // (20 × 100 + 40 × 49) ÷ 60 = 66, provisional, grade 3 (07, rules 7 and 8).
         const grid = await gridOf(calls, s);
