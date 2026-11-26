@@ -90,7 +90,8 @@ A key may **never** use: exports, a student's record (profile, diagnostic score,
 - **Send the version you read.** Every cell save carries the version as you read it (`null` for a cell never saved). When someone else saved the cell since you read it, in the platform or through another key, the whole save is refused with `409 cell_stale` and nothing changes. The error's `details` name each outdated cell and the value now stored (example 9.5). Show the person both values, and save again with the new version only if the person still wants their value. Never retry with the new version without asking: that overwrites a change nobody saw.
 - **Locks.** A lesson can be edited for the edit period after it (7 days by default). After that the save is refused with `409 journal_locked`; the Teacher sends an unlock request (`POST /api/journal/lessons/{lessonId}/unlocks`), and the Head Teacher decides it.
 - **Retrying.** Saving attendance and saving numbers take an `Idempotency-Key`: a retry with the same key returns the first answer. Any other change that got no answer: read again before you retry, or you may create the same thing twice.
-- **Send what a person types, never results.** Attendance marks, works and their totals, the numbers typed, topics, comments and plans. Percents, averages, results and grades are calculated only by the platform. You can read them in the grid; you cannot send them.
+- **Send what a person types, never results.** Attendance marks, works and their totals, the numbers typed, topics, comments and plans, and the codes of topics and works. Percents, averages, results and grades are calculated only by the platform. You can read them in the grid; you cannot send them.
+- **Codes of topics and works.** A subject may have codes switched on by the Super Admin. Then a plan item's topic can carry a `topicCode` and each classwork and homework a `code`: free text of at most 20 characters, spaces at either end dropped, not unique. They are set and read wherever topics and titles are (plan items, master plans, the journal's topic, a work added in the journal and its rename). A code is `null` when there is none and also while the subject's codes are off: a switched-off subject hides its codes and keeps them. Leave a code out, or send it as you read it, to leave it as it is; a code sent while the subject's codes are off is refused with `409 plan_codes_off`, and one of 21 characters with `400 validation_failed`.
 
 **Attendance marks** (`mark`):
 
@@ -143,6 +144,7 @@ Every error has this shape:
 | `404 not_found` | The record does not exist, or belongs to another branch. |
 | `409 score_above_total` | A number is above the work's total. |
 | `409 score_decimals` | A number has more than two digits after the point. |
+| `409 plan_codes_off` | A code was sent for a subject whose codes for topics and works are off. |
 | `409 cell_stale` | A cell changed since you read it (section 5). |
 | `409 journal_locked` | The lesson is past its edit period. The Teacher sends an unlock request. |
 
@@ -568,10 +570,13 @@ Answer `200`:
   held: boolean;
   planItem: boolean;
   topic: string | null;
+  topicCode: string | null;
+  codesOn: boolean;
   whole: boolean;
   classworks: {
     id: uuid;
     title: string;
+    code: string | null;
     description: string;
   }[];
   objectives: string | null;
@@ -587,6 +592,7 @@ Answer `200`:
   givenToday: {
     planWorkId: uuid | null;
     title: string | null;
+    code: string | null;
     description: string | null;
     notGiven: boolean;
   }[];
@@ -605,16 +611,19 @@ Answer `200`:
       id: uuid;
       position: integer;  // min 1
       topic: string;
+      topicCode: string | null;
       objectives: string;
       links: string[];
       classworks: {
         id: uuid;
         title: string;
+        code: string | null;
         description: string;
       }[];
       homeworks: {
         id: uuid;
         title: string;
+        code: string | null;
         description: string;
       }[];
       files: {
@@ -884,6 +893,7 @@ Answer `200`:
       kind: "classwork" | "homework";
       position: integer;  // min 1
       title: string | null;
+      code: string | null;
       unplanned: boolean;
       total: number | null;  // min 1, max 1000
       notHeld: boolean;
@@ -907,6 +917,7 @@ Answer `200`:
     planItem: boolean;
     number: integer | null;  // min 1
     topic: string | null;
+    topicCode: string | null;
     addedInJournal: uuid[];
     notDelivered: boolean;
     notHeldWorks: {
@@ -916,6 +927,7 @@ Answer `200`:
       kind: "classwork" | "homework";
       position: integer;  // min 1
       title: string | null;
+      code: string | null;
       unplanned: boolean;
       total: number | null;  // min 1, max 1000
       notHeld: boolean;
@@ -925,6 +937,7 @@ Answer `200`:
       workId: uuid | null;
       planWorkId: uuid | null;
       title: string | null;
+      code: string | null;
       notGiven: boolean;
     }[];
   }[];
@@ -1429,6 +1442,7 @@ Request body (`application/json`):
 {
   kind: "classwork" | "homework";
   title: string;  // length ≥ 1
+  code?: string | null;
   correction?: {
     reason: string;  // length ≥ 1, length ≤ 500
   };
@@ -1443,6 +1457,7 @@ Answer `200`:
   itemId: uuid;
   kind: "classwork" | "homework";
   title: string;
+  code: string | null;
 }
 ```
 
@@ -1462,6 +1477,8 @@ Request body (`application/json`):
 {
   topic: string;  // length ≤ 300
   baseTopic: string;
+  topicCode?: string | null;
+  baseTopicCode?: string | null;
   correction?: {
     reason: string;  // length ≥ 1, length ≤ 500
   };
@@ -1474,6 +1491,7 @@ Answer `200`:
 {
   itemId: uuid;
   topic: string;
+  topicCode: string | null;
 }
 ```
 
@@ -1494,6 +1512,8 @@ Request body (`application/json`):
 {
   title: string;  // length ≥ 1
   baseTitle: string;
+  code?: string | null;
+  baseCode?: string | null;
 }
 ```
 
@@ -1505,6 +1525,7 @@ Answer `200`:
   itemId: uuid;
   kind: "classwork" | "homework";
   title: string;
+  code: string | null;
 }
 ```
 
@@ -2337,6 +2358,7 @@ Answer `200`:
     };
     colour: "red" | "orange" | "amber" | "lime" | "green" | "teal" | "cyan" | "blue" | "indigo" | "violet" | "pink" | "brown";
   };
+  codesOn: boolean;
   quarters: {
     id: uuid;
     number: integer;  // min 1, max 4
@@ -2364,16 +2386,19 @@ Answer `200`:
       id: uuid;
       position: integer;  // min 1
       topic: string;
+      topicCode: string | null;
       objectives: string;
       links: string[];
       classworks: {
         id: uuid;
         title: string;
+        code: string | null;
         description: string;
       }[];
       homeworks: {
         id: uuid;
         title: string;
+        code: string | null;
         description: string;
       }[];
       files: {
@@ -2397,16 +2422,19 @@ Answer `200`:
     id: uuid;
     position: integer;  // min 1
     topic: string;
+    topicCode: string | null;
     objectives: string;
     links: string[];
     classworks: {
       id: uuid;
       title: string;
+      code: string | null;
       description: string;
     }[];
     homeworks: {
       id: uuid;
       title: string;
+      code: string | null;
       description: string;
     }[];
     files: {
@@ -2428,16 +2456,19 @@ Answer `200`:
   carriedIn: {
     id: uuid;
     topic: string;
+    topicCode: string | null;
     objectives: string;
     links: string[];
     classworks: {
       id: uuid;
       title: string;
+      code: string | null;
       description: string;
     }[];
     homeworks: {
       id: uuid;
       title: string;
+      code: string | null;
       description: string;
     }[];
     files: {
@@ -2460,6 +2491,7 @@ Answer `200`:
     id: uuid;
     itemId: uuid;
     topic: string;
+    topicCode: string | null;
     kind: "merged" | "carried" | "dropped";
     targetDate: date | null;
     reason: string;
@@ -2554,6 +2586,7 @@ Answer `200`:
       number: integer;  // min 1
       date: date;
       topic: string | null;
+      topicCode: string | null;
     } | null;
     notCovered: integer;  // min 0
   }[];
@@ -2746,20 +2779,24 @@ Answer `200`:
     id: uuid;
     name: string;
   };
+  codesOn: boolean;
   item: {
     id: uuid;
     position: integer;  // min 1
     topic: string;
+    topicCode: string | null;
     objectives: string;
     links: string[];
     classworks: {
       id: uuid;
       title: string;
+      code: string | null;
       description: string;
     }[];
     homeworks: {
       id: uuid;
       title: string;
+      code: string | null;
       description: string;
     }[];
     files: {
@@ -2800,14 +2837,17 @@ Request body (`application/json`):
   lessonId: uuid;
   values: {
     topic: string;  // length ≤ 300
+    topicCode?: string | null;
     objectives: string;  // length ≤ 2000
     links: string /* ^https?:\/\/[^\s]+$ */[];  // items ≤ 10
     classworks: {
       title: string;  // length ≤ 60
+      code?: string | null;
       description: string;  // length ≤ 1000
     }[];  // items ≤ 10
     homeworks: {
       title: string;  // length ≤ 60
+      code?: string | null;
       description: string;  // length ≤ 1000
     }[];  // items ≤ 10
   };
@@ -2821,16 +2861,19 @@ Answer `201`:
   id: uuid;
   position: integer;  // min 1
   topic: string;
+  topicCode: string | null;
   objectives: string;
   links: string[];
   classworks: {
     id: uuid;
     title: string;
+    code: string | null;
     description: string;
   }[];
   homeworks: {
     id: uuid;
     title: string;
+    code: string | null;
     description: string;
   }[];
   files: {
@@ -2960,31 +3003,37 @@ Request body (`application/json`):
 {
   base: {
     topic: string;
+    topicCode?: string | null;
     objectives: string;
     links: string[];
     classworks: {
       id: uuid;
       title: string;
+      code?: string | null;
       description: string;
     }[];
     homeworks: {
       id: uuid;
       title: string;
+      code?: string | null;
       description: string;
     }[];
   };
   values: {
     topic: string;  // length ≤ 300
+    topicCode?: string | null;
     objectives: string;  // length ≤ 2000
     links: string /* ^https?:\/\/[^\s]+$ */[];  // items ≤ 10
     classworks: {
       id?: uuid;
       title: string;  // length ≤ 60
+      code?: string | null;
       description: string;  // length ≤ 1000
     }[];  // items ≤ 10
     homeworks: {
       id?: uuid;
       title: string;  // length ≤ 60
+      code?: string | null;
       description: string;  // length ≤ 1000
     }[];  // items ≤ 10
   };
@@ -3542,20 +3591,24 @@ Answer `200`:
   archived: boolean;
   canEdit: boolean;
   revision: integer;  // min 0
+  codesOn: boolean;
   masterItems: {
     id: uuid;
     position: integer;  // min 1
     topic: string;
+    topicCode: string | null;
     objectives: string;
     links: string[];
     classworks: {
       id: uuid;
       title: string;
+      code: string | null;
       description: string;
     }[];
     homeworks: {
       id: uuid;
       title: string;
+      code: string | null;
       description: string;
     }[];
   }[];
@@ -3653,14 +3706,17 @@ Request body (`application/json`):
   position: integer;  // min 1
   values: {
     topic: string;  // length ≤ 300
+    topicCode?: string | null;
     objectives: string;  // length ≤ 2000
     links: string /* ^https?:\/\/[^\s]+$ */[];  // items ≤ 10
     classworks: {
       title: string;  // length ≤ 60
+      code?: string | null;
       description: string;  // length ≤ 1000
     }[];  // items ≤ 10
     homeworks: {
       title: string;  // length ≤ 60
+      code?: string | null;
       description: string;  // length ≤ 1000
     }[];  // items ≤ 10
   };
@@ -3687,14 +3743,19 @@ Request body (`application/json`):
   revision: integer;  // min 0
   values: {
     topic: string;  // length ≤ 300
+    topicCode?: string | null;
     objectives: string;  // length ≤ 2000
     links: string /* ^https?:\/\/[^\s]+$ */[];  // items ≤ 10
     classworks: {
+      id?: uuid;
       title: string;  // length ≤ 60
+      code?: string | null;
       description: string;  // length ≤ 1000
     }[];  // items ≤ 10
     homeworks: {
+      id?: uuid;
       title: string;  // length ≤ 60
+      code?: string | null;
       description: string;  // length ≤ 1000
     }[];  // items ≤ 10
   };
@@ -3772,27 +3833,33 @@ Answer `200`:
     masterItemId: uuid;
     master: {
       topic: string;
+      topicCode: string | null;
       objectives: string;
       links: string[];
       classworks: {
         title: string;
+        code: string | null;
         description: string;
       }[];
       homeworks: {
         title: string;
+        code: string | null;
         description: string;
       }[];
     } | null;
     plan: {
       topic: string;
+      topicCode: string | null;
       objectives: string;
       links: string[];
       classworks: {
         title: string;
+        code: string | null;
         description: string;
       }[];
       homeworks: {
         title: string;
+        code: string | null;
         description: string;
       }[];
       itemId: uuid;
@@ -3873,11 +3940,13 @@ Answer `200`:
       number: integer;  // min 1
       date: date;
       topic: string | null;
+      topicCode: string | null;
     } | null;
     next: {
       number: integer;  // min 1
       date: date;
       topic: string | null;
+      topicCode: string | null;
     } | null;
   }[];
 }
@@ -4154,6 +4223,8 @@ Answer `200`:
         on: date;
         topicBefore: string | null;
         topicAfter: string | null;
+        topicCodeBefore: string | null;
+        topicCodeAfter: string | null;
       }[];
     }[];
   }[];

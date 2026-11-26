@@ -42,6 +42,7 @@ const S = 'src/modules/setup/subjects.test.ts';
 const SUBJECT = `${S} > of an unknown subject is not found; nothing is written`;
 const SUBJECT_IMPORT = `src/modules/setup/subject-imports.test.ts > answers 404 for an import of another branch and an unknown one on the preview and the confirm, changing nothing`;
 const PAST_MARKS_404 = `src/modules/setup/past-marks.test.ts > answers 404 for an upload of another branch or an unknown one, changing nothing`;
+const SUBJECT_CODES = `src/modules/setup/subject-codes.test.ts > answers 404 for an unknown subject, changing nothing`;
 const SUBJECT_QUARTERS = `${S} > of another branch's quarter or year, or an unknown one, are not found; nothing is written`;
 
 const PATH = '.claude/rules/api.md, task 1.3';
@@ -266,6 +267,10 @@ export const SETUP_IDS: RouteIds = {
   'PUT /api/setup/subjects/:id': [
     school('path:id', 'subject', SUBJECTS, [SUBJECT]),
     school('body:departmentId', 'department', SCHOOL_WIDE),
+  ],
+  // Task 11.27: the codes switch.
+  'PUT /api/setup/subjects/:id/codes': [
+    school('path:id', 'subject', SUBJECTS, [SUBJECT_CODES]),
   ],
   'POST /api/setup/subjects/:id/archive': [school('path:id', 'subject', SUBJECTS, [SUBJECT])],
   'POST /api/setup/subjects/:id/restore': [school('path:id', 'subject', SUBJECTS, [SUBJECT])],

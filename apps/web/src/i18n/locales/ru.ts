@@ -1958,6 +1958,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       SubjectsController_copyQuarterOne: 'Скопировать веса предмета за четверть',
       SubjectsController_create: 'Добавить предмет',
       SubjectsController_edit: 'Изменить предмет',
+      SubjectsController_switchCodes: 'Включить или выключить коды тем и работ',
       SubjectsController_export: 'Экспорт предметов',
       SubjectsController_importConfirm: 'Сохранить импорт предметов',
       SubjectsController_importPreview: 'Проверить импорт предметов',

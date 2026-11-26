@@ -514,6 +514,15 @@ export const SUPER_ADMIN_CHANGES: Readonly<
     description: 'Changes a subject.',
     basis: readById('GET /api/setup/subjects'),
   },
+  // Task 11.27 (`02`, Assistant: "The switch on a subject is the Super Admin's, on the screen and
+  // through the assistant").
+  'PUT /api/setup/subjects/:id/codes': {
+    kind: 'change',
+    group: 'setup',
+    description:
+      'Switches codes for topics and works on or off for a subject (codesOn). Off hides every code of the subject and keeps them; on shows them again.',
+    basis: readById('GET /api/setup/subjects'),
+  },
   'POST /api/setup/subjects/:id/archive': {
     kind: 'change',
     group: 'setup',

@@ -1979,6 +1979,7 @@ export const uz: Texts<'one' | 'other'> = {
       SubjectsController_copyQuarterOne: 'Fanning chorak vaznlarini nusxalash',
       SubjectsController_create: 'Fan qoʻshish',
       SubjectsController_edit: 'Fanni oʻzgartirish',
+      SubjectsController_switchCodes: 'Mavzu va ishlar kodlarini yoqish yoki oʻchirish',
       SubjectsController_export: 'Fanlarni eksport qilish',
       SubjectsController_importConfirm: 'Fanlar importini saqlash',
       SubjectsController_importPreview: 'Fanlar importini tekshirish',

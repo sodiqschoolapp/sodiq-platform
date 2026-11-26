@@ -368,6 +368,11 @@ export class PlanMasterTakes {
         // Task 10.8 (review correction 1): an item the journal's add made has no topic yet.
         const topicAt = (number: number) =>
           items.find((item) => item.position === number)?.topic.trim() || null;
+        // Task 11.27: the topic code as shown, beside the topic.
+        const topicCodeAt = (number: number) =>
+          topicAt(number) === null
+            ? null
+            : (items.find((item) => item.position === number)?.topicCode ?? null);
         const started = rows.filter((row) => row.started);
         const reached = started.at(-1);
         const next = rows.find((row) => !row.started);
@@ -383,11 +388,21 @@ export class PlanMasterTakes {
           reached:
             reached === undefined
               ? null
-              : { number: reached.number, date: reached.date, topic: topicAt(reached.number) },
+              : {
+                  number: reached.number,
+                  date: reached.date,
+                  topic: topicAt(reached.number),
+                  topicCode: topicCodeAt(reached.number),
+                },
           next:
             next === undefined
               ? null
-              : { number: next.number, date: next.date, topic: topicAt(next.number) },
+              : {
+                  number: next.number,
+                  date: next.date,
+                  topic: topicAt(next.number),
+                  topicCode: topicCodeAt(next.number),
+                },
         });
       }
       units.sort(

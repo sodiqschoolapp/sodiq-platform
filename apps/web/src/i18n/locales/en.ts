@@ -1954,6 +1954,7 @@ export const en = {
       SubjectsController_copyQuarterOne: 'Copy the quarter weights of a subject',
       SubjectsController_create: 'Add a subject',
       SubjectsController_edit: 'Change a subject',
+      SubjectsController_switchCodes: 'Switch codes for topics and works on or off',
       SubjectsController_export: 'Export subjects',
       SubjectsController_importConfirm: 'Save a subject import',
       SubjectsController_importPreview: 'Check a subject import',
