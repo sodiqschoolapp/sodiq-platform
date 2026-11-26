@@ -6,7 +6,9 @@ import { sql } from 'kysely';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { Database } from '../../database/database.js';
 import { migrate } from '../../database/migrate.js';
-import type { Transaction } from '../../database/transactions.js';
+import { Transactions, type Transaction } from '../../database/transactions.js';
+import { FixedClock } from '../../testing/fixed-clock.js';
+import { expectedIn, settle, withActor } from './exemption-effects.js';
 import { insertBranch, setEditDays } from '../../testing/branch-filter-sql.js';
 import { CellsKit } from '../../testing/cells-kit.js';
 import { closeQuarter, reopenQuarter } from '../../testing/closing-kit.js';
@@ -482,7 +484,9 @@ describe('migration 0186 moves homework to the lesson where it was given', () =>
       .where('work_id', 'is not', null)
       .orderBy('id')
       .execute();
-    const leftOut = new Set([cellsOf.exempt, cellsOf.joined]);
+    // The cells the move changed besides their lesson: the two left out, and the one whose clear
+    // it gave back.
+    const leftOut = new Set([cellsOf.exempt, cellsOf.joined, cellsOf.checkExempt]);
     for (const cell of before.cells.filter((one) => !leftOut.has(one.id))) {
       expect(after.find((one) => one.id === cell.id)).toMatchObject({
         version: cell.version,
@@ -508,9 +512,10 @@ describe('migration 0186 moves homework to the lesson where it was given', () =>
       .execute();
     for (const cell of before.cells) {
       const lines = cellLines.filter((line) => line.cell_id === cell.id);
-      // A cell left out with a number has the line of its clear and the line of its move; the
-      // exempt student's cell was already empty (its exemption cleared it).
-      const count = cell.id === cellsOf.joined ? 2 : 1;
+      // A cell left out with a number has the line of its clear and the line of its move, a cell
+      // whose cleared number the move gave back the line of its move and the line of the give-back;
+      // the exempt student's cell was already empty (its exemption cleared it).
+      const count = cell.id === cellsOf.joined || cell.id === cellsOf.checkExempt ? 2 : 1;
       expect(lines.length, cell.id).toBe(count);
       for (const line of lines) expect(line.changed_by).toBeNull();
     }
@@ -549,14 +554,28 @@ describe('migration 0186 moves homework to the lesson where it was given', () =>
       .where('score_before', 'is not', null)
       .executeTakeFirstOrThrow();
     expect(line).toEqual({ score_before: 8, score_after: null, lesson_id: lessons.checkA });
-    // The number of the student exempt on the check day only moves (it was cleared by the
-    // exemption and its clear follows it), and so do the others.
+    // The number of the student exempt on the check day only was cleared by that exemption; its
+    // student is expected where the homework was given, where no end of that exemption reaches,
+    // so the move gives it back there (spec review of the code, must-fix 3).
     const kept = await database.migrator
       .selectFrom('journal_cells')
-      .select('lesson_id')
+      .select(['lesson_id', 'score', 'changed_how'])
       .where('id', '=', cellsOf.checkExempt ?? '')
       .executeTakeFirstOrThrow();
-    expect(kept.lesson_id).toBe(lessons.givenA);
+    expect(kept).toEqual({ lesson_id: lessons.givenA, score: 6, changed_how: 'exemption' });
+    const givenBack = await database.migrator
+      .selectFrom('journal_cell_history')
+      .select(['score_before', 'score_after', 'changed_by', 'lesson_id'])
+      .where('cell_id', '=', cellsOf.checkExempt ?? '')
+      .where('changed_how', '=', 'homework_move')
+      .where('score_after', 'is not', null)
+      .executeTakeFirstOrThrow();
+    expect(givenBack).toEqual({
+      score_before: null,
+      score_after: 6,
+      changed_by: null,
+      lesson_id: lessons.givenA,
+    });
   });
 
   it('clears the comment of a number left out, with a line, and keeps its earlier lines', async () => {
@@ -595,11 +614,52 @@ describe('migration 0186 moves homework to the lesson where it was given', () =>
     });
     expect(clears.find((one) => one.cell_id === cellsOf.checkExempt)).toMatchObject({
       lesson_id: lessons.givenA,
-      given_back_at: null,
+      given_back_at: new Date(NOW),
     });
-    // The exemption's end gives back only clears still open: none writes into the closed cell.
-    const open = clears.filter((one) => one.given_back_at === null);
-    expect(open.map((one) => one.cell_id)).toEqual([cellsOf.checkExempt]);
+    // An end of an exemption gives back only clears still open: none is left.
+    expect(clears.filter((one) => one.given_back_at === null)).toEqual([]);
+  });
+
+  it('writes nothing into the closed cell when the exemption is shortened after the move', async () => {
+    // The end of an exemption through its own path (exemption-effects.ts, settle and giveBack),
+    // as the exemption route runs it: 18 November reopens for the student, 16 November, where
+    // the homework now is, stays closed (spec review of the code, must-fix 4).
+    const transactions = new Transactions(database.app, new FixedClock(NOW));
+    const was = await database.migrator
+      .selectFrom('journal_cells')
+      .select(['lesson_id', 'score', 'version'])
+      .where('id', '=', cellsOf.exempt ?? '')
+      .executeTakeFirstOrThrow();
+    const settled = await transactions.run([g.branch], async (transaction) => {
+      await transaction
+        .insertInto('audit_log')
+        .values({ occurred_at: new Date(NOW), branch_id: g.branch, action: 'test.exemption' })
+        .execute();
+      await withActor(transaction, g.teacher);
+      const windows = [{ studentId: exempt, from: '2026-11-16', until: '2026-11-18' }];
+      const before = await expectedIn(transaction, g.branch, windows);
+      await transaction
+        .updateTable('exemptions')
+        .set({ end_date: '2026-11-16', end_cause: 'end' })
+        .where('id', '=', exemptionId)
+        .execute();
+      return settle(transaction, {
+        branchId: g.branch,
+        before,
+        windows,
+        choices: [],
+        exemptionOf: () => Promise.resolve(exemptionId),
+        preview: false,
+      });
+    });
+    expect(settled.givenBack).toBe(0);
+    const now = await database.migrator
+      .selectFrom('journal_cells')
+      .select(['lesson_id', 'score', 'version'])
+      .where('id', '=', cellsOf.exempt ?? '')
+      .executeTakeFirstOrThrow();
+    expect(now).toEqual(was);
+    expect(now).toMatchObject({ lesson_id: lessons.givenA, score: null });
   });
 
   it('writes one audit entry for each moved work, naming the cells left out', async () => {
@@ -650,7 +710,8 @@ describe('migration 0186 refuses to move homework it may not move', () => {
       await one.database.destroy();
       await rm(one.directory, { recursive: true, force: true });
     }
-  });
+    // One drop per test, up to eight (spec review of the code, must-fix 5).
+  }, 600_000);
 
   /** A homework of 16 November stored at 18 November with a number, on a fresh database. */
   async function scene(
@@ -795,12 +856,15 @@ describe('migration 0186 refuses to move homework it may not move', () => {
     );
   }, 240_000);
 
-  it('refuses a planned homework with no row at a locked held lesson', async () => {
+  /**
+   * A planned homework with no stored row at a lesson of the date, in the quarter of the index
+   * (its plan is made with the journal, 0117), on a fresh database.
+   */
+  async function planned(quarter: number, date: string) {
     const fresh = await databaseBeforeMove();
     opened.push(fresh);
     const migrator = fresh.database.migrator;
     const g = await ground(migrator, 1);
-    // The journal of the class and the kit's subject; its plan of quarter 2 is made with it (0117).
     const journal = await migrator
       .insertInto('journals')
       .values({
@@ -813,13 +877,13 @@ describe('migration 0186 refuses to move homework it may not move', () => {
       })
       .returning('id')
       .executeTakeFirstOrThrow();
-    await g.cells.lesson(g.branch, g.year, g.classId, '2026-11-16');
+    await g.cells.lesson(g.branch, g.year, g.classId, date);
     const planWork = await asMigrator(migrator, BEFORE, async (transaction) => {
       const plan = await transaction
         .selectFrom('lesson_plan_journals')
         .select('plan_id')
         .where('journal_id', '=', journal.id)
-        .where('quarter_id', '=', g.quarters[1] ?? '')
+        .where('quarter_id', '=', g.quarters[quarter] ?? '')
         .executeTakeFirstOrThrow();
       const item = await transaction
         .insertInto('lesson_plan_items')
@@ -849,15 +913,70 @@ describe('migration 0186 refuses to move homework it may not move', () => {
         .executeTakeFirstOrThrow();
       return work.id;
     });
-    await setEditDays(migrator, g.branch, 7);
-    const error = await refusal(
-      migrate({
-        connectionString: atMoment(fresh.database.migrationUrl, NOW),
-        directory: MIGRATIONS,
-      }),
+    return { ...fresh, g, planWork };
+  }
+
+  const migrateAtNow = (database: TestDatabase) =>
+    refusal(
+      migrate({ connectionString: atMoment(database.migrationUrl, NOW), directory: MIGRATIONS }),
     );
+
+  it('refuses a planned homework with no row at a locked held lesson', async () => {
+    const p = await planned(1, '2026-11-16');
+    await setEditDays(p.database.migrator, p.g.branch, 7);
+    const error = await migrateAtNow(p.database);
     expect(error.message).toContain(
-      `planned homework ${planWork} at 2026-11-16: edit period ended`,
+      `planned homework ${p.planWork} at 2026-11-16: edit period ended`,
     );
+  }, 240_000);
+
+  it('refuses a planned homework with no row at a lesson of a closed quarter still open to edits', async () => {
+    // Quarter 1 closed after the move's moment: its lessons lock only at the close, so the
+    // lesson is still open at the move, and the quarter alone refuses it.
+    const p = await planned(0, '2026-10-26');
+    await closeQuarter(p.database, {
+      branchId: p.g.branch,
+      quarterId: p.g.quarters[0] ?? '',
+      accountId: p.g.teacher,
+      at: '2026-12-20T18:00:00+05:00',
+    });
+    const error = await migrateAtNow(p.database);
+    expect(error.message).toContain(
+      `planned homework ${p.planWork} at 2026-10-26: quarter closed or closing`,
+    );
+  }, 240_000);
+
+  it('refuses a stored row that is not a homework', async () => {
+    const fresh = await databaseBeforeMove();
+    opened.push(fresh);
+    const migrator = fresh.database.migrator;
+    const g = await ground(migrator, 1);
+    const given = await g.cells.lesson(g.branch, g.year, g.classId, '2026-11-16');
+    const stored = await g.cells.lesson(g.branch, g.year, g.classId, '2026-11-18');
+    const work = await asMigrator(migrator, BEFORE, async (transaction) => {
+      const row = await transaction
+        .insertInto('journal_works')
+        .values({
+          branch_id: g.branch,
+          lesson_id: stored,
+          source_lesson_id: given,
+          kind: 'classwork',
+          position: 1,
+          title: 'Quiz',
+          total: 10,
+          changed_by: g.teacher,
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      return row.id;
+    });
+    const error = await migrateAtNow(fresh.database);
+    expect(error.message).toContain(`work ${work} at 2026-11-16 (given): not a homework`);
+    const row = await migrator
+      .selectFrom('journal_works')
+      .select('lesson_id')
+      .where('id', '=', work)
+      .executeTakeFirstOrThrow();
+    expect(row.lesson_id).toBe(stored);
   }, 240_000);
 });

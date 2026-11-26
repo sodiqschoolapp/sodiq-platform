@@ -6,3 +6,5 @@ alter table journal_cells validate constraint journal_cells_work_fkey;
 alter table journal_works validate constraint journal_works_at_source;
 alter table journal_work_history validate constraint journal_work_history_changed_how_check;
 alter table journal_comment_history validate constraint journal_comment_history_changed_how_check;
+alter table journal_cell_history validate constraint journal_cell_history_author_check;
+alter table journal_comment_history validate constraint journal_comment_history_author_check;

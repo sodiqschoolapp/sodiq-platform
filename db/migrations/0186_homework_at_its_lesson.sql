@@ -51,6 +51,16 @@ grant execute on function journal_homework_move_on() to sodiq_app;
 alter table journal_cell_history alter column changed_by drop not null;
 alter table journal_comment_history alter column changed_by drop not null;
 
+-- Only the move's lines have no author (spec review of the code, must-fix 2).
+alter table journal_cell_history
+  add constraint journal_cell_history_author_check check (
+    changed_by is not null or changed_how = 'homework_move'
+  ) not valid;
+alter table journal_comment_history
+  add constraint journal_comment_history_author_check check (
+    changed_by is not null or changed_how = 'homework_move'
+  ) not valid;
+
 alter table journal_work_history
   drop constraint journal_work_history_changed_how_check,
   add constraint journal_work_history_changed_how_check check (
@@ -780,6 +790,27 @@ begin
     set lesson_id = m.given_at, carried_from_lesson_id = null
     from homework_moves m
     where w.id = m.id;
+
+  -- A value an exemption cleared at the old lesson whose student is expected at
+  -- the lesson where the homework was given: no end of that exemption would
+  -- reach it there (its cover is the old lesson), so the move gives it back, as
+  -- the end of an exemption does (exemption-effects.ts, giveBack): into the cell
+  -- when it was not changed since its clear and the work still takes it, and
+  -- the clear is given back in any case, its value kept in the cell's history
+  -- (spec review of the code, must-fix 3).
+  update journal_cells c
+    set score = e.score
+    from exemption_clears e, homework_moves m, journal_works w
+    where e.cell_id = c.id and e.given_back_at is null
+      and c.work_id = m.id and w.id = m.id
+      and c.version = e.cleared_version
+      and e.score is not null
+      and not w.not_held and w.total is not null and e.score <= w.total;
+  update exemption_clears e
+    set given_back_at = moment
+    from journal_cells c
+    join homework_moves m on m.id = c.work_id
+    where e.cell_id = c.id and e.given_back_at is null;
 
   insert into audit_log (
     occurred_at, branch_id, actor_id, action, record_type, record_id, old_value, new_value, reason

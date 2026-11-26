@@ -29,6 +29,8 @@ export async function cellHistory(
     .where('cell_id', '=', cellId)
     .orderBy('version')
     .orderBy(sql`changed_how = 'homework_move'`)
+    // A cell left out by the move has two of its lines with one version (its clear, its move).
+    .orderBy('id')
     .execute();
   return lines.map((line) => ({
     version: line.version,

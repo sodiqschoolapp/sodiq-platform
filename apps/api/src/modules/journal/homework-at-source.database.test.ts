@@ -324,6 +324,52 @@ describe('a work stays at the lesson where it was given', () => {
     });
   });
 
+  it('refuses a history line with no author unless it is a line of the move', async () => {
+    // A history line is written only by a trigger (`timetable_trigger_only`), and every writer of
+    // the application names its author, so the check guards the triggers against a mistake. It
+    // is reached here through a trigger of the test's own, in a transaction of the migrator that
+    // is undone (spec review of the code, must-fix 2). The ids are the test's own records.
+    const line = (table: 'journal_cell_history' | 'journal_comment_history', how: string) => {
+      const insert =
+        table === 'journal_cell_history'
+          ? `insert into public.journal_cell_history (branch_id, cell_id, lesson_id, student_id,
+               version, changed_by, changed_how, changed_at)
+             values ('${branch}', gen_random_uuid(), '${monday}', '${student}', 1, null,
+               '${how}', '${MOMENT}')`
+          : `insert into public.journal_comment_history (branch_id, comment_id, student_id,
+               target, lesson_id, version, changed_by, changed_how, changed_at)
+             values ('${branch}', gen_random_uuid(), '${student}', 'note', '${monday}', 1, null,
+               '${how}', '${MOMENT}')`;
+      return database.migrator.transaction().execute(async (transaction) => {
+        await sql`create temporary table history_probe (id int) on commit drop`.execute(
+          transaction,
+        );
+        await sql
+          .raw(
+            `create function pg_temp.history_probe() returns trigger language plpgsql as $probe$
+             begin ${insert}; return null; end $probe$`,
+          )
+          .execute(transaction);
+        await sql`
+          create trigger history_probe after insert on history_probe
+          for each row execute function pg_temp.history_probe()
+        `.execute(transaction);
+        await sql`insert into history_probe values (1)`.execute(transaction);
+        // Undone: the line of the move is written, then nothing is kept.
+        throw new Error('written');
+      });
+    };
+    for (const table of ['journal_cell_history', 'journal_comment_history'] as const) {
+      const refused = await refusal(line(table, 'entry'));
+      expect(refused, table).toMatchObject({
+        code: CHECK_VIOLATION,
+        constraint: `${table}_author_check`,
+      });
+      const kept = (await refusal(line(table, 'homework_move'))) as { message?: string };
+      expect(kept.message, table).toBe('written');
+    }
+  });
+
   it('keeps every guard of the application in force when it sets the move mode itself', async () => {
     const work = await homework(monday, 4);
     await setEditDays(database.migrator, branch, 1);
