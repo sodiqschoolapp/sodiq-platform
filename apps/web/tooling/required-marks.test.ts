@@ -296,8 +296,9 @@ const NOT_FORM_FIELDS: Readonly<Record<string, { count: number; reason: string }
     reason: 'A hidden file input behind the upload button: an action.',
   },
   'features/setup/subject-panel.tsx': {
-    count: 1,
-    reason: 'The year the panel shows, a view choice.',
+    count: 2,
+    reason:
+      'The year the panel shows, a view choice; task 11.27: the codes switch saves at once when ticked.',
   },
   'features/setup/template-settings-page.tsx': {
     count: 1,

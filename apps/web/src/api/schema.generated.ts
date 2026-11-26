@@ -177564,6 +177564,7 @@ export interface operations {
                             };
                             attendanceOnly: boolean;
                             ratingExam: boolean;
+                            codesOn: boolean;
                         };
                         rating: {
                             /** Format: uuid */

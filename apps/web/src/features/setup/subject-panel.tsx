@@ -691,7 +691,7 @@ function CodesSwitch({
   });
   return (
     <section className="grid gap-2" aria-labelledby={`codes-${subject.id}`}>
-      <h3 id={`codes-${subject.id}`} className={SUBSECTION_TITLE}>
+      <h3 id={`codes-${subject.id}`} className={SECTION_TITLE}>
         {t('setup.subjects.codes.title')}
       </h3>
       {maySwitch ? (

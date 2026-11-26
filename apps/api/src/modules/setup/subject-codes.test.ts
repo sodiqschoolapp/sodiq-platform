@@ -126,6 +126,21 @@ describe('the codes switch of a subject (task 11.27)', () => {
     }
   });
 
+  // `.claude/rules/api.md`: a part of a route decided for one role is decided from every current
+  // assignment, never from the first that permits the route.
+  it('lets an account that also holds the Super Admin switch codes, whatever role is first', async () => {
+    const subject = await create();
+    const both = await t.kit.completeSession('Gulnora', 'Rahimova');
+    await t.kit.giveRole(both.account.id, { role: 'academic_vice_principal', branchId: t.north });
+    await t.kit.giveRole(both.account.id, { role: 'super_admin' });
+    const list = subjectListSchema.parse(
+      (await t.get('/api/setup/subjects', t.north, both.cookie)).body,
+    );
+    expect(list.maySwitchCodes).toBe(true);
+    expect((await switchCodes(subject.id, true, both.cookie)).status).toBe(200);
+    expect(await stored(subject.id)).toBe(true);
+  });
+
   it('answers 404 for an unknown subject, changing nothing', async () => {
     const before = await auditCount();
     const response = await switchCodes(randomUUID(), true);

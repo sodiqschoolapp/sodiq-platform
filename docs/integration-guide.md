@@ -782,6 +782,7 @@ Answer `200`:
     };
     attendanceOnly: boolean;
     ratingExam: boolean;
+    codesOn: boolean;
   };
   rating: {
     journalId: uuid;

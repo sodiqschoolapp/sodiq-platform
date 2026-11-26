@@ -993588,6 +993588,9 @@
                         },
                         "ratingExam": {
                           "type": "boolean"
+                        },
+                        "codesOn": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
@@ -993596,7 +993599,8 @@
                         "subject",
                         "year",
                         "attendanceOnly",
-                        "ratingExam"
+                        "ratingExam",
+                        "codesOn"
                       ],
                       "additionalProperties": false
                     },

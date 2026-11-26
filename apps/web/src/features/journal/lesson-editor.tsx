@@ -303,6 +303,19 @@ function TopicForm({
         <Field
           label={t('plans.codes.topicCode')}
           value={typedCode}
+          // Task 11.27: never required (`09`, Codes), from `lessonTopicSchema`.
+          required={requiredOf(
+            lessonTopicSchema,
+            { topic: typed, topicCode: typedCode },
+            'topicCode',
+            {
+              read: (values) => ({
+                topic: values.topic,
+                baseTopic: stored,
+                topicCode: values.topicCode,
+              }),
+            },
+          )}
           autoComplete="off"
           error={codeTooLong ? t('plans.codes.tooLong', { max: PLAN_CODE_MAX_LENGTH }) : undefined}
           onChange={(event) => {
@@ -560,6 +573,10 @@ export function WorkTitleForm({
         <Field
           label={t('plans.codes.code')}
           value={typedCode}
+          // Task 11.27: never required (`09`, Codes), from `planWorkRenameSchema`.
+          required={requiredOf(planWorkRenameSchema, { title: typed, code: typedCode }, 'code', {
+            read: (values) => ({ title: values.title, baseTitle: initial, code: values.code }),
+          })}
           autoComplete="off"
           error={codeTooLong ? t('plans.codes.tooLong', { max: PLAN_CODE_MAX_LENGTH }) : undefined}
           onChange={(event) => {

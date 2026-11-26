@@ -2160,6 +2160,29 @@ describe('master plans', () => {
       ]);
     });
 
+    it('refuses a work id that is not of the master item, changing nothing', async () => {
+      const x = await scene();
+      const y = await scene();
+      await codesOn(x, true);
+      const master = await masterWith(x, 2);
+      const other = await masterWith(y, 1, y.head);
+      const before = await rowsOf({ branch: x.s.branch, subject: x.s.subject });
+      for (const id of [
+        masterItem(master, 2).classworks[0]?.id ?? '',
+        masterItem(other, 1).classworks[0]?.id ?? '',
+        randomUUID(),
+      ]) {
+        const refused = await saveItem(
+          x,
+          master,
+          values('M1', { classworks: [{ id, title: 'Quiz 1', description: '' }] }),
+        );
+        expect([refused.status, codeOf(refused)]).toEqual([400, 'validation_failed']);
+        expect(apiErrorSchema.parse(refused.body).error.details?.[0]?.code).toBe('unknown_work');
+      }
+      expect(await rowsOf({ branch: x.s.branch, subject: x.s.subject })).toEqual(before);
+    });
+
     it('raises no "master updated" for codes hidden while off', async () => {
       const x = await scene();
       await codesOn(x, true);

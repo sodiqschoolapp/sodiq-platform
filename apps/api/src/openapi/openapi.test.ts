@@ -441,6 +441,7 @@ describe('OpenAPI document', () => {
         '/api/setup/subjects/imports/{id}/preview',
         '/api/setup/subjects/{id}',
         '/api/setup/subjects/{id}/archive',
+        '/api/setup/subjects/{id}/codes',
         '/api/setup/subjects/{id}/quarter-weights',
         '/api/setup/subjects/{id}/quarter-weights/copy',
         '/api/setup/subjects/{id}/quarter-weights/copy/preview',
