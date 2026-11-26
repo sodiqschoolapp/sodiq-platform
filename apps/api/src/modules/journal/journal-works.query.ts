@@ -59,9 +59,7 @@ export async function storedWorks(
     // One array parameter, not one per lesson: a statement holds at most
     // 65,535 parameters, and the closing checklist names every lesson of a
     // branch's quarter (the Speed run at three times the data, 28 October 2026).
-    .where(
-      sql<boolean>`journal_works.lesson_id = any(${ids}::uuid[])`,
-    )
+    .where(sql<boolean>`journal_works.lesson_id = any(${ids}::uuid[])`)
     .orderBy('journal_works.id')
     .execute();
   return rows.map((row) => ({

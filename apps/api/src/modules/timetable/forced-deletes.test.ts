@@ -1422,13 +1422,27 @@ describe('the forced delete of a dated lesson and its restore', () => {
       done(await restore(s.branch, store));
       const back = await t.database.migrator
         .selectFrom('journal_works')
-        .select(['id', 'lesson_id', 'source_lesson_id', 'plan_work_id', 'position', 'title', 'total'])
+        .select([
+          'id',
+          'lesson_id',
+          'source_lesson_id',
+          'plan_work_id',
+          'position',
+          'title',
+          'total',
+        ])
         .where('id', 'in', [planned.id, byHand.id])
         .orderBy('total')
         .execute();
       // Both back at the restored lesson with their totals, unplanned, at the places 1 and 2.
       expect(
-        back.map((one) => [one.id, one.lesson_id, one.source_lesson_id, one.plan_work_id, one.total]),
+        back.map((one) => [
+          one.id,
+          one.lesson_id,
+          one.source_lesson_id,
+          one.plan_work_id,
+          one.total,
+        ]),
       ).toEqual([
         [byHand.id, lesson.id, lesson.id, null, 4],
         [planned.id, lesson.id, lesson.id, null, 5],

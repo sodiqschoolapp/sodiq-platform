@@ -120,15 +120,7 @@ const savedOf = (row: WorkRow): WorkSaved => ({
   version: row.version,
 });
 
-const WORK_COLUMNS = [
-  'id',
-  'lesson_id',
-  'kind',
-  'total',
-  'not_held',
-  'title',
-  'version',
-] as const;
+const WORK_COLUMNS = ['id', 'lesson_id', 'kind', 'total', 'not_held', 'title', 'version'] as const;
 
 /** The numbers typed for a work: student and number. */
 async function numbersOf(

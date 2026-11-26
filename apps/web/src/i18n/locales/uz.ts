@@ -874,8 +874,7 @@ export const uz: Texts<'one' | 'other'> = {
       'Bu ish endi bu darsning ustuni emas. Jurnalni yangilab, qayta urinib koʻring.',
     lesson_has_plan_item:
       'Bu darsning reja qatori bor: ishlar rejadan olinadi. Ishlarni dars rejasida oʻzgartiring.',
-    journal_works_limit:
-      'Bir darsda koʻpi bilan 10 ta sinf ishi va 10 ta uyga vazifa boʻladi.',
+    journal_works_limit: 'Bir darsda koʻpi bilan 10 ta sinf ishi va 10 ta uyga vazifa boʻladi.',
     work_holds_data:
       'Bu ishda jami, «oʻtkazilmadi» belgisi yoki sonlar bor yoki u rejadan olingan, shuning uchun qoladi. Uning oʻrniga «oʻtkazilmadi» deb belgilang.',
     total_below_numbers:
