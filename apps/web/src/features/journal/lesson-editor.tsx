@@ -41,15 +41,12 @@ import { WorkKindTag } from './work-kind-tag';
  * CW, or HW as they want and whenever they want, inside the journal editing period").
  *
  * Opened from the lesson's header and from a work's header. The topic, each classwork with its
- * total, the homeworks checked today with their totals and the homeworks given today, each with
- * Delete, and Add for a classwork or a homework. Everything is written while the lesson can be
+ * total, each homework with its total (a homework is graded at the lesson where it was given, `07`,
+ * Homework column), each with Delete, and Add for a classwork or a homework. Everything is written while the lesson can be
  * entered (`canEnterWorks`: started, the reader's, inside the edit period); otherwise read only.
  * The objectives and the materials of the plan are shown under it. The server decides every
  * write; nothing is calculated here.
  */
-
-/** A homework given at this lesson, as the editor lists it. */
-export type GivenWork = JournalLesson['given'][number];
 
 export interface LessonEditorProps {
   readonly lesson: JournalLesson;
@@ -67,7 +64,6 @@ export interface LessonEditorProps {
   readonly onRename: (work: JournalWork, title: string) => Promise<boolean>;
   readonly onTotal: (work: JournalWork, total: number) => void;
   readonly onDelete: (work: JournalWork) => void;
-  readonly onDeleteGiven: (given: GivenWork) => void;
   readonly onClose: () => void;
 }
 
@@ -85,7 +81,6 @@ export function LessonEditor({
   onRename,
   onTotal,
   onDelete,
-  onDeleteGiven,
   onClose,
 }: LessonEditorProps) {
   const { t } = useTranslation();
@@ -96,31 +91,8 @@ export function LessonEditor({
       ? t('journal.card.titleNoNumber', { date })
       : t('journal.card.title', { number: lesson.number, date });
   const classworks = lesson.works.filter((work) => work.kind === 'classwork');
-  const checked = lesson.works.filter((work) => work.kind === 'homework');
-  // A homework removed with numbers is kept out of the journal ("not held" underneath); it is no
-  // longer listed as given either.
-  const archived = new Set(
-    grid.lessons.flatMap((one) =>
-      one.notHeldWorks.flatMap((work) => [work.planWorkId, work.id].filter((id) => id !== null)),
-    ),
-  );
-  const given = lesson.given.filter(
-    (one) =>
-      !one.notGiven &&
-      !(one.planWorkId !== null && archived.has(one.planWorkId)) &&
-      !(one.workId !== null && archived.has(one.workId)),
-  );
+  const homeworks = lesson.works.filter((work) => work.kind === 'homework');
   const [adding, setAdding] = useState<'classwork' | 'homework' | null>(null);
-  const givenOn = (work: JournalWork) => {
-    const source = grid.lessons.find((one) => one.id === work.sourceLessonId);
-    return source === undefined || source.id === lesson.id
-      ? null
-      : schoolDateText(source.date, language);
-  };
-  const checkOn = (one: GivenWork) => {
-    const at = grid.lessons.find((other) => other.id === one.checkAt);
-    return at === undefined ? null : schoolDateText(at.date, language);
-  };
   return (
     <Dialog
       open
@@ -198,77 +170,30 @@ export function LessonEditor({
               </div>
             )}
           </section>
-          {checked.length > 0 && (
-            <section className="grid gap-2" aria-label={t('journal.card.checkedToday')}>
-              <h3 className={SECTION_TITLE}>{t('journal.card.checkedToday')}</h3>
-              {checked.map((work) => (
-                <WorkRow
-                  key={keyOf(work)}
-                  work={work}
-                  name={nameOfWork(work)}
-                  extra={
-                    givenOn(work) === null
-                      ? null
-                      : t('journal.card.givenOn', { date: givenOn(work) ?? '' })
-                  }
-                  enter={enter}
-                  busy={busy}
-                  focus={focusKey === keyOf(work)}
-                  lastTotal={grid.lastTotal}
-                  onRename={(text) => onRename(work, text)}
-                  onTotal={(total) => {
-                    onTotal(work, total);
-                  }}
-                  onDelete={() => {
-                    onDelete(work);
-                  }}
-                />
-              ))}
-            </section>
-          )}
-          <section className="grid gap-2" aria-label={t('journal.card.givenToday')}>
-            <h3 className={SECTION_TITLE}>{t('journal.card.givenToday')}</h3>
-            {given.length === 0 && (
+          <section className="grid gap-2" aria-label={t('journal.card.homeworks')}>
+            <h3 className={SECTION_TITLE}>{t('journal.card.homeworks')}</h3>
+            {homeworks.length === 0 && (
               <p className="text-muted-foreground">{t('journal.card.none')}</p>
             )}
-            {given.map((one, index) => {
-              const name = one.title ?? t('journal.grid.homeworkShort', { number: index + 1 });
-              const on = checkOn(one);
-              return (
-                <div
-                  key={one.planWorkId ?? one.workId ?? String(index)}
-                  className="flex flex-wrap items-center gap-2"
-                  data-editor-given={one.planWorkId ?? one.workId ?? ''}
-                >
-                  <WorkKindTag kind="homework" />
-                  <span className="min-w-0 flex-1 break-words">{name}</span>
-                  {on !== null && (
-                    <span className="text-muted-foreground">
-                      {t('journal.works.checkedOn', { date: on })}
-                    </span>
-                  )}
-                  {one.ungraded !== null && (
-                    <span className="text-muted-foreground">
-                      {t(`journal.works.ungraded.${one.ungraded}`)}
-                    </span>
-                  )}
-                  {enter && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      disabled={busy}
-                      aria-label={t('journal.editor.delete', { name })}
-                      title={t('journal.editor.delete', { name })}
-                      onClick={() => {
-                        onDeleteGiven(one);
-                      }}
-                    >
-                      <DeleteIcon aria-hidden="true" />
-                    </Button>
-                  )}
-                </div>
-              );
-            })}
+            {homeworks.map((work) => (
+              <WorkRow
+                key={keyOf(work)}
+                work={work}
+                name={nameOfWork(work)}
+                extra={null}
+                enter={enter}
+                busy={busy}
+                focus={focusKey === keyOf(work)}
+                lastTotal={grid.lastTotal}
+                onRename={(text) => onRename(work, text)}
+                onTotal={(total) => {
+                  onTotal(work, total);
+                }}
+                onDelete={() => {
+                  onDelete(work);
+                }}
+              />
+            ))}
             {enter && adding === 'homework' && (
               <WorkTitleForm
                 initial=""

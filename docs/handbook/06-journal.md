@@ -70,9 +70,9 @@ There is no lesson score column (Oʻrt / Ср. / Avg) and a subject has no daily
 - Students marked absent (0) or "did not come to the lesson" (3) are not waited for: their empty number cells do not keep the lesson in progress.
 - Exempt students are not waited for.
 - A cell opened for a few days after a late move or a shortened exemption is optional: it never changes the status.
-- A homework cell of a student who was exempt, or not yet in the class or group, when the homework was given is optional.
+- A homework is a work of the lesson where it was given: the cell of a student who was exempt, or not yet in the class or group, at that lesson is closed, like every cell of that lesson.
 - A lesson with no work is complete as soon as attendance is marked.
-- Every work of the lesson counts: those of the plan, those added by hand at a lesson with no plan item, and homework carried from an earlier lesson. A work marked "not held" does not count.
+- Every work of the lesson counts: those of the plan, and those added by hand at a lesson with no plan item. A work marked "not held" does not count.
 
 **What happens if…**
 
@@ -180,7 +180,7 @@ There is no lesson score column (Oʻrt / Ср. / Avg) and a subject has no daily
 
 <!-- Sources: spec 09 (In the journal), spec 07 (Entering data); the owner, 20 November 2026 ("make lesson editing inside the journal very simple") -->
 
-**What it is.** One window holds everything about a lesson: its topic, its classworks with their totals, the homework checked at it with their totals, the homework given at it, and the plan's objectives and materials. It replaces the lesson card's **Bu dars rejasini oʻzgartirish** button, the **Dars ishlari** window, the window of a single work, and the **Oʻtkazilmadi**, **Tekshirilmadi**, **Keyingi darsda tekshirish**, **Mavzu oʻtilmadi** and **Berilmadi** buttons.
+**What it is.** One window holds everything about a lesson: its topic, its classworks and its homeworks with their totals, and the plan's objectives and materials. It replaces the lesson card's **Bu dars rejasini oʻzgartirish** button, the **Dars ishlari** window, the window of a single work, and the **Oʻtkazilmadi**, **Tekshirilmadi**, **Keyingi darsda tekshirish**, **Mavzu oʻtilmadi** and **Berilmadi** buttons.
 
 **How to open it.**
 
@@ -200,18 +200,18 @@ There is no lesson score column (Oʻrt / Ср. / Avg) and a subject has no daily
 
 - **Topic**: type it and press **Save topic**. It is written into the lesson's row of the plan (the plan and its row are made if there is none).
 - **Classwork**: **+ Add classwork**, type a title (at most 60 characters), **Add**. Type its total in **Soni** and press Enter. Rename with the pencil, delete with the bin.
-- **Homework given today**: **+ Give homework**, type a title, **Add**. It becomes a column of the next lesson. Delete with the bin.
-- **Homework checked today**: type its total; rename; delete.
+- **Homework** (**Uyga vazifa**): **+ Add homework**, type a title (at most 60 characters), **Add**. It is a column of this lesson and is graded here, like a classwork: type its total in **Soni**, then the numbers. Rename with the pencil, delete with the bin.
 - As many works as needed, up to 10 of each kind per lesson.
 
 **Deleting a work.**
 
 - A work with no total and no numbers is deleted at once, from the plan too.
 - A work with a total or numbers asks first and says how many numbers it holds. It then leaves the journal and every average; its numbers stay in the history (records with data are archived, never deleted).
-- A homework given today that already holds a total or numbers at the next lesson is taken out there the same way.
 
 **Rules.**
 
+- A homework is graded at the lesson where it was given (owner, 25 November 2026). No other lesson has a column for it: homework handed in on Friday for Monday's lesson is typed in Monday's column, while Monday's lesson can still be edited (inside its edit period, or under an unlock of that lesson). Homework given at the last lesson of a quarter counts in that quarter.
+- Homework numbers saved before 25 November 2026 at a later lesson (the next lesson, the one after a cancelled lesson, or the one it was moved to) were moved once to the lesson where the homework was given, with their totals, "not held", numbers and comments. Each cell's history shows the move as **Homework move of 25 November 2026**, with no author. A number of a student who was exempt, or not yet in the group, at the lesson where the homework was given did not move: it left the averages and stays in the cell's history.
 - The header of each lesson shows its number among the quarter's lessons that are not cancelled and its topic, shortened; the whole topic shows on hover.
 - Objectives, links and files of the plan are read here and changed on the plan page.
 - A future lesson is read only here; plan ahead on the plan page.

@@ -427,7 +427,7 @@ describe('Lesson plans', () => {
     expect(calls.filter((call) => call.route.endsWith('/files'))).toEqual([]);
   });
 
-  it('adds up to 10 classworks, and says a homework of the first of two lessons is checked today', async () => {
+  it('adds up to 10 classworks, and gives a homework of the first of two lessons no warning', async () => {
     open({ path: `/plans/${JOURNAL}` });
     await waitFor(() => {
       expect(rows()).toHaveLength(3);
@@ -435,8 +435,9 @@ describe('Lesson plans', () => {
     fireEvent.click(screen.getByRole('button', { name: /19 October · lesson 1/ }));
     fireEvent.click(await screen.findByRole('button', { name: en.plans.panel.fill }));
     const form = await screen.findByRole('form', { name: 'Row 2' });
-    // The next row is the same day, lesson 2 (edge/lesson-plans, "A double lesson").
-    expect(within(form).getByText('Will be checked today in lesson 2.')).toBeDefined();
+    // The next row is the same day, lesson 2 (edge/lesson-plans, "A double lesson": two rows; a
+    // homework is graded at the lesson where it was given, task 11.24): no warning.
+    expect(within(form).queryByText(/checked today/)).toBeNull();
     for (let added = 0; added < 10; added += 1) {
       fireEvent.click(within(form).getByRole('button', { name: en.plans.panel.addClasswork }));
     }

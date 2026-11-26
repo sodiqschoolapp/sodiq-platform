@@ -21,7 +21,7 @@ describe('the name of a work in the portal', () => {
   it('puts the kind before a title, in each language', () => {
     const uz = createI18n('uz').t;
     expect(workTitle(score('classwork', '10-mashq'), uz)).toBe('Sinf ishi · 10-mashq');
-    expect(workTitle(score('homework', '10-mashq'), uz)).toBe('Uy vazifasi · 10-mashq');
+    expect(workTitle(score('homework', '10-mashq'), uz)).toBe('Uyga vazifa · 10-mashq');
     const ru = createI18n('ru').t;
     expect(workTitle(score('classwork', '10-mashq'), ru)).toBe('Классная работа · 10-mashq');
     expect(workTitle(score('homework', '10-mashq'), ru)).toBe('Домашнее задание · 10-mashq');
@@ -34,6 +34,6 @@ describe('the name of a work in the portal', () => {
   it('names a work without a title by its kind and number only', () => {
     const uz = createI18n('uz').t;
     expect(workTitle(score('classwork', null), uz)).toBe('2-sinf ishi');
-    expect(workTitle(score('homework', null), uz)).toBe('2-uy vazifasi');
+    expect(workTitle(score('homework', null), uz)).toBe('Uyga vazifa 2');
   });
 });

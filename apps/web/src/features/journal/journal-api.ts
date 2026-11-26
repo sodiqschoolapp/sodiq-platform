@@ -43,7 +43,6 @@ import {
   type ScoresSave,
   type WorkAdd,
   type WorkRename,
-  type WorkCarry,
   type WorkNotHeld,
   type WorkTotal,
   journalExportListSchema,
@@ -384,15 +383,6 @@ export const withdrawOrphan = (assignmentId: string) =>
       params: { header: branchHeader(), path: { assignmentId } },
     }),
   );
-
-/** "Check at the next lesson" of a homework. */
-export const carryWork = (lessonId: string, body: WorkCarry) =>
-  answerOf(
-    api.POST('/api/journal/lessons/{lessonId}/works/carry', {
-      params: { header: branchHeader(), path: { lessonId } },
-      body,
-    }),
-  ).then((answer) => workSavedSchema.parse(answer));
 
 /** Numbers typed for works of one lesson; `score: null` clears a cell. */
 export const saveScores = (lessonId: string, body: ScoresSave, key: string) =>

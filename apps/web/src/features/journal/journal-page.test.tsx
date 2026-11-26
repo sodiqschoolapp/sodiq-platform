@@ -139,7 +139,6 @@ const GRID: JournalGrid = {
           unplanned: false,
           total: 30,
           notHeld: false,
-          carriedFrom: null,
           version: 2,
         },
       ],
@@ -787,7 +786,7 @@ describe('a journal', () => {
 
   it.each([
     ['en', 'C', 'H', 'Classwork', 'Homework'],
-    ['uz', 'S', 'U', 'Sinf ishi', 'Uy vazifasi'],
+    ['uz', 'S', 'U', 'Sinf ishi', 'Uyga vazifa'],
     ['ru', 'К', 'Д', 'Классная работа', 'Домашнее задание'],
   ] as const)(
     'tags a classwork and a homework with the letter of their kind in %s (07, Layout; task 10.7)',

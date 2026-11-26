@@ -23679,8 +23679,8 @@ export const PLATFORM_MAP_SOURCE: unknown = {
    "id": "features/plans/plan-master-page.tsx#column:plans.plan.homeworks",
    "kind": "column",
    "label": {
-    "uz": "Uy vazifalari",
-    "ru": "Домашние работы",
+    "uz": "Uyga vazifalar",
+    "ru": "Домашние задания",
     "en": "Homeworks"
    },
    "pages": [
@@ -24572,7 +24572,7 @@ export const PLATFORM_MAP_SOURCE: unknown = {
    "id": "features/plans/plan-minimums.tsx#field:plans.minimum.homeworks",
    "kind": "field",
    "label": {
-    "uz": "Uy vazifalari",
+    "uz": "Uyga vazifalar",
     "ru": "Домашние задания",
     "en": "Homeworks"
    },
@@ -24968,8 +24968,8 @@ export const PLATFORM_MAP_SOURCE: unknown = {
    "id": "features/plans/plan-page.tsx#column:plans.plan.homeworks",
    "kind": "column",
    "label": {
-    "uz": "Uy vazifalari",
-    "ru": "Домашние работы",
+    "uz": "Uyga vazifalar",
+    "ru": "Домашние задания",
     "en": "Homeworks"
    },
    "pages": [

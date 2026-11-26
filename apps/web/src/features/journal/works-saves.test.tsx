@@ -28,7 +28,6 @@ const TEST: JournalWork = {
   unplanned: false,
   total: 10,
   notHeld: false,
-  carriedFrom: null,
   version: 1,
 };
 

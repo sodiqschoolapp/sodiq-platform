@@ -450,7 +450,11 @@ function CellHistoryDialog({
                     <TableCell>{cellValueText(t, cell, line.before)}</TableCell>
                     <TableCell>{cellValueText(t, cell, line.after)}</TableCell>
                     <TableCell>
-                      {withViaKey(t, accountText(line.changedBy, '—'), line.viaKey)}
+                      {withViaKey(
+                        t,
+                        line.changedBy === null ? '—' : accountText(line.changedBy, '—'),
+                        line.viaKey,
+                      )}
                     </TableCell>
                     <TableCell>{momentText(language, line.changedAt)}</TableCell>
                     <TableCell>{t(`journal.changes.${line.changedHow}`)}</TableCell>
