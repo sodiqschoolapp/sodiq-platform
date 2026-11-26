@@ -1,35 +1,28 @@
 /**
- * The work columns of a journal's lessons (task 8.1, pull request #217;
- * `07`, Entering data; `09`, In the journal; `edge/journal`, Entering).
- * Pure: the grid and every write route call it with what they read, so the
- * grid and the writes agree on which columns a lesson has. Nothing is stored
- * by a read; a column with no row (`workId` null) gets one at its first write.
+ * The work columns of a journal's lessons (task 8.1, pull request #217; task
+ * 11.24; `07`, Entering data; `09`, In the journal; `edge/journal`,
+ * Entering). Pure: the grid and every write route call it with what they
+ * read, so the grid and the writes agree on which columns a lesson has.
+ * Nothing is stored by a read; a column with no row (`workId` null) gets one
+ * at its first write.
  *
- * - The source of a lesson's homework columns is the nearest earlier lesson
- *   of the journal in the year that is not cancelled and not "started but not
- *   held" (decision 3; `edge/00-definitions`, Previous lesson); for a held
- *   lesson this is the previous lesson. The check lesson of homework given at
- *   a lesson is the next such lesson.
- * - Classwork columns of lesson L: the classworks of L's plan item, then the
- *   works added by hand at L. Homework columns of check lesson C: the
- *   homeworks given at source(C) (planned, then by hand), then the stored
- *   homeworks shown at C for another reason (carried in, kept with numbers).
- *   A planned work uses its stored row (`planWorkId`, linked at its first
- *   write or by the takeover of the plan save, review correction 1); a
- *   hand-added work with no link is an unplanned column.
- * - Where a stored row is shown: a homework with no number at the check
- *   lesson of its source (of the lesson it was carried from, when carried;
- *   decision 7: "The homework columns move to the next held lesson, each as
- *   long as it has no numbers yet"); every other row at its own lesson, after
- *   the planned ones when the plan no longer names it there (spec review
- *   must-fix 2): nothing typed leaves the grid.
+ * - A homework is graded at the lesson where it was given (owner, 25 November
+ *   2026; `07`, Homework column): the classwork and the homework columns of
+ *   lesson L are the works of L's plan item, then the works added by hand at
+ *   L. No other lesson has a column for them. A planned work uses its stored
+ *   row (`planWorkId`, linked at its first write or by the takeover of the
+ *   plan save, review correction 1); a hand-added work with no link is an
+ *   unplanned column.
+ * - Every stored row is a column of its own lesson (0186 keeps a work at the
+ *   lesson where it was given), after the planned ones when the plan no longer
+ *   names it there: nothing typed leaves the grid.
  * - A work marked "not held" leaves the columns (`09`: "its column is
  *   removed from that lesson") and is listed apart, so it can be undone.
- * - A planned homework marked "not given" at its source lesson (task 8.8,
- *   `edge/lesson-plans`: "the next lesson gets no column for a homework not
- *   given") makes no column, and an empty stored row of it is not shown (a
- *   row with data refuses the mark, 0130). It stays in the source lesson's
- *   `given` list with `notGiven`.
+ * - A planned homework marked "not given" at its lesson (task 8.8,
+ *   `edge/lesson-plans`: "a homework not given has no column") makes no
+ *   column, and an empty stored row of it is not shown (a row with data
+ *   refuses the mark, 0130). It stays in the lesson's `given` list with
+ *   `notGiven`.
  */
 
 export type WorkKind = 'classwork' | 'homework';
@@ -64,7 +57,6 @@ export interface StoredWork {
   readonly position: number;
   readonly total: number | null;
   readonly notHeld: boolean;
-  readonly carriedFromLessonId: string | null;
   /** Task 10.6: the title typed for a work added by hand (`null` for a planned one or one added before). */
   readonly title: string | null;
   readonly version: number;
@@ -90,22 +82,13 @@ export interface Column {
   readonly total: number | null;
   readonly notHeld: boolean;
   readonly version: number | null;
-  readonly carriedFrom: string | null;
-  /** The lesson the row is stored at, when it is not this one (moved at the first write). */
-  readonly storedAt: string | null;
 }
-
-/** Why homework given at a lesson makes no column. */
-export type Ungraded = 'year_end' | 'group_closed';
 
 export interface GivenHomework {
   readonly workId: string | null;
   readonly planWorkId: string | null;
   readonly title: string | null;
-  /** The check lesson, `null` when there is none. */
-  readonly checkAt: string | null;
-  readonly ungraded: Ungraded | null;
-  /** Task 8.8: marked "not given" at this lesson; it has no check lesson then. */
+  /** Task 8.8: marked "not given" at this lesson; it has no column then. */
   readonly notGiven: boolean;
 }
 
@@ -119,12 +102,8 @@ export interface LessonColumns {
   readonly columns: readonly Column[];
   /** Works of the lesson marked "not held". */
   readonly notHeld: readonly Column[];
-  /** The homeworks given at this lesson. */
+  /** The homeworks given at this lesson, which are its homework columns (`09`, In the journal). */
   readonly given: readonly GivenHomework[];
-  /** The lesson whose homeworks are this lesson's homework columns. */
-  readonly source: string | null;
-  /** The next lesson that checks homework given here: not cancelled, not "started but not held". */
-  readonly next: string | null;
 }
 
 export interface ColumnsInput {
@@ -133,9 +112,7 @@ export interface ColumnsInput {
   /** The works of each lesson's plan item, `null` for a lesson with no item; a lesson not named has none. */
   readonly planned: ReadonlyMap<string, readonly PlannedWork[] | null>;
   readonly stored: readonly StoredWork[];
-  /** The journal has no run day left (7.1b decision 9): its last homework is "not checked, group closed". */
-  readonly journalClosed: boolean;
-  /** Task 8.8: the planned homeworks marked "not given", as `<source lesson>/<plan work>`. */
+  /** Task 8.8: the planned homeworks marked "not given", as `<lesson>/<plan work>`. */
   readonly notGiven?: ReadonlySet<string>;
   /** Task 10.8: the lessons whose plan item has no topic yet (made by a work added in the journal). */
   readonly topicless?: ReadonlySet<string>;
@@ -152,87 +129,23 @@ function byStart(one: ColumnLesson, other: ColumnLesson): number {
 export function lessonColumns(input: ColumnsInput): Map<string, LessonColumns> {
   const lessons = [...input.lessons].sort(byStart);
   const notGiven = input.notGiven ?? new Set<string>();
-  const isNotGiven = (sourceId: string | null, planWorkId: string | null): boolean =>
-    sourceId !== null && planWorkId !== null && notGiven.has(`${sourceId}/${planWorkId}`);
-  // An empty row of a homework not given is not shown (spec review of the plan, must-fix 1).
+  const isNotGiven = (lessonId: string, planWorkId: string | null): boolean =>
+    planWorkId !== null && notGiven.has(`${lessonId}/${planWorkId}`);
+  // An empty row of a homework not given is not shown (spec review of the plan of 8.8, must-fix 1).
   const hidden = (row: StoredWork): boolean =>
     row.kind === 'homework' &&
-    isNotGiven(row.sourceLessonId, row.planWorkId) &&
+    isNotGiven(row.lessonId, row.planWorkId) &&
     row.total === null &&
     !row.notHeld &&
-    row.carriedFromLessonId === null &&
     !row.hasNumbers;
-  const index = new Map(lessons.map((lesson, at) => [lesson.id, at]));
-  const nextOf = (lessonId: string): string | null => {
-    const at = index.get(lessonId);
-    if (at === undefined) return null;
-    for (let next = at + 1; next < lessons.length; next += 1) {
-      const lesson = lessons[next];
-      if (lesson !== undefined && eligible(lesson)) return lesson.id;
-    }
-    return null;
-  };
-  const sourceOf = (lessonId: string): string | null => {
-    const at = index.get(lessonId);
-    if (at === undefined) return null;
-    for (let earlier = at - 1; earlier >= 0; earlier -= 1) {
-      const lesson = lessons[earlier];
-      if (lesson !== undefined && eligible(lesson)) return lesson.id;
-    }
-    return null;
-  };
-  const isEligible = (lessonId: string | null): boolean => {
-    if (lessonId === null) return false;
-    const at = index.get(lessonId);
-    const lesson = at === undefined ? undefined : lessons[at];
-    return lesson !== undefined && eligible(lesson);
-  };
-
-  /**
-   * Where a stored row is shown; `null` only for an empty homework with no check lesson,
-   * which is listed with "will not be graded" at the lesson where it was given. A row
-   * with a total or "not held" and no check lesson stays at its own lesson (code review,
-   * must-fix 1): nothing set ever leaves the grid.
-   */
-  const shownAt = (row: StoredWork): string | null => {
-    if (row.kind !== 'homework' || row.hasNumbers) return row.lessonId;
-    const held = row.total !== null || row.notHeld;
-    let check: string | null = row.lessonId;
-    if (row.carriedFromLessonId !== null) check = nextOf(row.carriedFromLessonId);
-    else if (row.sourceLessonId !== null && isEligible(row.sourceLessonId)) {
-      check = nextOf(row.sourceLessonId);
-    }
-    if (check !== null) return check;
-    return held ? row.lessonId : null;
-  };
 
   const storedAt = new Map<string, StoredWork[]>();
-  const placed = new Map<string, string | null>();
   for (const row of [...input.stored].sort((a, b) => a.id.localeCompare(b.id))) {
     if (hidden(row)) continue;
-    const at = shownAt(row);
-    placed.set(row.id, at);
-    if (at === null) continue;
-    storedAt.set(at, [...(storedAt.get(at) ?? []), row]);
+    storedAt.set(row.lessonId, [...(storedAt.get(row.lessonId) ?? []), row]);
   }
-  const plannedRow = new Map<string, StoredWork>();
-  for (const row of input.stored) {
-    if (row.planWorkId !== null && row.sourceLessonId !== null) {
-      plannedRow.set(`${row.sourceLessonId}/${row.planWorkId}`, row);
-    }
-  }
-  const unplannedOf = (sourceId: string, kind: WorkKind): StoredWork[] =>
-    input.stored
-      .filter(
-        (row) => row.sourceLessonId === sourceId && row.kind === kind && row.planWorkId === null,
-      )
-      .sort((a, b) => a.position - b.position || a.id.localeCompare(b.id));
 
-  const fromRow = (
-    row: StoredWork,
-    lessonId: string,
-    title: string | null,
-  ): Omit<Column, 'position'> => ({
+  const fromRow = (row: StoredWork, title: string | null): Omit<Column, 'position'> => ({
     workId: row.id,
     planWorkId: row.planWorkId,
     sourceLessonId: row.sourceLessonId,
@@ -242,72 +155,53 @@ export function lessonColumns(input: ColumnsInput): Map<string, LessonColumns> {
     total: row.total,
     notHeld: row.notHeld,
     version: row.version,
-    carriedFrom: row.carriedFromLessonId,
-    storedAt: row.lessonId === lessonId ? null : row.lessonId,
   });
 
   const result = new Map<string, LessonColumns>();
   for (const lesson of lessons) {
     const here = storedAt.get(lesson.id) ?? [];
+    const planned = input.planned.get(lesson.id) ?? [];
+    // A cancelled or unresolved lesson shows only the rows kept at it.
+    const open = eligible(lesson);
     const used = new Set<string>();
-    const kindColumns = (kind: WorkKind, sourceId: string | null): Omit<Column, 'position'>[] => {
+    const kindColumns = (kind: WorkKind): Omit<Column, 'position'>[] => {
       const found: Omit<Column, 'position'>[] = [];
-      if (sourceId !== null) {
-        for (const work of (input.planned.get(sourceId) ?? []).filter((one) => one.kind === kind)) {
-          const row = plannedRow.get(`${sourceId}/${work.id}`);
-          if (
-            kind === 'homework' &&
-            isNotGiven(sourceId, work.id) &&
-            (row === undefined || hidden(row))
-          ) {
-            continue;
-          }
+      if (open) {
+        for (const work of planned.filter((one) => one.kind === kind)) {
+          const row = here.find((one) => one.planWorkId === work.id);
+          if (kind === 'homework' && isNotGiven(lesson.id, work.id) && row === undefined) continue;
           if (row === undefined) {
             found.push({
               workId: null,
               planWorkId: work.id,
-              sourceLessonId: sourceId,
+              sourceLessonId: lesson.id,
               kind,
               title: work.title,
               unplanned: false,
               total: null,
               notHeld: false,
               version: null,
-              carriedFrom: null,
-              storedAt: null,
             });
-          } else if (placed.get(row.id) === lesson.id) {
+          } else {
             used.add(row.id);
-            found.push(fromRow(row, lesson.id, work.title));
+            found.push(fromRow(row, work.title));
           }
         }
-        for (const row of unplannedOf(sourceId, kind)) {
-          if (placed.get(row.id) !== lesson.id) continue;
+        for (const row of here
+          .filter((one) => one.kind === kind && one.planWorkId === null)
+          .sort((a, b) => a.position - b.position || a.id.localeCompare(b.id))) {
           used.add(row.id);
-          found.push(fromRow(row, lesson.id, row.title));
+          found.push(fromRow(row, row.title));
         }
       }
-      // Carried in first, then any other row kept here (spec review must-fix 2).
-      const rest = here
-        .filter((row) => row.kind === kind && !used.has(row.id))
-        .sort(
-          (a, b) =>
-            Number(b.carriedFromLessonId !== null) - Number(a.carriedFromLessonId !== null) ||
-            a.id.localeCompare(b.id),
-        );
-      for (const row of rest) {
+      // Any other row kept here (its plan no longer names it, or the lesson is not open).
+      for (const row of here.filter((one) => one.kind === kind && !used.has(one.id))) {
         used.add(row.id);
-        found.push(fromRow(row, lesson.id, plannedTitle(input.planned, row)));
+        found.push(fromRow(row, plannedTitle(input.planned, row)));
       }
       return found;
     };
-    const source = sourceOf(lesson.id);
-    // A cancelled or unresolved lesson shows only the rows kept at it.
-    const open = eligible(lesson);
-    const all = [
-      ...kindColumns('classwork', open ? lesson.id : null),
-      ...kindColumns('homework', open ? source : null),
-    ];
+    const all = [...kindColumns('classwork'), ...kindColumns('homework')];
     const numbered = (list: Omit<Column, 'position'>[]): Column[] => {
       const counts = { classwork: 0, homework: 0 };
       return list.map((column) => {
@@ -316,31 +210,18 @@ export function lessonColumns(input: ColumnsInput): Map<string, LessonColumns> {
       });
     };
     const given: GivenHomework[] = [];
-    const checkAt = eligible(lesson) ? nextOf(lesson.id) : null;
-    const ungraded: Ungraded | null =
-      checkAt === null ? (input.journalClosed ? 'group_closed' : 'year_end') : null;
-    for (const work of (input.planned.get(lesson.id) ?? []).filter(
-      (one) => one.kind === 'homework',
-    )) {
-      const marked = isNotGiven(lesson.id, work.id);
+    for (const work of planned.filter((one) => one.kind === 'homework')) {
       given.push({
-        workId: plannedRow.get(`${lesson.id}/${work.id}`)?.id ?? null,
+        workId: here.find((one) => one.planWorkId === work.id)?.id ?? null,
         planWorkId: work.id,
         title: work.title,
-        checkAt: marked ? null : checkAt,
-        ungraded: marked ? null : ungraded,
-        notGiven: marked,
+        notGiven: isNotGiven(lesson.id, work.id),
       });
     }
-    for (const row of unplannedOf(lesson.id, 'homework')) {
-      given.push({
-        workId: row.id,
-        planWorkId: null,
-        title: row.title,
-        checkAt,
-        ungraded,
-        notGiven: false,
-      });
+    for (const row of here
+      .filter((one) => one.kind === 'homework' && one.planWorkId === null)
+      .sort((a, b) => a.position - b.position || a.id.localeCompare(b.id))) {
+      given.push({ workId: row.id, planWorkId: null, title: row.title, notGiven: false });
     }
     result.set(lesson.id, {
       planItem:
@@ -348,8 +229,6 @@ export function lessonColumns(input: ColumnsInput): Map<string, LessonColumns> {
       columns: numbered(all.filter((column) => !column.notHeld)),
       notHeld: numbered(all.filter((column) => column.notHeld)),
       given,
-      source,
-      next: nextOf(lesson.id),
     });
   }
   return result;
