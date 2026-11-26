@@ -952,6 +952,19 @@ describe('classwork and homework', () => {
             version: given.version,
           }),
         );
+        // Decision 9 of the plan: numbers queued on a device against the next lesson (the check
+        // lesson before 0186) are refused there, nothing saved, and stay "not saved" on the device.
+        const queued = await calls.post(`/api/journal/lessons/${s.third}/scores`, {
+          saves: [{ studentId: s.ahmedov, column: { workId: given.id }, score: 4, version: null }],
+        });
+        expect(codeOf(queued)).toBe('work_not_in_lesson');
+        expect(
+          await t.database.migrator
+            .selectFrom('journal_cells')
+            .select('id')
+            .where('work_id', '=', given.id)
+            .execute(),
+        ).toEqual([]);
         return given;
       });
       const row = await t.database.migrator
