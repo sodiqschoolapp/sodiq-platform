@@ -1391,6 +1391,12 @@ export class StudentMerges {
           .map((one) => one.row.branchId),
         ...plan.moves.filter((one) => one.row.side === 'merged').map((one) => one.row.branchId),
         ...reasons.map((row) => row.branch_id),
+        // Task 11.26: the branches of the past marks carried.
+        ...(['past_attendance', 'past_works'] as const).flatMap((table) =>
+          (plan.whole.get(table) ?? [])
+            .filter((one) => same(one.studentId, merged.id))
+            .map((one) => String(one.row.branch_id)),
+        ),
       ].map((one) => one.toLowerCase()),
     );
     // The personal values (the fields filled, the values left behind) only

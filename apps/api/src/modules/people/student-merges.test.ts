@@ -185,6 +185,10 @@ describe('the merge of two student records', () => {
       t.database.migrator.selectFrom('forced_deletes').selectAll().orderBy('id').execute(),
       // Task 9.2b: the final results of closed quarters a merge carries.
       t.database.migrator.selectFrom('quarter_final_results').selectAll().orderBy('id').execute(),
+      // Task 11.26: the past marks from before go-live a merge carries.
+      t.database.migrator.selectFrom('past_mark_uploads').selectAll().orderBy('id').execute(),
+      t.database.migrator.selectFrom('past_attendance').selectAll().orderBy('id').execute(),
+      t.database.migrator.selectFrom('past_works').selectAll().orderBy('id').execute(),
       t.auditCount(),
     ]);
 
@@ -207,6 +211,84 @@ describe('the merge of two student records', () => {
         })
         .execute();
     });
+
+  let pastCount = 0;
+
+  /**
+   * A confirmed upload of past marks of the branch (task 11.26) holding one attendance mark and
+   * one classwork of the student, written as the confirm writes them; answers the upload.
+   */
+  async function pastMarks(
+    branch: string,
+    studentId: string,
+    input: { date?: string; subjectId?: string; withdrawn?: boolean } = {},
+  ): Promise<string> {
+    pastCount += 1;
+    const by = await classes.account();
+    const year = await t.database.migrator
+      .selectFrom('academic_years')
+      .select('id')
+      .where('branch_id', '=', branch)
+      .orderBy('start_date')
+      .executeTakeFirstOrThrow();
+    const subjectId = input.subjectId ?? (await classes.subject({ grades: [7] }));
+    const moment = new Date('2026-10-10T12:00:00+05:00');
+    const upload = await t.database.migrator
+      .insertInto('past_mark_uploads')
+      .values({
+        branch_id: branch,
+        file_name: `Past ${String(pastCount)}.xlsx`,
+        file_sha256: pastCount.toString(16).padStart(64, '0'),
+        rows: JSON.stringify([]),
+        row_count: 1,
+        uploaded_by: by,
+        uploaded_at: moment,
+        confirmed_by: by,
+        confirmed_at: moment,
+      })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    const base = {
+      branch_id: branch,
+      upload_id: upload.id,
+      academic_year_id: year.id,
+      student_id: studentId,
+      subject_id: subjectId,
+      school_date: input.date ?? '2026-09-07',
+      lesson_number: 1,
+    };
+    await t.database.migrator.insertInto('past_attendance').values({ ...base, mark: 1 }).execute();
+    await t.database.migrator
+      .insertInto('past_works')
+      .values({ ...base, kind: 'classwork', position: 1, title: 'Dictation', total: 10, score: 7.5 })
+      .execute();
+    if (input.withdrawn === true) {
+      await t.database.migrator
+        .updateTable('past_mark_uploads')
+        .set({ withdrawn_by: by, withdrawn_at: moment, withdraw_reason: 'Wrong file' })
+        .where('id', '=', upload.id)
+        .execute();
+      for (const table of ['past_attendance', 'past_works'] as const) {
+        await t.database.migrator
+          .updateTable(table)
+          .set({ withdrawn_at: moment })
+          .where('upload_id', '=', upload.id)
+          .execute();
+      }
+    }
+    return upload.id;
+  }
+
+  const pastOf = async (uploadId: string) =>
+    Promise.all(
+      (['past_attendance', 'past_works'] as const).map((table) =>
+        t.database.migrator
+          .selectFrom(table)
+          .select(['student_id', 'branch_id', 'withdrawn_at'])
+          .where('upload_id', '=', uploadId)
+          .execute(),
+      ),
+    );
 
   const statusesOf = (id: string) =>
     t.database.migrator
@@ -768,6 +850,69 @@ describe('the merge of two student records', () => {
           .executeTakeFirstOrThrow()
       ).id;
     }
+
+    it('carries the past marks of the merged record to the kept record, withdrawn ones too (task 11.26)', async () => {
+      const { east, classId } = await eastWith('East past marks carry');
+      const first = await pupil({ branch: east, classId, from: '2026-09-02' });
+      const twice = await pupil({ branch: east, classId, from: '2026-09-10' });
+      const subject = await classes.subject({ grades: [7] });
+      // The same lesson on both records, but one upload is withdrawn: no overlap.
+      await pastMarks(east, first.id, { subjectId: subject, withdrawn: true });
+      const standing = await pastMarks(east, twice.id, { subjectId: subject });
+      const withdrawn = await pastMarks(east, twice.id, { date: '2026-09-09', withdrawn: true });
+      const seen = await previewOf(first.id, twice.uid, east);
+      expect(seen.refusal).toBeNull();
+      merged(await merge(first.id, twice.uid, east));
+      for (const upload of [standing, withdrawn]) {
+        for (const rows of await pastOf(upload)) {
+          expect(rows.length).toBe(1);
+          expect(rows.every((one) => one.student_id === first.id && one.branch_id === east)).toBe(
+            true,
+          );
+        }
+      }
+      const [entry] = await t.entries('student.merged', first.id);
+      const carried = (entry?.new_value as { rows?: { carried?: Record<string, string[]> } } | null)
+        ?.rows?.carried;
+      expect(carried?.past_attendance).toHaveLength(2);
+      expect(carried?.past_works).toHaveLength(2);
+    });
+
+    it('refuses past marks of both records on one lesson (student_merge_past_marks_overlap), shown in the preview, and changes nothing (decision 3, Look first)', async () => {
+      const { east, classId } = await eastWith('East past marks overlap');
+      const first = await pupil({ branch: east, classId, from: '2026-09-02' });
+      const twice = await pupil({ branch: east, classId, from: '2026-09-10' });
+      const subject = await classes.subject({ grades: [7] });
+      const a = await pastMarks(east, first.id, { subjectId: subject });
+      const b = await pastMarks(east, twice.id, { subjectId: subject });
+      const seen = await previewOf(first.id, twice.uid, east);
+      expect(seen.refusal?.code).toBe('student_merge_past_marks_overlap');
+      const before = await rowsOf();
+      const response = await post(
+        first.id,
+        { uid: twice.uid, reason: 'Created twice by mistake', digest: seen.digest },
+        east,
+      );
+      refusedWith(response, 409, 'student_merge_past_marks_overlap');
+      const named = (response.body as { error: { details: { recordId?: string }[] } }).error.details
+        .map((one) => one.recordId)
+        .sort();
+      expect(named).toEqual([a, b].sort());
+      expect(await rowsOf()).toEqual(before);
+    });
+
+    it('refuses a merge whose preview was read before an import of past marks (student_changed)', async () => {
+      const { east, classId } = await eastWith('East past marks digest');
+      const first = await pupil({ branch: east, classId, from: '2026-09-02' });
+      const twice = await pupil({ branch: east, classId, from: '2026-09-10' });
+      const seen = await previewOf(first.id, twice.uid, east);
+      await pastMarks(east, twice.id);
+      refusedWith(
+        await post(first.id, { uid: twice.uid, reason: 'Twice', digest: seen.digest }, east),
+        409,
+        'student_changed',
+      );
+    });
 
     it('carries a final result of a closed quarter to the kept record (task 9.2b)', async () => {
       const { east, eastYear, classId } = await eastWith('East final result carry');
@@ -1691,6 +1836,9 @@ describe('the merge of two student records', () => {
       // A reason on each record, which a merge would carry (task 6.3).
       await reasonOf(t.south, south.id, '2026-09-14', 'illness');
       await reasonOf(t.north, north.id, '2026-09-14', 'family');
+      // Task 11.26: past marks on each record, which a merge would carry.
+      await pastMarks(t.south, south.id);
+      await pastMarks(t.north, north.id, { date: '2026-09-08' });
       const before = await rowsOf();
       for (const id of [south.id, UNKNOWN]) {
         refusedWith(await preview(id, north.uid), 404, 'not_found');
