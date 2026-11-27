@@ -841,6 +841,7 @@ describe('a frozen permission table', () => {
       'student_identity',
       'student_merges',
       'students',
+      'subject_codes',
       'subjects',
       'timetable',
       'timetable_load',

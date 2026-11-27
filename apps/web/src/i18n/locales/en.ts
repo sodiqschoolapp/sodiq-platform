@@ -1134,6 +1134,8 @@ export const en = {
       'This upload is not saved, or was already withdrawn. Open the list of uploads again.',
     past_marks_changed:
       'Another import of past marks was saved at the same moment. Nothing was saved: check the file again.',
+    plan_codes_off:
+      'Codes for topics and works are off for this subject, so no code can be set. Ask the Super Admin to switch them on.',
     subject_import_changed:
       'Someone changed subjects or quarters at the same moment. Nothing was saved; try again.',
     photos_not_configured: 'Photos are not configured yet. Ask the administrator.',
@@ -1954,6 +1956,7 @@ export const en = {
       SubjectsController_copyQuarterOne: 'Copy the quarter weights of a subject',
       SubjectsController_create: 'Add a subject',
       SubjectsController_edit: 'Change a subject',
+      SubjectsController_switchCodes: 'Switch codes for topics and works on or off',
       SubjectsController_export: 'Export subjects',
       SubjectsController_importConfirm: 'Save a subject import',
       SubjectsController_importPreview: 'Check a subject import',
@@ -2102,6 +2105,7 @@ export const en = {
       student_history: "Students' history",
       student_merges: 'Merging student records',
       students: 'Students',
+      subject_codes: 'Codes for topics and works',
       subjects: 'Subjects',
       timetable: 'Timetable',
       timetable_load: 'Teaching load report',
@@ -2790,6 +2794,13 @@ export const en = {
       groupSubject: 'Group subject',
       languageRule: 'Language rule',
       demanding: 'Demanding',
+      codes: {
+        title: 'Codes for topics and works',
+        switch: 'Codes on',
+        on: 'On',
+        off: 'Off',
+        help: 'Topics, classworks and homeworks of this subject can carry a short code. Off hides the codes and keeps them.',
+      },
       switches: 'Switches',
       quarterly: 'Quarterly distribution',
       changeWeights: 'Change distribution',
@@ -5281,6 +5292,7 @@ export const en = {
         edit: 'Subject changed',
         archive: 'Subject archived',
         restore: 'Subject restored',
+        codes: 'Codes for topics and works switched',
         export: 'Subjects exported',
       },
       subject_daily_weights: {
@@ -7473,6 +7485,12 @@ export const en = {
     },
   },
   plans: {
+    codes: {
+      topicCode: 'Topic code',
+      workCode: 'Code {{number}}',
+      code: 'Code',
+      tooLong: 'At most {{max}} characters.',
+    },
     files: {
       closeText: 'They are not in the plan. Close the card without them?',
       closeAction: 'Close without them',

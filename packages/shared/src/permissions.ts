@@ -427,6 +427,16 @@ export const PERMISSIONS = freezeTable({
     super_admin: ['view', 'create', 'archive'],
     academic_vice_principal: ['view', 'create', 'archive'],
   }),
+  /**
+   * `subject_codes` (task 11.27; `09`, Codes: "The Super Admin switches codes on for chosen
+   * subjects"; `02`, Super Admin "switches codes on or off for a subject" and Academic Vice
+   * Principal "subjects (except the codes switch)"). A new area for one new route, approved by
+   * the owner in chat on 25 November 2026 (stop-list item 5, build plan 11.27), that switch only.
+   * The switch is read with the subject (`subjects` `view`).
+   */
+  subject_codes: rows({
+    super_admin: ['edit'],
+  }),
   subjects: rows({
     super_admin: ['view', 'create', 'edit', 'archive', 'export'],
     principal: ['view', 'export'],

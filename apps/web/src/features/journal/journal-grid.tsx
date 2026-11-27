@@ -8,7 +8,7 @@ import type {
   JournalLesson,
   JournalStudent,
 } from '@sodiq/shared';
-import { RATING_SCORE_MAX } from '@sodiq/shared';
+import { codedName, RATING_SCORE_MAX } from '@sodiq/shared';
 import {
   AllCommunityModule,
   themeQuartz,
@@ -47,6 +47,7 @@ import type { CommentCell, CommentsInput } from './comment-dialog';
 import { ratingEntryOf, useEntryText, type RatingInput } from './rating-entry';
 import { StudentPhotoCell } from './student-photo';
 import { workKey, type WorksEntry } from './works-entry';
+import { CodedName } from '@/components/coded-name';
 
 /** Task 8.8: the characters of a topic the header shows; the tooltip holds it whole. */
 const TOPIC_SHOWN = 28;
@@ -215,6 +216,11 @@ function TwoLineHeader(
      * "Dav" says "Davomat"), as the tag of a work's kind does.
      */
     hover?: string;
+    /**
+     * Task 11.27 (`09`, Codes: "Where space is short (journal column headers …) the code is shown
+     * alone, with the full name on hover or on a tap"): a work's code and its full title.
+     */
+    coded?: { code: string; name: string };
   },
 ) {
   // Every column the same two lines (`07`, Layout, rows 2 and 3): the label with the column's
@@ -225,9 +231,18 @@ function TwoLineHeader(
     <div className="flex w-full min-w-0 flex-col justify-center gap-0.5" aria-label={props.label}>
       <span className="flex min-h-6 min-w-0 items-center gap-0.5">
         {props.kind !== undefined && <WorkKindTag kind={props.kind} className="mr-0.5" />}
-        <span className="truncate leading-tight font-semibold" title={props.hover}>
-          {props.displayName}
-        </span>
+        {props.coded === undefined ? (
+          <span className="truncate leading-tight font-semibold" title={props.hover}>
+            {props.displayName}
+          </span>
+        ) : (
+          <CodedName
+            short
+            className="leading-tight"
+            code={props.coded.code}
+            name={props.coded.name}
+          />
+        )}
         {props.more !== undefined && props.menuBelow !== true && (
           <HeaderButton button={props.more} />
         )}
@@ -1141,10 +1156,16 @@ export function JournalGridView({
             : t('journal.grid.homeworkShort', { number: work.position });
         // The plan's title (09: "The titles come from the plan"); a work added by hand is numbered.
         const title = work.title ?? `${short} · ${t('journal.works.unplanned')}`;
+        // Task 11.27: a filled code alone in the header, the full title on hover or a tap.
+        const coded =
+          work.code === null || work.title === null ? undefined : { code: work.code, name: title };
         const enterable = works !== undefined && lesson.canEnterWorks && work.total !== null;
         // Task 10.7: the column's accessible name and its hover name the kind in full.
         const kindWord = t(`journal.grid.kind.${work.kind}.word`);
-        const label = t('journal.grid.workLabel', { kind: kindWord, title });
+        const label = t('journal.grid.workLabel', {
+          kind: kindWord,
+          title: codedName(work.code, title),
+        });
         // Task 8.7 (From 8.6): an optional cell of a locked lesson open now takes its number.
         const openCell = (cell: JournalStudent['cells'][number] | undefined) =>
           works !== undefined && work.total !== null && cell?.open === true;
@@ -1153,6 +1174,7 @@ export function JournalGridView({
           headerName: title,
           headerTooltip: label,
           headerComponentParams: {
+            ...(coded === undefined ? {} : { coded }),
             // A homework is a column of the lesson where it was given (`07`, Homework column).
             second:
               work.total === null
@@ -1285,18 +1307,36 @@ export function JournalGridView({
       // Task 8.8 (`09`, In the journal): "the lesson number and the topic, shortened to fit".
       const number =
         lesson.number === null ? '' : t('journal.grid.lessonNumber', { number: lesson.number });
+      // Task 11.27 (`09`, Codes: "the lesson header"): a filled code alone, the full topic in the
+      // header's tooltip.
       const topic =
         lesson.topic === null || lesson.topic === ''
           ? ''
-          : lesson.topic.length > TOPIC_SHOWN
-            ? `${lesson.topic.slice(0, TOPIC_SHOWN)}…`
-            : lesson.topic;
+          : lesson.topicCode !== null
+            ? lesson.topicCode
+            : lesson.topic.length > TOPIC_SHOWN
+              ? `${lesson.topic.slice(0, TOPIC_SHOWN)}…`
+              : lesson.topic;
       const notDelivered = lesson.notDelivered ? t('journal.grid.notDeliveredShort') : '';
       // 07, Layout: "Row 1: date, weekday, slot" on the first line with the status; the number
       // and topic, or the reason of a cancelled lesson, on the second.
       const first = `${date}${slot}`;
       const second =
         reason ?? [number, topic, noPlan, notDelivered].filter((part) => part !== '').join(' · ');
+      // Task 11.27: the tooltip holds the full topic beside its code (`09`, Codes: "the full name on
+      // hover"), also in the compact header.
+      const secondFull =
+        reason ??
+        [
+          number,
+          lesson.topic === null || lesson.topic === ''
+            ? ''
+            : codedName(lesson.topicCode, lesson.topic),
+          noPlan,
+          notDelivered,
+        ]
+          .filter((part) => part !== '')
+          .join(' · ');
       // The narrow header: "Du, 16.11" (or "Today") over "3-dars" (or the reason of a cancelled
       // lesson), the status as an icon; the whole text for a screen reader and in the tooltip.
       const compactLines = compact
@@ -1323,7 +1363,12 @@ export function JournalGridView({
           tooltip: [
             first,
             ...(compact && status !== null ? [status.text] : []),
-            ...(compact ? [second] : [reason ?? lesson.topic]),
+            ...(compact
+              ? [secondFull]
+              : [
+                  reason ??
+                    (lesson.topic === null ? null : codedName(lesson.topicCode, lesson.topic)),
+                ]),
           ]
             .filter((part) => part !== null && part !== '')
             .join(' · '),

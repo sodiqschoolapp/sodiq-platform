@@ -1,4 +1,4 @@
-import { errorCodeSchema, type JournalSupport, type SupportLine } from '@sodiq/shared';
+import { codedName, errorCodeSchema, type JournalSupport, type SupportLine } from '@sodiq/shared';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate, useSearch } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
@@ -55,11 +55,12 @@ type Lesson = JournalSupport['lessons'][number];
 /** The work a line names, as the cell history names it. */
 function workText(
   t: TFunction,
-  work: { kind: 'classwork' | 'homework'; title: string | null } | null,
+  work: { kind: 'classwork' | 'homework'; title: string | null; code?: string | null } | null,
 ) {
   if (work === null) return t('journal.attendance');
   const kind = t(work.kind === 'classwork' ? 'journal.classwork' : 'journal.homework');
-  return work.title === null ? kind : `${kind}: ${work.title}`;
+  // Task 11.27: "code · title" with a code shown.
+  return work.title === null ? kind : `${kind}: ${codedName(work.code, work.title)}`;
 }
 
 /** What a line says happened, its values and its detail, in words. */
@@ -429,7 +430,9 @@ function LessonFigures({ lesson: one }: { lesson: Lesson }) {
   const works = lesson.works.map((work, place) => {
     const value = cell.works[place];
     const title =
-      work.title ?? t(work.kind === 'classwork' ? 'journal.classwork' : 'journal.homework');
+      work.title === null
+        ? t(work.kind === 'classwork' ? 'journal.classwork' : 'journal.homework')
+        : codedName(work.code, work.title);
     return t('journal.support.work', {
       title,
       score: value?.score ?? '—',

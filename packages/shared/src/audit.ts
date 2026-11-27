@@ -112,6 +112,8 @@ export const AUDIT_ACTION_GROUPS = {
     'subject.edit',
     'subject.archive',
     'subject.restore',
+    // Task 11.27: the Super Admin switched a subject's codes for topics and works on or off.
+    'subject.codes',
     'subject_daily_weights.set',
     'subject_quarter_weights.set',
     'subject_quarter_primary_weights.set',

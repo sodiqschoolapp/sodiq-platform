@@ -83,6 +83,12 @@ There is no lesson score column (Oʻrt / Ср. / Avg) and a subject has no daily
 | Every student of the lesson is exempt | The lesson is Complete: there is nothing to mark. |
 | A total is set and nothing else | The lesson is In progress. |
 
+## Codes in the journal
+
+<!-- Sources: spec 09 (Codes), 07 (Layout); task 11.27 -->
+
+In a subject whose codes the Super Admin switched on, a column header shows the work's code alone, with the full title on hover or a tap, and the lesson header shows the topic's code; lesson mode on a phone does the same. A work added in the journal, and the lesson's topic in the lesson's editor, take a code beside the title. Everything about codes is in [Lesson plans](07-lesson-plans.md#codes-for-topics-and-works).
+
 ## Numbers with decimals
 
 <!-- Sources: spec 07 (Entering data, Keyboard; The total), edge/journal (Entering), edge/calculation (a score with decimals); spec changes of 25 November 2026 (decimal scores, decimal totals); task 11.25b -->

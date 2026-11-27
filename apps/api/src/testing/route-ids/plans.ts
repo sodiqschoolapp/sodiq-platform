@@ -40,6 +40,8 @@ const DEPARTMENT =
 // (edge/lesson-plans, "A save is addressed to the item"): stale for an edit, nothing for a
 // removal; plans.test.ts, "changes nothing for a work id of another item, another branch or none
 // in a save".
+const MASTER_WORK =
+  'task 11.27, plan review 1: a work id of a master save is matched only against the master item\'s own works, refused 400 unknown_work otherwise (plan-masters.test.ts, "refuses a work id that is not of the master item")';
 const ITEM_WORK =
   'edge/lesson-plans, "A save is addressed to the item": a work id is matched only against the item\'s own works (planItemBaseSchema), never read elsewhere';
 
@@ -162,6 +164,10 @@ export const PLANS_IDS: RouteIds = {
   'PUT /api/plans/masters/:masterId/items/:itemId': [
     branch('path:masterId', 'master plan', PATH, [MASTERS]),
     branch('path:itemId', 'master plan item', PATH, [MASTERS]),
+    // Task 11.27 (plan review 1): a work names the stored work it was read as, matched only
+    // against the item's own works (`plan-masters.service.ts`, else 400 `unknown_work`).
+    none('body:values.classworks[].id', 'master plan work', MASTER_WORK),
+    none('body:values.homeworks[].id', 'master plan work', MASTER_WORK),
   ],
   'POST /api/plans/masters/:masterId/items/:itemId/remove': [
     branch('path:masterId', 'master plan', PATH, [MASTERS]),

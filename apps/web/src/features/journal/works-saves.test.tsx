@@ -19,6 +19,7 @@ const ZOKIROV = uid(101);
 const SCORES = `POST /api/journal/lessons/${LESSON}/scores`;
 
 const TEST: JournalWork = {
+  code: null,
   id: WORK,
   planWorkId: null,
   sourceLessonId: LESSON,
@@ -79,6 +80,7 @@ const LESSON_ROW = {
   planItem: true,
   number: null,
   topic: null,
+  topicCode: null,
   notDelivered: false,
   addedInJournal: [],
   copyFrom: null,

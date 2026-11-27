@@ -15,6 +15,7 @@ import {
 
 const content = (topic: string): PlanMasterContent => ({
   topic,
+  topicCode: null,
   objectives: '',
   links: [],
   classworks: [],

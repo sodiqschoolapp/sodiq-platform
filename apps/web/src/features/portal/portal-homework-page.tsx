@@ -1,4 +1,4 @@
-import type { PortalHomework } from '@sodiq/shared';
+import { codedName, type PortalHomework } from '@sodiq/shared';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useNavigate, useParams, useSearch } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
@@ -123,11 +123,13 @@ function HomeworkRow({
         <SubjectSwatch colour={homework.subject.colour} />
         <span className="truncate">
           {homework.subject.names[language]}
-          {homework.topic !== null && <> · {homework.topic}</>}
+          {homework.topic !== null && <> · {codedName(homework.topicCode, homework.topic)}</>}
         </span>
       </span>
       <span className="font-semibold">
-        {homework.title ?? t('portal.homework.numbered', { n: homework.number })}
+        {homework.title === null
+          ? t('portal.homework.numbered', { n: homework.number })
+          : codedName(homework.code, homework.title)}
       </span>
       {homework.description !== null && (
         <p className="whitespace-pre-line">{homework.description}</p>

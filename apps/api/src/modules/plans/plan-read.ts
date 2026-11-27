@@ -15,6 +15,7 @@ import { transactionMoment, type Transaction } from '../../database/transactions
 import { journalLessons, slotNumbers, type JournalRow } from '../journal/journal-grid.query.js';
 import { loadCalendarSettings } from '../setup/calendar-state.js';
 import { awayLessons } from '../timetable/away-read.js';
+import { shownCode } from './plan-codes.js';
 
 /**
  * The reads of the plans (task 7.1a, pull request #212). The rows of a plan
@@ -254,17 +255,34 @@ export async function worksOf(
     itemIds.map((id) => [id, { classworks: [] as PlanWork[], homeworks: [] as PlanWork[] }]),
   );
   if (itemIds.length === 0) return found;
+  // Task 11.27: the code shown, read with its subject's switch (`plan-codes.ts`).
   const rows = await transaction
     .selectFrom('lesson_plan_works')
-    .select(['id', 'item_id', 'kind', 'title', 'description'])
-    .where('item_id', 'in', [...itemIds])
-    .orderBy('position')
-    .orderBy('id')
+    .innerJoin('lesson_plan_items', 'lesson_plan_items.id', 'lesson_plan_works.item_id')
+    .innerJoin('lesson_plans', 'lesson_plans.id', 'lesson_plan_items.plan_id')
+    .innerJoin('subjects', 'subjects.id', 'lesson_plans.subject_id')
+    .select([
+      'lesson_plan_works.id',
+      'lesson_plan_works.item_id',
+      'lesson_plan_works.kind',
+      'lesson_plan_works.title',
+      'lesson_plan_works.work_code',
+      'lesson_plan_works.description',
+      'subjects.codes_on',
+    ])
+    .where('lesson_plan_works.item_id', 'in', [...itemIds])
+    .orderBy('lesson_plan_works.position')
+    .orderBy('lesson_plan_works.id')
     .execute();
   for (const row of rows) {
     const lists = found.get(row.item_id);
     if (lists === undefined) continue;
-    const work = { id: row.id, title: row.title, description: row.description };
+    const work = {
+      id: row.id,
+      title: row.title,
+      code: shownCode(row.codes_on, row.work_code),
+      description: row.description,
+    };
     if (row.kind === 'classwork') lists.classworks.push(work);
     else lists.homeworks.push(work);
   }
@@ -344,6 +362,7 @@ export async function planItems(
       'lesson_plan_places.position',
       sql<string | null>`lessons.lesson_date::text`.as('not_delivered_from'),
       'lesson_plan_items.topic',
+      'lesson_plan_items.topic_code',
       'lesson_plan_items.objectives',
       'lesson_plan_items.links',
       'lesson_plan_items.copied_from',
@@ -379,6 +398,7 @@ export async function trayItems(
       'lesson_plan_items.id',
       sql<string | null>`lessons.lesson_date::text`.as('not_delivered_from'),
       'lesson_plan_items.topic',
+      'lesson_plan_items.topic_code',
       'lesson_plan_items.objectives',
       'lesson_plan_items.links',
       'lesson_plan_items.copied_from',
@@ -397,6 +417,7 @@ interface StoredItem {
   readonly id: string;
   readonly not_delivered_from: string | null;
   readonly topic: string;
+  readonly topic_code: string | null;
   readonly objectives: string;
   readonly links: string[];
   readonly copied_from: string | null;
@@ -411,6 +432,21 @@ async function decorated(
 ): Promise<PlanTrayItem[]> {
   const ids = items.map((item) => item.id);
   const works = await worksOf(transaction, ids);
+  // Task 11.27: the items whose subject has codes on (`plan-codes.ts`).
+  const coded = new Set(
+    ids.length === 0
+      ? []
+      : (
+          await transaction
+            .selectFrom('lesson_plan_items')
+            .innerJoin('lesson_plans', 'lesson_plans.id', 'lesson_plan_items.plan_id')
+            .innerJoin('subjects', 'subjects.id', 'lesson_plans.subject_id')
+            .select('lesson_plan_items.id')
+            .where('lesson_plan_items.id', 'in', ids)
+            .where('subjects.codes_on', '=', true)
+            .execute()
+        ).map((row) => row.id),
+  );
   const files =
     ids.length === 0
       ? []
@@ -458,6 +494,7 @@ async function decorated(
   return items.map((item) => ({
     id: item.id,
     topic: item.topic,
+    topicCode: shownCode(coded.has(item.id), item.topic_code),
     objectives: item.objectives,
     links: item.links,
     classworks: works.get(item.id)?.classworks ?? [],

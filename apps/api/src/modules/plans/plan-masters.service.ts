@@ -12,7 +12,7 @@ import {
   type PlanMasters,
   type PlanMastersQuery,
   type PlanMasterScope,
-  type PlanNewItemValues,
+  type PlanItemValues,
 } from '@sodiq/shared';
 import { sql } from 'kysely';
 import { Transactions, transactionMoment, type Transaction } from '../../database/transactions.js';
@@ -35,6 +35,7 @@ import { planReaderOf, type PlanReader } from './plan-scope.js';
 import { unitKeysOf } from './plan-separate.js';
 import { PlansService } from './plans.service.js';
 import { sameContent } from './plan-master-compare.js';
+import { codeToWrite, codesOnOfMaster, newCode, shownCode } from './plan-codes.js';
 
 /**
  * Master plans (task 7.3, pull request #216; `09`, Master plans). A master
@@ -322,7 +323,7 @@ export class PlanMastersService {
   ): Promise<PlanMaster> {
     const subject = await transaction
       .selectFrom('subjects')
-      .select(['name_uz', 'name_ru', 'name_en', 'colour'])
+      .select(['name_uz', 'name_ru', 'name_en', 'colour', 'codes_on'])
       .where('id', '=', master.subject_id)
       .executeTakeFirstOrThrow();
     const items = await masterItemsOf(transaction, master.id);
@@ -350,10 +351,12 @@ export class PlanMastersService {
           scopeOfRow(master),
         )) !== null,
       revision: master.revision,
+      codesOn: subject.codes_on,
       masterItems: items.map((item) => ({
         id: item.id,
         position: item.position,
         topic: item.topic,
+        topicCode: item.topicCode,
         objectives: item.objectives,
         links: item.links,
         classworks: item.classworks,
@@ -597,11 +600,16 @@ export class PlanMastersService {
     }
   }
 
+  /**
+   * The works of an item, written as a whole. Task 11.27: `codes` gives the code to store for
+   * each work, in the order of the classworks, then the homeworks (`masterCodes`).
+   */
   private async insertWorks(
     transaction: Transaction,
     branchId: string | null,
     itemId: string,
-    values: PlanNewItemValues,
+    values: PlanItemValues,
+    codes: readonly (string | null)[],
   ): Promise<void> {
     const works = [
       ...values.classworks.map((work, index) => ({ kind: 'classwork', work, index })),
@@ -611,16 +619,114 @@ export class PlanMastersService {
     await transaction
       .insertInto('lesson_plan_master_works')
       .values(
-        works.map(({ kind, work, index }) => ({
+        works.map(({ kind, work, index }, at) => ({
           branch_id: branchId,
           item_id: itemId,
           kind,
           position: index + 1,
           title: work.title.trim(),
+          work_code: codes[at] ?? null,
           description: work.description,
         })),
       )
       .execute();
+  }
+
+  /**
+   * Task 11.27 (`09`, Codes; plan review 1): the codes a save of a master item stores. A code sent
+   * that differs from the code shown is set (refused `plan_codes_off` while the subject's codes
+   * are off); one left out or unchanged keeps the stored code, matched by the work's `id` (a work
+   * without one is new and has none), so the works written again keep their hidden codes.
+   */
+  private async masterCodes(
+    transaction: Transaction,
+    masterId: string,
+    itemId: string | null,
+    values: PlanItemValues,
+  ): Promise<{
+    topicCode: string | null;
+    works: (string | null)[];
+    shown: { topicCode: string | null; works: (string | null)[] };
+  }> {
+    const codesOn = await codesOnOfMaster(transaction, masterId);
+    const stored =
+      itemId === null
+        ? undefined
+        : await transaction
+            .selectFrom('lesson_plan_master_items')
+            .select('topic_code')
+            .where('id', '=', itemId)
+            .executeTakeFirst();
+    const storedWorks =
+      itemId === null
+        ? []
+        : await transaction
+            .selectFrom('lesson_plan_master_works')
+            .select(['id', 'work_code'])
+            .where('item_id', '=', itemId)
+            .execute();
+    const storedTopic = stored?.topic_code ?? null;
+    const topic = codeToWrite({
+      sent: values.topicCode,
+      base: undefined,
+      shown: shownCode(codesOn, storedTopic),
+      codesOn,
+      path: 'values.topicCode',
+    });
+    const topicCode = topic === undefined ? storedTopic : topic.value;
+    const lists = [
+      ...values.classworks.map((work, index) => ({
+        work,
+        path: `values.classworks.${index}.code`,
+      })),
+      ...values.homeworks.map((work, index) => ({ work, path: `values.homeworks.${index}.code` })),
+    ];
+    const works = lists.map(({ work, path }) => {
+      const id = 'id' in work ? work.id : undefined;
+      const own = id === undefined ? undefined : storedWorks.find((one) => one.id === id);
+      if (own === undefined) return newCode(work.code, codesOn, path);
+      const change = codeToWrite({
+        sent: work.code,
+        base: undefined,
+        shown: shownCode(codesOn, own.work_code),
+        codesOn,
+        path,
+      });
+      return change === undefined ? own.work_code : change.value;
+    });
+    return {
+      topicCode,
+      works,
+      shown: {
+        topicCode: shownCode(codesOn, topicCode),
+        works: works.map((code) => shownCode(codesOn, code)),
+      },
+    };
+  }
+
+  /** The values of a save with the codes shown, as `contentOf` takes them. */
+  private static shownValues(
+    values: PlanItemValues,
+    shown: { topicCode: string | null; works: (string | null)[] },
+  ) {
+    const classworks = values.classworks.map((work, index) => ({
+      title: work.title.trim(),
+      code: shown.works[index] ?? null,
+      description: work.description,
+    }));
+    const homeworks = values.homeworks.map((work, index) => ({
+      title: work.title.trim(),
+      code: shown.works[values.classworks.length + index] ?? null,
+      description: work.description,
+    }));
+    return {
+      topic: values.topic.trim(),
+      topicCode: shown.topicCode,
+      objectives: values.objectives,
+      links: values.links,
+      classworks,
+      homeworks,
+    };
   }
 
   /** A new item at a place of the master's order; the items from there move one step. */
@@ -641,6 +747,7 @@ export class PlanMastersService {
         'refuse',
       );
       const items = await masterItemsOf(transaction, masterId);
+      const codes = await this.masterCodes(transaction, masterId, null, input.values);
       const position = Math.min(input.position, items.length + 1);
       await this.moveItems(
         transaction,
@@ -657,6 +764,7 @@ export class PlanMastersService {
           master_id: masterId,
           position,
           topic: input.values.topic.trim(),
+          topic_code: codes.topicCode,
           objectives: input.values.objectives,
           links: input.values.links,
           added_revision: next,
@@ -664,7 +772,7 @@ export class PlanMastersService {
         })
         .returning('id')
         .executeTakeFirstOrThrow();
-      await this.insertWorks(transaction, master.branch_id, made.id, input.values);
+      await this.insertWorks(transaction, master.branch_id, made.id, input.values, codes.works);
       await this.audit.record(transaction, {
         branchId,
         actorId: access.accountId,
@@ -676,7 +784,7 @@ export class PlanMastersService {
           position,
           revision: next,
           scope: scopeOfRow(master),
-          ...contentOf({ ...input.values, topic: input.values.topic.trim() }),
+          ...contentOf(PlanMastersService.shownValues(input.values, codes.shown)),
         },
         requestId,
       });
@@ -713,13 +821,29 @@ export class PlanMastersService {
         'refuse',
       );
       const { item } = await this.liveItem(transaction, masterId, itemId);
+      // A work sent with an id is one of this item's.
+      for (const list of ['classworks', 'homeworks'] as const) {
+        input.values[list].forEach((work, index) => {
+          if (work.id !== undefined && !item[list].some((one) => one.id === work.id)) {
+            throw new ApiException('validation_failed', 400, undefined, [
+              {
+                path: `values.${list}.${index}.id`,
+                code: 'unknown_work',
+                message: 'The work is not one of the item as it was read.',
+              },
+            ]);
+          }
+        });
+      }
+      const codes = await this.masterCodes(transaction, masterId, itemId, input.values);
       const before = contentOf(item);
-      const after = contentOf({ ...input.values, topic: input.values.topic.trim() });
+      const after = contentOf(PlanMastersService.shownValues(input.values, codes.shown));
       if (!sameContent(before, after)) {
         await transaction
           .updateTable('lesson_plan_master_items')
           .set({
             topic: after.topic,
+            topic_code: codes.topicCode,
             objectives: after.objectives,
             links: after.links,
             changed_revision: next,
@@ -730,7 +854,7 @@ export class PlanMastersService {
           .deleteFrom('lesson_plan_master_works')
           .where('item_id', '=', itemId)
           .execute();
-        await this.insertWorks(transaction, master.branch_id, itemId, input.values);
+        await this.insertWorks(transaction, master.branch_id, itemId, input.values, codes.works);
       }
       await this.audit.record(transaction, {
         branchId,

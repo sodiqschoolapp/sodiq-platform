@@ -27,6 +27,7 @@ import { Audit } from './audit.service.js';
 import { filterWords } from '../assistant/field-filter.js';
 import { assistantStepsOf, viaAssistantOf } from './assistant-steps.js';
 import { integrationKeyNames, viaKeyOf } from './integration-key-names.js';
+import { codesOffRecords, withoutCodes } from '../plans/plan-codes.js';
 
 function branchOf(access: Access): string {
   if (access.branchId === null) {
@@ -317,17 +318,38 @@ export async function entryAnswers(
     transaction,
     rows.map((row) => row.integration_key_id),
   );
+  // Task 11.27 (plan decision 1): the codes of a subject whose codes are off are left out.
+  const codesOff = await codesOffRecords(transaction, rows);
   return rows.map((row) => {
+    // A lesson's entries carry codes only for the journal's works and topic.
+    const carriesCodes =
+      row.record_type !== 'lesson' ||
+      row.action.startsWith('journal.work_') ||
+      row.action === 'journal.topic';
+    const coded =
+      carriesCodes && codesOff.has(`${row.record_type ?? ''}|${row.record_id ?? ''}`)
+        ? {
+            ...row,
+            old_value: withoutCodes(row.old_value),
+            new_value: withoutCodes(row.new_value),
+            details: withoutCodes(row.details),
+          }
+        : row;
     const values = hide
       ? hideIdentity({
           action: row.action,
           recordType: row.record_type,
           personId: row.person_id,
-          oldValue: row.old_value,
-          newValue: row.new_value,
-          details: row.details,
+          oldValue: coded.old_value,
+          newValue: coded.new_value,
+          details: coded.details,
         })
-      : { oldValue: row.old_value, newValue: row.new_value, details: row.details, hidden: [] };
+      : {
+          oldValue: coded.old_value,
+          newValue: coded.new_value,
+          details: coded.details,
+          hidden: [],
+        };
     const role = row.assignment_id === null ? undefined : roles.get(row.assignment_id);
     const parsedRole = role === undefined ? undefined : roleSchema.safeParse(role);
     return {

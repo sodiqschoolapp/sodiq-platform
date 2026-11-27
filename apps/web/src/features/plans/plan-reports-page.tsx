@@ -1,4 +1,9 @@
-import type { PlanCompleteness, PlanProgress, PlanRequestsReport } from '@sodiq/shared';
+import {
+  codedName,
+  type PlanCompleteness,
+  type PlanProgress,
+  type PlanRequestsReport,
+} from '@sodiq/shared';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useNavigate, useSearch } from '@tanstack/react-router';
 import { useMemo } from 'react';
@@ -322,8 +327,12 @@ export function PlanReportsPage(): React.JSX.Element {
                       })
                     : t('plans.reports.requests.topicChange', {
                         date: schoolDateText(change.on, language),
-                        before: change.topicBefore ?? '—',
-                        after: change.topicAfter,
+                        // Task 11.27: "code · topic" with a code shown.
+                        before:
+                          change.topicBefore === null
+                            ? '—'
+                            : codedName(change.topicCodeBefore, change.topicBefore),
+                        after: codedName(change.topicCodeAfter, change.topicAfter),
                       }),
                 )
                 .join('; '),

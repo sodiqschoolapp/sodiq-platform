@@ -510,6 +510,7 @@ export class JournalGridReader {
           total: column.total,
           notHeld: column.notHeld,
           title: column.title,
+          code: column.code,
           position: column.position,
         })),
       ]),
@@ -1180,6 +1181,8 @@ export class JournalGridReader {
         // The column shows while the quarter's switch is on (spec review of the code,
         // should-fix 3): entries are taken then, with or without the rating weight.
         ratingExam: ratingOn,
+        // Task 11.27: the subject's codes switch (`09`, Codes: the code fields of the journal).
+        codesOn: journal.subject.codesOn,
       },
       rating,
       others,
@@ -1217,6 +1220,8 @@ export class JournalGridReader {
         number: numbers.get(lesson.id) ?? null,
         // Task 10.8: an item the journal's add made has no topic until the owner writes it.
         topic: plan.items.get(lesson.id)?.topic.trim() || null,
+        // Task 11.27: the topic code as shown (`09`, Codes; `null` when none or off).
+        topicCode: plan.items.get(lesson.id)?.topicCode ?? null,
         // Task 10.8: the works of the lesson's item added in the journal.
         addedInJournal: (plan.items.get(lesson.id)?.works ?? []).flatMap((work) =>
           work.addedInJournal === true ? [work.id] : [],
@@ -1233,6 +1238,7 @@ export class JournalGridReader {
                 workId: one.workId,
                 planWorkId: one.planWorkId,
                 title: one.title,
+                code: one.code,
                 notGiven: one.notGiven,
               })),
       })),
@@ -1425,6 +1431,7 @@ function gridWork(column: Column) {
     kind: column.kind,
     position: column.position,
     title: column.title,
+    code: column.code,
     unplanned: column.unplanned,
     total: column.total,
     notHeld: column.notHeld,

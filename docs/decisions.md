@@ -65,6 +65,23 @@ The owner's answers to the decided-ahead questions for Phase 10, given in chat o
 19. Production deploys only after 18:00 or at the weekend, Tashkent time.
 20. The test environment stays after go-live; every change is tried there first.
 
+## 26 November 2026: codes for topics and works (task 11.27)
+
+Plan approved on pull request #399 with corrections 1 (the subject schemas stay as they are and drop a `codesOn`), 2 (the assistant's action starts on; its refusal at Confirm once off) and 3 (decision 1 marked Look first). Flagged on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first.** While a subject's codes are off, the Audit log leaves the code values of its plan, master and journal entries out on read; the rows stay as written | `09`, Codes: "hides every code of that subject everywhere, exports and the API included"; proposed `/spec-change` for `09`, Codes, Switching off, after "and keeps them;": "the audit log keeps every code as written and shows it only while the subject's codes are on;" |
+| Every copy (another class, last year, a share, a separation, a carry, "topic not delivered", a master and its take) carries the stored codes whatever the switch; "no code can be set" is about a code a person, the assistant or a key sends | `09`, Copies makes no exception; "Switching off … keeps them" |
+| A work stored only in `journal_works.title` (added by hand before 7 November 2026, or brought back unplanned by a forced-delete restore) has no code | `09`, Codes puts codes on plan items and their works |
+| A code is `null` for "none" and for "off" in every answer; a code left out, or equal to the code read, is not touched | `09`: "hides … the API included"; a hidden code is kept |
+| Exports and prints write "code · name" in one column; the separator is not translated | `09`: "shown first, with the full name beside it" |
+| The switch has its own route and area (`subject_codes` `edit`, the Super Admin's), one value on the subject, not per quarter; an archived subject can be switched | `02`; `05`, Subject; approved by the owner (stop-list item 5, that switch only) |
+| No database trigger guards a code while off: the route refuses it (`planCodesWrite` is `codeToWrite`/`newCode` of `plans/plan-codes.ts`), and a code raced in at a switch-off stays hidden | The proposal asks for no rule beyond the length check; plan review finding 3 (a parent lock in a before-row trigger) |
+| A master item save names the works it was read with (`id`), so their hidden codes are kept while off | Plan review finding 1 |
+| Notifications and the parents' digest show names alone | `09`, Codes names the parent portal |
+| On a phone a tap on a short code opens the full name, a second tap closes it | `09`: "on hover or on a tap" |
+
 ## 26 November 2026: past marks from before go-live (task 11.26)
 
 Plan approved on pull request #398 with corrections 1 (the branch of a row is the branch of the class membership on its date) and 2 (one comparison key for titles, in the reader and the database). Flagged on issue #42.

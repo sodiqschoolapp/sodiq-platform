@@ -126,6 +126,8 @@ const journalWorkSchema = z.object({
   position: z.int().min(1),
   /** The plan's title; `null` for an unplanned work, which the screen numbers. */
   title: z.string().nullable(),
+  /** Task 11.27: the code shown (`09`, Codes); `null` when none or the subject's codes are off. */
+  code: z.string().nullable(),
   /** Added by hand at a lesson with no plan item (`edge/journal`: listed as "unplanned"). */
   unplanned: z.boolean(),
   /** `null` while the teacher has not set it: "Soni" with no number (review correction 2). */
@@ -175,6 +177,8 @@ export const journalLessonSchema = z.object({
    */
   number: z.int().min(1).nullable(),
   topic: z.string().nullable(),
+  /** Task 11.27: the topic code shown (`09`, Codes); `null` when none or the subject's codes are off. */
+  topicCode: z.string().nullable(),
   /**
    * Task 10.8: the works of the lesson's plan item added in the journal; renamed and removed in
    * the journal while the item has no topic (`planItem` false).
@@ -194,6 +198,8 @@ export const journalLessonSchema = z.object({
       workId: z.uuid().nullable(),
       planWorkId: z.uuid().nullable(),
       title: z.string().nullable(),
+      /** Task 11.27: the code shown (`09`, Codes); `null` when none or the subject's codes are off. */
+      code: z.string().nullable(),
       /** Task 8.8: marked "not given"; it has no column. */
       notGiven: z.boolean(),
     }),
@@ -336,6 +342,8 @@ export const journalGridSchema = z.object({
      * 0–4" is on).
      */
     ratingExam: z.boolean(),
+    /** Task 11.27: the subject's codes switch (`09`, Codes); the code fields show only when on. */
+    codesOn: z.boolean(),
   }),
   /**
    * The rating exam of the quarter shown (task 8.2): `null` when the subject has

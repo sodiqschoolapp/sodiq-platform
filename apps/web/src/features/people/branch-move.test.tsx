@@ -189,9 +189,11 @@ function open(
             daily: null,
             quarterWeightsMissing: null,
             quarterCount: null,
+            codesOn: false,
           },
         ],
         mayMoveDepartment: false,
+        maySwitchCodes: false,
       }),
     ...extra,
   });

@@ -55,6 +55,7 @@ const HALL = room(0, 'Hall');
 const ROOM_14 = room(1, 'Room 14');
 
 const MATHS: Subject = {
+  codesOn: false,
   departmentSince: null,
   departmentMove: null,
   id: uid(200),
@@ -195,7 +196,8 @@ async function openPage(
     'GET /api/groups': () => json({ groups: [] }),
     'GET /api/people/staff': () => json({ staff: [INVIGILATOR], today: DATE }),
     'GET /api/setup/rooms': () => json({ rooms: [HALL, ROOM_14] }),
-    'GET /api/setup/subjects': () => json({ subjects: [MATHS], mayMoveDepartment: false }),
+    'GET /api/setup/subjects': () =>
+      json({ subjects: [MATHS], mayMoveDepartment: false, maySwitchCodes: false }),
     'GET /api/timetable/day': () =>
       json({
         date: DATE,
@@ -633,6 +635,7 @@ describe('the exams page (task 5.6c-2)', () => {
                 { ...RATED, id: uid(201), names: { uz: 'Fizika', ru: 'Физика', en: 'Physics' } },
               ],
               mayMoveDepartment: false,
+              maySwitchCodes: false,
             }),
           'POST /api/timetable/exams': () =>
             json({ exam: { ...EXAM, id: uid(901) }, warnings: [] }, 201),

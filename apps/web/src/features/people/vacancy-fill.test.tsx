@@ -32,6 +32,7 @@ const TODAY = '2026-10-10';
 const texts = en.people.vacancies.fill;
 
 const MATHEMATICS: Subject = {
+  codesOn: false,
   departmentSince: null,
   departmentMove: null,
   id: uid(21),
@@ -234,7 +235,8 @@ function api(
     'GET /api/people/staff': () => json({ staff: [AKMAL, BOBUR, GONE], today: TODAY }),
     'GET /api/people/vacancies': () => json({ vacancies: [OPEN, PLANNED, CLOSED], today: TODAY }),
     'GET /api/setup/divisions': () => json({ divisions: [], staffCounts: [] }),
-    'GET /api/setup/subjects': () => json({ subjects: [MATHEMATICS], mayMoveDepartment: false }),
+    'GET /api/setup/subjects': () =>
+      json({ subjects: [MATHEMATICS], mayMoveDepartment: false, maySwitchCodes: false }),
     'GET /api/setup/academic-years': () => json({ years: [YEAR] }),
     'GET /api/timetable/versions': () =>
       json({

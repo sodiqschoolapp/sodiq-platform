@@ -13,6 +13,8 @@ export const cardGivenSchema = z.object({
   /** `null` for a homework given by hand at a lesson with no plan item. */
   planWorkId: z.uuid().nullable(),
   title: z.string().nullable(),
+  /** Task 11.27: the code shown (`09`, Codes); `null` when none or the subject's codes are off. */
+  code: z.string().nullable(),
   /** The plan's description; `null` for a reader of topic and homework only. */
   description: z.string().nullable(),
   /** Marked "not given": it has no column (`edge/lesson-plans`, substitute). */
@@ -33,6 +35,10 @@ export const lessonCardSchema = z.object({
   /** The lesson's row has a plan item with a topic (task 10.8: an item with none counts as missing). */
   planItem: z.boolean(),
   topic: z.string().nullable(),
+  /** Task 11.27: the topic code shown (`09`, Codes); `null` when none or the subject's codes are off. */
+  topicCode: z.string().nullable(),
+  /** Task 11.27: the subject's codes switch: the card shows the code fields only when on. */
+  codesOn: z.boolean(),
   /**
    * The reader sees the whole item (a reader of the plan, the lesson's teacher or its substitute
    * in force); `false` gives topic and homework titles only (`edge/lesson-plans`: "A Tutor sees

@@ -172,6 +172,9 @@ export const planRequestsReportSchema = z.object({
               on: schoolDateSchema,
               topicBefore: z.string().nullable(),
               topicAfter: z.string().nullable(),
+              /** Task 11.27: the topic codes before and after, shown only while the subject's codes are on. */
+              topicCodeBefore: z.string().nullable(),
+              topicCodeAfter: z.string().nullable(),
             }),
           ),
         }),

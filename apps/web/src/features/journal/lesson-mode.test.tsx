@@ -26,6 +26,7 @@ const QUARTER = {
 };
 
 const work = (total: number | null): JournalWork => ({
+  code: null,
   id: WORK,
   planWorkId: null,
   sourceLessonId: LESSON,
@@ -96,6 +97,7 @@ const lesson = (id: string, date: string, enters: boolean, total: number | null)
   planItem: true,
   number: null,
   topic: 'Fractions',
+  topicCode: null,
   notDelivered: false,
   addedInJournal: [],
   copyFrom: null,
@@ -106,6 +108,7 @@ const lesson = (id: string, date: string, enters: boolean, total: number | null)
 
 const gridOf = (total: number | null): JournalGrid => ({
   journal: {
+    codesOn: false,
     id: JOURNAL,
     unit: UNIT,
     subject: SUBJECT,

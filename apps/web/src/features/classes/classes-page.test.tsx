@@ -1140,6 +1140,7 @@ describe('the students of a class', () => {
   // when the list does not hold it.
   it('names the subject without a group seat, and falls back without the name, in Russian too', async () => {
     const maths: Subject = {
+      codesOn: false,
       departmentSince: null,
       departmentMove: null,
       id: uid(201),
@@ -1172,7 +1173,8 @@ describe('the students of a class', () => {
               readsFinancial: false,
               today: TODAY,
             }),
-          'GET /api/setup/subjects': () => json({ subjects, mayMoveDepartment: false }),
+          'GET /api/setup/subjects': () =>
+            json({ subjects, mayMoveDepartment: false, maySwitchCodes: false }),
           [`POST /api/classes/${OXFORD.id}/members`]: () =>
             Response.json(
               {

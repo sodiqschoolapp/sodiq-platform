@@ -6,6 +6,7 @@ import { notFound } from '../setup/setup-refusals.js';
 import { compareMaster, masterUpdated, type CompareRow } from './plan-master-compare.js';
 import { planJournalIds, planRows, worksOf, type PlanQuarter } from './plan-read.js';
 import type { PlanReader } from './plan-scope.js';
+import { codesOnOfMaster, codesOnOfPlans, shownCode } from './plan-codes.js';
 
 /**
  * Reads of master plans (task 7.3, pull request #216). A master of another
@@ -100,6 +101,7 @@ interface MasterItemRow {
   readonly id: string;
   readonly position: number;
   readonly topic: string;
+  readonly topic_code: string | null;
   readonly objectives: string;
   readonly links: string[];
   readonly added_revision: number;
@@ -113,18 +115,25 @@ export interface MasterItemRead extends PlanMasterItem {
   readonly removed: number | null;
 }
 
-/** The items of a master with their works, in order; the removed ones too when asked. */
+/**
+ * The items of a master with their works, in order; the removed ones too when asked. Task 11.27:
+ * the codes as shown (`null` while the subject's codes are off), or, for a copy into a plan
+ * (`codes: 'stored'`, plan decision 2), as stored whatever the switch.
+ */
 export async function masterItemsOf(
   transaction: Transaction,
   masterId: string,
   withRemoved = false,
+  codes: 'shown' | 'stored' = 'shown',
 ): Promise<MasterItemRead[]> {
+  const codesOn = codes === 'stored' || (await codesOnOfMaster(transaction, masterId));
   let query = transaction
     .selectFrom('lesson_plan_master_items')
     .select([
       'id',
       'position',
       'topic',
+      'topic_code',
       'objectives',
       'links',
       'added_revision',
@@ -139,7 +148,7 @@ export async function masterItemsOf(
       ? []
       : await transaction
           .selectFrom('lesson_plan_master_works')
-          .select(['id', 'item_id', 'kind', 'title', 'description'])
+          .select(['id', 'item_id', 'kind', 'title', 'work_code', 'description'])
           .where(
             'item_id',
             'in',
@@ -153,11 +162,17 @@ export async function masterItemsOf(
     const pick = (kind: string): PlanWork[] =>
       own
         .filter((work) => work.kind === kind)
-        .map((work) => ({ id: work.id, title: work.title, description: work.description }));
+        .map((work) => ({
+          id: work.id,
+          title: work.title,
+          code: shownCode(codesOn, work.work_code),
+          description: work.description,
+        }));
     return {
       id: item.id,
       position: item.position,
       topic: item.topic,
+      topicCode: shownCode(codesOn, item.topic_code),
       objectives: item.objectives,
       links: item.links,
       classworks: pick('classwork'),
@@ -172,17 +187,26 @@ export async function masterItemsOf(
 /** The content the comparison shows: the works without their ids. */
 export const contentOf = (item: {
   topic: string;
+  topicCode: string | null;
   objectives: string;
   links: readonly string[];
-  classworks: readonly { title: string; description: string }[];
-  homeworks: readonly { title: string; description: string }[];
-}): PlanMasterContent => ({
-  topic: item.topic,
-  objectives: item.objectives,
-  links: [...item.links],
-  classworks: item.classworks.map((work) => ({ title: work.title, description: work.description })),
-  homeworks: item.homeworks.map((work) => ({ title: work.title, description: work.description })),
-});
+  classworks: readonly { title: string; code: string | null; description: string }[];
+  homeworks: readonly { title: string; code: string | null; description: string }[];
+}): PlanMasterContent => {
+  const work = (one: { title: string; code: string | null; description: string }) => ({
+    title: one.title,
+    code: one.code,
+    description: one.description,
+  });
+  return {
+    topic: item.topic,
+    topicCode: item.topicCode,
+    objectives: item.objectives,
+    links: [...item.links],
+    classworks: item.classworks.map(work),
+    homeworks: item.homeworks.map(work),
+  };
+};
 
 /** What the comparison of a plan needs to know of its quarter and clock. */
 export interface CompareScene {
@@ -207,12 +231,14 @@ export async function compareRowsOf(
   const masterItems = await masterItemsOf(transaction, masterId, true);
   const items = await transaction
     .selectFrom('lesson_plan_items')
-    .select(['id', 'topic', 'objectives', 'links', 'master_item_id'])
+    .select(['id', 'topic', 'topic_code', 'objectives', 'links', 'master_item_id'])
     .where('plan_id', '=', planId)
     .where('cleared_at', 'is', null)
     .where('master_item_id', 'is not', null)
     .orderBy('id')
     .execute();
+  // Task 11.27: the plan's codes as shown, as the master's are (`plan-codes.ts`).
+  const codesOn = (await codesOnOfPlans(transaction, [planId])).get(planId) ?? false;
   const works = await worksOf(
     transaction,
     items.map((item) => item.id),
@@ -253,7 +279,11 @@ export async function compareRowsOf(
       return {
         itemId: item.id,
         masterItemId: item.master_item_id ?? '',
-        content: contentOf({ ...item, ...own }),
+        content: contentOf({
+          ...item,
+          topicCode: shownCode(codesOn, item.topic_code),
+          ...own,
+        }),
         held: held.has(item.id),
       };
     }),

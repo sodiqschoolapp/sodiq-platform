@@ -1122,6 +1122,8 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       'Эта загрузка не сохранена или уже отозвана. Откройте список загрузок заново.',
     past_marks_changed:
       'В тот же момент сохранён другой импорт прошлых оценок. Ничего не сохранено: проверьте файл ещё раз.',
+    plan_codes_off:
+      'Для этого предмета коды тем и работ выключены, поэтому код задать нельзя. Попросите суперадминистратора включить их.',
     subject_import_changed:
       'В тот же момент кто-то изменил предметы или четверти. Ничего не сохранено; попробуйте снова.',
     photos_not_configured: 'Фотографии пока не настроены. Обратитесь к администратору.',
@@ -1958,6 +1960,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       SubjectsController_copyQuarterOne: 'Скопировать веса предмета за четверть',
       SubjectsController_create: 'Добавить предмет',
       SubjectsController_edit: 'Изменить предмет',
+      SubjectsController_switchCodes: 'Включить или выключить коды тем и работ',
       SubjectsController_export: 'Экспорт предметов',
       SubjectsController_importConfirm: 'Сохранить импорт предметов',
       SubjectsController_importPreview: 'Проверить импорт предметов',
@@ -2106,6 +2109,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       student_history: 'История учеников',
       student_merges: 'Объединение записей учеников',
       students: 'Ученики',
+      subject_codes: 'Коды тем и работ',
       subjects: 'Предметы',
       timetable: 'Расписание',
       timetable_load: 'Отчёт о нагрузке',
@@ -2850,6 +2854,13 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       groupSubject: 'Предмет по группам',
       languageRule: 'Правило языка',
       demanding: 'Трудный предмет',
+      codes: {
+        title: 'Коды тем и работ',
+        switch: 'Коды включены',
+        on: 'Включены',
+        off: 'Выключены',
+        help: 'Темы, классные и домашние работы этого предмета могут иметь короткий код. Выключение скрывает коды и сохраняет их.',
+      },
       switches: 'Признаки',
       quarterly: 'Распределение по четвертям',
       changeWeights: 'Изменить распределение',
@@ -5508,6 +5519,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
         edit: 'Предмет изменён',
         archive: 'Предмет в архиве',
         restore: 'Предмет восстановлен',
+        codes: 'Коды тем и работ переключены',
         export: 'Предметы выгружены',
       },
       subject_daily_weights: {
@@ -7867,6 +7879,12 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
     },
   },
   plans: {
+    codes: {
+      topicCode: 'Код темы',
+      workCode: 'Код {{number}}',
+      code: 'Код',
+      tooLong: 'Не более {{max}} символов.',
+    },
     files: {
       closeText: 'Их нет в плане. Закрыть карточку без них?',
       closeAction: 'Закрыть без них',

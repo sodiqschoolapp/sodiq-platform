@@ -22,6 +22,7 @@ import { sql } from 'kysely';
 import { RequestKeys } from '../../database/request-keys.js';
 import { Transactions, transactionMoment, type Transaction } from '../../database/transactions.js';
 import { ApiException } from '../../http/api-exception.js';
+import { codeToWrite, shownCode } from '../plans/plan-codes.js';
 import type { Access } from '../access/permission.guard.js';
 import { Audit } from '../audit/audit.service.js';
 import { branchOf } from '../classes/classes.service.js';
@@ -454,7 +455,10 @@ export class WorksService {
         ...(requestId === undefined ? {} : { requestId }),
         kind: input.kind,
         title: input.title,
+        ...(input.code === undefined ? {} : { code: input.code }),
       });
+      // Task 11.27: the code as stored (`addFromJournal` refused one while codes are off).
+      const code = input.code ?? null;
       await this.audit.record(transaction, {
         ...actor,
         action: 'journal.work_add',
@@ -464,10 +468,11 @@ export class WorksService {
           itemId: added.itemId,
           kind: input.kind,
           title: input.title,
+          code,
         },
       });
       await this.noticeCorrection(transaction, scene);
-      return workAddedSchema.parse({ ...added, kind: input.kind, title: input.title });
+      return workAddedSchema.parse({ ...added, kind: input.kind, title: input.title, code });
     });
   }
 
@@ -494,17 +499,23 @@ export class WorksService {
         ...(requestId === undefined ? {} : { requestId }),
         topic: input.topic,
         baseTopic: input.baseTopic,
+        ...(input.topicCode === undefined ? {} : { topicCode: input.topicCode }),
+        ...(input.baseTopicCode === undefined ? {} : { baseTopicCode: input.baseTopicCode }),
       });
       if (saved.changed) {
         await this.audit.record(transaction, {
           ...actor,
           action: 'journal.topic',
           record: { type: 'lesson', id: scene.lesson.id },
-          newValue: { itemId: saved.itemId, topic: saved.topic },
+          newValue: { itemId: saved.itemId, topic: saved.topic, topicCode: saved.topicCode },
         });
         await this.noticeCorrection(transaction, scene);
       }
-      return lessonTopicSavedSchema.parse({ itemId: saved.itemId, topic: saved.topic });
+      return lessonTopicSavedSchema.parse({
+        itemId: saved.itemId,
+        topic: saved.topic,
+        topicCode: saved.topicCode,
+      });
     });
   }
 
@@ -563,7 +574,7 @@ export class WorksService {
     );
     const fresh = await transaction
       .selectFrom('lesson_plan_works')
-      .select(['id', 'item_id', 'kind', 'title'])
+      .select(['id', 'item_id', 'kind', 'title', 'work_code'])
       .where('id', '=', planWorkId)
       .executeTakeFirst();
     if (fresh === undefined) throw notFound();
@@ -604,26 +615,44 @@ export class WorksService {
         requestId,
       );
       const kind = work.kind === 'homework' ? 'homework' : 'classwork';
+      // Task 11.27: the code under the rules of the title beside it (`plans/plan-codes.ts`).
+      const codesOn = scene.journal.subject.codesOn;
+      const shown = shownCode(codesOn, work.work_code);
+      const code = codeToWrite({
+        sent: input.code,
+        base: input.baseCode,
+        shown,
+        codesOn,
+        path: 'code',
+      });
       const answer = workAddedSchema.parse({
         planWorkId: work.id,
         itemId: work.item_id,
         kind,
         title: input.title,
+        code: code === undefined ? shown : code.value,
       });
-      if (input.baseTitle !== work.title) {
+      if (
+        input.baseTitle !== work.title ||
+        (code !== undefined && input.baseCode !== undefined && input.baseCode !== shown)
+      ) {
         throw new ApiException('work_stale', 409, undefined, [
           {
-            path: 'title',
+            path: input.baseTitle !== work.title ? 'title' : 'code',
             code: 'work_stale',
             message: 'The work was changed since it was read.',
             recordId: work.id,
           },
         ]);
       }
-      if (work.title === input.title) return answer;
+      if (work.title === input.title && code === undefined) return answer;
       await transaction
         .updateTable('lesson_plan_works')
-        .set({ title: input.title })
+        .set(
+          code === undefined
+            ? { title: input.title }
+            : { title: input.title, work_code: code.value },
+        )
         .where('id', '=', work.id)
         .execute();
       const actor = this.actorOf(scene);
@@ -631,8 +660,18 @@ export class WorksService {
         ...actor,
         action: 'journal.work_rename',
         record: { type: 'lesson', id: scene.lesson.id },
-        oldValue: { planWorkId: work.id, kind, title: work.title },
-        newValue: { planWorkId: work.id, kind, title: input.title },
+        oldValue: {
+          planWorkId: work.id,
+          kind,
+          title: work.title,
+          ...(code === undefined ? {} : { code: shown }),
+        },
+        newValue: {
+          planWorkId: work.id,
+          kind,
+          title: input.title,
+          ...(code === undefined ? {} : { code: code.value }),
+        },
       });
       await this.audit.record(transaction, {
         branchId: actor.branchId,
@@ -640,8 +679,22 @@ export class WorksService {
         assignmentId: actor.assignmentId,
         action: 'plan.item_edit',
         record: { type: 'lesson_plan', id: planId },
-        oldValue: { workTitle: { id: work.id, kind, title: work.title } },
-        newValue: { workTitle: { id: work.id, kind, title: input.title } },
+        oldValue: {
+          workTitle: {
+            id: work.id,
+            kind,
+            title: work.title,
+            ...(code === undefined ? {} : { code: shown }),
+          },
+        },
+        newValue: {
+          workTitle: {
+            id: work.id,
+            kind,
+            title: input.title,
+            ...(code === undefined ? {} : { code: code.value }),
+          },
+        },
         details: { itemId: work.item_id, inJournal: true },
         ...(requestId === undefined ? {} : { requestId }),
       });

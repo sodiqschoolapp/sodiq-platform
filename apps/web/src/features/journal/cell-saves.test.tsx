@@ -32,6 +32,7 @@ const QUARTER = {
 };
 
 const TEST: JournalWork = {
+  code: null,
   id: WORK,
   planWorkId: null,
   sourceLessonId: SECOND,
@@ -97,6 +98,7 @@ const student = (n: number, lastName: string, mark: number | null): JournalStude
 /** A double on 26 October: the second lesson copies attendance from the first and has a classwork. */
 const GRID: JournalGrid = {
   journal: {
+    codesOn: false,
     id: JOURNAL,
     unit: UNIT,
     subject: SUBJECT,
@@ -129,6 +131,7 @@ const GRID: JournalGrid = {
     planItem: true,
     number: null,
     topic: null,
+    topicCode: null,
     notDelivered: false,
     addedInJournal: [],
     copyFrom: index === 1 ? FIRST : null,

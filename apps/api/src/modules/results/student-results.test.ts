@@ -320,7 +320,17 @@ describe('the student results (08, Student results)', () => {
           '2026-10-12',
           1,
           100,
-          [{ workId: s.work, title: null, position: 1, score: 9, total: 10, percent: 90 }],
+          [
+            {
+              workId: s.work,
+              title: null,
+              code: null,
+              position: 1,
+              score: 9,
+              total: 10,
+              percent: 90,
+            },
+          ],
         ],
         ['2026-10-19', 0, 0, []],
         ['2026-10-26', null, null, []],

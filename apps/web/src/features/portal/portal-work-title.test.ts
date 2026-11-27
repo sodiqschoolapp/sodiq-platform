@@ -7,6 +7,7 @@ const score = (kind: PortalScore['kind'], title: string | null): PortalScore => 
   date: '2026-11-17',
   kind,
   title,
+  code: null,
   position: 2,
   score: 9,
   total: 10,
@@ -29,6 +30,13 @@ describe('the name of a work in the portal', () => {
     const en = createI18n('en').t;
     expect(workTitle(score('homework', 'Read & answer <3>'), en)).toBe(
       'Homework · Read & answer <3>',
+    );
+  });
+
+  it('puts a code before the title (task 11.27)', () => {
+    const en = createI18n('en').t;
+    expect(workTitle({ ...score('classwork', 'Fractions'), code: 'F1' }, en)).toBe(
+      'Classwork · F1 · Fractions',
     );
   });
 

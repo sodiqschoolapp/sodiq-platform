@@ -54,6 +54,7 @@ const journalOf = (grades: readonly number[]): JournalRow => ({
   subject: {
     names: { uz: 'a', ru: 'a', en: 'a' },
     colour: 'blue',
+    codesOn: false,
   },
   quarters: [],
 });

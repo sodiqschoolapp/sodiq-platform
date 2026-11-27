@@ -48,6 +48,7 @@ const ACADEMIC: Division = {
 };
 
 const MATHEMATICS: Subject = {
+  codesOn: false,
   departmentSince: null,
   departmentMove: null,
   id: uid(21),
@@ -210,7 +211,8 @@ function api(
     'GET /api/people/staff': () => json({ staff: [AKMAL], today: '2026-10-10' }),
     'GET /api/people/vacancies': () => json({ vacancies: [OPEN, CLOSED], today: '2026-10-10' }),
     'GET /api/setup/divisions': () => json({ divisions: [ACADEMIC], staffCounts: [] }),
-    'GET /api/setup/subjects': () => json({ subjects: [MATHEMATICS], mayMoveDepartment: false }),
+    'GET /api/setup/subjects': () =>
+      json({ subjects: [MATHEMATICS], mayMoveDepartment: false, maySwitchCodes: false }),
     'GET /api/setup/branch': () => json(BRANCH),
     [`GET /api/people/staff/${AKMAL.id}`]: () => json(AKMAL_DETAIL),
     [`GET /api/people/staff/${AKMAL.id}/availability`]: () => json(HOURS),
@@ -729,7 +731,7 @@ describe('the subjects a vacancy is offered during a planned subject move (task 
     api('academic_vice_principal', {
       'GET /api/setup/divisions': () => json({ divisions: [WITH_NATIONAL], staffCounts: [] }),
       'GET /api/setup/subjects': () =>
-        json({ subjects: [MATHEMATICS, PHYSICS], mayMoveDepartment: false }),
+        json({ subjects: [MATHEMATICS, PHYSICS], mayMoveDepartment: false, maySwitchCodes: false }),
     });
     renderApp('/people/vacancies');
     const add = await screen.findByRole('button', { name: en.people.vacancies.add });

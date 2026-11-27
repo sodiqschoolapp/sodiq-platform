@@ -100,7 +100,10 @@ export class SupportView {
       const lineWork = (workId: string | null) => {
         if (workId === null) return null;
         const work = works.get(workId);
-        return work === undefined ? null : { id: workId, kind: work.kind, title: work.title };
+        // Task 11.27: the code as the grid shows it.
+        return work === undefined
+          ? null
+          : { id: workId, kind: work.kind, title: work.title, code: work.code };
       };
       const stored =
         lessonIds.length === 0
@@ -194,9 +197,12 @@ export class SupportView {
       lessonIds: readonly string[];
       cellIds: readonly string[];
       onRatingDay: boolean;
-      lineWork: (
-        workId: string | null,
-      ) => { id: string; kind: 'classwork' | 'homework'; title: string | null } | null;
+      lineWork: (workId: string | null) => {
+        id: string;
+        kind: 'classwork' | 'homework';
+        title: string | null;
+        code: string | null;
+      } | null;
     },
   ): Promise<SupportLine[]> {
     const { lessonIds, studentId } = scope;
@@ -264,7 +270,10 @@ export class SupportView {
       const shown = scope.lineWork(workId);
       if (shown !== null) return shown;
       const found = kinds.get(workId);
-      return found === undefined ? null : { id: workId, kind: found.kind, title: found.title };
+      // A work no longer shown has no code here (plan decision 3).
+      return found === undefined
+        ? null
+        : { id: workId, kind: found.kind, title: found.title, code: null };
     };
     const deliveries = hasLessons
       ? await transaction

@@ -123,7 +123,8 @@ function open(
       }),
     'GET /api/people/staff': () => json({ staff: [ODIL], today: '2026-10-10' }),
     'GET /api/setup/divisions': () => json({ divisions: [ACADEMIC], staffCounts: [] }),
-    'GET /api/setup/subjects': () => json({ subjects: [], mayMoveDepartment: false }),
+    'GET /api/setup/subjects': () =>
+      json({ subjects: [], mayMoveDepartment: false, maySwitchCodes: false }),
     [`GET /api/people/staff/${ODIL.id}`]: () => json(detail),
     [`GET /api/people/staff/${ODIL.id}/availability`]: () =>
       json({ entries: [], elsewhere: [], today: '2026-10-10' }),

@@ -148,7 +148,8 @@ async function openGroup(
     'GET /api/groups': () => json({ groups: [M1] }),
     'GET /api/classes': () => json({ classes: [] }),
     'GET /api/setup/academic-years': () => json({ years: [YEAR] }),
-    'GET /api/setup/subjects': () => json({ subjects: [], mayMoveDepartment: false }),
+    'GET /api/setup/subjects': () =>
+      json({ subjects: [], mayMoveDepartment: false, maySwitchCodes: false }),
     [`GET /api/groups/${M1.id}`]: () => json(detailOf(M1)),
     [`GET /api/groups/${M1.id}/members`]: () => json(options.tab ?? TAB),
     'GET /api/people/students': () => studentsAnswer(options.students ?? []),

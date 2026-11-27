@@ -1,4 +1,5 @@
 import {
+  codedName,
   planMasterRenameSchema,
   type PlanItemValues,
   type PlanMaster,
@@ -30,6 +31,7 @@ import {
   initialOf,
   noteField,
   planFormSchema,
+  codeField,
   titleField,
   WORK_KINDS,
   type ItemContent,
@@ -45,12 +47,22 @@ import {
   renamePlanMaster,
   savePlanMasterItem,
 } from './plans-api';
+import { CodedName } from '@/components/coded-name';
 
 /** The works of a master item carry no id: nothing refers to them (task 7.3). */
+/** A new item's works have no id; task 11.27: their codes go with them. */
 const withoutIds = (values: PlanItemValues) => ({
   ...values,
-  classworks: values.classworks.map(({ title, description }) => ({ title, description })),
-  homeworks: values.homeworks.map(({ title, description }) => ({ title, description })),
+  classworks: values.classworks.map(({ title, code, description }) => ({
+    title,
+    ...(code === undefined ? {} : { code }),
+    description,
+  })),
+  homeworks: values.homeworks.map(({ title, code, description }) => ({
+    title,
+    ...(code === undefined ? {} : { code }),
+    description,
+  })),
 });
 
 /**
@@ -99,19 +111,19 @@ export function PlanMasterPage(): React.JSX.Element {
       {
         key: 'topic',
         header: t('plans.plan.topic'),
-        cell: (row) => row.topic,
-        searchText: (row) => row.topic,
+        cell: (row) => <CodedName code={row.topicCode} name={row.topic} />,
+        searchText: (row) => codedName(row.topicCode, row.topic),
         opens: true,
       },
       {
         key: 'classworks',
         header: t('plans.plan.classworks'),
-        cell: (row) => row.classworks.map((work) => work.title).join(', '),
+        cell: (row) => row.classworks.map((work) => codedName(work.code, work.title)).join(', '),
       },
       {
         key: 'homeworks',
         header: t('plans.plan.homeworks'),
-        cell: (row) => row.homeworks.map((work) => work.title).join(', '),
+        cell: (row) => row.homeworks.map((work) => codedName(work.code, work.title)).join(', '),
       },
     ],
     [t],
@@ -238,6 +250,7 @@ export function PlanMasterPage(): React.JSX.Element {
                     <div className="grid gap-4">
                       <ItemForm
                         item={null}
+                        codesOn={data.codesOn}
                         label={t('plans.master.addItem')}
                         onSave={async (values) => {
                           const answer = await createPlanMasterItem(data.id, {
@@ -294,8 +307,11 @@ function ItemForm({
   label,
   onSave,
   onCancel,
+  codesOn,
 }: {
   item: ItemContent | null;
+  /** Task 11.27: the subject's codes are on (`09`, Codes: "in master plans"). */
+  codesOn: boolean;
   label: string;
   onSave: (values: PlanItemValues) => Promise<void>;
   onCancel?: () => void;
@@ -306,14 +322,25 @@ function ItemForm({
     homework: item?.homeworks.length ?? 0,
   });
   const form = useRecordForm({
-    schema: planFormSchema(item),
+    schema: planFormSchema(item, codesOn),
     initial: initialOf(item),
     message: (field) => (field === 'links' ? t('plans.panel.linksInvalid') : undefined),
     save: onSave,
   });
   return (
     <RecordForm form={form} label={label} {...(onCancel === undefined ? {} : { onCancel })}>
-      <Field label={t('plans.plan.topic')} {...form.bind('topic')} />
+      {codesOn ? (
+        <div className="grid gap-2 sm:grid-cols-[10rem_1fr]">
+          <Field
+            label={t('plans.codes.topicCode')}
+            autoComplete="off"
+            {...form.bind('topicCode')}
+          />
+          <Field label={t('plans.plan.topic')} {...form.bind('topic')} />
+        </div>
+      ) : (
+        <Field label={t('plans.plan.topic')} {...form.bind('topic')} />
+      )}
       <TextAreaField label={t('plans.panel.objectives')} rows={3} {...form.bind('objectives')} />
       <TextAreaField
         label={t('plans.panel.links')}
@@ -332,7 +359,19 @@ function ItemForm({
               {kind === 'classwork' ? t('plans.plan.classworks') : t('plans.plan.homeworks')}
             </legend>
             {Array.from({ length: count }, (_, slot) => (
-              <div key={slot} className="grid gap-2 sm:grid-cols-2">
+              <div
+                key={slot}
+                className={
+                  codesOn ? 'grid gap-2 sm:grid-cols-[8rem_1fr_1fr]' : 'grid gap-2 sm:grid-cols-2'
+                }
+              >
+                {codesOn && (
+                  <Field
+                    label={t('plans.codes.workCode', { number: slot + 1 })}
+                    autoComplete="off"
+                    {...form.bind(codeField(kind, slot))}
+                  />
+                )}
                 <Field
                   label={t(`plans.panel.${kind}Title`, { number: slot + 1 })}
                   autoComplete="off"
@@ -411,15 +450,15 @@ function MasterItemPanel({
     return (
       <ItemForm
         item={item}
+        codesOn={master.codesOn}
         label={t('plans.master.itemName', { number: item.position })}
         onCancel={() => {
           panel.stop();
         }}
         onSave={async (values) => {
-          await savePlanMasterItem(master.id, item.id, {
-            revision: master.revision,
-            values: withoutIds(values),
-          });
+          // Task 11.27 (plan review 1): each work names the stored work it was read as, so that a
+          // hidden code (the subject's codes off) is kept.
+          await savePlanMasterItem(master.id, item.id, { revision: master.revision, values });
           await invalidatePlans(queryClient);
           panel.stop({ saved: true, key: 'item' });
         }}
@@ -431,7 +470,9 @@ function MasterItemPanel({
       <dl className="grid gap-3">
         <div className="grid gap-0.5">
           <dt className="text-sm text-muted-foreground">{t('plans.plan.topic')}</dt>
-          <dd>{item.topic}</dd>
+          <dd>
+            <CodedName code={item.topicCode} name={item.topic} />
+          </dd>
         </div>
         {item.objectives !== '' && (
           <div className="grid gap-0.5">
@@ -471,7 +512,7 @@ function MasterItemPanel({
                 <ol className="grid list-decimal gap-1 pl-5">
                   {works.map((work) => (
                     <li key={work.id}>
-                      {work.title}
+                      <CodedName code={work.code} name={work.title} />
                       {work.description !== '' && (
                         <span className="text-muted-foreground"> — {work.description}</span>
                       )}

@@ -726,6 +726,8 @@ export async function explainResult(
             listOf(lesson, kind).map((work) => ({
               date: lesson.date,
               title: work.title,
+              // Task 11.27: the code shown beside the title (`null` when none or off).
+              code: work.code ?? null,
               score: work.score,
               total: work.total,
               percent: work.percent,

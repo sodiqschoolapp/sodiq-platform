@@ -633,6 +633,7 @@ function lessonsAnswer(
           : works.map((work, index) => ({
               workId: columns[index]?.workId,
               title: columns[index]?.title ?? null,
+              code: columns[index]?.code ?? null,
               position: columns[index]?.position ?? index + 1,
               score: work.score,
               total: work.total,

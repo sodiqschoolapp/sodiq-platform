@@ -37,6 +37,7 @@ const MANAGEMENT: Division = {
 };
 
 const MATHEMATICS: Subject = {
+  codesOn: false,
   departmentSince: null,
   departmentMove: null,
   id: uid(21),
@@ -157,7 +158,8 @@ function openList(
     'GET /api/auth/session': () => json(sessionAs(role, language)),
     'GET /api/people/staff': () => json({ staff: [AKMAL, NODIRA], today: '2026-10-10' }),
     'GET /api/setup/divisions': () => json({ divisions: [ACADEMIC, MANAGEMENT], staffCounts: [] }),
-    'GET /api/setup/subjects': () => json({ subjects: [MATHEMATICS], mayMoveDepartment: false }),
+    'GET /api/setup/subjects': () =>
+      json({ subjects: [MATHEMATICS], mayMoveDepartment: false, maySwitchCodes: false }),
     [`GET /api/people/staff/${AKMAL.id}`]: () => json(detailOf(AKMAL, detail)),
     ...extra,
   });
@@ -1219,7 +1221,11 @@ describe('the subjects and languages of a staff member', () => {
   it('offers and sends grade 0 of a subject taught in it', async () => {
     const calls = openList('academic_vice_principal', {
       'GET /api/setup/subjects': () =>
-        json({ subjects: [{ ...MATHEMATICS, grades: [0, 5, 6, 7] }], mayMoveDepartment: false }),
+        json({
+          subjects: [{ ...MATHEMATICS, grades: [0, 5, 6, 7] }],
+          mayMoveDepartment: false,
+          maySwitchCodes: false,
+        }),
       [`PUT /api/people/staff/${AKMAL.id}/teaching`]: () => json(detailOf(AKMAL)),
     });
     const form = await teachingForm();
@@ -1355,7 +1361,8 @@ describe('staff photos', () => {
       'GET /api/people/staff': () => json({ staff: [WITH_PHOTO, NODIRA], today: '2026-10-10' }),
       'GET /api/setup/divisions': () =>
         json({ divisions: [ACADEMIC, MANAGEMENT], staffCounts: [] }),
-      'GET /api/setup/subjects': () => json({ subjects: [MATHEMATICS], mayMoveDepartment: false }),
+      'GET /api/setup/subjects': () =>
+        json({ subjects: [MATHEMATICS], mayMoveDepartment: false, maySwitchCodes: false }),
       [`GET /api/people/staff/${AKMAL.id}`]: () => json(detailOf(WITH_PHOTO, detail)),
       [`GET /api/people/staff/${AKMAL.id}/photo`]: photoAnswer,
       ...extra,
@@ -1610,7 +1617,11 @@ describe('a planned department move (task 3.6b-3)', () => {
       'GET /api/setup/divisions': () =>
         json({ divisions: [WITH_NATIONAL, MANAGEMENT], staffCounts: [] }),
       'GET /api/setup/subjects': () =>
-        json({ subjects: [MATHEMATICS, HISTORY, PHYSICS], mayMoveDepartment: true }),
+        json({
+          subjects: [MATHEMATICS, HISTORY, PHYSICS],
+          mayMoveDepartment: true,
+          maySwitchCodes: false,
+        }),
       [`GET /api/people/staff/${AKMAL.id}`]: () => json(detailOf(staff)),
       [`PUT /api/people/staff/${AKMAL.id}`]: () => json(detailOf(staff)),
     });

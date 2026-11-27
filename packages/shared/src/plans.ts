@@ -75,10 +75,40 @@ export const planLinkSchema = z
   .max(PLAN_LINK_MAX_LENGTH)
   .regex(/^https?:\/\/[^\s]+$/);
 
+/** Task 11.27 (`09`, Codes): "A code is free text of at most 20 characters". */
+export const PLAN_CODE_MAX_LENGTH = 20;
+
+/**
+ * Task 11.27: a code as typed (`09`, Codes: "spaces at either end are dropped"; decision 4: no
+ * code is `null`). Trimmed, then at most 20 characters as PostgreSQL's `char_length` counts them
+ * (code points; the checks of 0191); empty after trimming is `null`.
+ */
+export const planCodeSchema = z
+  .string()
+  .trim()
+  .refine((code) => [...code].length <= PLAN_CODE_MAX_LENGTH, {
+    message: 'At most 20 characters',
+  })
+  .transform((code) => (code === '' ? null : code))
+  .nullable();
+
+/**
+ * Task 11.27 (decision 5): a code with the name beside it, in one text, for exports, prints and
+ * the assistant: "code · name"; the name alone without a code (`09`, Codes: "Where the code is
+ * empty, the name is shown alone").
+ */
+export const codedName = (code: string | null | undefined, name: string): string =>
+  code === null || code === undefined || code === '' ? name : `${code} · ${name}`;
+
 /** A classwork or homework as typed: `id` names a work the item already has (its identity is kept). */
 export const planWorkInputSchema = z.strictObject({
   id: z.uuid().optional(),
   title: filledText(PLAN_WORK_TITLE_MAX_LENGTH),
+  /**
+   * Task 11.27: the work's code (`09`, Codes). Left out, or equal to its base, it is not
+   * touched; a code sent while the subject's codes are off is refused `plan_codes_off`.
+   */
+  code: planCodeSchema.optional(),
   description: z.string().max(PLAN_WORK_DESCRIPTION_MAX_LENGTH),
 });
 
@@ -87,6 +117,8 @@ export type PlanWorkInput = z.infer<typeof planWorkInputSchema>;
 /** What the owner types into a row (`09`, What a plan contains). */
 export const planItemValuesSchema = z.strictObject({
   topic: filledText(PLAN_TOPIC_MAX_LENGTH),
+  /** Task 11.27: the topic code (`09`, Codes); left out or equal to its base, it is not touched. */
+  topicCode: planCodeSchema.optional(),
   objectives: z.string().max(PLAN_OBJECTIVES_MAX_LENGTH),
   links: z.array(planLinkSchema).max(PLAN_LINKS_MAX),
   classworks: z.array(planWorkInputSchema).max(PLAN_WORKS_MAX),
@@ -99,8 +131,15 @@ export type PlanItemValues = z.infer<typeof planItemValuesSchema>;
 export const planWorkSchema = z.object({
   id: z.uuid(),
   title: z.string(),
+  /** Task 11.27: the code shown; `null` when there is none or the subject's codes are off. */
+  code: z.string().nullable(),
   description: z.string(),
 });
+
+/** Task 11.27: a work of the base; a client that never read a code leaves it out. */
+const planBaseWorkSchema = planWorkSchema
+  .extend({ code: z.string().nullable().optional() })
+  .strict();
 
 export type PlanWork = z.infer<typeof planWorkSchema>;
 
@@ -111,10 +150,12 @@ export type PlanWork = z.infer<typeof planWorkSchema>;
  */
 export const planItemBaseSchema = z.strictObject({
   topic: z.string(),
+  /** Task 11.27: the topic code as read (`null` when none was shown). */
+  topicCode: z.string().nullable().optional(),
   objectives: z.string(),
   links: z.array(z.string()),
-  classworks: z.array(planWorkSchema.strict()),
-  homeworks: z.array(planWorkSchema.strict()),
+  classworks: z.array(planBaseWorkSchema),
+  homeworks: z.array(planBaseWorkSchema),
 });
 
 export type PlanItemBase = z.infer<typeof planItemBaseSchema>;
@@ -174,6 +215,8 @@ export const planItemSchema = z.object({
   id: z.uuid(),
   position: z.int().min(1),
   topic: z.string(),
+  /** Task 11.27: the topic code shown; `null` when there is none or the subject's codes are off. */
+  topicCode: z.string().nullable(),
   objectives: z.string(),
   links: z.array(z.string()),
   classworks: z.array(planWorkSchema),
@@ -333,6 +376,8 @@ export const planOutcomeSchema = z.object({
   id: z.uuid(),
   itemId: z.uuid(),
   topic: z.string(),
+  /** Task 11.27: the topic code shown (`null` when none or off). */
+  topicCode: z.string().nullable(),
   kind: planOutcomeKindSchema,
   /** The date of the row merged into (`edge`: "History and requests refer to dates"). */
   targetDate: schoolDateSchema.nullable(),
@@ -349,6 +394,8 @@ export const planSchema = z.object({
   journalId: z.uuid(),
   unit: planUnitSchema,
   subject: planSubjectSchema,
+  /** Task 11.27: the subject's codes switch (`09`, Codes); the code fields show only when on. */
+  codesOn: z.boolean(),
   quarters: z.array(planQuarterSchema),
   quarterId: z.uuid(),
   /** The owner's name on the quarter's reference date; `null` under a vacancy with no acting teacher. */
@@ -424,6 +471,8 @@ export const planSchema = z.object({
           number: z.int().min(1),
           date: schoolDateSchema,
           topic: z.string().nullable(),
+          /** Task 11.27: the topic code shown (`null` when none or off). */
+          topicCode: z.string().nullable(),
         })
         .nullable(),
       notCovered: z.int().min(0),
@@ -565,6 +614,8 @@ export const planLessonItemSchema = z.object({
   number: z.int().min(1).nullable(),
   subject: planSubjectSchema,
   unit: planUnitSchema,
+  /** Task 11.27: the subject's codes switch (`09`, Codes). */
+  codesOn: z.boolean(),
   item: planItemSchema.nullable(),
 });
 
@@ -582,7 +633,7 @@ export const planImpactSchema = z.object({
   quarter: z.int().min(1).max(4),
   /** The items moved to another lesson. */
   moved: z.int().min(0),
-  /** The topics of the items that no longer fit ("not covered"). */
+  /** The topics of the items that no longer fit ("not covered"); task 11.27: "code · topic" with a code shown. */
   notFitting: z.array(z.string()),
   /** The rows not started that hold no item after the change. */
   emptyRows: z.int().min(0),
@@ -1015,10 +1066,14 @@ export const planMasterItemCreateSchema = z.strictObject({
 
 export type PlanMasterItemCreate = z.infer<typeof planMasterItemCreateSchema>;
 
-/** The works of a master item are replaced as a whole: nothing refers to them by id. */
+/**
+ * The works of a master item are replaced as a whole. Task 11.27 (plan review 1): a work may name
+ * the stored work it was read as (`id`), so that its code is kept while the subject's codes are
+ * off and the code is not sent.
+ */
 export const planMasterItemSaveSchema = z.strictObject({
   revision: z.int().min(0),
-  values: planNewItemValuesSchema,
+  values: planItemValuesSchema,
 });
 
 export type PlanMasterItemSave = z.infer<typeof planMasterItemSaveSchema>;
@@ -1035,6 +1090,8 @@ export const planMasterItemSchema = z.object({
   id: z.uuid(),
   position: z.int().min(1),
   topic: z.string(),
+  /** Task 11.27: the topic code shown; `null` when none or the subject's codes are off. */
+  topicCode: z.string().nullable(),
   objectives: z.string(),
   links: z.array(z.string()),
   classworks: z.array(planWorkSchema),
@@ -1045,6 +1102,8 @@ export type PlanMasterItem = z.infer<typeof planMasterItemSchema>;
 
 export const planMasterSchema = planMasterSummarySchema.extend({
   revision: z.int().min(0),
+  /** Task 11.27: the subject's codes switch (`09`, Codes). */
+  codesOn: z.boolean(),
   masterItems: z.array(planMasterItemSchema),
 });
 
@@ -1053,10 +1112,16 @@ export type PlanMaster = z.infer<typeof planMasterSchema>;
 /** The content of an item as the comparison shows it. */
 export const planMasterContentSchema = z.object({
   topic: z.string(),
+  /** Task 11.27: the codes shown (`09`, Codes: "part of 'master updated'"); `null` when none or off. */
+  topicCode: z.string().nullable(),
   objectives: z.string(),
   links: z.array(z.string()),
-  classworks: z.array(z.object({ title: z.string(), description: z.string() })),
-  homeworks: z.array(z.object({ title: z.string(), description: z.string() })),
+  classworks: z.array(
+    z.object({ title: z.string(), code: z.string().nullable(), description: z.string() }),
+  ),
+  homeworks: z.array(
+    z.object({ title: z.string(), code: z.string().nullable(), description: z.string() }),
+  ),
 });
 
 export type PlanMasterContent = z.infer<typeof planMasterContentSchema>;
@@ -1118,6 +1183,8 @@ const planParallelRowSchema = z.object({
   number: z.int().min(1),
   date: schoolDateSchema,
   topic: z.string().nullable(),
+  /** Task 11.27: the topic code shown (`null` when none or off). */
+  topicCode: z.string().nullable(),
 });
 
 export const planParallelSchema = z.object({

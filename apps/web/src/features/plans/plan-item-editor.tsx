@@ -23,6 +23,7 @@ import {
   initialOf,
   noteField,
   planFormSchema,
+  codeField,
   titleField,
   WORK_KINDS,
   type PlanField,
@@ -238,6 +239,7 @@ export function PlanItemEditor({
   onSaved,
   onCancel,
   failureNotes,
+  codesOn = false,
 }: {
   journalId: string;
   quarterId: string;
@@ -252,6 +254,8 @@ export function PlanItemEditor({
   onCancel: () => void;
   /** The notes of fields a save was refused for, from the failure (the row panel's). */
   failureNotes?: (failure: unknown, item: PlanItem | null) => Partial<Record<PlanField, string>>;
+  /** Task 11.27: the subject's codes are on (`09`, Codes): the code fields are shown and sent. */
+  codesOn?: boolean;
 }) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
@@ -269,7 +273,7 @@ export function PlanItemEditor({
   const [pickProblem, setPickProblem] = useState<string | null>(null);
 
   const form = useRecordForm({
-    schema: planFormSchema(item),
+    schema: planFormSchema(item, codesOn),
     initial: initialOf(item),
     message: (field) => (field === 'links' ? t('plans.panel.linksInvalid') : undefined),
     save: async (values) => {
@@ -282,12 +286,14 @@ export function PlanItemEditor({
               lessonId,
               values: {
                 ...values,
-                classworks: values.classworks.map(({ title, description }) => ({
+                classworks: values.classworks.map(({ title, code, description }) => ({
                   title,
+                  ...(code === undefined ? {} : { code }),
                   description,
                 })),
-                homeworks: values.homeworks.map(({ title, description }) => ({
+                homeworks: values.homeworks.map(({ title, code, description }) => ({
                   title,
+                  ...(code === undefined ? {} : { code }),
                   description,
                 })),
               },
@@ -320,6 +326,7 @@ export function PlanItemEditor({
       for (let slot = 0; slot < PLAN_WORKS_MAX; slot += 1) {
         typed[titleField(kind, slot)] = form.bind(titleField(kind, slot)).value;
         typed[noteField(kind, slot)] = form.bind(noteField(kind, slot)).value;
+        typed[codeField(kind, slot)] = form.bind(codeField(kind, slot)).value;
       }
     }
     return typed;
@@ -375,7 +382,19 @@ export function PlanItemEditor({
           </Button>
         </div>
       )}
-      <Field label={t('plans.plan.topic')} note={shownNotes.topic} {...form.bind('topic')} />
+      {codesOn ? (
+        <div className="grid gap-2 sm:grid-cols-[10rem_1fr]">
+          <Field
+            label={t('plans.codes.topicCode')}
+            note={shownNotes.topicCode}
+            autoComplete="off"
+            {...form.bind('topicCode')}
+          />
+          <Field label={t('plans.plan.topic')} note={shownNotes.topic} {...form.bind('topic')} />
+        </div>
+      ) : (
+        <Field label={t('plans.plan.topic')} note={shownNotes.topic} {...form.bind('topic')} />
+      )}
       <TextAreaField
         label={t('plans.panel.objectives')}
         note={shownNotes.objectives}
@@ -403,7 +422,21 @@ export function PlanItemEditor({
               const title = form.bind(titleField(kind, slot)).value;
               return (
                 <div key={slot} className="grid gap-2">
-                  <div className="grid gap-2 sm:grid-cols-2">
+                  <div
+                    className={
+                      codesOn
+                        ? 'grid gap-2 sm:grid-cols-[8rem_1fr_1fr]'
+                        : 'grid gap-2 sm:grid-cols-2'
+                    }
+                  >
+                    {codesOn && (
+                      <Field
+                        label={t('plans.codes.workCode', { number: slot + 1 })}
+                        note={shownNotes[codeField(kind, slot)]}
+                        autoComplete="off"
+                        {...form.bind(codeField(kind, slot))}
+                      />
+                    )}
                     <Field
                       label={t(`plans.panel.${kind}Title`, { number: slot + 1 })}
                       note={shownNotes[titleField(kind, slot)]}

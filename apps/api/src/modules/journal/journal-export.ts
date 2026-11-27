@@ -8,6 +8,7 @@ import {
   type JournalStudent,
   type Language,
   schoolDateOf,
+  codedName,
 } from '@sodiq/shared';
 import type { Cell, Sheet } from '../../http/xlsx.js';
 import { momentText } from '../timetable/views-export.service.js';
@@ -183,7 +184,8 @@ function workLabel(
     work.kind === 'classwork' ? texts.columns.classworkShort : texts.columns.homeworkShort;
   return [
     `${short}${String(work.position)}`,
-    ...(work.title === null ? [] : [work.title]),
+    // Task 11.27 (plan decision 5): a code shown first, "code · title".
+    ...(work.title === null ? [] : [codedName(work.code, work.title)]),
     ...(work.total === null ? [] : [fillText(texts.columns.total, { total: String(work.total) })]),
   ].join(' ');
 }

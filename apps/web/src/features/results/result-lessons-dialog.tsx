@@ -1,3 +1,4 @@
+import { codedName } from '@sodiq/shared';
 import { useQuery } from '@tanstack/react-query';
 import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
@@ -29,6 +30,8 @@ export type TracedPart = 'attendance' | 'classwork' | 'homework' | 'ratingExam' 
 /** A work as the lessons answer gives it. */
 interface Work {
   readonly title: string | null;
+  /** Task 11.27: the code shown beside the title (`null` when none or off). */
+  readonly code: string | null;
   readonly position: number;
   readonly score: number | null;
   readonly total: number;
@@ -36,7 +39,10 @@ interface Work {
 }
 
 function workText(work: Work, t: TFunction): string {
-  const name = work.title ?? t('results.workNumber', { number: work.position });
+  const name =
+    work.title === null
+      ? t('results.workNumber', { number: work.position })
+      : codedName(work.code, work.title);
   return work.score === null
     ? t('results.workEmpty', { name, total: work.total })
     : t('results.work', { name, score: work.score, total: work.total, percent: work.percent });

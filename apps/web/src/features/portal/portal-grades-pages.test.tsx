@@ -77,6 +77,7 @@ const GRADES = (closed: boolean): PortalGrades => ({
       year: null,
       scores: [
         {
+          code: null,
           date: '2026-10-12',
           kind: 'classwork',
           title: 'Fractions test',
@@ -89,6 +90,7 @@ const GRADES = (closed: boolean): PortalGrades => ({
           past: false,
         },
         {
+          code: null,
           date: '2026-10-19',
           kind: 'homework',
           title: null,
@@ -357,6 +359,7 @@ describe('the past marks in the portal', () => {
         year: null,
         scores: [
           {
+            code: null,
             date: '2026-09-07',
             kind: 'classwork',
             title: 'Dictation',

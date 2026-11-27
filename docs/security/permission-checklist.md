@@ -138,12 +138,12 @@ Neither was done by hand (owner, 29 October 2026, issue #42). In their place: th
 
 ## The routes in numbers
 
-- Routes of the application: 566, each called by the role harness as the 15 roles, an account without a role, a Parent account (task 11.1) and nobody, in the own and in another branch.
-- Without sign-in: 5. For the own account: 24. The parent portal: 8. With a permission of the table: 528.
+- Routes of the application: 567, each called by the role harness as the 15 roles, an account without a role, a Parent account (task 11.1) and nobody, in the own and in another branch.
+- Without sign-in: 5. For the own account: 24. The parent portal: 8. With a permission of the table: 529.
 - Open to integration keys: 97 (tasks 10.10 and 10.11).
 - Routes with a limit inside the route: 166.
-- Routes that take an id: 433, with 880 ids (branch 759, school 78, own 20, none 23).
-- Areas of the permission table: 67.
+- Routes that take an id: 434, with 883 ids (branch 759, school 79, own 20, none 25).
+- Areas of the permission table: 68.
 
 ## Routes without a role
 
@@ -1539,6 +1539,8 @@ For every id a route takes, in its path, its query or its body, the record it na
 | `PUT /api/plans/journals/:journalId/queue` | `body:order` | plan item | branch | `src/modules/plans/plan-requests.test.ts > answers 404 for another branch's or an unknown journal on the queue, for another branch's lesson or item in a body` |
 | `PUT /api/plans/masters/:masterId/items/:itemId` | `path:masterId` | master plan | branch | `src/modules/plans/plan-masters.test.ts > answers 404 for a master, an item, a body id or a quarter of another branch or unknown, and changes nothing` |
 | `PUT /api/plans/masters/:masterId/items/:itemId` | `path:itemId` | master plan item | branch | `src/modules/plans/plan-masters.test.ts > answers 404 for a master, an item, a body id or a quarter of another branch or unknown, and changes nothing` |
+| `PUT /api/plans/masters/:masterId/items/:itemId` | `body:values.classworks[].id` | master plan work | none | task 11.27, plan review 1: a work id of a master save is matched only against the master item's own works, refused 400 unknown_work otherwise (plan-masters.test.ts, "refuses a work id that is not of the master item") |
+| `PUT /api/plans/masters/:masterId/items/:itemId` | `body:values.homeworks[].id` | master plan work | none | task 11.27, plan review 1: a work id of a master save is matched only against the master item's own works, refused 400 unknown_work otherwise (plan-masters.test.ts, "refuses a work id that is not of the master item") |
 | `PUT /api/plans/masters/:masterId/order` | `path:masterId` | master plan | branch | `src/modules/plans/plan-masters.test.ts > answers 404 for a master, an item, a body id or a quarter of another branch or unknown, and changes nothing` |
 | `PUT /api/plans/masters/:masterId/order` | `body:order` | master plan item | branch | `src/modules/plans/plan-masters.test.ts > answers 404 for a master, an item, a body id or a quarter of another branch or unknown, and changes nothing` |
 | `PUT /api/plans/minimums` | `body:subjectId` | subject | school | `src/modules/plans/plan-delivery.test.ts > answers 404 for a minimum of an unknown subject, and refuses an attendance-only subject` |
@@ -1562,6 +1564,7 @@ For every id a route takes, in its path, its query or its body, the record it na
 | `PUT /api/setup/rooms/:id` | `body:floorId` | floor | branch | `src/modules/setup/other-branch-ids.test.ts > PUT /api/setup/rooms/:id answers 404 for the room and for the floor` |
 | `PUT /api/setup/subjects/:id` | `path:id` | subject | school | `src/modules/setup/subjects.test.ts > of an unknown subject is not found; nothing is written` |
 | `PUT /api/setup/subjects/:id` | `body:departmentId` | department | school | 03: divisions and departments are the school's; `branch: 'none'` |
+| `PUT /api/setup/subjects/:id/codes` | `path:id` | subject | school | `src/modules/setup/subject-codes.test.ts > answers 404 for an unknown subject, changing nothing` |
 | `PUT /api/setup/subjects/:id/quarter-weights/:quarterId` | `path:id` | subject | school | `src/modules/results/grade-changes.test.ts > answers 404 to the writes of weights for another branch’s and an unknown quarter and year, and an unknown subject, with no notice and every row unchanged` |
 | `PUT /api/setup/subjects/:id/quarter-weights/:quarterId` | `path:quarterId` | quarter | branch | `src/modules/results/grade-changes.test.ts > answers 404 to the writes of weights for another branch’s and an unknown quarter and year, and an unknown subject, with no notice and every row unchanged`<br>`src/modules/setup/subjects.test.ts > of another branch's quarter or year, or an unknown one, are not found; nothing is written` |
 | `PUT /api/setup/travel-times` | `body:otherBranchId` | branch | school | 03, travel times: a pair of the school's branches; the Super Admin works in every branch, so another branch is the partner, not a refusal |
@@ -2169,6 +2172,12 @@ Every area of `PERMISSIONS` (`packages/shared/src/permissions.ts`), the table th
 | senior_head_teacher | yes |  |  |  | yes |
 | head_teacher | yes |  |  |  | yes |
 | teacher | yes |  |  |  |  |
+
+### `subject_codes`
+
+| Role | view | create | edit | archive | export |
+| --- | :-: | :-: | :-: | :-: | :-: |
+| super_admin |  |  | yes |  |  |
 
 ### `subjects`
 

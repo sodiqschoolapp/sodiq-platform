@@ -7,6 +7,7 @@ import type { Audit } from '../audit/audit.service.js';
 import { plannedJournal, staffNames, type JournalRow } from '../journal/journal-grid.query.js';
 import { quarterClosedNow } from '../setup/closed-quarters.js';
 import { copyItems } from './plan-separate.js';
+import { codesOnOfJournal, shownCode } from './plan-codes.js';
 import {
   lockJournals,
   movePlaces,
@@ -468,6 +469,7 @@ export async function outcomesOf(
       'lesson_plan_outcomes.id',
       'lesson_plan_outcomes.item_id',
       'lesson_plan_items.topic',
+      'lesson_plan_items.topic_code',
       'lesson_plan_outcomes.kind',
       sql<string | null>`lesson_plan_outcomes.target_date::text`.as('target_date'),
       'lesson_plan_outcomes.reason',
@@ -484,10 +486,13 @@ export async function outcomesOf(
     transaction,
     rows.flatMap((row) => (row.staff_id === null ? [] : [row.staff_id])),
   );
+  const codesOn = await codesOnOfJournal(transaction, journalId);
   return rows.map((row) => ({
     id: row.id,
     itemId: row.item_id,
     topic: row.topic,
+    // Task 11.27: shown only while the journal's subject has codes on (`plan-codes.ts`).
+    topicCode: shownCode(codesOn, row.topic_code),
     kind: planOutcomeKindSchema.parse(row.kind),
     targetDate: row.target_date,
     reason: row.reason,

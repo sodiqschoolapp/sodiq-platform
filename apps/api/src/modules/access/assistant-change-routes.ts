@@ -227,7 +227,8 @@ export const TEACHER_CHANGES: Readonly<Record<string, AssistantChangeLine>> = {
       route: 'GET /api/plans/journals/:journalId',
       args: { journalId: 'body:journalId', quarterId: 'body:quarterId' },
       pick: 'path:itemId',
-      keys: ['topic', 'objectives', 'links', 'classworks', 'homeworks'],
+      // Task 11.27: the topic code as read, so a change of the code alone is a change.
+      keys: ['topic', 'topicCode', 'objectives', 'links', 'classworks', 'homeworks'],
       against: 'values',
       toolFields: {
         journalId: { required: true, description: 'The journal of the plan the item belongs to.' },
@@ -512,6 +513,15 @@ export const SUPER_ADMIN_CHANGES: Readonly<
     kind: 'change',
     group: 'setup',
     description: 'Changes a subject.',
+    basis: readById('GET /api/setup/subjects'),
+  },
+  // Task 11.27 (`02`, Assistant: "The switch on a subject is the Super Admin's, on the screen and
+  // through the assistant").
+  'PUT /api/setup/subjects/:id/codes': {
+    kind: 'change',
+    group: 'setup',
+    description:
+      'Switches codes for topics and works on or off for a subject (codesOn). Off hides every code of the subject and keeps them; on shows them again.',
     basis: readById('GET /api/setup/subjects'),
   },
   'POST /api/setup/subjects/:id/archive': {

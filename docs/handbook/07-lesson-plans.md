@@ -1,6 +1,6 @@
 # Lesson plans
 
-Not written yet for most of the plans: plans and their items, shared plans, the window, edit requests and master plans (tasks 7.1a to 7.3) have no page here yet. This page holds the parts that tasks 5.19, 8.8, 9.2d and 10.3a added.
+Not written yet for most of the plans: plans and their items, shared plans, the window, edit requests and master plans (tasks 7.1a to 7.3) have no page here yet. This page holds the parts that tasks 5.19, 8.8, 9.2d, 10.3a and 11.27 added.
 
 ## Switching plan windows off
 
@@ -24,6 +24,36 @@ Not written yet for most of the plans: plans and their items, shared plans, the 
 - Nothing stored is lost: windows, extensions and requests stay, and switching back on brings them back as they were.
 - A closed quarter stays closed: switching off never opens the plans of a closed quarter.
 - Each switch is in the audit log.
+
+## Codes for topics and works
+
+<!-- Sources: spec 09 (What a plan contains; Codes; In the journal), 05 (Subject; Excel import of subjects), 02 (Super Admin; Academic Vice Principal; Integration keys), 07 (Layout; Classwork and homework), edge/journal (a lesson with no plan item), edge/lesson-plans (Plans and the journal); spec change of 25 November 2026; task 11.27 -->
+
+**What it is.** A subject can have codes: a short label of the topic of a lesson, and of each classwork and homework (for example "T4.2" for a topic, "Q3" for a quiz). A code is shown first, with the full name beside it. Where there is little room (the journal's column headers, the lesson header, lesson mode on a phone) the code is shown alone; the full name shows on hover, or on a tap on a phone.
+
+**Who can use it.** The Super Admin switches codes on or off for a subject, in **Setup → Subjects**, in the subject's panel (**Codes for topics and works**), or through the assistant. The Academic Vice Principal and the Principal see whether it is on, and cannot change it. Codes are off for every subject at the start, and the subject import does not carry the switch. Once a subject's codes are on, the teacher types the codes where the topic and the titles are typed: in the plan, in master plans, on the lesson card and when a work is added in the journal.
+
+**How it works.**
+
+1. The Super Admin ticks **Codes on** for the subject.
+2. In the plan (and a master plan), a **Topic code** field stands beside the topic, and a **Code** field beside the title of each classwork and homework.
+3. A code has at most 20 characters; spaces at either end are dropped. It need not be unique, and it is never required: a plan is complete with topics alone.
+4. A code is changed under the same rules as the topic or title beside it: freely while the row is open, through an edit request after the window, with "edited after the lesson" on a lesson already held, never in a closed quarter. Each change is in the plan's history.
+5. Codes are copied with a plan (from another class, another teacher or last year) and from a master plan, and a changed code shows as "master updated".
+
+**Switching off.** Switching a subject's codes off hides every code of that subject: in the journal, the lesson card, the plan, reports, exports and prints, the parent portal, the Audit log, the assistant and integration keys. The codes are kept, and switching on again shows them unchanged. While a subject's codes are off, no code can be set in it. Other subjects are not affected.
+
+**Edge cases.**
+
+| Case | What happens |
+| --- | --- |
+| A code of 21 characters | Refused: "At most 20 characters." |
+| A code sent while the subject's codes are off (by the assistant or an integration key) | Refused: codes are off for this subject. |
+| The topic is changed while codes are off | Saved; the hidden code stays and comes back when codes are switched on. |
+| A plan is copied while codes are off | The codes are copied, hidden, and show once codes are on. |
+| Two works with the same code | Allowed; the full title tells them apart. |
+| A work added by hand before 7 November 2026 | Has no code (it is not in the plan). |
+| Past marks from before go-live, the parents' Telegram digest, notices | Show the names alone. |
 
 ## A quarter whose timetable starts in the middle
 

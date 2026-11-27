@@ -7782,6 +7782,10 @@ export const GENERATED_TOOLS: Readonly<Record<string, GeneratedTool>> = {
           "type": "string",
           "minLength": 1
         },
+        "code": {
+          "nullable": true,
+          "type": "string"
+        },
         "correction": {
           "type": "object",
           "properties": {
@@ -11000,6 +11004,10 @@ export const GENERATED_TOOLS: Readonly<Record<string, GeneratedTool>> = {
               "type": "string",
               "maxLength": 300
             },
+            "topicCode": {
+              "nullable": true,
+              "type": "string"
+            },
             "objectives": {
               "type": "string",
               "maxLength": 2000
@@ -11023,6 +11031,10 @@ export const GENERATED_TOOLS: Readonly<Record<string, GeneratedTool>> = {
                     "type": "string",
                     "maxLength": 60
                   },
+                  "code": {
+                    "nullable": true,
+                    "type": "string"
+                  },
                   "description": {
                     "type": "string",
                     "maxLength": 1000
@@ -11044,6 +11056,10 @@ export const GENERATED_TOOLS: Readonly<Record<string, GeneratedTool>> = {
                   "title": {
                     "type": "string",
                     "maxLength": 60
+                  },
+                  "code": {
+                    "nullable": true,
+                    "type": "string"
                   },
                   "description": {
                     "type": "string",
@@ -11754,6 +11770,10 @@ export const GENERATED_TOOLS: Readonly<Record<string, GeneratedTool>> = {
               "type": "string",
               "maxLength": 300
             },
+            "topicCode": {
+              "nullable": true,
+              "type": "string"
+            },
             "objectives": {
               "type": "string",
               "maxLength": 2000
@@ -11777,6 +11797,10 @@ export const GENERATED_TOOLS: Readonly<Record<string, GeneratedTool>> = {
                     "type": "string",
                     "maxLength": 60
                   },
+                  "code": {
+                    "nullable": true,
+                    "type": "string"
+                  },
                   "description": {
                     "type": "string",
                     "maxLength": 1000
@@ -11798,6 +11822,10 @@ export const GENERATED_TOOLS: Readonly<Record<string, GeneratedTool>> = {
                   "title": {
                     "type": "string",
                     "maxLength": 60
+                  },
+                  "code": {
+                    "nullable": true,
+                    "type": "string"
                   },
                   "description": {
                     "type": "string",
@@ -21091,6 +21119,14 @@ export const GENERATED_TOOLS: Readonly<Record<string, GeneratedTool>> = {
         },
         "baseTitle": {
           "type": "string"
+        },
+        "code": {
+          "nullable": true,
+          "type": "string"
+        },
+        "baseCode": {
+          "nullable": true,
+          "type": "string"
         }
       },
       "required": [
@@ -21124,6 +21160,14 @@ export const GENERATED_TOOLS: Readonly<Record<string, GeneratedTool>> = {
           "maxLength": 300
         },
         "baseTopic": {
+          "type": "string"
+        },
+        "topicCode": {
+          "nullable": true,
+          "type": "string"
+        },
+        "baseTopicCode": {
+          "nullable": true,
           "type": "string"
         },
         "correction": {
@@ -22217,6 +22261,10 @@ export const GENERATED_TOOLS: Readonly<Record<string, GeneratedTool>> = {
             "topic": {
               "type": "string"
             },
+            "topicCode": {
+              "nullable": true,
+              "type": "string"
+            },
             "objectives": {
               "type": "string"
             },
@@ -22237,6 +22285,10 @@ export const GENERATED_TOOLS: Readonly<Record<string, GeneratedTool>> = {
                     "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
                   },
                   "title": {
+                    "type": "string"
+                  },
+                  "code": {
+                    "nullable": true,
                     "type": "string"
                   },
                   "description": {
@@ -22262,6 +22314,10 @@ export const GENERATED_TOOLS: Readonly<Record<string, GeneratedTool>> = {
                     "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
                   },
                   "title": {
+                    "type": "string"
+                  },
+                  "code": {
+                    "nullable": true,
                     "type": "string"
                   },
                   "description": {
@@ -22293,6 +22349,10 @@ export const GENERATED_TOOLS: Readonly<Record<string, GeneratedTool>> = {
               "type": "string",
               "maxLength": 300
             },
+            "topicCode": {
+              "nullable": true,
+              "type": "string"
+            },
             "objectives": {
               "type": "string",
               "maxLength": 2000
@@ -22321,6 +22381,10 @@ export const GENERATED_TOOLS: Readonly<Record<string, GeneratedTool>> = {
                     "type": "string",
                     "maxLength": 60
                   },
+                  "code": {
+                    "nullable": true,
+                    "type": "string"
+                  },
                   "description": {
                     "type": "string",
                     "maxLength": 1000
@@ -22347,6 +22411,10 @@ export const GENERATED_TOOLS: Readonly<Record<string, GeneratedTool>> = {
                   "title": {
                     "type": "string",
                     "maxLength": 60
+                  },
+                  "code": {
+                    "nullable": true,
+                    "type": "string"
                   },
                   "description": {
                     "type": "string",
@@ -22508,6 +22576,10 @@ export const GENERATED_TOOLS: Readonly<Record<string, GeneratedTool>> = {
               "type": "string",
               "maxLength": 300
             },
+            "topicCode": {
+              "nullable": true,
+              "type": "string"
+            },
             "objectives": {
               "type": "string",
               "maxLength": 2000
@@ -22527,9 +22599,18 @@ export const GENERATED_TOOLS: Readonly<Record<string, GeneratedTool>> = {
               "items": {
                 "type": "object",
                 "properties": {
+                  "id": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
                   "title": {
                     "type": "string",
                     "maxLength": 60
+                  },
+                  "code": {
+                    "nullable": true,
+                    "type": "string"
                   },
                   "description": {
                     "type": "string",
@@ -22549,9 +22630,18 @@ export const GENERATED_TOOLS: Readonly<Record<string, GeneratedTool>> = {
               "items": {
                 "type": "object",
                 "properties": {
+                  "id": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
                   "title": {
                     "type": "string",
                     "maxLength": 60
+                  },
+                  "code": {
+                    "nullable": true,
+                    "type": "string"
                   },
                   "description": {
                     "type": "string",
@@ -23608,6 +23698,35 @@ export const GENERATED_TOOLS: Readonly<Record<string, GeneratedTool>> = {
         "languageRule",
         "demanding"
       ]
+    }
+  },
+  "PUT /api/setup/subjects/:id/codes": {
+    "name": "SubjectsController_switchCodes",
+    "method": "PUT",
+    "path": "/api/setup/subjects/:id/codes",
+    "parameters": [
+      {
+        "name": "id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+        }
+      }
+    ],
+    "body": {
+      "type": "object",
+      "properties": {
+        "codesOn": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "codesOn"
+      ],
+      "additionalProperties": false
     }
   },
   "PUT /api/setup/subjects/:id/quarter-weights/:quarterId": {

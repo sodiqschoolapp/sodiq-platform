@@ -2,6 +2,7 @@ import { lessonStateOf } from '@sodiq/shared';
 import { sql } from 'kysely';
 import type { Transaction } from '../../database/transactions.js';
 import { awayLessons } from '../timetable/away-read.js';
+import { shownCode } from '../plans/plan-codes.js';
 import type { GridLessonRow, JournalRow } from './journal-grid.query.js';
 import {
   lessonColumns,
@@ -82,6 +83,8 @@ export interface LessonItem {
   /** Task 8.8: the item, for the lesson card and "topic not delivered". */
   readonly itemId: string;
   readonly topic: string;
+  /** Task 11.27: the topic code as shown (`null` when none or the subject's codes are off). */
+  readonly topicCode: string | null;
   readonly works: readonly PlannedWork[];
 }
 
@@ -133,6 +136,8 @@ export async function planItemsOf(
           .execute();
   const itemOf = new Map<string, string>();
   const lessonItem = new Map<string, string>();
+  // Task 11.27: the items of journals whose subject has codes on (`plans/plan-codes.ts`).
+  const coded = new Set<string>();
   for (const plan of plans) {
     itemOf.set(`${plan.journal_id}/${plan.quarter_id}/${String(plan.position)}`, plan.item_id);
   }
@@ -148,7 +153,10 @@ export async function planItemsOf(
       rows.forEach((lesson, index) => {
         const item = itemOf.get(`${journal.id}/${quarter.id}/${String(index + 1)}`);
         if (item === undefined) found.set(lesson.id, null);
-        else lessonItem.set(lesson.id, item);
+        else {
+          lessonItem.set(lesson.id, item);
+          if (journal.subject.codesOn) coded.add(item);
+        }
       });
     }
   }
@@ -159,12 +167,12 @@ export async function planItemsOf(
       : await Promise.all([
           transaction
             .selectFrom('lesson_plan_items')
-            .select(['id', 'topic'])
+            .select(['id', 'topic', 'topic_code'])
             .where('id', 'in', itemIds)
             .execute(),
           transaction
             .selectFrom('lesson_plan_works')
-            .select(['id', 'item_id', 'kind', 'title', 'added_in_journal_at'])
+            .select(['id', 'item_id', 'kind', 'title', 'work_code', 'added_in_journal_at'])
             .where('item_id', 'in', itemIds)
             .orderBy('kind')
             .orderBy('position')
@@ -172,6 +180,7 @@ export async function planItemsOf(
             .execute(),
         ]);
   const topicOf = new Map(items.map((item) => [item.id, item.topic]));
+  const topicCodeOf = new Map(items.map((item) => [item.id, item.topic_code]));
   const worksOf = new Map<string, PlannedWork[]>();
   for (const work of works) {
     const list = worksOf.get(work.item_id) ?? [];
@@ -179,6 +188,7 @@ export async function planItemsOf(
       id: work.id,
       kind: work.kind === 'homework' ? 'homework' : 'classwork',
       title: work.title,
+      code: shownCode(coded.has(work.item_id), work.work_code),
       addedInJournal: work.added_in_journal_at !== null,
     });
     worksOf.set(work.item_id, list);
@@ -187,6 +197,7 @@ export async function planItemsOf(
     found.set(lessonId, {
       itemId,
       topic: topicOf.get(itemId) ?? '',
+      topicCode: shownCode(coded.has(itemId), topicCodeOf.get(itemId) ?? null),
       works: worksOf.get(itemId) ?? [],
     });
   }

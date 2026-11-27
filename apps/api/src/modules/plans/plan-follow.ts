@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { Injectable, type OnModuleInit } from '@nestjs/common';
 import {
   schoolDateOf,
+  codedName,
   subjectColourSchema,
   type PlanImpact,
   type PlanRequestCause,
@@ -23,6 +24,7 @@ import { windowStateOf } from './plan-window.js';
 import { separations, type SharingJournal } from './plan-share.js';
 import { followQueue, type Absorbed, type FollowResult, type QueueRow } from './plan-queue.js';
 import { planReachOf, planReaderOf } from './plan-scope.js';
+import { shownCode } from './plan-codes.js';
 
 /**
  * The plans follow the timetable (task 7.1b, pull request #213; `09`, When
@@ -62,7 +64,13 @@ interface FollowedPlan {
   readonly open: boolean;
   readonly before: readonly SnapshotRow[] | null;
   readonly after: readonly QueueRow[];
-  readonly items: readonly { id: string; position: number; topic: string }[];
+  readonly items: readonly {
+    id: string;
+    position: number;
+    topic: string;
+    /** Task 11.27: the topic code as stored; shown only while the subject's codes are on. */
+    topic_code: string | null;
+  }[];
   readonly absorbed: readonly Absorbed[];
 }
 
@@ -651,6 +659,7 @@ export class PlanFollow implements OnModuleInit {
                 'lesson_plan_places.journal_id',
                 'lesson_plan_places.position',
                 'lesson_plan_items.topic',
+                'lesson_plan_items.topic_code',
               ])
               .where('lesson_plan_places.plan_id', 'in', planIds)
               .orderBy('lesson_plan_places.position')
@@ -1347,7 +1356,12 @@ function impactOf(one: Followed, now: Date): PlanImpact {
     },
     quarter: plan.quarter.number,
     moved: result.moves.length,
-    notFitting: plan.items.filter((item) => notFitting.has(item.id)).map((item) => item.topic),
+    // Task 11.27: "code · topic" with a code shown (`09`, Codes: plan lists).
+    notFitting: plan.items
+      .filter((item) => notFitting.has(item.id))
+      .map((item) =>
+        codedName(shownCode(plan.journal.subject.codesOn, item.topic_code), item.topic),
+      ),
     emptyRows: plan.after.filter(
       (row, index) => row.startsAt.getTime() > now.getTime() && !filled.has(index + 1),
     ).length,

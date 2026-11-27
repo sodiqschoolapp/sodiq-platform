@@ -156,6 +156,7 @@ const SUPPORT: JournalSupport = {
   lessons: [
     {
       lesson: {
+        topicCode: null,
         id: LESSON,
         date: '2026-10-26',
         start: 480,
@@ -249,7 +250,7 @@ const SUPPORT: JournalSupport = {
       at: '2026-10-26T04:02:00.000Z',
       lessonId: LESSON,
       field: 'score',
-      work: { id: uid(60), kind: 'classwork', title: 'Fractions' },
+      work: { id: uid(60), kind: 'classwork', title: 'Fractions', code: null },
       valueSent: '7.555',
       versionSent: null,
       code: 'score_decimals',
@@ -275,7 +276,7 @@ const SUPPORT: JournalSupport = {
       kind: 'work',
       at: '2026-10-27T05:01:00.000Z',
       lessonId: LESSON,
-      work: { id: uid(60), kind: 'classwork', title: 'Fractions' },
+      work: { code: null, id: uid(60), kind: 'classwork', title: 'Fractions' },
       totalBefore: null,
       totalAfter: 20,
       notHeldBefore: false,
@@ -531,6 +532,7 @@ function gridWith(rest: { quarters: (typeof Q1)[]; quarter: typeof Q1 }) {
       year: { id: uid(50), startDate: '2026-09-01', endDate: '2027-05-31', closed: false },
       attendanceOnly: false,
       ratingExam: false,
+      codesOn: false,
     },
     rating: null,
     years: [],

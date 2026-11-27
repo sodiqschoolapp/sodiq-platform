@@ -70,6 +70,7 @@ import {
 } from './journal-grid';
 import { JOURNAL_FILTERS, type JournalFilter, type JournalSearch } from './journal-search';
 import { yearText } from './journals-page';
+import { CodedName } from '@/components/coded-name';
 
 /** The month name of `YYYY-MM`, from the dates helper. */
 const monthName = (month: string, language: string): string =>
@@ -888,7 +889,12 @@ function LessonMode({
       <div className="grid gap-1 text-sm" data-lesson-plan-top="true">
         <p>
           <span className="font-semibold">{t('journal.card.topic')}</span>{' '}
-          {lesson.topic === null || lesson.topic === '' ? t('journal.works.noPlan') : lesson.topic}
+          {lesson.topic === null || lesson.topic === '' ? (
+            t('journal.works.noPlan')
+          ) : (
+            // Task 11.27 (`09`, Codes: "lesson mode on a phone"): the code alone, the name on a tap.
+            <CodedName short code={lesson.topicCode} name={lesson.topic} />
+          )}
         </p>
         {lesson.works.some((one) => one.kind === 'classwork') && (
           <p>
@@ -902,7 +908,11 @@ function LessonMode({
                   className="mr-2 inline-flex items-center gap-1"
                 >
                   <WorkKindTag kind={one.kind} />
-                  {workName(one)}
+                  <CodedName
+                    short
+                    code={one.title === null ? null : one.code}
+                    name={workName(one)}
+                  />
                 </span>
               ))}
           </p>
@@ -918,7 +928,11 @@ function LessonMode({
                   className="mr-2 inline-flex items-center gap-1"
                 >
                   <WorkKindTag kind={one.kind} />
-                  {workName(one)}
+                  <CodedName
+                    short
+                    code={one.title === null ? null : one.code}
+                    name={workName(one)}
+                  />
                 </span>
               ))}
           </p>

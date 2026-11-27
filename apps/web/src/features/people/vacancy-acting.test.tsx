@@ -19,6 +19,7 @@ const TODAY = '2026-10-10';
 const texts = en.people.vacancies.acting;
 
 const PHYSICS: Subject = {
+  codesOn: false,
   departmentSince: null,
   departmentMove: null,
   id: uid(21),
@@ -114,7 +115,8 @@ function api(
     'GET /api/people/staff': () => json({ staff: [NODIRA], today: TODAY }),
     'GET /api/people/vacancies': () => json({ vacancies: [VACANCY], today: TODAY }),
     'GET /api/setup/divisions': () => json({ divisions: [], staffCounts: [] }),
-    'GET /api/setup/subjects': () => json({ subjects: [PHYSICS], mayMoveDepartment: false }),
+    'GET /api/setup/subjects': () =>
+      json({ subjects: [PHYSICS], mayMoveDepartment: false, maySwitchCodes: false }),
     'GET /api/setup/academic-years': () => json({ years: [] }),
     'GET /api/timetable/versions': () => json({ versions: [], today: TODAY }),
     [`GET /api/people/vacancies/${VACANCY.id}`]: () => json(detailOf(acting)),

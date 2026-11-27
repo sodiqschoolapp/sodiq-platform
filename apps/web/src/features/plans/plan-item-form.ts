@@ -21,15 +21,17 @@ export const WORK_KINDS: readonly WorkKind[] = ['classwork', 'homework'];
 
 const listOf = (kind: WorkKind) => (kind === 'classwork' ? 'classworks' : 'homeworks');
 
-export type PlanField = 'topic' | 'objectives' | 'links' | `${WorkKind}${string}`;
+export type PlanField = 'topic' | 'topicCode' | 'objectives' | 'links' | `${WorkKind}${string}`;
 
 export const titleField = (kind: WorkKind, slot: number): PlanField => `${kind}${String(slot)}`;
 export const noteField = (kind: WorkKind, slot: number): PlanField => `${kind}Note${String(slot)}`;
+/** Task 11.27: the code of a work's slot (`09`, Codes). */
+export const codeField = (kind: WorkKind, slot: number): PlanField => `${kind}Code${String(slot)}`;
 
 /** The content of an item a form shows: a plan item, or a master item (task 7.3). */
 export type ItemContent = Pick<
   PlanItem,
-  'topic' | 'objectives' | 'links' | 'classworks' | 'homeworks'
+  'topic' | 'topicCode' | 'objectives' | 'links' | 'classworks' | 'homeworks'
 >;
 
 const SLOTS = Array.from({ length: PLAN_WORKS_MAX }, (_, slot) => slot);
@@ -38,6 +40,7 @@ const SLOTS = Array.from({ length: PLAN_WORKS_MAX }, (_, slot) => slot);
 export function initialOf(item: ItemContent | null): Record<PlanField, string> {
   const typed: Record<string, string> = {
     topic: item?.topic ?? '',
+    topicCode: item?.topicCode ?? '',
     objectives: item?.objectives ?? '',
     links: (item?.links ?? []).join('\n'),
   };
@@ -46,6 +49,7 @@ export function initialOf(item: ItemContent | null): Record<PlanField, string> {
     for (const slot of SLOTS) {
       typed[titleField(kind, slot)] = works[slot]?.title ?? '';
       typed[noteField(kind, slot)] = works[slot]?.description ?? '';
+      typed[codeField(kind, slot)] = works[slot]?.code ?? '';
     }
   }
   return typed;
@@ -61,9 +65,13 @@ export const filledSlots = (typed: Readonly<Record<string, string>>, kind: WorkK
 /**
  * The schema of the form: the typed text becomes the values of the item
  * (each work with the id its slot held), checked by `planItemValuesSchema`;
- * an issue goes back to the field it came from.
+ * an issue goes back to the field it came from. Task 11.27: with the subject's codes on, the
+ * codes typed go with the values; with them off, no code is sent, so the stored ones stay.
  */
-export function planFormSchema(item: ItemContent | null): FormSchema<PlanItemValues> {
+export function planFormSchema(
+  item: ItemContent | null,
+  codesOn = false,
+): FormSchema<PlanItemValues> {
   return {
     safeParse: (input: unknown) => {
       const typed = input as Readonly<Record<string, string>>;
@@ -76,6 +84,7 @@ export function planFormSchema(item: ItemContent | null): FormSchema<PlanItemVal
           return {
             ...(id === undefined ? {} : { id }),
             title: typed[titleField(kind, slot)] ?? '',
+            ...(codesOn ? { code: typed[codeField(kind, slot)] ?? '' } : {}),
             description: typed[noteField(kind, slot)] ?? '',
           };
         });
@@ -86,6 +95,7 @@ export function planFormSchema(item: ItemContent | null): FormSchema<PlanItemVal
         .filter((line) => line !== '');
       const values = {
         topic: typed.topic ?? '',
+        ...(codesOn ? { topicCode: typed.topicCode ?? '' } : {}),
         objectives: typed.objectives ?? '',
         links,
         classworks: works('classwork'),
@@ -101,7 +111,13 @@ export function planFormSchema(item: ItemContent | null): FormSchema<PlanItemVal
           const slot = slotsOf[kind][index] ?? 0;
           return {
             ...issue,
-            path: [part === 'description' ? noteField(kind, slot) : titleField(kind, slot)],
+            path: [
+              part === 'description'
+                ? noteField(kind, slot)
+                : part === 'code'
+                  ? codeField(kind, slot)
+                  : titleField(kind, slot),
+            ],
           };
         }
         return { ...issue, path: [first ?? 'topic'] };
@@ -114,6 +130,7 @@ export function planFormSchema(item: ItemContent | null): FormSchema<PlanItemVal
 /** The values of an item as a save sends them as its base. */
 export const baseOf = (item: PlanItem) => ({
   topic: item.topic,
+  topicCode: item.topicCode,
   objectives: item.objectives,
   links: item.links,
   classworks: item.classworks,

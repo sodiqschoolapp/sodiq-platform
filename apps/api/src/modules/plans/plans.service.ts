@@ -59,6 +59,7 @@ import {
   type PlanQuarter,
   type PlanRowLesson,
 } from './plan-read.js';
+import { codeToWrite, newCode, shownCode } from './plan-codes.js';
 import {
   ownerIdOn,
   vacancyOn,
@@ -179,12 +180,23 @@ const sameList = (a: readonly string[], b: readonly string[]) =>
 const sameWork = (a: { title: string; description: string }, b: PlanWorkInput | PlanWork) =>
   a.title === b.title && a.description === b.description;
 
+/**
+ * Task 11.27: a work's code as sent against the code it was read as (`plan-codes.ts`): the
+ * work changes when the code sent is not the base's (a base without one reads as the code shown).
+ */
+const codeChanged = (
+  was: { code?: string | null | undefined },
+  sent: { code?: string | null | undefined },
+): boolean => sent.code !== undefined && sent.code !== (was.code ?? null);
+
 /** A work as an audit entry keeps it (review correction 4: a removed work's id, kind, position and texts). */
 const workEntry = (work: PlanWork, kind: Kind, position: number) => ({
   id: work.id,
   kind,
   position,
   title: work.title,
+  // Task 11.27: the code shown (`09`, Codes: "the same rules and history").
+  code: work.code,
   description: work.description,
 });
 
@@ -724,6 +736,7 @@ export class PlansService {
       journalId: scene.journal.id,
       unit: unitOf(scene.journal),
       subject: subjectOf(scene.journal),
+      codesOn: scene.journal.subject.codesOn,
       quarters: scene.quarters,
       quarterId: scene.quarter.id,
       owner: scene.ownerId === null ? null : (names.get(scene.ownerId) ?? null),
@@ -815,6 +828,7 @@ export class PlansService {
                 date: next.date,
                 // Task 10.8 (review correction 1): an item with no topic yet shows none.
                 topic: items.find((item) => item.position === next.number)?.topic.trim() || null,
+                topicCode: items.find((item) => item.position === next.number)?.topicCode ?? null,
               },
         notCovered:
           items.filter((item) => item.position > rows.length).length +
@@ -984,6 +998,7 @@ export class PlansService {
         date: lesson.lesson_date,
         number: row?.number ?? null,
         subject: subjectOf(scene.journal),
+        codesOn: scene.journal.subject.codesOn,
         unit: unitOf(scene.journal),
         item: items.find((item) => item.position === row?.number) ?? null,
       });
@@ -1374,7 +1389,7 @@ export class PlansService {
       .execute();
     const item = await transaction
       .selectFrom('lesson_plan_items')
-      .select(['id', 'plan_id', 'topic', 'objectives', 'links', 'cleared_at'])
+      .select(['id', 'plan_id', 'topic', 'topic_code', 'objectives', 'links', 'cleared_at'])
       .where('id', '=', itemId)
       .executeTakeFirst();
     if (item === undefined || item.cleared_at !== null) throw notFound();
@@ -1486,12 +1501,16 @@ export class PlansService {
           }
           const pass = await this.gate(transaction, scene, planId, targets);
           const values = input.values;
+          // Task 11.27: a code with a new item is set only while the subject's codes are on.
+          const codesOn = scene.journal.subject.codesOn;
+          const topicCode = newCode(values.topicCode, codesOn, 'values.topicCode');
           const item = await transaction
             .insertInto('lesson_plan_items')
             .values({
               branch_id: branchId,
               plan_id: planId,
               topic: values.topic,
+              topic_code: topicCode,
               objectives: values.objectives,
               links: values.links,
             })
@@ -1508,6 +1527,7 @@ export class PlansService {
                   kind,
                   position: index + 1,
                   title: work.title,
+                  work_code: newCode(work.code, codesOn, `values.${list}.${String(index)}.code`),
                   description: work.description,
                 })
                 .returning('id')
@@ -1571,6 +1591,7 @@ export class PlansService {
               position: input.position,
               date: row?.date ?? null,
               topic: created.topic,
+              topicCode: created.topicCode,
               objectives: created.objectives,
               links: created.links,
               classworks: created.classworks,
@@ -1607,6 +1628,8 @@ export class PlansService {
       readonly requestId?: string;
       readonly kind: Kind;
       readonly title: string;
+      /** Task 11.27: the code typed with it (`edge/journal`, no plan item); refused while off. */
+      readonly code?: string | null;
     },
   ): Promise<{ planId: string; itemId: string; planWorkId: string }> {
     const { branchId, journalId, lessonId } = input;
@@ -1676,6 +1699,7 @@ export class PlansService {
     if (planned.length + byHand.length >= LESSON_WORKS_MAX) {
       throw new ApiException('journal_works_limit', 409);
     }
+    const code = newCode(input.code, scene.journal.subject.codesOn, 'code');
     const added = await refusingConstraints(
       () =>
         transaction
@@ -1686,6 +1710,7 @@ export class PlansService {
             kind: input.kind,
             position: Math.max(0, ...planned.map((one) => one.position)) + 1,
             title: input.title,
+            work_code: code,
             description: '',
             added_in_journal_at: scene.now,
             added_in_journal_by: access.accountId,
@@ -1707,6 +1732,7 @@ export class PlansService {
         workId: added.id,
         kind: input.kind,
         title: input.title,
+        code,
       },
       details: { createdPlan, createdItem: place === undefined },
     });
@@ -1732,8 +1758,17 @@ export class PlansService {
       readonly requestId?: string;
       readonly topic: string;
       readonly baseTopic: string;
+      /** Task 11.27: the topic code and the code read; left out, or as read, not touched. */
+      readonly topicCode?: string | null;
+      readonly baseTopicCode?: string | null;
     },
-  ): Promise<{ planId: string; itemId: string; topic: string; changed: boolean }> {
+  ): Promise<{
+    planId: string;
+    itemId: string;
+    topic: string;
+    topicCode: string | null;
+    changed: boolean;
+  }> {
     const { branchId, journalId, lessonId } = input;
     const found = await sql<{ quarter: string | null }>`
       select lesson_quarter(${lessonId}::uuid)::text as quarter
@@ -1779,8 +1814,39 @@ export class PlansService {
         },
       ]);
     }
-    if (topic === before.trim() && stored !== null) {
-      return { planId: stored.plan_id, itemId: stored.id, topic: before, changed: false };
+    // Task 11.27: the topic code, under the rules of the topic beside it (`plan-codes.ts`).
+    const codesOn = scene.journal.subject.codesOn;
+    const codeBefore = shownCode(codesOn, stored?.topic_code ?? null);
+    const code = codeToWrite({
+      sent: input.topicCode,
+      base: input.baseTopicCode,
+      shown: codeBefore,
+      codesOn,
+      path: 'topicCode',
+    });
+    if (
+      code !== undefined &&
+      input.baseTopicCode !== undefined &&
+      input.baseTopicCode !== codeBefore
+    ) {
+      throw new ApiException('plan_item_stale', 409, undefined, [
+        {
+          path: 'topicCode',
+          code: 'plan_item_stale',
+          message: 'The topic code was changed since it was read.',
+          ...(stored === null ? {} : { recordId: stored.id }),
+        },
+      ]);
+    }
+    const topicChanged = topic !== before.trim() || stored === null;
+    if (!topicChanged && code === undefined && stored !== null) {
+      return {
+        planId: stored.plan_id,
+        itemId: stored.id,
+        topic: before,
+        topicCode: codeBefore,
+        changed: false,
+      };
     }
     const actor = {
       branchId,
@@ -1798,7 +1864,7 @@ export class PlansService {
     }
     await transaction
       .updateTable('lesson_plan_items')
-      .set({ topic })
+      .set(code === undefined ? { topic } : { topic, topic_code: code.value })
       .where('id', '=', itemId)
       .execute();
     await this.audit.record(transaction, {
@@ -1806,8 +1872,8 @@ export class PlansService {
       actorId: access.accountId,
       action: 'plan.item_edit',
       record: { type: 'lesson_plan', id: planId },
-      oldValue: { topic: before },
-      newValue: { topic },
+      oldValue: code === undefined ? { topic: before } : { topic: before, topicCode: codeBefore },
+      newValue: code === undefined ? { topic } : { topic, topicCode: code.value },
       details: {
         itemId,
         inJournal: true,
@@ -1817,7 +1883,13 @@ export class PlansService {
         createdItem: stored === null,
       },
     });
-    return { planId, itemId, topic, changed: true };
+    return {
+      planId,
+      itemId,
+      topic,
+      topicCode: code === undefined ? codeBefore : code.value,
+      changed: true,
+    };
   }
 
   /**
@@ -1923,6 +1995,35 @@ export class PlansService {
           };
           if (changed.topic && stored.topic !== base.topic)
             staleField('values.topic', stored.topic);
+          // Task 11.27 (`09`, Codes: "edited under the same rules and history as the topic or
+          // title it stands beside"): the codes as shown, compared with the codes read.
+          const codesOn = scene.journal.subject.codesOn;
+          const shownTopicCode = shownCode(codesOn, stored.topic_code);
+          const topicCode = codeToWrite({
+            sent: values.topicCode,
+            base: base.topicCode,
+            shown: shownTopicCode,
+            codesOn,
+            path: 'values.topicCode',
+          });
+          if (
+            topicCode !== undefined &&
+            base.topicCode !== undefined &&
+            base.topicCode !== shownTopicCode
+          ) {
+            staleField('values.topicCode', shownTopicCode);
+          }
+          // A code sent with a work changes it only while on (refused otherwise).
+          for (const { list } of KINDS) {
+            values[list].forEach((work, index) => {
+              const was = base[list].find((one) => one.id === work.id);
+              const path = `values.${list}.${String(index)}.code`;
+              if (work.id === undefined) newCode(work.code, codesOn, path);
+              else if (was !== undefined && codeChanged(was, work) && !codesOn) {
+                codeToWrite({ sent: work.code, base: was.code, shown: null, codesOn, path });
+              }
+            });
+          }
           if (changed.objectives && stored.objectives !== base.objectives) {
             staleField('values.objectives', stored.objectives);
           }
@@ -1942,7 +2043,7 @@ export class PlansService {
             );
             const edited = kept.filter((work) => {
               const was = before.find((one) => one.id === work.id);
-              return was !== undefined && !sameWork(was, work);
+              return was !== undefined && (!sameWork(was, work) || codeChanged(was, work));
             });
             const added = sent.filter((work) => work.id === undefined);
             const reordered = !sameList(
@@ -1960,10 +2061,15 @@ export class PlansService {
                 if (edited.includes(work)) {
                   staleField(`values.${list}.${work.id ?? ''}`, null);
                 }
-              } else if (!sameWork(current, was)) {
+              } else if (
+                !sameWork(current, was) ||
+                // Task 11.27: a code changed since, as shown (never a hidden one).
+                (was.code !== undefined && current.code !== was.code)
+              ) {
                 staleField(`values.${list}.${work.id ?? ''}`, {
                   title: current.title,
                   description: current.description,
+                  code: current.code,
                 });
               }
             }
@@ -1973,11 +2079,21 @@ export class PlansService {
 
           const oldValue: Record<string, JsonValue> = {};
           const newValue: Record<string, JsonValue> = {};
-          const fields: { topic?: string; objectives?: string; links?: string[] } = {};
+          const fields: {
+            topic?: string;
+            topic_code?: string | null;
+            objectives?: string;
+            links?: string[];
+          } = {};
           if (changed.topic) {
             fields.topic = values.topic;
             oldValue.topic = stored.topic;
             newValue.topic = values.topic;
+          }
+          if (topicCode !== undefined) {
+            fields.topic_code = topicCode.value;
+            oldValue.topicCode = shownTopicCode;
+            newValue.topicCode = topicCode.value;
           }
           if (changed.objectives) {
             fields.objectives = values.objectives;
@@ -2015,9 +2131,19 @@ export class PlansService {
               removedFiles.push(...(await removePlanWork(transaction, work.id)));
             }
             for (const work of change.edited) {
+              const was = change.before.find((one) => one.id === work.id);
               await transaction
                 .updateTable('lesson_plan_works')
-                .set({ title: work.title, description: work.description })
+                .set(
+                  // Task 11.27: the code only when it changed (a hidden code stays).
+                  was !== undefined && codeChanged(was, work)
+                    ? {
+                        title: work.title,
+                        description: work.description,
+                        work_code: work.code ?? null,
+                      }
+                    : { title: work.title, description: work.description },
+                )
                 .where('id', '=', work.id ?? '')
                 .execute();
             }
@@ -2040,6 +2166,7 @@ export class PlansService {
                     kind: change.kind,
                     position,
                     title: work.title,
+                    work_code: newCode(work.code, codesOn, 'values.code'),
                     description: work.description,
                   })
                   .returning('id')

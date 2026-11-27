@@ -1152,6 +1152,8 @@ export const uz: Texts<'one' | 'other'> = {
       'Bu yuklama saqlanmagan yoki allaqachon qaytarib olingan. Yuklamalar roʻyxatini qayta oching.',
     past_marks_changed:
       'Shu daqiqada oʻtgan baholarning boshqa importi saqlandi. Hech narsa saqlanmadi: faylni qayta tekshiring.',
+    plan_codes_off:
+      'Bu fan uchun mavzu va ishlar kodlari oʻchirilgan, shuning uchun kod qoʻyib boʻlmaydi. Super Adminga ularni yoqishni ayting.',
     subject_import_changed:
       'Shu paytda kimdir fanlar yoki choraklarni oʻzgartirdi. Hech narsa saqlanmadi; qayta urinib koʻring.',
     photos_not_configured: 'Suratlar hali sozlanmagan. Administratorga murojaat qiling.',
@@ -1979,6 +1981,7 @@ export const uz: Texts<'one' | 'other'> = {
       SubjectsController_copyQuarterOne: 'Fanning chorak vaznlarini nusxalash',
       SubjectsController_create: 'Fan qoʻshish',
       SubjectsController_edit: 'Fanni oʻzgartirish',
+      SubjectsController_switchCodes: 'Mavzu va ishlar kodlarini yoqish yoki oʻchirish',
       SubjectsController_export: 'Fanlarni eksport qilish',
       SubjectsController_importConfirm: 'Fanlar importini saqlash',
       SubjectsController_importPreview: 'Fanlar importini tekshirish',
@@ -2127,6 +2130,7 @@ export const uz: Texts<'one' | 'other'> = {
       student_history: 'Oʻquvchilar tarixi',
       student_merges: 'Oʻquvchi yozuvlarini birlashtirish',
       students: 'Oʻquvchilar',
+      subject_codes: 'Mavzu va ishlar kodlari',
       subjects: 'Fanlar',
       timetable: 'Dars jadvali',
       timetable_load: 'Dars yuklamasi hisoboti',
@@ -2821,6 +2825,13 @@ export const uz: Texts<'one' | 'other'> = {
       groupSubject: 'Guruhli fan',
       languageRule: 'Til qoidasi',
       demanding: 'Murakkab fan',
+      codes: {
+        title: 'Mavzu va ishlar kodlari',
+        switch: 'Kodlar yoqilgan',
+        on: 'Yoqilgan',
+        off: 'Oʻchirilgan',
+        help: 'Bu fanning mavzulari, sinf ishlari va uy vazifalari qisqa kodga ega boʻlishi mumkin. Oʻchirish kodlarni yashiradi va saqlab qoladi.',
+      },
       switches: 'Xususiyatlar',
       quarterly: 'Choraklik taqsimot',
       changeWeights: 'Taqsimotni oʻzgartirish',
@@ -5331,6 +5342,7 @@ export const uz: Texts<'one' | 'other'> = {
         edit: 'Fan oʻzgartirildi',
         archive: 'Fan arxivlandi',
         restore: 'Fan tiklandi',
+        codes: 'Mavzu va ishlar kodlari almashtirildi',
         export: 'Fanlar eksport qilindi',
       },
       subject_daily_weights: {
@@ -7546,6 +7558,12 @@ export const uz: Texts<'one' | 'other'> = {
     },
   },
   plans: {
+    codes: {
+      topicCode: 'Mavzu kodi',
+      workCode: 'Kod {{number}}',
+      code: 'Kod',
+      tooLong: 'Koʻpi bilan {{max}} ta belgi.',
+    },
     files: {
       closeText: 'Ular rejada yoʻq. Kartani ularsiz yopasizmi?',
       closeAction: 'Ularsiz yopish',

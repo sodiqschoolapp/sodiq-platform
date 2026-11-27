@@ -812,7 +812,8 @@ describe('lesson plans and their items', () => {
       expect(apiErrorSchema.parse(stale.body).error.details).toEqual([
         expect.objectContaining({
           path: `values.classworks.${exercise1?.id ?? ''}`,
-          storedPlanValue: { title: 'Exercise 1a', description: '' },
+          // Task 11.27: the code as shown beside them (none here).
+          storedPlanValue: { title: 'Exercise 1a', description: '', code: null },
         }),
       ]);
     });

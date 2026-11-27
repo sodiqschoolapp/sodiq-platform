@@ -489,6 +489,9 @@ export class PlanReportsService {
               sql<string>`req.value ->> 'id'`.as('request_id'),
               sql<string | null>`old_value ->> 'topic'`.as('topic_before'),
               sql<string | null>`new_value ->> 'topic'`.as('topic_after'),
+              // Task 11.27: the topic codes of the change (shown only while codes are on).
+              sql<string | null>`old_value ->> 'topicCode'`.as('topic_code_before'),
+              sql<string | null>`new_value ->> 'topicCode'`.as('topic_code_after'),
             ])
             .innerJoin(
               sql<{
@@ -531,6 +534,8 @@ export class PlanReportsService {
             on: schoolDateOf(change.occurred_at, base.timeZone),
             topicBefore: change.topic_before,
             topicAfter: change.topic_after,
+            topicCodeBefore: journal.subject.codesOn ? change.topic_code_before : null,
+            topicCodeAfter: journal.subject.codesOn ? change.topic_code_after : null,
           })),
       });
       byTeacher.set(key, entry);

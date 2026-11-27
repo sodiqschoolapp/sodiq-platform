@@ -124,6 +124,7 @@ const ACCOUNT: AccountDetail = {
 };
 
 const subjectOf = (n: number, en: string, uz: string, ru: string, archived = false): Subject => ({
+  codesOn: false,
   departmentSince: null,
   departmentMove: null,
   id: uid(n),
@@ -189,7 +190,11 @@ function open(
     'GET /api/people/staff': () => json({ staff: [LOLA], today: '2026-10-10' }),
     'GET /api/setup/divisions': () => json({ divisions: [ACADEMIC], staffCounts: [] }),
     'GET /api/setup/subjects': () =>
-      json({ subjects: [MATHEMATICS, PHYSICS, LATIN], mayMoveDepartment: false }),
+      json({
+        subjects: [MATHEMATICS, PHYSICS, LATIN],
+        mayMoveDepartment: false,
+        maySwitchCodes: false,
+      }),
     [`GET /api/people/staff/${LOLA.id}`]: () => json(detail),
     [`GET /api/people/staff/${LOLA.id}/availability`]: () =>
       json({ entries: [], elsewhere: [], today: '2026-10-10' }),

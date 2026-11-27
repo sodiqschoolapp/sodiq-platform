@@ -1,6 +1,7 @@
 import {
   lessonTopicSchema,
   planWorkRenameSchema,
+  PLAN_CODE_MAX_LENGTH,
   PLAN_TOPIC_MAX_LENGTH,
   WORK_TITLE_MAX,
   WORK_TOTAL_MAX,
@@ -33,6 +34,7 @@ import { schoolDateText } from '@/lib/dates';
 import { lessonCardQuery } from './journal-api';
 import { WorkKindTag } from './work-kind-tag';
 import { readWorkAmount, refusalText, withPoint } from './work-amount';
+import { CodedName } from '@/components/coded-name';
 
 /**
  * One place to edit a lesson in the journal (the owner, 20 November 2026: "'Bu dars rejasini
@@ -59,9 +61,14 @@ export interface LessonEditorProps {
   readonly nameOfWork: (work: JournalWork) => string;
   readonly keyOf: (work: JournalWork) => string;
   /** Answers whether the server took it (a typed value stays on a refusal). */
-  readonly onTopic: (topic: string) => Promise<boolean>;
-  readonly onAdd: (kind: 'classwork' | 'homework', title: string) => Promise<boolean>;
-  readonly onRename: (work: JournalWork, title: string) => Promise<boolean>;
+  /** Task 11.27: `code` is the code typed (`undefined` while the subject's codes are off). */
+  readonly onTopic: (topic: string, code?: string | null) => Promise<boolean>;
+  readonly onAdd: (
+    kind: 'classwork' | 'homework',
+    title: string,
+    code?: string | null,
+  ) => Promise<boolean>;
+  readonly onRename: (work: JournalWork, title: string, code?: string | null) => Promise<boolean>;
   readonly onTotal: (work: JournalWork, total: number) => void;
   readonly onDelete: (work: JournalWork) => void;
   readonly onClose: () => void;
@@ -93,6 +100,8 @@ export function LessonEditor({
   const classworks = lesson.works.filter((work) => work.kind === 'classwork');
   const homeworks = lesson.works.filter((work) => work.kind === 'homework');
   const [adding, setAdding] = useState<'classwork' | 'homework' | null>(null);
+  // Task 11.27 (`09`, Codes: "wherever a work is added in the journal").
+  const codesOn = grid.journal.codesOn;
   return (
     <Dialog
       open
@@ -112,8 +121,10 @@ export function LessonEditor({
           )}
           <FailureAlert error={failure} />
           <TopicForm
-            key={lesson.topic ?? ''}
+            key={`${lesson.topic ?? ''}|${lesson.topicCode ?? ''}`}
             stored={lesson.topic ?? ''}
+            storedCode={lesson.topicCode}
+            codesOn={codesOn}
             enter={enter}
             busy={busy}
             onSave={onTopic}
@@ -133,7 +144,8 @@ export function LessonEditor({
                 busy={busy}
                 focus={focusKey === keyOf(work)}
                 lastTotal={grid.lastTotal}
-                onRename={(text) => onRename(work, text)}
+                codesOn={codesOn}
+                onRename={(text, code) => onRename(work, text, code)}
                 onTotal={(total) => {
                   onTotal(work, total);
                 }}
@@ -148,8 +160,9 @@ export function LessonEditor({
                 label={t('journal.works.classworkTitle')}
                 action={t('journal.works.add')}
                 busy={busy}
-                onSave={async (text) => {
-                  if (await onAdd('classwork', text)) setAdding(null);
+                codesOn={codesOn}
+                onSave={async (text, code) => {
+                  if (await onAdd('classwork', text, code)) setAdding(null);
                 }}
                 onCancel={() => {
                   setAdding(null);
@@ -185,7 +198,8 @@ export function LessonEditor({
                 busy={busy}
                 focus={focusKey === keyOf(work)}
                 lastTotal={grid.lastTotal}
-                onRename={(text) => onRename(work, text)}
+                codesOn={codesOn}
+                onRename={(text, code) => onRename(work, text, code)}
                 onTotal={(total) => {
                   onTotal(work, total);
                 }}
@@ -200,8 +214,9 @@ export function LessonEditor({
                 label={t('journal.works.homeworkTitle')}
                 action={t('journal.works.add')}
                 busy={busy}
-                onSave={async (text) => {
-                  if (await onAdd('homework', text)) setAdding(null);
+                codesOn={codesOn}
+                onSave={async (text, code) => {
+                  if (await onAdd('homework', text, code)) setAdding(null);
                 }}
                 onCancel={() => {
                   setAdding(null);
@@ -237,24 +252,40 @@ export function LessonEditor({
 /** The topic of the lesson: a field and Save while the lesson can be entered, its text otherwise. */
 function TopicForm({
   stored,
+  storedCode,
+  codesOn,
   enter,
   busy,
   onSave,
 }: {
   stored: string;
+  /** Task 11.27: the topic code shown (`null` when none or off). */
+  storedCode: string | null;
+  codesOn: boolean;
   enter: boolean;
   busy: boolean;
-  onSave: (topic: string) => Promise<boolean>;
+  onSave: (topic: string, code?: string | null) => Promise<boolean>;
 }) {
   const { t } = useTranslation();
   const [typed, setTyped] = useState(stored);
+  const [typedCode, setTypedCode] = useState(storedCode ?? '');
   const trimmed = typed.trim();
   const tooLong = trimmed.length > PLAN_TOPIC_MAX_LENGTH;
+  const code = typedCode.trim();
+  const codeTooLong = [...code].length > PLAN_CODE_MAX_LENGTH;
+  const codeChanged = codesOn && code !== (storedCode ?? '');
+  const changed = trimmed !== stored.trim() || codeChanged;
   if (!enter) {
     return (
       <div className="grid gap-1">
         <p className="font-semibold">{t('journal.card.topic')}</p>
-        <p data-card-topic="true">{stored === '' ? t('journal.works.noPlan') : stored}</p>
+        <p data-card-topic="true">
+          {stored === '' ? (
+            t('journal.works.noPlan')
+          ) : (
+            <CodedName code={storedCode} name={stored} />
+          )}
+        </p>
       </div>
     );
   }
@@ -264,10 +295,34 @@ function TopicForm({
       data-editor-topic="true"
       onSubmit={(event) => {
         event.preventDefault();
-        if (tooLong || trimmed === stored.trim()) return;
-        void onSave(trimmed);
+        if (tooLong || codeTooLong || !changed) return;
+        void (codesOn ? onSave(trimmed, code === '' ? null : code) : onSave(trimmed));
       }}
     >
+      {codesOn && (
+        <Field
+          label={t('plans.codes.topicCode')}
+          value={typedCode}
+          // Task 11.27: never required (`09`, Codes), from `lessonTopicSchema`.
+          required={requiredOf(
+            lessonTopicSchema,
+            { topic: typed, topicCode: typedCode },
+            'topicCode',
+            {
+              read: (values) => ({
+                topic: values.topic,
+                baseTopic: stored,
+                topicCode: values.topicCode,
+              }),
+            },
+          )}
+          autoComplete="off"
+          error={codeTooLong ? t('plans.codes.tooLong', { max: PLAN_CODE_MAX_LENGTH }) : undefined}
+          onChange={(event) => {
+            setTypedCode(event.target.value);
+          }}
+        />
+      )}
       <Field
         label={t('journal.card.topic')}
         value={typed}
@@ -283,9 +338,9 @@ function TopicForm({
           setTyped(event.target.value);
         }}
       />
-      {trimmed !== stored.trim() && (
+      {changed && (
         <div className="flex flex-wrap gap-2">
-          <Button type="submit" disabled={busy || tooLong}>
+          <Button type="submit" disabled={busy || tooLong || codeTooLong}>
             {t('journal.editor.saveTopic')}
           </Button>
           <Button
@@ -293,6 +348,7 @@ function TopicForm({
             variant="ghost"
             onClick={() => {
               setTyped(stored);
+              setTypedCode(storedCode ?? '');
             }}
           >
             {t('form.cancel')}
@@ -312,11 +368,14 @@ function WorkRow({
   busy,
   focus,
   lastTotal,
+  codesOn,
   onRename,
   onTotal,
   onDelete,
 }: {
   work: JournalWork;
+  /** Task 11.27: the subject's codes are on: the rename takes a code too. */
+  codesOn: boolean;
   name: string;
   /** A second word beside the title (the day a homework was given). */
   extra: string | null;
@@ -324,7 +383,7 @@ function WorkRow({
   busy: boolean;
   focus: boolean;
   lastTotal: number | null;
-  onRename: (title: string) => Promise<boolean>;
+  onRename: (title: string, code?: string | null) => Promise<boolean>;
   onTotal: (total: number) => void;
   onDelete: () => void;
 }) {
@@ -350,7 +409,11 @@ function WorkRow({
     <div className="grid gap-2" data-editor-work={work.id ?? work.planWorkId ?? ''}>
       <div className="flex flex-wrap items-center gap-2">
         <WorkKindTag kind={work.kind} />
-        <span className="min-w-0 flex-1 break-words font-medium">{name}</span>
+        <CodedName
+          className="min-w-0 flex-1 break-words font-medium"
+          code={work.code}
+          name={name}
+        />
         {extra !== null && <span className="text-muted-foreground">{extra}</span>}
         <label className="flex items-center gap-1.5">
           <span className="text-muted-foreground">{t('journal.editor.total')}</span>
@@ -436,11 +499,14 @@ function WorkRow({
       {renaming && (
         <WorkTitleForm
           initial={work.title ?? ''}
+          // Task 11.27: a work added by hand before 7 November takes no code (plan decision 3).
+          initialCode={work.code}
+          codesOn={codesOn && work.planWorkId !== null}
           label={t('journal.works.titleLabel')}
           action={t('journal.works.rename')}
           busy={busy}
-          onSave={async (title) => {
-            if (await onRename(title)) setRenaming(false);
+          onSave={async (title, code) => {
+            if (await onRename(title, code)) setRenaming(false);
           }}
           onCancel={() => {
             setRenaming(false);
@@ -458,6 +524,8 @@ function WorkRow({
  */
 export function WorkTitleForm({
   initial,
+  initialCode = null,
+  codesOn = false,
   label,
   action,
   busy,
@@ -465,17 +533,25 @@ export function WorkTitleForm({
   onCancel,
 }: {
   initial: string;
+  /** Task 11.27: the code shown, and whether the code field is shown (`09`, Codes). */
+  initialCode?: string | null;
+  codesOn?: boolean;
   label: string;
   action: string;
   busy: boolean;
-  onSave: (title: string) => void | Promise<void>;
+  /** `code` is `undefined` while the code field is not shown (the stored code stays). */
+  onSave: (title: string, code?: string | null) => void | Promise<void>;
   onCancel?: () => void;
 }) {
   const { t } = useTranslation();
   const [typed, setTyped] = useState(initial);
+  const [typedCode, setTypedCode] = useState(initialCode ?? '');
   const [tried, setTried] = useState(false);
   const title = typed.trim();
   const length = workTitleLength(title);
+  const code = typedCode.trim();
+  const codeTooLong = [...code].length > PLAN_CODE_MAX_LENGTH;
+  const codeChanged = codesOn && code !== (initialCode ?? '');
   const problem =
     length === 0
       ? t('journal.works.titleRequired')
@@ -489,9 +565,25 @@ export function WorkTitleForm({
       onSubmit={(event) => {
         event.preventDefault();
         setTried(true);
-        if (problem === undefined && title !== initial) void onSave(title);
+        if (problem !== undefined || codeTooLong || (title === initial && !codeChanged)) return;
+        void (codesOn ? onSave(title, code === '' ? null : code) : onSave(title));
       }}
     >
+      {codesOn && (
+        <Field
+          label={t('plans.codes.code')}
+          value={typedCode}
+          // Task 11.27: never required (`09`, Codes), from `planWorkRenameSchema`.
+          required={requiredOf(planWorkRenameSchema, { title: typed, code: typedCode }, 'code', {
+            read: (values) => ({ title: values.title, baseTitle: initial, code: values.code }),
+          })}
+          autoComplete="off"
+          error={codeTooLong ? t('plans.codes.tooLong', { max: PLAN_CODE_MAX_LENGTH }) : undefined}
+          onChange={(event) => {
+            setTypedCode(event.target.value);
+          }}
+        />
+      )}
       <Field
         label={label}
         value={typed}
@@ -509,7 +601,10 @@ export function WorkTitleForm({
         }}
       />
       <div className="flex flex-wrap gap-2">
-        <Button type="submit" disabled={busy || (initial !== '' && title === initial)}>
+        <Button
+          type="submit"
+          disabled={busy || codeTooLong || (initial !== '' && title === initial && !codeChanged)}
+        >
           {action}
         </Button>
         {onCancel !== undefined && (

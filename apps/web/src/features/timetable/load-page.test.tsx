@@ -50,6 +50,7 @@ const OXFORD: SchoolClass = {
 };
 
 const subject = (n: number, fields: Partial<Subject> = {}): Subject => ({
+  codesOn: false,
   departmentSince: null,
   departmentMove: null,
   id: uid(200 + n),
@@ -182,7 +183,7 @@ async function openPage(
     'GET /api/groups': () => json({ groups: [] }),
     'GET /api/setup/academic-years': () => json({ years: [YEAR] }),
     'GET /api/setup/subjects': () =>
-      json({ subjects: [MATHS, SPIRITUAL], mayMoveDepartment: false }),
+      json({ subjects: [MATHS, SPIRITUAL], mayMoveDepartment: false, maySwitchCodes: false }),
     'GET /api/setup/rooms': () => json({ rooms: [LAB] }),
     ...Object.fromEntries(
       versions.map((one) => [
@@ -1447,7 +1448,7 @@ describe('the teaching load page: splits, groups and weekly totals', () => {
       extra: {
         'GET /api/groups': () => json({ groups: [groupOfIt, OTHER_HALF] }),
         'GET /api/setup/subjects': () =>
-          json({ subjects: [MATHS, grouped], mayMoveDepartment: false }),
+          json({ subjects: [MATHS, grouped], mayMoveDepartment: false, maySwitchCodes: false }),
       },
     });
     const form = await openNewRow();
