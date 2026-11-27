@@ -227,7 +227,8 @@ export const TEACHER_CHANGES: Readonly<Record<string, AssistantChangeLine>> = {
       route: 'GET /api/plans/journals/:journalId',
       args: { journalId: 'body:journalId', quarterId: 'body:quarterId' },
       pick: 'path:itemId',
-      keys: ['topic', 'objectives', 'links', 'classworks', 'homeworks'],
+      // Task 11.27: the topic code as read, so a change of the code alone is a change.
+      keys: ['topic', 'topicCode', 'objectives', 'links', 'classworks', 'homeworks'],
       against: 'values',
       toolFields: {
         journalId: { required: true, description: 'The journal of the plan the item belongs to.' },

@@ -10,7 +10,7 @@ import { FOCUS_RING } from '@/components/ui/control';
  * tap. Where the code is empty, the name is shown alone").
  *
  * - `full` (the default): the code first, then the name.
- * - `short`: the code alone; the full name on hover (`title`), and on a tap or keyboard focus a
+ * - `short`: the code alone; the full name on hover (`title`), and on a tap (or Enter or Space) a
  *   small line under it that a second tap closes (plan decision 9). The accessible name is the
  *   full name with its code.
  *

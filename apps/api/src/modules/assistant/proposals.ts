@@ -561,10 +561,11 @@ export async function draftStep(
     if (
       against !== null &&
       typeof against === 'object' &&
-      server.keys.every(
-        (key) =>
-          fingerprintOf((against as Record<string, unknown>)[key]) === fingerprintOf(stored[key]),
-      )
+      server.keys.every((key) => {
+        // Task 11.27: a key the values leave out (a topic code) keeps the stored value.
+        const sent = (against as Record<string, unknown>)[key];
+        return sent === undefined || fingerprintOf(sent) === fingerprintOf(stored[key]);
+      })
     ) {
       return { given: { error: 'assistant_nothing_to_change' } };
     }
