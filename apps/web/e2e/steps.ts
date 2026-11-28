@@ -301,6 +301,14 @@ export async function panelAction(panel: Locator, name: string): Promise<Locator
   if (found === null) {
     throw new Error(`The side panel has no action "${name}".`);
   }
+  // The header can lay out again while the panel settles (an action moves out of "More"): a
+  // menu opened while the action was still in it is closed first, or it covers the button.
+  if (found !== item && (await more.count()) > 0) {
+    if ((await more.getAttribute('aria-expanded')) === 'true') {
+      await page.keyboard.press('Escape');
+      await expect(more).toHaveAttribute('aria-expanded', 'false');
+    }
+  }
   return found;
 }
 
