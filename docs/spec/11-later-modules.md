@@ -22,7 +22,7 @@ The HR, Nurse, Psychologist and Librarian roles are in the permission matrix fro
 | Item | Source | Reason |
 | --- | --- | --- |
 | Admissions and CRM | Texnik topshiriq 4.1, Ziyoly | Not in the main file. Students are added by the Academic Vice Principal. |
-| Payments, finance, payroll | Texnik topshiriq 4.3 and 4.4, Ziyoly, myss.uz | Not in the main file. Only scholarship and stipend records are kept. |
+| Payments, finance, payroll | Texnik topshiriq 4.3 and 4.4, Ziyoly, myss.uz | Not in the main file. Only scholarship and stipend records are kept. The list of the school's own subscriptions (`03`, Subscriptions) is a record, not finance: it pays nothing and nothing else reads it. |
 | Homework debt and payment debtors | myss.uz, Ziyoly notes | Removed on your instruction. |
 | Task management | Texnik topshiriq 5 | Not in the main file. |
 | Chat | Texnik topshiriq 6 | Not in the main file. Comments and notifications cover the academic need. |

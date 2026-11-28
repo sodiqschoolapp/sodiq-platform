@@ -1,6 +1,6 @@
 # Spec change proposal: the school's subscriptions
 
-Requested by the owner, 28 November 2026, in chat. Status: **proposed; waiting for the owner.** Nothing under `docs/spec/` is changed by this file; the owner runs `/spec-change` when they agree. The task that builds it is 11.28 in `docs/build-plan.md`.
+Requested by the owner, 28 November 2026, in chat. Status: **approved by the owner in full on 28 November 2026 and applied** (`docs/spec-changes.md`, 28 November 2026, the school's subscriptions). The edge cases of section 3 are in `03`, Subscriptions. The task that builds it is 11.28 in `docs/build-plan.md`.
 
 ## 1. The request
 

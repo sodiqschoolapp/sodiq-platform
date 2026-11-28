@@ -15,7 +15,7 @@ Where the sources disagree, the main file wins. Where the main file is silent, t
 | Grading weights | Main file: a daily and a quarterly distribution per subject. myss.uz: monthly weights. Ziyoly demo: one fixed formula. Ziyoly notes: weights per quarter. | A quarterly distribution per subject, set for each quarter. The daily distribution was removed on 24 November 2026: there is no lesson score. |
 | Rating exam | myss.uz: a part of the monthly weights. Ziyoly notes and demo: at the end of the quarter. | One score per quarter, rating subjects only. |
 | Homework debt | myss.uz and the Ziyoly notes have a debt threshold, a journal column and an analytics page. Your message: not needed. | Removed everywhere. |
-| Payment debtors | myss.uz has a debtors page. | Removed. No finance in this system. |
+| Payment debtors | myss.uz has a debtors page. | Removed. No finance in this system. The list of the school's own subscriptions (`03`, Subscriptions) is a record, not finance. |
 | Grading scale of a work | Ziyoly demo: classwork out of 100, homework out of 15, fixed. myss.uz and your explanation: the teacher sets the total of each work freely. | The teacher sets the total of each work (the number of questions, 5, 100 or any other) and types a number. The system always turns it into a percent. |
 | Bonus percent | Ziyoly demo has a bonus column. No school source mentions it. | Not included. |
 | Attendance marks | Texnik topshiriq and myss.uz: six marks, 0 to 5. Ziyoly demo: its own set. | The six marks. |

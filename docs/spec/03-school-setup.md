@@ -16,6 +16,7 @@ Setup is done once per branch and then drives every other screen. Super Admin ow
 | Academic calendar | Days off (holidays, vacations) and special days: shortened day, exam week, open-doors day, a working Saturday. Each date resolves to "no lessons" or to one day template. | Academic Vice Principal |
 | Slot types and day templates | Slot types and day templates belong to a branch and are set by that branch's Academic Vice Principal, so branches can differ: one may use 45-minute lessons and another 40. A slot type has a name, a kind (lesson or break) and a length in minutes: for example Lesson 45, Break 15, Long break 20, Lunch 40. A day template is a start time and an ordered list of slots chosen from these types. The Academic Vice Principal adds, removes and reorders slots; every start and end time is calculated from the order and the lengths. Times are never typed by hand, so a lesson can only fill a whole lesson slot. There are no shifts. A branch has a default template; another template can be set for a range of grades inside the branch, for a weekday, for a weekday and a range of grades together, and for a special date in the calendar. For a class on a date, the first of these that applies wins: a special date for its grade range, then a special date for the branch, then weekday with grade range, then weekday, then grade range, then the default. Grade ranges set at one level may not overlap. A template set at any level takes effect from a chosen date, tomorrow at the earliest, and its history is kept; the rule for a change mid-year in the calendar edge cases applies to each. School setup shows the template that results for every weekday and grade in one table; saving a template at any level shows that table with the changes marked, as the preview of the change. | Academic Vice Principal |
 | Grade bands | 100-point scale for all grades: 0–49 is 2, 50–66 is 3, 67–83 is 4, 84–100 is 5. | Fixed for the whole school |
+| Subscription | What the school pays for regularly: software, online services, hosting, licences. See Subscriptions below. | Super Admin |
 
 ## Divisions
 
@@ -43,3 +44,43 @@ A division is the top-level unit a staff member is employed in. The school has e
 * The current academic year and quarter are always shown in the top bar. No page silently opens on another year.
 * Lunch is a slot in the day template, not a subject as in myss.uz.
 * Changing the calendar or lesson times after the timetable is published regenerates only future lessons that have no data, and lists any lesson that already has attendance or marks.
+
+## Subscriptions
+
+The Super Admin keeps one list of what the school pays for regularly. It is a record only: the platform pays nothing, contacts no provider, and no other screen reads the list. No other role sees it.
+
+| Field | Rules |
+| --- | --- |
+| Name | Required, at most 100 characters. |
+| Provider | Optional. |
+| Website | Optional, a web address. |
+| Purpose | Optional, what it is used for. |
+| Branch | One branch, or the whole school (the default). |
+| Plan and seats | Optional: the plan's name, and a whole number of seats of at least 1. |
+| Price and currency | Required. The price per billing period, 0 or more, in UZS (whole so'm) or USD (at most two decimal places). |
+| Billing | Monthly, yearly or one-time. |
+| Start date | Required. |
+| Next renewal | Required for monthly and yearly, after the start date. A one-time purchase has none. |
+| Auto-renews | Yes or no. |
+| Responsible person | Optional, an active staff member. |
+| Account email | Optional: the email the account is signed in with. A password, key or card number is never stored here. |
+| Notes | Optional, at most 1,000 characters. |
+
+The list shows the name, provider, branch, plan and seats, the price per period, the next renewal with the days left, auto-renews, the responsible person and the state. It opens on the active subscriptions, sorted by the next renewal, one-time purchases last. A renewal in the next 30 days is marked as due soon, and a past one as overdue. It can be filtered by branch and searched by name or provider. Above the list, the yearly cost of the active subscriptions, one total per currency: a monthly price counts 12 times, a yearly price once, a one-time purchase not at all. The two currencies are never added together.
+
+"Renewed" moves the next renewal forward by one billing period. "Cancel" archives the subscription with an end date; it can be restored. Every change is in the audit log. Reminders before a renewal are for later.
+
+Cases:
+
+| Case | Rule |
+| --- | --- |
+| A monthly subscription with the next renewal on or before the start date | Refused. |
+| A one-time purchase sent with a next renewal date | Refused. |
+| Changed from monthly to one-time | The next renewal is cleared in the same save. |
+| A USD price with three decimal places, or a UZS price with any decimal places | Refused. |
+| "Renewed" on a monthly subscription renewing on 31 January | The next renewal moves to the last day of February: when the day does not exist in the next month, its last day is taken. |
+| "Renewed" pressed twice, from two tabs | The second one is refused as outdated (record version), so the date moves only once. |
+| The responsible person leaves the school | The subscription keeps them, shown with a mark that they left; a new choice offers active staff only. |
+| A branch is archived | Its subscriptions keep the branch, shown with the archived mark. |
+| A cancelled subscription | It drops out of the yearly total and the renewal marks, and shows under the cancelled switch with its end date. |
+| Any role other than the Super Admin, through a screen, the API, an integration key or the assistant | Refused. |
