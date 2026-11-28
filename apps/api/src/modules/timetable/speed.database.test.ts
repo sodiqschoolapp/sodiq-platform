@@ -1222,7 +1222,7 @@ async function peopleOf(t: AppKit, branch: BranchOfRun): Promise<Person[]> {
   await add('academic_vice_principal');
   await add('principal');
   await add('head_tutor');
-  // One Super Admin for the school (at most 3 accounts, `TooManySuperAdminsError`), in every branch.
+  // One Super Admin for the school (the role has a limit, `TooManySuperAdminsError`), in every branch.
   if (superAdmin === undefined) superAdmin = (await add('super_admin')).person;
   else people.push({ ...superAdmin, branch });
   const mathematics = await migrator

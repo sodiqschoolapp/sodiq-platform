@@ -606,7 +606,10 @@ describe('assignments', () => {
   });
 });
 
-// docs/spec/02-roles-and-access.md, Super Admin: "At most 3 accounts."
+// docs/spec/02-roles-and-access.md, Super Admin: "At most 5 accounts." (spec change of
+// 28 November 2026). The number is typed here, not read from MAX_SUPER_ADMINS, so that a
+// change of the constant alone fails this test (decisions: the constant, its test and the
+// spec row change together).
 describe('the Super Admin role', () => {
   let database: TestDatabase;
   let transactions: Transactions;
@@ -652,27 +655,31 @@ describe('the Super Admin role', () => {
     await database.destroy();
   });
 
-  it('is held by at most 3 accounts, also when two are given at the same moment', async () => {
-    const [first, second, third, fourth] = [
+  it('is held by at most 5 accounts, also when two are given at the same moment', async () => {
+    const [first, second, third, fourth, fifth, sixth] = [
       await account('Aziz', 'Saidov'),
       await account('Barno', 'Saidova'),
       await account('Charos', 'Saidova'),
       await account('Davron', 'Saidov'),
+      await account('Iroda', 'Saidova'),
+      await account('Jasur', 'Saidov'),
     ];
     await give(first ?? '');
     await give(second ?? '');
+    await give(third ?? '');
+    await give(fourth ?? '');
 
-    const runs = await Promise.allSettled([give(third ?? ''), give(fourth ?? '')]);
+    const runs = await Promise.allSettled([give(fifth ?? ''), give(sixth ?? '')]);
 
     expect(runs.map((run) => run.status).sort()).toEqual(['fulfilled', 'rejected']);
     expect(runs.find((run) => run.status === 'rejected')?.reason).toBeInstanceOf(
       TooManySuperAdminsError,
     );
-    expect(await superAdmins()).toBe(3);
+    expect(await superAdmins()).toBe(5);
   });
 
   it('counts one that begins later', async () => {
-    // Three hold it; one of them ends, and the place is given for next month.
+    // Five hold it; one of them ends, and the place is given for next month.
     const held = await sql<{ id: string; account_id: string }>`
       select id, account_id from assignments order by id
     `.execute(database.migrator);
@@ -687,8 +694,8 @@ describe('the Super Admin role', () => {
     const later = await account('Elyor', 'Saidov');
     await give(later, new Date('2026-11-05T09:00:00+05:00'));
 
-    const fifth = await account('Feruza', 'Saidova');
-    await expect(give(fifth)).rejects.toBeInstanceOf(TooManySuperAdminsError);
+    const refused = await account('Feruza', 'Saidova');
+    await expect(give(refused)).rejects.toBeInstanceOf(TooManySuperAdminsError);
   });
 
   it('does not count one that has ended', async () => {
@@ -704,16 +711,16 @@ describe('the Super Admin role', () => {
       }),
     );
 
-    const sixth = await account('Gulom', 'Saidov');
-    await give(sixth);
+    const replacing = await account('Gulom', 'Saidov');
+    await give(replacing);
 
-    expect(await superAdmins()).toBe(3);
+    expect(await superAdmins()).toBe(5);
   });
 
   // Found by the review: its end is its start, next month, and it holds no place.
   it('does not count one that was taken back before it began', async () => {
-    const seventh = await account('Hilola', 'Saidova');
-    await expect(give(seventh)).rejects.toBeInstanceOf(TooManySuperAdminsError);
+    const waiting = await account('Hilola', 'Saidova');
+    await expect(give(waiting)).rejects.toBeInstanceOf(TooManySuperAdminsError);
     const later = await sql<{ id: string }>`
       select id from assignments where valid_from > ${clock.now()}
     `.execute(database.migrator);
@@ -729,8 +736,8 @@ describe('the Super Admin role', () => {
         notifications: noNotices,
       }),
     );
-    await give(seventh);
+    await give(waiting);
 
-    expect(await superAdmins()).toBe(3);
+    expect(await superAdmins()).toBe(5);
   });
 });

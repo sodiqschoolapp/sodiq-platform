@@ -69,7 +69,7 @@ describe('the home pages (08, Home pages by role)', () => {
     post: (path: string, body: object) => Promise<Response>;
   };
 
-  /** One Super Admin for the file: at most 3 accounts hold the role (`MAX_SUPER_ADMINS`). */
+  /** One Super Admin for the file: the role has a limit (`MAX_SUPER_ADMINS`). */
   let superAdminBrowser: Browser | undefined;
   const superAdmin = async (): Promise<Browser> => {
     if (superAdminBrowser === undefined) {

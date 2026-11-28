@@ -22,7 +22,7 @@ Decided once, valid for every task. A session reads this section at its start (`
 | Claude Code never reads `.env` (`.claude/settings.json` denies it); the local `SECOND_STEP_KEY` is public, a server gets its own random key in task 0.10 | Secrets never enter a transcript. |
 | No real personal data anywhere: code, tests, seeds, logs, commit messages, pull requests. Invented names only | `CLAUDE.md`. |
 | The module and feature names are `auth`, `access`, `audit`, `notifications`, `setup`, `people`, `classes`, `timetable`, `journal`, `plans`, `results`, `feedback`, `portal`, `announcements`, `assistant` | `CLAUDE.md`, Repository layout; `feedback` was added for task 0.8b-3; `portal` for task 11.2 (reading 3 of the Release 2 plan; the owner adds it to `CLAUDE.md`, review correction 1 of pull request #294); `announcements` for task 11.7 (decision 2 of pull request #306, Look first; the owner adds it to `CLAUDE.md`); `assistant` for task 11.12 (build plan 11.12 names the module; the owner adds it to `CLAUDE.md`). |
-| At most 3 Super Admins (`MAX_SUPER_ADMINS` in `packages/shared/src/roles.ts`); changing it means the constant, its test and the spec row together | Decided by the owner in 0.7a. |
+| At most 5 Super Admins (`MAX_SUPER_ADMINS` in `packages/shared/src/roles.ts`); changing it means the constant, its test and the spec row together | Decided by the owner in 0.7a (3); raised to 5 by the owner's spec change of 28 November 2026. |
 
 ## Decided ahead for Phase 10 (owner, 26 October 2026)
 
@@ -60,7 +60,7 @@ The owner's answers to the decided-ahead questions for Phase 10, given in chat o
 14. The address is `app.sodiqschool.uz`; the test environment stays at `app-test.sodiqschool.uz`.
 15. Two servers of 2 GB on Render in Frankfurt, run as Docker with Chromium, so Print and PDF work in production; the jobs worker beside them.
 16. No email for now: password resets are made by an administrator, and the email reset keeps writing to the log only.
-17. The owner creates the first Super Admins (at most 3) on the server with `pnpm auth:first-account`. No real name enters the repository, a pull request or a chat.
+17. The owner creates the first Super Admins (at most 5, spec change of 28 November 2026) on the server with `pnpm auth:first-account`. No real name enters the repository, a pull request or a chat.
 18. The pilot: several groups at school from Wednesday 28 October 2026 (above).
 19. Production deploys only after 18:00 or at the weekend, Tashkent time.
 20. The test environment stays after go-live; every change is tried there first.

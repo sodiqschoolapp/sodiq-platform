@@ -1163,7 +1163,7 @@ export const en = {
     role_overlap:
       'This person already holds this role in this branch on that date. Choose a later date, or end the current role first.',
     too_many_super_admins:
-      'There can be at most 3 Super Admins. End another Super Admin role first.',
+      'There can be at most 5 Super Admins. End another Super Admin role first.',
     own_super_admin_role: 'You cannot end your own Super Admin role. Ask another Super Admin.',
     last_super_admin:
       'This would leave the school without an active Super Admin. Give the Super Admin role to another person first.',

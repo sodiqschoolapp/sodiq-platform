@@ -230,7 +230,7 @@ Do one step at a time and check it before the next. Every value in angle bracket
    - Variables `RENDER_API_SERVICE_ID`, `RENDER_WORKER_SERVICE_ID` (the `srv-…` ids of step 4) and `PRODUCTION_URL` = `https://app.sodiqschool.uz`.
 7. **Prove the image**: Actions, Deploy production, Run workflow with "Only build the image" ticked. Green before the first deploy.
 8. **The first deploy**, after 18:00 or at the weekend: Run workflow (not ticked), approve. The migrations create every table on the empty database, then the services start and the smoke test passes. `https://app.sodiqschool.uz` shows the sign-in page.
-9. **The first Super Admin** (answer 17; at most 3 Super Admins, `MAX_SUPER_ADMINS`): Render, `sodiq-api`, **Shell**:
+9. **The first Super Admin** (answer 17; at most 5 Super Admins, `MAX_SUPER_ADMINS`): Render, `sodiq-api`, **Shell**:
    ```bash
    node apps/api/dist/modules/auth/cli.js first-account --first-name <name> --last-name <name>
    ```

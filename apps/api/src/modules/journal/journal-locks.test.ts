@@ -792,7 +792,7 @@ describe('the edit period through the routes', () => {
     });
   });
   describe('the routing, the rating exam, corrections of other writes and the ids', () => {
-    /** The one Super Admin of the file: the kit allows at most three. */
+    /** The one Super Admin of the file: the role has a limit (`MAX_SUPER_ADMINS`). */
     let admin: Browser | null = null;
     const superAdmin = async (): Promise<Browser> => {
       admin ??= await holder({ role: 'super_admin' });

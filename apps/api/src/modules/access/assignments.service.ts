@@ -30,7 +30,7 @@ export class AssignmentOverlapError extends Error {
   }
 }
 
-/** docs/spec/02-roles-and-access.md, Super Admin: "At most 3 accounts." */
+/** docs/spec/02-roles-and-access.md, Super Admin: "At most 5 accounts." */
 export class TooManySuperAdminsError extends Error {
   constructor() {
     super(`At most ${String(MAX_SUPER_ADMINS)} accounts can be Super Admin.`);
@@ -195,7 +195,7 @@ export class Assignments {
     const now = await transactionMoment(transaction);
     const validFrom = assignment.validFrom ?? now;
     if (assignment.role === 'super_admin') {
-      await this.refuseFourthSuperAdmin(transaction, assignment.accountId, now);
+      await this.refuseSuperAdminOverLimit(transaction, assignment.accountId, now);
     }
     let inserted: { id: string };
     // The refused insert is undone alone, so the caller's transaction stays usable.
@@ -395,12 +395,12 @@ export class Assignments {
   }
 
   /**
-   * "At most 3 accounts": counts the other accounts whose Super Admin
+   * "At most 5 accounts": counts the other accounts whose Super Admin
    * assignment has not ended, those that begin later included; one that was
    * taken back before it began has ended. Under a lock, so that of two given
    * at the same moment the second one sees the first.
    */
-  private async refuseFourthSuperAdmin(
+  private async refuseSuperAdminOverLimit(
     transaction: Transaction,
     accountId: string,
     now: Date,

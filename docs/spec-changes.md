@@ -10,6 +10,13 @@ The spec in `docs/spec/` was taken from the full spec document on 3 October 2026
 - Built: not yet; task 11.28.
 - Files: `docs/spec/03-school-setup.md` (the table; new section Subscriptions, with its cases), `docs/spec/02-roles-and-access.md` (Super Admin row), `docs/spec/11-later-modules.md` (Not planned, Payments, finance, payroll), `docs/spec/15-conflicts-resolved.md` (Payment debtors), `docs/spec/00-index.md` (the row of `03`).
 
+## 28 November 2026: five Super Admins
+
+- What changed: at most 5 accounts can hold the Super Admin role at the same time. Before, at most 3.
+- Why: the owner, 28 November 2026, in chat ("Can we increase the super admin account limit to 5"); approved the same day.
+- Not changed: the last active Super Admin cannot be locked or removed; nobody removes their own Super Admin role; the banner while fewer than two exist; another Super Admin resets a Super Admin's second step.
+- Files: `docs/spec/02-roles-and-access.md` (roles table, Super Admin)
+
 ## 28 November 2026: the owner's feedback of 27 November
 
 - What changed:

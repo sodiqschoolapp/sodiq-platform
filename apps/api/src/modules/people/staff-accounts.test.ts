@@ -589,23 +589,27 @@ describe('the account section of a staff record', () => {
       expect(roleOf(staffAccountSchema.parse(response.body), 'teacher').until).toBeNull();
     });
 
-    it('refuses a fourth Super Admin', async () => {
-      const second = await withAccount();
-      const third = await withAccount();
-      const fourth = await withAccount();
-      expect(
-        (await give(second.id, { role: 'super_admin', branchId: null, from: TODAY })).status,
-      ).toBe(201);
-      expect(
-        (await give(third.id, { role: 'super_admin', branchId: null, from: TODAY })).status,
-      ).toBe(201);
+    it('refuses a sixth Super Admin', async () => {
+      // The kit's own Super Admin and four more: five, the most there may be (`02`).
+      const more = [
+        await withAccount(),
+        await withAccount(),
+        await withAccount(),
+        await withAccount(),
+      ];
+      const sixth = await withAccount();
+      for (const made of more) {
+        expect(
+          (await give(made.id, { role: 'super_admin', branchId: null, from: TODAY })).status,
+        ).toBe(201);
+      }
       refusedWith(
-        await give(fourth.id, { role: 'super_admin', branchId: null, from: TODAY }),
+        await give(sixth.id, { role: 'super_admin', branchId: null, from: TODAY }),
         409,
         'too_many_super_admins',
       );
       // Taken back again, so the other tests have room.
-      for (const made of [second, third]) {
+      for (const made of more) {
         const held = roleOf(await section(made.id), 'super_admin');
         expect((await end(made.id, held.id, TODAY)).status).toBe(200);
       }
