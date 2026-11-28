@@ -8,7 +8,12 @@ import { ApiFailure, answerOf } from '@/api/failure';
 import { ListPage, type BulkAction } from '@/components/list/list-page';
 import { useExport } from '@/components/list/use-export';
 import { useNewRecord } from '@/components/list/use-new-record';
-import { type Column, type Filter, type ListSearch } from '@/components/list/list-state';
+import {
+  OPENS_ON_ACTIVE,
+  type Column,
+  type Filter,
+  type ListSearch,
+} from '@/components/list/list-state';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
 import { useView } from '@/features/access/use-view';
@@ -160,6 +165,7 @@ export function DivisionsPage() {
           { value: 'archived', label: t('setup.divisions.archived') },
         ],
         matches: (row, value) => (row.archivedAt === null ? 'active' : 'archived') === value,
+        ...OPENS_ON_ACTIVE,
       },
     ],
     [t],

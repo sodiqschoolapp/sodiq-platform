@@ -18,14 +18,20 @@ import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { SM, useMinWidth, XL } from '@/lib/use-min-width';
 import { DataTable, DataTableOutline } from './data-table';
+import { FOCUS_RING } from '@/components/ui/control';
 import {
   addressKey,
+  ALL_ROWS,
+  appliedSearch,
+  appliedValue,
+  chosenValue,
   hideable,
   listSearch,
   matchingRows,
   nextSort,
   readHiddenColumns,
   readShownColumns,
+  shownValue,
   sortOf,
   storeHiddenColumns,
   storeShownColumns,
@@ -251,6 +257,40 @@ function ViewContent<Row>({
   return view({ rows, sorted, open });
 }
 
+/**
+ * One number of the archive counts, a button that shows its rows: link-styled,
+ * or plain words and pressed while its rows are the ones shown. It stays a
+ * button either way, so it keeps the focus after its click.
+ */
+function ArchiveCount({
+  chosen,
+  onChoose,
+  children,
+}: {
+  chosen: boolean;
+  onChoose: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      aria-pressed={chosen}
+      className={cn(
+        'inline-flex items-center rounded-sm max-sm:min-h-11',
+        chosen ? 'cursor-default' : 'font-semibold text-link underline-offset-4 hover:underline',
+        FOCUS_RING,
+      )}
+      onClick={() => {
+        if (!chosen) {
+          onChoose();
+        }
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
 const NO_FILTERS: readonly never[] = [];
 const NO_ACTIONS: readonly never[] = [];
 const NO_EXTRAS: readonly ExportExtra[] = [];
@@ -384,6 +424,36 @@ export function ListPage<Row>({
 
   const matching = useMemo(
     () => matchingRows(rows ?? [], columns, filters, current, i18n.language),
+    [rows, columns, filters, current, i18n.language],
+  );
+
+  // The active and archived rows that the search and the other filters leave
+  // (owner, 28 November 2026): the list opens on the active ones and says how
+  // many archived ones a click shows (docs/design-system.md, Layout shell).
+  const archiveCounts = useMemo(
+    () =>
+      filters.flatMap((filter) => {
+        const archive = filter.archive;
+        if (archive === undefined) {
+          return [];
+        }
+        const others = matchingRows(
+          rows ?? [],
+          columns,
+          filters,
+          { ...current, sort: undefined, f: { ...current.f, [filter.key]: ALL_ROWS } },
+          i18n.language,
+        );
+        return [
+          {
+            filter,
+            archive,
+            applied: appliedValue(filter, current),
+            active: others.filter((row) => filter.matches(row, archive.active)).length,
+            archived: others.filter((row) => filter.matches(row, archive.archived)).length,
+          },
+        ];
+      }),
     [rows, columns, filters, current, i18n.language],
   );
 
@@ -629,7 +699,18 @@ export function ListPage<Row>({
   }, [openId, searchBox]);
 
   const filtered = current.q !== undefined || current.f !== undefined;
-  const filtersInUse = filters.filter((filter) => current.f?.[filter.key] !== undefined).length;
+  // A filter at its default is not counted: the person has changed nothing.
+  const filtersInUse = filters.filter((filter) => {
+    const value = current.f?.[filter.key];
+    return value !== undefined && value !== filter.defaultValue;
+  }).length;
+  /** A filter set to `value` in the address, through the one rule of its select. */
+  const chooseFilter = (key: string, value: string | undefined): void => {
+    const others = Object.fromEntries(
+      Object.entries(current.f ?? {}).filter(([one]) => one !== key),
+    );
+    change({ f: value === undefined ? others : { ...others, [key]: value } }, 'push');
+  };
   const failed = error !== undefined && error !== null;
 
   return (
@@ -689,20 +770,9 @@ export function ListPage<Row>({
                 {filter.label}
                 <Select
                   className="w-auto min-w-40"
-                  value={current.f?.[filter.key] ?? ''}
+                  value={shownValue(filter, current)}
                   onChange={(event) => {
-                    const others = Object.fromEntries(
-                      Object.entries(current.f ?? {}).filter(([key]) => key !== filter.key),
-                    );
-                    change(
-                      {
-                        f:
-                          event.target.value === ''
-                            ? others
-                            : { ...others, [filter.key]: event.target.value },
-                      },
-                      'push',
-                    );
+                    chooseFilter(filter.key, chosenValue(filter, event.target.value));
                   }}
                 >
                   <option value="">{t('list.all')}</option>
@@ -715,6 +785,36 @@ export function ListPage<Row>({
               </label>
             ))}
           </div>
+          {rows !== undefined &&
+            rows.length > 0 &&
+            archiveCounts.map(({ filter, archive, applied, active, archived }) =>
+              // Nothing to say while no archived row is left out or shown.
+              archived === 0 && applied === archive.active ? null : (
+                <p
+                  key={filter.key}
+                  data-slot="archive-counts"
+                  className="flex h-10 items-center gap-1.5 text-sm text-muted-foreground max-sm:h-11"
+                >
+                  <ArchiveCount
+                    chosen={applied === archive.active}
+                    onChoose={() => {
+                      chooseFilter(filter.key, chosenValue(filter, archive.active));
+                    }}
+                  >
+                    {t('list.activeCount', { count: active, n: number.format(active) })}
+                  </ArchiveCount>
+                  <span aria-hidden>·</span>
+                  <ArchiveCount
+                    chosen={applied === archive.archived}
+                    onChoose={() => {
+                      chooseFilter(filter.key, chosenValue(filter, archive.archived));
+                    }}
+                  >
+                    {t('list.archivedCount', { count: archived, n: number.format(archived) })}
+                  </ArchiveCount>
+                </p>
+              ),
+            )}
           {/* A quiet "Reset" in the toolbar (docs/design-system.md, Lists). */}
           {filtered && (
             <Button
@@ -814,7 +914,8 @@ export function ListPage<Row>({
                         .filter((extra) => chosenExtras.has(extra.key))
                         .flatMap((extra) => extra.columns.map((column) => column.key)),
                     ],
-                    current,
+                    // The filters as they chose the rows, a default included.
+                    appliedSearch(filters, current),
                     ticked.size === 0 ? 'matching' : 'ticked',
                   );
                 }}

@@ -255,6 +255,14 @@ describe('the slot types page', () => {
           slotTypes: [LESSON, { ...LUNCH, archivedAt: '2026-10-10T10:00:00.000Z' }],
         }),
     });
+    // The list opens on the active slot types (owner, 28 November 2026): the
+    // archived one is a click away.
+    expect([...document.querySelectorAll('tbody tr')].map((row) => row.textContent)).toEqual([
+      expect.stringContaining('Lesson'),
+    ]);
+    fireEvent.click(
+      screen.getByRole('button', { name: en.list.archivedCount_one.replace('{{n}}', '1') }),
+    );
     const panel = await openSlotType('Lunch');
     expect(panelActionNames(panel)).toEqual([en.setup.slotTypes.restore]);
   });

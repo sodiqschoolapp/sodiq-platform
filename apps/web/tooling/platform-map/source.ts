@@ -14,6 +14,7 @@ export const SHARED_PARTS: readonly string[] = [
   'components/list/list-page.tsx',
   'components/list/data-table.tsx',
   'components/list/panel-actions.tsx',
+  'components/list/archived-rows.tsx',
   'components/side-panel.tsx',
   'components/form/record-form.tsx',
   'components/forced-delete-dialog.tsx',
@@ -170,8 +171,9 @@ export const UNREAD_LABELS: Readonly<Record<string, { count: number; reason: str
       "A column header's sort button carries the column's own name; a row's open link carries the record's name.",
   },
   'components/list/list-page.tsx': {
-    count: 1,
-    reason: "The bulk actions of a list are given by the page, each with its page's label.",
+    count: 2,
+    reason:
+      "The bulk actions of a list are given by the page, each with its page's label; the numbers of active and archived rows (`ArchiveCount`) are named by their counts, which show the rows of the archive filter.",
   },
   'components/list/panel-actions.tsx': {
     count: 1,

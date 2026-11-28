@@ -2346,6 +2346,17 @@ export const en = {
     clearSelection: 'Clear selection',
     count: 'Shown: {{shown}}. Matching: {{matching}}. In the list: {{total}}.',
     countAll: 'Shown: {{shown}} of {{total}}',
+    // A list opens on its active records; the archived ones are a click away (owner, 28 November 2026).
+    activeCount_one: '{{n}} active',
+    activeCount_other: '{{n}} active',
+    archivedCount_one: '{{n}} archived',
+    archivedCount_other: '{{n}} archived',
+    // The archived rows of a table inside a side panel (the departments of a division).
+    showArchived_one: 'Show archived ({{n}})',
+    showArchived_other: 'Show archived ({{n}})',
+    hideArchived_one: 'Hide archived ({{n}})',
+    hideArchived_other: 'Hide archived ({{n}})',
+    noneActive: 'None of them is active.',
     showMore: 'Show more',
     loadMore: 'Load more',
     noMatch: 'Nothing matches the search and filters. Change them or clear them.',

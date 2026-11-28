@@ -38,6 +38,89 @@ export interface Filter<Row> {
   label: string;
   options: { value: string; label: string }[];
   matches: (row: Row, value: string) => boolean;
+  /**
+   * The value the list opens on when its address names none for this filter
+   * (owner, 28 November 2026: archived records are not in the active list).
+   * The person may still choose "All", kept in the address as `ALL_ROWS`, or
+   * another value.
+   */
+  defaultValue?: string;
+  /**
+   * The values of an archive filter (`OPENS_ON_ACTIVE`): with them the list
+   * says how many active and archived rows the search and the other filters
+   * leave, each number one click from its rows (docs/design-system.md, Layout
+   * shell: "74 active, 6 archived").
+   */
+  archive?: { active: string; archived: string };
+}
+
+/**
+ * The value in the address of a filter with a `defaultValue` when the person
+ * chose "All": every row, which differs from nothing chosen (the default).
+ */
+export const ALL_ROWS = '*';
+
+/**
+ * Spread into the filter of a list whose records are archived and restored,
+ * with the options `active` and `archived`: the list opens on the active ones,
+ * and the archived ones are one click away (owner, 28 November 2026). The
+ * filter keeps its own `key`, `options` and `matches` written out, which the
+ * map of the platform reads (`tooling/platform-map/walk.ts`).
+ */
+export const OPENS_ON_ACTIVE = {
+  defaultValue: 'active',
+  archive: { active: 'active', archived: 'archived' },
+} as const satisfies Pick<Filter<unknown>, 'defaultValue' | 'archive'>;
+
+/**
+ * The value a filter applies to the rows: the address's, else the filter's
+ * default; `undefined` when it applies none (nothing chosen and no default,
+ * "All", or a value the filter does not offer, which is passed over).
+ */
+export function appliedValue<Row>(filter: Filter<Row>, search: ListSearch): string | undefined {
+  const value = search.f?.[filter.key] ?? filter.defaultValue;
+  return value !== undefined && filter.options.some((option) => option.value === value)
+    ? value
+    : undefined;
+}
+
+/**
+ * The search with each filter as it applies to the rows: a default written
+ * in, "All" left out. What an export records of the list it came from.
+ */
+export function appliedSearch<Row>(
+  filters: readonly Filter<Row>[],
+  search: ListSearch,
+): ListSearch {
+  const f: Record<string, string> = { ...search.f };
+  for (const filter of filters) {
+    const value = appliedValue(filter, search);
+    if (value !== undefined) {
+      f[filter.key] = value;
+    } else if (f[filter.key] === ALL_ROWS) {
+      delete f[filter.key];
+    }
+  }
+  const rest: ListSearch = { ...search };
+  delete rest.f;
+  return Object.keys(f).length > 0 ? { ...rest, f } : rest;
+}
+
+/**
+ * What the address holds for a filter after the person chose `chosen` in its
+ * select (`''` is "All"); `undefined` when it holds nothing.
+ */
+export function chosenValue<Row>(filter: Filter<Row>, chosen: string): string | undefined {
+  if (filter.defaultValue === undefined) {
+    return chosen === '' ? undefined : chosen;
+  }
+  return chosen === '' ? ALL_ROWS : chosen === filter.defaultValue ? undefined : chosen;
+}
+
+/** The value a filter's select shows: `''` is "All". */
+export function shownValue<Row>(filter: Filter<Row>, search: ListSearch): string {
+  const value = search.f?.[filter.key] ?? filter.defaultValue;
+  return value === undefined || value === ALL_ROWS ? '' : value;
 }
 
 /**
@@ -141,8 +224,9 @@ export function searchKey(value: string): string {
 
 /**
  * The rows of a list that match its search and filters, in its order
- * (docs/spec/12-ux-standards.md, Lists). A filter or a sort column the list
- * does not have, or a filter value it does not offer, is passed over.
+ * (docs/spec/12-ux-standards.md, Lists). A filter with nothing chosen applies
+ * its `defaultValue`. A filter or a sort column the list does not have, or a
+ * filter value it does not offer ("All" among them), is passed over.
  *
  * Every typed word must be found in the searched columns of the row. Rows
  * that sort alike keep the order they came in.
@@ -155,10 +239,8 @@ export function matchingRows<Row>(
   language: string,
 ): Row[] {
   const chosen = filters.flatMap((filter) => {
-    const value = search.f?.[filter.key];
-    return value !== undefined && filter.options.some((option) => option.value === value)
-      ? [{ filter, value }]
-      : [];
+    const value = appliedValue(filter, search);
+    return value === undefined ? [] : [{ filter, value }];
   });
   const words = searchWords(search.q);
   const searched = columns.flatMap((column) =>

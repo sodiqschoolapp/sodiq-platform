@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
+  ALL_ROWS,
+  appliedSearch,
+  appliedValue,
+  chosenValue,
+  OPENS_ON_ACTIVE,
   hideable,
   listSearch,
+  shownValue,
   matchingRows,
   nextSort,
   readHiddenColumns,
@@ -202,5 +208,83 @@ describe('the hidden columns of a list', () => {
     expect(readHiddenColumns('journal', ['uid'])).toEqual(['uid']);
     window.localStorage.setItem('sodiq.list.journal.hidden', '{"uid":true}');
     expect(readHiddenColumns('journal', ['uid'])).toEqual(['uid']);
+  });
+});
+
+interface Kept {
+  name: string;
+  archived: boolean;
+}
+
+// Invented.
+const KEPT: Kept[] = [
+  { name: 'Algebra', archived: false },
+  { name: 'Drawing', archived: true },
+  { name: 'Geometry', archived: false },
+];
+
+const KEPT_COLUMNS: Column<Kept>[] = [
+  { key: 'name', header: 'Name', cell: (row) => row.name, searchText: (row) => row.name },
+];
+
+const STATE: Filter<Kept> = {
+  key: 'state',
+  label: 'State',
+  options: [
+    { value: 'active', label: 'Active' },
+    { value: 'archived', label: 'Archived' },
+  ],
+  matches: (row, value) => (value === 'archived') === row.archived,
+  ...OPENS_ON_ACTIVE,
+};
+
+const keptNames = (search: Parameters<typeof matchingRows>[3]) =>
+  matchingRows(KEPT, KEPT_COLUMNS, [STATE], search, 'en').map((row) => row.name);
+
+// Owner, 28 November 2026: archived records are not in the active list; they
+// are one click away, and the choice is kept in the address.
+describe('a filter with a default value', () => {
+  it('applies its default while the address names none', () => {
+    expect(keptNames({})).toEqual(['Algebra', 'Geometry']);
+    expect(appliedValue(STATE, {})).toBe('active');
+    expect(shownValue(STATE, {})).toBe('active');
+  });
+
+  it('keeps an address that names a value, as links have always written it', () => {
+    expect(keptNames({ f: { state: 'archived' } })).toEqual(['Drawing']);
+    expect(keptNames({ f: { state: 'active' } })).toEqual(['Algebra', 'Geometry']);
+  });
+
+  it('shows every row for "All", which the address holds apart from nothing chosen', () => {
+    expect(keptNames({ f: { state: ALL_ROWS } })).toEqual(['Algebra', 'Drawing', 'Geometry']);
+    expect(appliedValue(STATE, { f: { state: ALL_ROWS } })).toBeUndefined();
+    expect(shownValue(STATE, { f: { state: ALL_ROWS } })).toBe('');
+    expect(listSearch({ f: { state: ALL_ROWS } })).toEqual({ f: { state: ALL_ROWS } });
+  });
+
+  it('passes over a value it does not offer, as before', () => {
+    expect(keptNames({ f: { state: 'gone' } })).toEqual(['Algebra', 'Drawing', 'Geometry']);
+  });
+
+  it('writes "All" as a value of its own and its default as nothing', () => {
+    expect(chosenValue(STATE, '')).toBe(ALL_ROWS);
+    expect(chosenValue(STATE, 'active')).toBeUndefined();
+    expect(chosenValue(STATE, 'archived')).toBe('archived');
+    // A filter without a default: "All" is nothing chosen, as before.
+    const city = FILTERS[0];
+    if (city === undefined) throw new Error('No filter.');
+    expect(chosenValue(city, '')).toBeUndefined();
+    expect(chosenValue(city, 'Nukus')).toBe('Nukus');
+  });
+
+  it('is named in the search an export records as it chose the rows', () => {
+    expect(appliedSearch([STATE], { q: 'a' })).toEqual({ q: 'a', f: { state: 'active' } });
+    expect(appliedSearch([STATE], { f: { state: ALL_ROWS } })).toEqual({});
+    expect(appliedSearch([STATE], { f: { state: 'archived', other: 'x' } })).toEqual({
+      f: { state: 'archived', other: 'x' },
+    });
+    // A filter without a default is recorded as before.
+    expect(appliedSearch(FILTERS, { f: { city: 'Nukus' } })).toEqual({ f: { city: 'Nukus' } });
+    expect(appliedSearch(FILTERS, {})).toEqual({});
   });
 });

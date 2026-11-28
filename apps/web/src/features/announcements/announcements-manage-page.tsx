@@ -10,7 +10,12 @@ import { useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useConfirm } from '@/components/confirm-dialog';
 import { ListPage } from '@/components/list/list-page';
-import { type Column, type Filter, type ListSearch } from '@/components/list/list-state';
+import {
+  OPENS_ON_ACTIVE,
+  type Column,
+  type Filter,
+  type ListSearch,
+} from '@/components/list/list-state';
 import { PanelActions } from '@/components/list/panel-actions';
 import { useNewRecord } from '@/components/list/use-new-record';
 import { usePanelEditing } from '@/components/list/use-panel-editing';
@@ -148,6 +153,7 @@ export function AnnouncementsManagePage(): React.JSX.Element {
           { value: 'archived', label: t('announcements.manage.archived') },
         ],
         matches: (row, value) => (row.archived ? 'archived' : 'active') === value,
+        ...OPENS_ON_ACTIVE,
       },
     ],
     [t],

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { useState } from 'react';
 import { I18nextProvider } from 'react-i18next';
 import { describe, expect, it, vi } from 'vitest';
@@ -15,7 +15,7 @@ import {
   type ExportState,
   type NewRecord,
 } from './list-page';
-import type { Column, Filter, ListSearch } from './list-state';
+import { ALL_ROWS, OPENS_ON_ACTIVE, type Column, type Filter, type ListSearch } from './list-state';
 
 // What the sample list cannot show: rows that change under the list, a failed
 // later load, and what exactly the export and a bulk action are handed.
@@ -749,5 +749,170 @@ describe('the filters of a list at phone width', () => {
     show({ rows: ROOMS, filters: FILTERS });
     expect(screen.queryByRole('button', { name: en.list.filters })).toBeNull();
     expect(sizeField()?.closest('[hidden]')).toBeNull();
+  });
+});
+
+// Owner, 28 November 2026: "Archived ones should not be in the active list."
+// A list opens on its active records, the archived ones one click away, and
+// the choice is kept in the address.
+describe('a list that opens on its active records', () => {
+  // Invented: Room 4 is archived.
+  const STATE: Filter<Room> = {
+    key: 'state',
+    label: 'State',
+    options: [
+      { value: 'active', label: 'Active' },
+      { value: 'archived', label: 'Archived' },
+    ],
+    matches: (row, value) => (value === 'archived') === row.seats < 20,
+    ...OPENS_ON_ACTIVE,
+  };
+  const stateField = () => screen.getByLabelText<HTMLSelectElement>('State');
+  const counts = () => document.querySelector<HTMLElement>('[data-slot="archive-counts"]');
+  const countButton = (text: string) =>
+    within(counts() ?? document.body).getByRole('button', { name: text });
+  const active = (n: number) =>
+    (n === 1 ? en.list.activeCount_one : en.list.activeCount_other).replace('{{n}}', String(n));
+  const archived = (n: number) =>
+    (n === 1 ? en.list.archivedCount_one : en.list.archivedCount_other).replace('{{n}}', String(n));
+
+  it('shows the active rows while the address names no value, and says how many are archived', () => {
+    const onAddress = vi.fn<(search: ListSearch) => void>();
+    show({ rows: ROOMS, filters: [STATE], onAddress });
+    expect(names()).toEqual(['Room 12', 'Laboratory']);
+    expect(stateField().value).toBe('active');
+    expect(counts()?.textContent).toBe(`${active(2)}·${archived(1)}`);
+    expect(countButton(active(2)).getAttribute('aria-pressed')).toBe('true');
+    expect(countButton(archived(1)).getAttribute('aria-pressed')).toBe('false');
+    // Nothing is written into the address for the default.
+    expect(onAddress).not.toHaveBeenCalled();
+  });
+
+  it('shows the archived rows with one click, kept in the address, and the active ones again', () => {
+    const onAddress = vi.fn<(search: ListSearch) => void>();
+    show({ rows: ROOMS, filters: [STATE], onAddress });
+    const button = countButton(archived(1));
+    fireEvent.click(button);
+    expect(onAddress).toHaveBeenLastCalledWith({ f: { state: 'archived' } });
+    expect(names()).toEqual(['Room 4']);
+    expect(stateField().value).toBe('archived');
+    // The same button, pressed now: it keeps the focus.
+    expect(countButton(archived(1))).toBe(button);
+    expect(button.getAttribute('aria-pressed')).toBe('true');
+
+    fireEvent.click(countButton(active(2)));
+    // The default is no value in the address.
+    expect(onAddress).toHaveBeenLastCalledWith({});
+    expect(names()).toEqual(['Room 12', 'Laboratory']);
+  });
+
+  it('keeps "All" in the address apart from nothing chosen', () => {
+    const onAddress = vi.fn<(search: ListSearch) => void>();
+    show({ rows: ROOMS, filters: [STATE], onAddress });
+    fireEvent.change(stateField(), { target: { value: '' } });
+    expect(onAddress).toHaveBeenLastCalledWith({ f: { state: ALL_ROWS } });
+    expect(names()).toEqual(['Room 12', 'Room 4', 'Laboratory']);
+    expect(stateField().value).toBe('');
+    // Both numbers show their rows from "All".
+    expect(countButton(active(2)).getAttribute('aria-pressed')).toBe('false');
+    expect(countButton(archived(1)).getAttribute('aria-pressed')).toBe('false');
+
+    fireEvent.change(stateField(), { target: { value: 'active' } });
+    expect(onAddress).toHaveBeenLastCalledWith({});
+  });
+
+  it('opens on the value of an address that names one, as a link or a shared address', () => {
+    show({ rows: ROOMS, filters: [STATE], start: { f: { state: 'archived' } } });
+    expect(names()).toEqual(['Room 4']);
+    cleanup();
+    show({ rows: ROOMS, filters: [STATE], start: { f: { state: ALL_ROWS } } });
+    expect(names()).toEqual(['Room 12', 'Room 4', 'Laboratory']);
+    cleanup();
+    // The link of before (`f: { status: 'active' }`) still works.
+    show({ rows: ROOMS, filters: [STATE], start: { f: { state: 'active' } } });
+    expect(names()).toEqual(['Room 12', 'Laboratory']);
+  });
+
+  it('follows the address that Back brings', () => {
+    const list = (search: ListSearch) => (
+      <I18nextProvider i18n={i18n}>
+        <ListPage
+          listId="rooms"
+          caption="Rooms"
+          rows={ROOMS}
+          rowId={(row) => row.id}
+          rowName={(row) => row.name}
+          columns={COLUMNS}
+          filters={[STATE]}
+          search={search}
+          onSearchChange={() => undefined}
+          empty={{ title: 'No rooms yet', text: 'Rooms are listed here.' }}
+          bulkActions={[{ key: 'close', label: 'Close the rooms', run: () => undefined }]}
+        />
+      </I18nextProvider>
+    );
+    const { rerender } = render(list({ f: { state: 'archived' } }));
+    expect(names()).toEqual(['Room 4']);
+    // Back to the address without a filter: the default again.
+    rerender(list({}));
+    expect(names()).toEqual(['Room 12', 'Laboratory']);
+    expect(stateField().value).toBe('active');
+    rerender(list({ f: { state: ALL_ROWS } }));
+    expect(names()).toEqual(['Room 12', 'Room 4', 'Laboratory']);
+  });
+
+  it('counts the rows the search leaves, so a found archived row is named', () => {
+    show({ rows: ROOMS, filters: [STATE], start: { q: 'Room 4' } });
+    expect(names()).toEqual([]);
+    expect(counts()?.textContent).toBe(`${active(0)}·${archived(1)}`);
+  });
+
+  it('says nothing of the archive while no row is archived', () => {
+    const none = ROOMS.filter((row) => row.seats >= 20);
+    show({ rows: none, filters: [STATE] });
+    expect(counts()).toBeNull();
+    cleanup();
+    // Chosen by hand, the way back to the active rows stays.
+    show({ rows: none, filters: [STATE], start: { f: { state: 'archived' } } });
+    expect(counts()?.textContent).toBe(`${active(2)}·${archived(0)}`);
+  });
+
+  it('is back on the active rows after Reset, and counts no filter in use at its default', () => {
+    setWindowWidth(375);
+    const size: Filter<Room> = {
+      key: 'size',
+      label: 'Size',
+      options: [{ value: 'big', label: 'Big' }],
+      matches: (row) => row.seats >= 24,
+    };
+    show({ rows: ROOMS, filters: [STATE, size], start: { f: { state: 'archived' } } });
+    expect(screen.getByRole('button', { name: 'Filters · 1' })).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: en.list.clearSearch }));
+    expect(names()).toEqual(['Room 12', 'Laboratory']);
+    expect(screen.getByRole('button', { name: en.list.filters })).toBeDefined();
+    setWindowWidth(1440);
+  });
+
+  it('hands the export the filter as it chose the rows', () => {
+    const onExport =
+      vi.fn<
+        (
+          rows: Room[],
+          columnKeys: string[],
+          search: ListSearch,
+          selection: 'ticked' | 'matching',
+        ) => void
+      >();
+    show({ rows: ROOMS, filters: [STATE], onExport });
+    fireEvent.click(screen.getByRole('button', { name: en.list.export }));
+    expect(onExport).toHaveBeenLastCalledWith(
+      [ROOMS[0], ROOMS[2]],
+      ['name', 'seats'],
+      { f: { state: 'active' } },
+      'matching',
+    );
+    fireEvent.change(stateField(), { target: { value: '' } });
+    fireEvent.click(screen.getByRole('button', { name: en.list.export }));
+    expect(onExport).toHaveBeenLastCalledWith(ROOMS, ['name', 'seats'], {}, 'matching');
   });
 });

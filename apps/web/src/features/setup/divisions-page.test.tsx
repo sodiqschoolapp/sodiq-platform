@@ -18,6 +18,11 @@ import { savedRecordPanel } from '@/testing/new-record';
 import { divisionsKey, invalidateDivisions } from './setup-api';
 
 const PATH = '/setup/divisions';
+/**
+ * The list with "All" chosen in its status filter: it opens on the active
+ * divisions (owner, 28 November 2026), and these tests read the archived one too.
+ */
+const EVERY_STATUS = `${PATH}?f=${encodeURIComponent(JSON.stringify({ status: '*' }))}`;
 
 const uid = (n: number): string => `0199a000-0000-7000-8000-${String(n).padStart(12, '0')}`;
 
@@ -104,6 +109,7 @@ async function openList(
   divisions = [ACADEMIC, OPERATIONS, EVENTS],
   extra: Record<string, () => Response> = {},
   language: 'en' | 'ru' = 'en',
+  path = PATH,
 ) {
   let list = divisions;
   // The account is in the language of the test, so the app does not switch language after the first answer.
@@ -132,19 +138,35 @@ async function openList(
       json({ id: uid(23), ...(body as { names: Division['names'] }), archivedAt: null }, 201),
     [`PUT /api/setup/departments/${uid(21)}`]: (body) =>
       json({ id: uid(21), ...(body as { names: Division['names'] }), archivedAt: null }),
-    [`POST /api/setup/departments/${uid(21)}/archive`]: () =>
-      json({ id: uid(21), names: names('Catering'), archivedAt: ARCHIVED_AT }),
+    [`POST /api/setup/departments/${uid(21)}/archive`]: () => {
+      // The list read again holds the department archived, as the server's would.
+      list = list.map((division) => ({
+        ...division,
+        departments: division.departments.map((one) =>
+          one.id === uid(21) ? { ...one, archivedAt: ARCHIVED_AT } : one,
+        ),
+      }));
+      return json({ id: uid(21), names: names('Catering'), archivedAt: ARCHIVED_AT });
+    },
     [`POST /api/setup/departments/${uid(22)}/restore`]: () =>
       json({ id: uid(22), names: names('Transport'), archivedAt: null }),
     ...extra,
   });
-  const shell = renderApp(PATH, language);
+  const shell = renderApp(path, language);
   const texts = language === 'ru' ? (await import('@/i18n/locales/ru')).ru : en;
   await screen.findByRole('heading', { name: texts.setup.divisions.title });
   if (divisions.length > 0) {
     await screen.findByRole('table', { name: texts.setup.divisions.caption });
   }
   return { ...shell, calls };
+}
+
+/** "Show archived (n)" of the open division's departments (owner, 28 November 2026: hidden at first). */
+const showArchivedText = (n: number): string =>
+  (n === 1 ? en.list.showArchived_one : en.list.showArchived_other).replace('{{n}}', String(n));
+
+function showArchived(panel: HTMLElement, n: number): void {
+  fireEvent.click(within(panel).getByRole('button', { name: showArchivedText(n) }));
 }
 
 /** The confirmation dialog answered with its action. */
@@ -164,7 +186,7 @@ async function goOn(action: string): Promise<void> {
 // (pull request #40, answer 4).
 describe('the divisions page', () => {
   it('lists the divisions in the chosen language with their active departments and status', async () => {
-    await openList();
+    await openList(superAdmin(), [ACADEMIC, OPERATIONS, EVENTS], {}, 'en', EVERY_STATUS);
 
     // The staff column counts each person once, under the main division (task 2.2a).
     expect(rowsDrawn().map((row) => row.slice(1))).toEqual([
@@ -214,6 +236,7 @@ describe('the divisions page', () => {
     fireEvent.click(rowButton('Operations'));
 
     const panel = await screen.findByRole('complementary', { name: 'Operations' });
+    showArchived(panel, 1);
     const departments = within(panel).getAllByRole('row').slice(1);
     expect(departments.map((row) => row.textContent)).toEqual([
       expect.stringContaining('Catering'),
@@ -314,6 +337,13 @@ describe('the divisions page', () => {
         calls.some((call) => call.route === `POST /api/setup/departments/${uid(21)}/archive`),
       ).toBe(true);
     });
+    // Archived departments are hidden: Catering left the table with its
+    // button, and the focus is on the button that shows them.
+    await waitFor(() => {
+      expect(document.activeElement?.textContent).toBe(showArchivedText(2));
+    });
+    expect(within(panel).getByText(en.list.noneActive)).toBeDefined();
+    showArchived(panel, 2);
 
     fireEvent.click(
       within(panel).getByRole('button', {
@@ -356,7 +386,7 @@ describe('the divisions page', () => {
   });
 
   it('shows an archived division without its rename form, with a way to restore it and no way to change its departments', async () => {
-    await openList();
+    await openList(superAdmin(), [ACADEMIC, OPERATIONS, EVENTS], {}, 'en', EVERY_STATUS);
 
     fireEvent.click(rowButton('Events'));
 
@@ -370,7 +400,13 @@ describe('the divisions page', () => {
   });
 
   it('adds a division from the header, lists it last, and refreshes the list', async () => {
-    const { calls } = await openList();
+    const { calls } = await openList(
+      superAdmin(),
+      [ACADEMIC, OPERATIONS, EVENTS],
+      {},
+      'en',
+      EVERY_STATUS,
+    );
 
     fireEvent.click(screen.getByRole('button', { name: en.setup.divisions.add }));
     // In the side panel beside the list (task 2.7c-2a), not above it.
@@ -467,12 +503,18 @@ describe('the divisions page', () => {
       departments: [],
     });
     const archived = [old(5, 'Old A'), old(6, 'Old B')];
-    const { calls } = await openList(superAdmin(), [ACADEMIC, ...archived], {
-      [`POST /api/setup/divisions/${uid(5)}/restore`]: () =>
-        json({ ...archived[0], archivedAt: null }),
-      [`POST /api/setup/divisions/${uid(6)}/restore`]: () =>
-        refusalWith([{ path: 'names.en', code: 'already_exists', message: 'taken' }]),
-    });
+    const { calls } = await openList(
+      superAdmin(),
+      [ACADEMIC, ...archived],
+      {
+        [`POST /api/setup/divisions/${uid(5)}/restore`]: () =>
+          json({ ...archived[0], archivedAt: null }),
+        [`POST /api/setup/divisions/${uid(6)}/restore`]: () =>
+          refusalWith([{ path: 'names.en', code: 'already_exists', message: 'taken' }]),
+      },
+      'en',
+      EVERY_STATUS,
+    );
 
     for (const name of ['Old A', 'Old B']) {
       fireEvent.click(screen.getByLabelText(en.list.selectRow.replace('{{name}}', name)));
@@ -513,7 +555,57 @@ describe('the divisions page', () => {
     ).toBeNull();
     expect(within(panel).queryByRole('button', { name: en.setup.divisions.rename })).toBeNull();
     expect(within(panel).queryByRole('button', { name: en.setup.divisions.archive })).toBeNull();
+    showArchived(panel, 1);
     expect(within(panel).getAllByRole('row')).toHaveLength(3);
+  });
+
+  // Owner, 28 November 2026: archived records are not in the active list.
+  it('opens on the active divisions, with the archived one a click away', async () => {
+    const { router } = await openList();
+    expect(rowsDrawn().map((row) => row[1])).toEqual(['Academic', 'Operations']);
+    const counts = document.querySelector<HTMLElement>('[data-slot="archive-counts"]');
+    expect(counts?.textContent).toBe(
+      `${en.list.activeCount_other.replace('{{n}}', '2')}·${en.list.archivedCount_one.replace('{{n}}', '1')}`,
+    );
+    fireEvent.click(
+      within(counts ?? document.body).getByRole('button', {
+        name: en.list.archivedCount_one.replace('{{n}}', '1'),
+      }),
+    );
+    await waitFor(() => {
+      expect(router.state.location.search).toEqual({ f: { status: 'archived' } });
+    });
+    expect(rowsDrawn().map((row) => row[1])).toEqual(['Events']);
+  });
+
+  it('hides the archived departments of a division until they are shown', async () => {
+    await openList();
+    fireEvent.click(rowButton('Operations'));
+    const panel = await screen.findByRole('complementary', { name: 'Operations' });
+    const departmentNames = () =>
+      within(panel)
+        .getAllByRole('row')
+        .slice(1)
+        .map((row) => row.querySelector('td')?.textContent);
+    expect(departmentNames()).toEqual(['Catering']);
+
+    showArchived(panel, 1);
+    expect(departmentNames()).toEqual(['Catering', 'Transport']);
+    const hide = within(panel).getByRole('button', {
+      name: en.list.hideArchived_one.replace('{{n}}', '1'),
+    });
+    fireEvent.click(hide);
+    expect(departmentNames()).toEqual(['Catering']);
+    // The same button, which keeps the focus.
+    expect(within(panel).getByRole('button', { name: showArchivedText(1) })).toBe(hide);
+  });
+
+  it('offers no "Show archived" when no department is archived', async () => {
+    await openList();
+    fireEvent.click(rowButton('Academic'));
+    const panel = await screen.findByRole('complementary', { name: 'Academic' });
+    expect(within(panel).getAllByRole('row')).toHaveLength(3);
+    expect(within(panel).queryByRole('button', { name: /archived/ })).toBeNull();
   });
 });
 

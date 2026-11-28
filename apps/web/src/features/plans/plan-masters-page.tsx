@@ -14,7 +14,12 @@ import { Field, SelectField } from '@/components/field';
 import { RecordForm } from '@/components/form/record-form';
 import { useRecordForm } from '@/components/form/use-record-form';
 import { ListPage } from '@/components/list/list-page';
-import type { Column, Filter, ListSearch } from '@/components/list/list-state';
+import {
+  OPENS_ON_ACTIVE,
+  type Column,
+  type Filter,
+  type ListSearch,
+} from '@/components/list/list-state';
 import { useNewRecord } from '@/components/list/use-new-record';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
@@ -153,6 +158,7 @@ export function PlanMastersPage(): React.JSX.Element {
           { value: 'archived', label: t('plans.masters.archived') },
         ],
         matches: (row, value) => (value === 'archived') === row.archived,
+        ...OPENS_ON_ACTIVE,
       },
     ],
     [t, list.data, subjectName, language],

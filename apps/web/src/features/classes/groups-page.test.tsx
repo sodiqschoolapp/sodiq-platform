@@ -18,6 +18,11 @@ import { fakeApi, json, NORTH, refusal, renderApp, sessionOf } from '@/testing/r
 import { setWindowWidth } from '@/testing/window-width';
 
 const PATH = '/groups';
+/**
+ * The list with "All" chosen in its status filter: it opens on the active
+ * groups (owner, 28 November 2026), and some tests read an archived one.
+ */
+const EVERY_STATUS = `${PATH}?f=${encodeURIComponent(JSON.stringify({ status: '*' }))}`;
 
 const uid = (n: number): string => `0199a000-0000-7000-8000-${String(n).padStart(12, '0')}`;
 
@@ -143,6 +148,7 @@ async function openList(
     subjects?: Subject[];
     extra?: Record<string, (body: unknown) => Response>;
     language?: 'en' | 'ru';
+    path?: string;
   } = {},
 ) {
   const session = { ...(options.session ?? vice()), language: options.language ?? 'en' };
@@ -164,13 +170,14 @@ async function openList(
     ),
     ...options.extra,
   });
-  renderApp(PATH, options.language ?? 'en');
+  renderApp(options.path ?? PATH, options.language ?? 'en');
   await screen.findByRole('heading', {
     name: options.language === 'ru' ? ru.groups.title : en.groups.title,
   });
+  // Without a filter in the address the list opens on the active groups (owner, 28 November 2026).
   await waitFor(() => {
     expect(rowsDrawn().length + document.querySelectorAll('[data-group-card]').length).toBe(
-      groups.length,
+      options.path === undefined ? groups.filter((one) => !one.archived).length : groups.length,
     );
   });
   return calls;
@@ -536,6 +543,7 @@ describe('a group in the side panel', () => {
     });
     const calls = await openList({
       groups: [mixed],
+      path: EVERY_STATUS,
       extra: {
         [`POST /api/groups/${mixed.id}/restore`]: () =>
           json(detailOf({ ...mixed, archived: false })),
@@ -560,6 +568,7 @@ describe('a group in the side panel', () => {
     const archived = { ...SPLIT, archived: true };
     const calls = await openList({
       groups: [archived],
+      path: EVERY_STATUS,
       extra: {
         [`POST /api/groups/${SPLIT.id}/restore`]: () => json(detailOf(SPLIT)),
       },

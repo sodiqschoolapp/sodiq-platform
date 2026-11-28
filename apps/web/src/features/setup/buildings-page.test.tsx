@@ -14,6 +14,11 @@ import {
 import { fakeApi, json, NORTH, refusal, renderApp, sessionOf } from '@/testing/render-app';
 
 const PATH = '/setup/buildings';
+/**
+ * The list with "All" chosen in its status filter: it opens on the active
+ * buildings (owner, 28 November 2026), and these tests read the archived one too.
+ */
+const EVERY_STATUS = `${PATH}?f=${encodeURIComponent(JSON.stringify({ status: '*' }))}`;
 
 const uid = (n: number): string => `0199a000-0000-7000-8000-${String(n).padStart(12, '0')}`;
 
@@ -67,6 +72,7 @@ async function openList(
   session = superAdmin(),
   buildings = [MAIN, ANNEX],
   extra: Record<string, () => Response> = {},
+  path = PATH,
 ) {
   let list = buildings;
   const calls = fakeApi({
@@ -88,20 +94,36 @@ async function openList(
     [`POST /api/setup/buildings/${ANNEX.id}/restore`]: () => json({ ...ANNEX, archivedAt: null }),
     [`POST /api/setup/buildings/${MAIN.id}/floors`]: (body) =>
       json({ id: uid(14), ...(body as { name: string }), archivedAt: null, roomCount: 0 }, 201),
-    [`POST /api/setup/floors/${uid(12)}/archive`]: () =>
-      json({ id: uid(12), name: '1', archivedAt: ARCHIVED_AT, roomCount: 1 }),
+    [`POST /api/setup/floors/${uid(12)}/archive`]: () => {
+      // The list read again holds the floor archived, as the server's would.
+      list = list.map((one) => ({
+        ...one,
+        floors: one.floors.map((floor) =>
+          floor.id === uid(12) ? { ...floor, archivedAt: ARCHIVED_AT } : floor,
+        ),
+      }));
+      return json({ id: uid(12), name: '1', archivedAt: ARCHIVED_AT, roomCount: 1 });
+    },
     [`POST /api/setup/floors/${uid(13)}/restore`]: () =>
       json({ id: uid(13), name: 'Attic', archivedAt: null, roomCount: 0 }),
     [`PUT /api/setup/floors/${uid(11)}`]: (body) =>
       json({ id: uid(11), ...(body as { name: string }), archivedAt: null, roomCount: 2 }),
     ...extra,
   });
-  const shell = renderApp(PATH);
+  const shell = renderApp(path);
   await screen.findByRole('heading', { name: en.setup.buildings.title });
   if (buildings.length > 0) {
     await screen.findByRole('table', { name: en.setup.buildings.caption });
   }
   return { ...shell, calls };
+}
+
+/** "Show archived (n)" of the open building's floors (owner, 28 November 2026: hidden at first). */
+const showArchivedText = (n: number): string =>
+  (n === 1 ? en.list.showArchived_one : en.list.showArchived_other).replace('{{n}}', String(n));
+
+function showArchived(panel: HTMLElement, n: number): void {
+  fireEvent.click(within(panel).getByRole('button', { name: showArchivedText(n) }));
 }
 
 /** The confirmation dialog answered with its action. */
@@ -118,12 +140,73 @@ async function goOn(action: string): Promise<void> {
 // the owner (pull request #37, answer 7).
 describe('the buildings page', () => {
   it('lists the buildings with their active floors, rooms and status', async () => {
-    await openList();
+    await openList(superAdmin(), [MAIN, ANNEX], {}, EVERY_STATUS);
 
     expect(rowsDrawn().map((row) => row.slice(1))).toEqual([
       ['Main', '2', '3', en.setup.buildings.active],
       ['Annex', '0', '0', en.setup.buildings.archived],
     ]);
+  });
+
+  // Owner, 28 November 2026: archived records are not in the active list.
+  it('opens on the active buildings, with the archived one a click away', async () => {
+    const { router } = await openList();
+    expect(rowsDrawn().map((row) => row[1])).toEqual(['Main']);
+    expect(
+      screen.getByRole<HTMLSelectElement>('combobox', { name: en.setup.buildings.status }).value,
+    ).toBe('active');
+    const counts = document.querySelector<HTMLElement>('[data-slot="archive-counts"]');
+    expect(counts?.textContent).toBe(
+      `${en.list.activeCount_one.replace('{{n}}', '1')}·${en.list.archivedCount_one.replace('{{n}}', '1')}`,
+    );
+
+    fireEvent.click(
+      within(counts ?? document.body).getByRole('button', {
+        name: en.list.archivedCount_one.replace('{{n}}', '1'),
+      }),
+    );
+    await waitFor(() => {
+      expect(router.state.location.search).toEqual({ f: { status: 'archived' } });
+    });
+    expect(rowsDrawn().map((row) => row[1])).toEqual(['Annex']);
+
+    fireEvent.change(screen.getByRole('combobox', { name: en.setup.buildings.status }), {
+      target: { value: '' },
+    });
+    await waitFor(() => {
+      expect(router.state.location.search).toEqual({ f: { status: '*' } });
+    });
+    expect(rowsDrawn().map((row) => row[1])).toEqual(['Main', 'Annex']);
+  });
+
+  it('hides the archived floors of a building until they are shown', async () => {
+    await openList();
+    fireEvent.click(rowButton('Main'));
+    const panel = await screen.findByRole('complementary', { name: 'Main' });
+    const floorNames = () =>
+      within(panel)
+        .getAllByRole('row')
+        .slice(1)
+        .map((row) => row.querySelector('td')?.textContent);
+    expect(floorNames()).toEqual(['Ground', '1']);
+
+    showArchived(panel, 1);
+    expect(floorNames()).toEqual(['Ground', '1', 'Attic']);
+    fireEvent.click(
+      within(panel).getByRole('button', {
+        name: en.list.hideArchived_one.replace('{{n}}', '1'),
+      }),
+    );
+    expect(floorNames()).toEqual(['Ground', '1']);
+  });
+
+  it('offers no "Show archived" when no floor is archived', async () => {
+    const floors = MAIN.floors.filter((floor) => floor.archivedAt === null);
+    await openList(superAdmin(), [{ ...MAIN, floors }]);
+    fireEvent.click(rowButton('Main'));
+    const panel = await screen.findByRole('complementary', { name: 'Main' });
+    expect(within(panel).getAllByRole('row')).toHaveLength(3);
+    expect(within(panel).queryByRole('button', { name: /archived/ })).toBeNull();
   });
 
   it('opens a building in the side panel to read, with its floors and its actions in the header', async () => {
@@ -132,6 +215,7 @@ describe('the buildings page', () => {
     fireEvent.click(rowButton('Main'));
 
     const panel = await screen.findByRole('complementary', { name: 'Main' });
+    showArchived(panel, 1);
     const floors = within(panel).getAllByRole('row').slice(1);
     expect(floors.map((row) => row.textContent)).toEqual([
       expect.stringContaining('Ground'),
@@ -214,7 +298,7 @@ describe('the buildings page', () => {
   });
 
   it('shows an archived building with Restore and no Edit', async () => {
-    await openList();
+    await openList(superAdmin(), [MAIN, ANNEX], {}, EVERY_STATUS);
     fireEvent.click(rowButton('Annex'));
     const panel = await screen.findByRole('complementary', { name: 'Annex' });
     expect(panelActionNames(panel)).toEqual([en.setup.buildings.restoreBuilding]);
@@ -309,6 +393,12 @@ describe('the buildings page', () => {
         true,
       );
     });
+    // Archived floors are hidden: the floor left the table with its button,
+    // and the focus is on the button that shows them.
+    await waitFor(() => {
+      expect(document.activeElement?.textContent).toBe(showArchivedText(2));
+    });
+    showArchived(panel, 2);
 
     fireEvent.click(
       within(panel).getByRole('button', {
@@ -328,7 +418,7 @@ describe('the buildings page', () => {
   });
 
   it('adds a building from the header and lists it', async () => {
-    const { calls } = await openList();
+    const { calls } = await openList(superAdmin(), [MAIN, ANNEX], {}, EVERY_STATUS);
 
     fireEvent.click(screen.getByRole('button', { name: en.setup.buildings.add }));
     // In the side panel beside the list (task 2.7c-2a), not above it.
@@ -350,7 +440,7 @@ describe('the buildings page', () => {
   });
 
   it('archives and restores several buildings at once after asking, and names the refused ones', async () => {
-    const { calls } = await openList();
+    const { calls } = await openList(superAdmin(), [MAIN, ANNEX], {}, EVERY_STATUS);
 
     fireEvent.click(screen.getByLabelText(en.list.selectRow.replace('{{name}}', 'Main')));
     fireEvent.click(screen.getByLabelText(en.list.selectRow.replace('{{name}}', 'Annex')));
@@ -382,13 +472,18 @@ describe('the buildings page', () => {
       floors: [],
     });
     const archived = [old(5, 'Old A'), old(6, 'Old B'), old(7, 'Old C')];
-    const { calls } = await openList(superAdmin(), [MAIN, ...archived], {
-      [`POST /api/setup/buildings/${uid(5)}/restore`]: () =>
-        json({ ...archived[0], archivedAt: null }),
-      [`POST /api/setup/buildings/${uid(6)}/restore`]: () => refusal('already_exists', 409),
-      [`POST /api/setup/buildings/${uid(7)}/restore`]: () =>
-        json({ ...archived[2], archivedAt: null }),
-    });
+    const { calls } = await openList(
+      superAdmin(),
+      [MAIN, ...archived],
+      {
+        [`POST /api/setup/buildings/${uid(5)}/restore`]: () =>
+          json({ ...archived[0], archivedAt: null }),
+        [`POST /api/setup/buildings/${uid(6)}/restore`]: () => refusal('already_exists', 409),
+        [`POST /api/setup/buildings/${uid(7)}/restore`]: () =>
+          json({ ...archived[2], archivedAt: null }),
+      },
+      EVERY_STATUS,
+    );
 
     for (const name of ['Old A', 'Old B', 'Old C']) {
       fireEvent.click(screen.getByLabelText(en.list.selectRow.replace('{{name}}', name)));
@@ -433,6 +528,7 @@ describe('the buildings page', () => {
     expect(
       within(panel).queryByRole('button', { name: en.setup.buildings.archiveBuilding }),
     ).toBeNull();
+    showArchived(panel, 1);
     expect(within(panel).getAllByRole('row')).toHaveLength(4);
     expect(within(panel).queryByRole('button', { name: en.form.edit })).toBeNull();
     expect(within(panel).queryByRole('button', { name: en.setup.buildings.addFloor })).toBeNull();
@@ -454,6 +550,7 @@ describe('the buildings page', () => {
     // Main has rooms: no forced delete of the building.
     expect(panelActionNames(panel)).not.toContain(en.forcedDeletes.deletePlace);
     expect(await moreActionNames(panel)).not.toContain(en.forcedDeletes.deletePlace);
+    showArchived(panel, 1);
     fireEvent.click(within(panel).getByRole('button', { name: named('Attic') }));
     const dialog = await screen.findByRole('dialog');
     fireEvent.click(within(dialog).getByRole('button', { name: en.forcedDeletes.send }));
@@ -473,10 +570,15 @@ describe('the buildings page', () => {
   });
 
   it('deletes a building with no room for good and says so in its panel', async () => {
-    await openList(superAdmin(), [MAIN, ANNEX], {
-      [`POST /api/setup/buildings/${ANNEX.id}/forced-delete`]: () =>
-        json(forcedAnswer(ANNEX.id, 'Annex')),
-    });
+    await openList(
+      superAdmin(),
+      [MAIN, ANNEX],
+      {
+        [`POST /api/setup/buildings/${ANNEX.id}/forced-delete`]: () =>
+          json(forcedAnswer(ANNEX.id, 'Annex')),
+      },
+      EVERY_STATUS,
+    );
     fireEvent.click(rowButton('Annex'));
     const panel = await screen.findByRole('complementary', { name: 'Annex' });
     fireEvent.click(await panelAction(panel, en.forcedDeletes.deletePlace));
@@ -492,10 +594,15 @@ describe('the buildings page', () => {
   });
 
   it('shows the refusal of a building in use as its text', async () => {
-    await openList(superAdmin(), [MAIN, ANNEX], {
-      [`POST /api/setup/buildings/${ANNEX.id}/forced-delete`]: () =>
-        refusal('place_referenced', 409),
-    });
+    await openList(
+      superAdmin(),
+      [MAIN, ANNEX],
+      {
+        [`POST /api/setup/buildings/${ANNEX.id}/forced-delete`]: () =>
+          refusal('place_referenced', 409),
+      },
+      EVERY_STATUS,
+    );
     fireEvent.click(rowButton('Annex'));
     const panel = await screen.findByRole('complementary', { name: 'Annex' });
     fireEvent.click(await panelAction(panel, en.forcedDeletes.deletePlace));
@@ -506,7 +613,7 @@ describe('the buildings page', () => {
   });
 
   it('shows an archived building without its rename form, with a way to restore it', async () => {
-    await openList();
+    await openList(superAdmin(), [MAIN, ANNEX], {}, EVERY_STATUS);
 
     fireEvent.click(rowButton('Annex'));
 

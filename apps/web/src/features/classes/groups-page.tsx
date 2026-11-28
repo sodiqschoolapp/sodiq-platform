@@ -14,7 +14,12 @@ import { Link, useNavigate, useSearch } from '@tanstack/react-router';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ListPage } from '@/components/list/list-page';
-import type { Column, Filter, ListSearch } from '@/components/list/list-state';
+import {
+  OPENS_ON_ACTIVE,
+  type Column,
+  type Filter,
+  type ListSearch,
+} from '@/components/list/list-state';
 import { useExport } from '@/components/list/use-export';
 import { useNewRecord } from '@/components/list/use-new-record';
 import { PageHeader } from '@/components/page-header';
@@ -207,6 +212,7 @@ export function GroupsPage() {
           { value: 'archived', label: t('groups.archived') },
         ],
         matches: (row, value) => (value === 'archived') === row.archived,
+        ...OPENS_ON_ACTIVE,
       },
     ];
   }, [t, number, language, groups.data]);
