@@ -4362,6 +4362,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
       printedIn: '{{class}}, {{date}}',
       otherBranch: 'Другой филиал, {{date}}',
       resetSlip: 'Сброс, {{date}}',
+      printChosenNone: 'Никому из выбранных родителей не нужен листок: они уже вошли',
       printChosen_one: 'Напечатать бланк {{n}} выбранного родителя',
       printChosen_few: 'Напечатать бланки {{n}} выбранных родителей',
       printChosen_many: 'Напечатать бланки {{n}} выбранных родителей',

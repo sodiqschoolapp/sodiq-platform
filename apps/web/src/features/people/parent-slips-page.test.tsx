@@ -192,6 +192,34 @@ describe('the slips of the parents of a class', () => {
     });
   });
 
+  // A parent who signed in gets no slip: ticking every row prints the rest, never a refusal.
+  it('leaves a ticked parent who signed in out of the print of the chosen', async () => {
+    const { calls } = open('academic_vice_principal');
+    await waitFor(() => {
+      expect(rows()).toHaveLength(3);
+    });
+    const row = (name: string) => {
+      const found = rows().find((one) => one.textContent.includes(name));
+      if (found === undefined) {
+        throw new Error(`No row of ${name}.`);
+      }
+      return found;
+    };
+    fireEvent.click(within(row('Shahlo Nazarova')).getByRole('checkbox'));
+    const bar = await screen.findByRole('group', { name: en.list.bulkActions });
+    expect(
+      within(bar).getByRole('button', { name: en.people.parentSlips.printChosenNone }),
+    ).toBeDefined();
+    fireEvent.click(within(row('Dilfuza Karimova')).getByRole('checkbox'));
+    fireEvent.click(
+      await within(bar).findByRole('button', { name: 'Print the slip of 1 chosen parent' }),
+    );
+    await screen.findByRole('region', { name: '1 slip' });
+    expect(calls.filter((call) => call.route === PRINT_ROUTE).map((call) => call.body)).toEqual([
+      { language: 'en', printAgain: [], only: [uid(1)] },
+    ]);
+  });
+
   it('asks before a ticked parent with a valid slip gets a new password', async () => {
     const { calls } = open('academic_vice_principal');
     await waitFor(() => {

@@ -4232,6 +4232,7 @@ export const uz: Texts<'one' | 'other'> = {
       printedIn: '{{class}}, {{date}}',
       otherBranch: 'Boshqa filial, {{date}}',
       resetSlip: 'Tiklash, {{date}}',
+      printChosenNone: 'Tanlangan ota-onalarning hech biriga varaqa kerak emas: ular allaqachon kirgan',
       printChosen_one: 'Tanlangan {{n}} ota-onaning varaqasini chop etish',
       printChosen_other: 'Tanlangan {{n}} ota-onaning varaqalarini chop etish',
       language: 'Varaqalar tili',

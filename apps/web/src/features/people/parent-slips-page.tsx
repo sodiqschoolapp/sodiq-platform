@@ -43,6 +43,9 @@ export function ParentSlipsPage(): React.JSX.Element {
   // The ticked rows, as the list tells them: with some, Print prints those alone.
   const [tickedIds, setTickedIds] = useState<readonly string[]>([]);
   const chosen = (list.data?.relatives ?? []).filter((row) => tickedIds.includes(row.relativeId));
+  // A parent who already chose a password gets no slip: left out of a chosen print, so that
+  // "tick all" prints the rest instead of being refused whole.
+  const printable = chosen.filter((row) => row.state !== 'signed_in');
   const number = new Intl.NumberFormat(i18n.language);
   // The passwords are held by the page alone (`.claude/rules/web.md`: a secret answered once).
   const print = useMutation({
@@ -216,15 +219,21 @@ export function ParentSlipsPage(): React.JSX.Element {
           bulkActions={[
             {
               key: 'print-chosen',
-              label: t('people.parentSlips.printChosen', {
-                count: chosen.length,
-                n: number.format(chosen.length),
-              }),
+              label:
+                printable.length === 0
+                  ? t('people.parentSlips.printChosenNone')
+                  : t('people.parentSlips.printChosen', {
+                      count: printable.length,
+                      n: number.format(printable.length),
+                    }),
               run: (rows) => {
-                print.mutate(rows.map((row) => row.relativeId));
+                const ids = rows
+                  .filter((row) => row.state !== 'signed_in')
+                  .map((row) => row.relativeId);
+                if (ids.length > 0) print.mutate(ids);
               },
               // Asked first only when a chosen slip still works: its password is replaced.
-              ...(chosen.some((row) => row.state === 'valid_slip')
+              ...(printable.some((row) => row.state === 'valid_slip')
                 ? {
                     confirm: () => ({
                       title: t('people.parentSlips.confirmTitle'),

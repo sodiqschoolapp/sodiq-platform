@@ -4187,6 +4187,7 @@ export const en = {
       printedIn: '{{class}}, {{date}}',
       otherBranch: 'Another branch, {{date}}',
       resetSlip: 'Reset, {{date}}',
+      printChosenNone: 'None of the chosen parents needs a slip: they have signed in',
       printChosen_one: 'Print the slip of {{n}} chosen parent',
       printChosen_other: 'Print the slips of {{n}} chosen parents',
       language: 'Language of the slips',
