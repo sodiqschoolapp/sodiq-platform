@@ -401,7 +401,7 @@ try {
 
   // A person with no account, in a branch of its own, for the account test
   // (task 2.3a): the Super Admin of the divisions test creates the account
-  // and gives a role, since no fourth Super Admin can be seeded.
+  // and gives a role, since the seed keeps its three Super Admins.
   const accountsBranch = await insertBranch(migrator, 'Accounts browser test branch');
   await migrator.transaction().execute(async (transaction) => {
     const person = await transaction
