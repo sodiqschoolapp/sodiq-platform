@@ -93,6 +93,7 @@ import {
   type StudentSubjectQuarter,
 } from './subject-quarter-lessons.js';
 import { tutorSubjectIds } from '../access/key-tutor-work.js';
+import { journalTeachers, unitClasses } from './journal-list.query.js';
 
 /**
  * The journal grid, read only (task 6.2, pull request #210; `07`, Opening a
@@ -205,10 +206,26 @@ export class JournalGridReader {
         const tutors = await tutorSubjectIds(transaction);
         journals = journals.filter((journal) => !tutors.has(journal.subjectId));
       }
+      // Owner, 28 November 2026: the Teacher and Class filters of the Journals page. The same
+      // journals as before; only what each row says of itself is more.
+      const year = years.find((one) => one.id === yearId);
+      const [teachers, classes] = await Promise.all([
+        year === undefined
+          ? new Map<string, never[]>()
+          : journalTeachers(transaction, branchId, journals, year),
+        unitClasses(transaction, journals),
+      ]);
       return journalListSchema.parse({
         years,
         yearId,
-        journals: journals.map(listed),
+        journals: journals.map((journal) => {
+          const shown = listed(journal);
+          return {
+            ...shown,
+            unit: { ...shown.unit, classes: classes.get(journal.id) ?? [] },
+            teachers: teachers.get(journal.id) ?? [],
+          };
+        }),
       });
     });
   }

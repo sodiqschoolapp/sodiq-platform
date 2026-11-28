@@ -177214,6 +177214,11 @@ export interface operations {
                                 /** Format: uuid */
                                 id: string;
                                 name: string;
+                                classes: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                }[];
                             };
                             subject: {
                                 /** Format: uuid */
@@ -177226,6 +177231,11 @@ export interface operations {
                                 /** @enum {string} */
                                 colour: "red" | "orange" | "amber" | "lime" | "green" | "teal" | "cyan" | "blue" | "indigo" | "violet" | "pink" | "brown";
                             };
+                            teachers: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            }[];
                         }[];
                     };
                 };
@@ -188110,6 +188120,8 @@ export interface operations {
                         from: string;
                         /** Format: date */
                         to: string;
+                        /** Format: uuid */
+                        yearId: string;
                         departments: {
                             /** Format: uuid */
                             id: string;

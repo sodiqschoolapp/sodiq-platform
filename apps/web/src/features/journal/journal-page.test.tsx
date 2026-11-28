@@ -1,5 +1,5 @@
 import type { JournalGrid, JournalList, JournalStudent } from '@sodiq/shared';
-import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { lessonNearest } from './journal-page';
 import { en } from '@/i18n/locales/en';
@@ -248,8 +248,26 @@ const LIST: JournalList = {
   ],
   yearId: uid(40),
   journals: [
-    { id: JOURNAL, unit: UNIT, subject: SUBJECT },
-    { id: uid(3), unit: { kind: 'group', id: uid(22), name: '7-E-1' }, subject: SUBJECT },
+    {
+      id: JOURNAL,
+      unit: { ...UNIT, classes: [{ id: UNIT.id, name: UNIT.name }] },
+      subject: SUBJECT,
+      teachers: [{ id: uid(50), name: 'Karimova Aziza' }],
+    },
+    {
+      id: uid(3),
+      unit: {
+        kind: 'group',
+        id: uid(22),
+        name: '7-E-1',
+        classes: [
+          { id: uid(21), name: '7 Cambridge' },
+          { id: UNIT.id, name: UNIT.name },
+        ],
+      },
+      subject: SUBJECT,
+      teachers: [{ id: uid(51), name: 'Usmonov Jamshid' }],
+    },
   ],
 };
 
@@ -1044,6 +1062,195 @@ describe('the Journals page filters', () => {
         ),
       ).toBe(true);
     });
+  });
+});
+
+// Owner, 28 November 2026: the Journals page filtered by a teacher or a class, and a teacher's
+// name leading to their journals. All names are invented.
+describe('the Journals page by teacher and class', () => {
+  type ListRow = JournalList['journals'][number];
+  const KARIMOVA = { id: uid(50), name: 'Karimova Aziza' };
+  const USMONOV = { id: uid(51), name: 'Usmonov Jamshid' };
+  const NAZAROVA = { id: uid(52), name: 'Nazarova Dildora' };
+  const OXFORD = { id: uid(20), name: '7 Oxford' };
+  const CAMBRIDGE = { id: uid(21), name: '7 Cambridge' };
+  const LOTUS = { id: uid(23), name: '8 Lotus' };
+  const PHYSICS = {
+    id: uid(11),
+    names: { uz: 'Fizika', ru: 'Физика', en: 'Physics' },
+    colour: 'green' as const,
+  };
+  const classRow = (
+    id: string,
+    unit: { id: string; name: string },
+    subject: ListRow['subject'],
+    teachers: ListRow['teachers'],
+  ): ListRow => ({ id, unit: { kind: 'class', ...unit, classes: [unit] }, subject, teachers });
+  const groupRow = (
+    id: string,
+    unit: { id: string; name: string },
+    classes: { id: string; name: string }[],
+    teachers: ListRow['teachers'],
+  ): ListRow => ({ id, unit: { kind: 'group', ...unit, classes }, subject: SUBJECT, teachers });
+  const BY_TEACHER: JournalList = {
+    ...LIST,
+    journals: [
+      classRow(uid(201), OXFORD, SUBJECT, [KARIMOVA]),
+      classRow(uid(202), CAMBRIDGE, SUBJECT, [USMONOV]),
+      classRow(uid(203), CAMBRIDGE, PHYSICS, [KARIMOVA, USMONOV]),
+      groupRow(uid(204), { id: uid(304), name: '7-E-1' }, [CAMBRIDGE, OXFORD], [USMONOV]),
+      groupRow(uid(205), { id: uid(305), name: '7-E-2' }, [OXFORD], [KARIMOVA]),
+      groupRow(uid(206), { id: uid(306), name: '8-E-1' }, [LOTUS], [NAZAROVA]),
+    ],
+  };
+
+  const openList = (path: string, list: JournalList = BY_TEACHER) => {
+    fakeApi({
+      'GET /api/auth/session': () =>
+        json(sessionOf({ assignments: [{ role: 'principal', branchId: NORTH.id }] })),
+      [GRID_ROUTE]: () => json(GRID),
+      'GET /api/journal/journals': () => json(list),
+    });
+    return renderApp(path, 'en');
+  };
+
+  /** The journals drawn, as "unit · subject · teachers". */
+  const drawn = () =>
+    [...document.querySelectorAll('tbody tr')].map((row) =>
+      [...row.querySelectorAll('td')]
+        .map((cell) => cell.textContent ?? '')
+        .filter((text) => text !== '')
+        .join(' · '),
+    );
+  const filter = (name: string) =>
+    within(screen.getByRole('main')).getByRole<HTMLSelectElement>('combobox', { name });
+  const optionsOf = (name: string) => [...filter(name).options].map((one) => one.text);
+  const address = (f: Record<string, string>) => encodeURIComponent(JSON.stringify(f));
+
+  it('names the teachers of each journal and filters by a teacher of either tab', async () => {
+    const { router } = openList('/journal');
+    await waitFor(() => {
+      expect(drawn()).toEqual([
+        '7 Oxford · Mathematics · Karimova Aziza',
+        '7 Cambridge · Mathematics · Usmonov Jamshid',
+        '7 Cambridge · Physics · Karimova Aziza, Usmonov Jamshid',
+      ]);
+    });
+    // Every teacher of the year, those of the groups included.
+    expect(optionsOf(en.journal.page.teacherFilter)).toEqual([
+      en.list.all,
+      'Karimova Aziza',
+      'Nazarova Dildora',
+      'Usmonov Jamshid',
+    ]);
+    fireEvent.change(filter(en.journal.page.teacherFilter), { target: { value: KARIMOVA.id } });
+    await waitFor(() => {
+      expect(drawn()).toEqual([
+        '7 Oxford · Mathematics · Karimova Aziza',
+        '7 Cambridge · Physics · Karimova Aziza, Usmonov Jamshid',
+      ]);
+    });
+    expect(router.state.location.search).toMatchObject({ f: { teacher: KARIMOVA.id } });
+    // The teacher stays chosen on the Groups tab.
+    fireEvent.click(screen.getByRole('radio', { name: en.journal.page.groups }));
+    await waitFor(() => {
+      expect(drawn()).toEqual(['7-E-2 · Mathematics · Karimova Aziza']);
+    });
+    expect(router.state.location.search).toMatchObject({
+      tab: 'group',
+      f: { teacher: KARIMOVA.id },
+    });
+  });
+
+  it('reads the teacher from the address, and opens on Groups for a teacher of groups only', async () => {
+    openList(`/journal?f=${address({ teacher: USMONOV.id })}`);
+    await waitFor(() => {
+      expect(drawn()).toEqual([
+        '7 Cambridge · Mathematics · Usmonov Jamshid',
+        '7 Cambridge · Physics · Karimova Aziza, Usmonov Jamshid',
+      ]);
+    });
+    expect(filter(en.journal.page.teacherFilter).value).toBe(USMONOV.id);
+    cleanup();
+    const { router } = openList(`/journal?f=${address({ teacher: NAZAROVA.id })}`);
+    await waitFor(() => {
+      expect(drawn()).toEqual(['8-E-1 · Mathematics · Nazarova Dildora']);
+    });
+    expect(
+      screen.getByRole<HTMLInputElement>('radio', { name: en.journal.page.groups }).checked,
+    ).toBe(true);
+    // The tab is written into the address: a class chosen next keeps the list on Groups.
+    await waitFor(() => {
+      expect(router.state.location.search).toMatchObject({ tab: 'group' });
+    });
+    fireEvent.change(filter(en.journal.page.class), { target: { value: LOTUS.id } });
+    await waitFor(() => {
+      expect(router.state.location.search).toEqual({
+        tab: 'group',
+        f: { teacher: NAZAROVA.id, class: LOTUS.id },
+      });
+    });
+    expect(drawn()).toEqual(['8-E-1 · Mathematics · Nazarova Dildora']);
+  });
+
+  it('filters the Classes tab by a class listed there', async () => {
+    const { router } = openList('/journal');
+    await waitFor(() => {
+      expect(drawn()).toHaveLength(3);
+    });
+    expect(optionsOf(en.journal.page.class)).toEqual([en.list.all, '7 Cambridge', '7 Oxford']);
+    fireEvent.change(filter(en.journal.page.class), { target: { value: CAMBRIDGE.id } });
+    await waitFor(() => {
+      expect(drawn()).toEqual([
+        '7 Cambridge · Mathematics · Usmonov Jamshid',
+        '7 Cambridge · Physics · Karimova Aziza, Usmonov Jamshid',
+      ]);
+    });
+    expect(router.state.location.search).toMatchObject({ f: { class: CAMBRIDGE.id } });
+  });
+
+  it('keeps on the Groups tab the groups that draw students from the class', async () => {
+    openList(`/journal?tab=group&f=${address({ class: OXFORD.id })}`);
+    await waitFor(() => {
+      expect(drawn()).toEqual([
+        '7-E-1 · Mathematics · Usmonov Jamshid',
+        '7-E-2 · Mathematics · Karimova Aziza',
+      ]);
+    });
+    // The classes the groups draw from.
+    expect(optionsOf(en.journal.page.class)).toEqual([
+      en.list.all,
+      '7 Cambridge',
+      '7 Oxford',
+      '8 Lotus',
+    ]);
+    fireEvent.change(filter(en.journal.page.class), { target: { value: LOTUS.id } });
+    await waitFor(() => {
+      expect(drawn()).toEqual(['8-E-1 · Mathematics · Nazarova Dildora']);
+    });
+  });
+
+  it("links the teacher's name in a journal's header to their journals of the journal's year", async () => {
+    const { router } = openList(`/journal/${JOURNAL}`, LIST);
+    const link = await waitFor(() => {
+      const found = document.querySelector<HTMLAnchorElement>('[data-journal-teacher] a');
+      if (found === null) throw new Error('The link.');
+      return found;
+    });
+    expect(link.textContent).toBe('Karimova Aziza');
+    expect(link.className).toContain('text-link');
+    const search = { year: GRID.journal.year.id, f: { teacher: KARIMOVA.id } };
+    expect(link.getAttribute('href')).toBe(router.buildLocation({ to: '/journal', search }).href);
+    fireEvent.click(link);
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/journal');
+    });
+    expect(router.state.location.search).toEqual(search);
+    // The journals of the teacher only: 7-E-1 on the Groups tab is another teacher's.
+    await waitFor(() => {
+      expect(drawn()).toEqual(['7 Oxford · Mathematics · Karimova Aziza']);
+    });
+    expect(filter(en.journal.page.teacherFilter).value).toBe(KARIMOVA.id);
   });
 });
 

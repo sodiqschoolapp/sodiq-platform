@@ -243,6 +243,8 @@ describe('the journal discipline report: its items and its file (task 9.3b-2)', 
       const counts = disciplineSchema.parse(
         ok(await calls.get(`/api/journal/discipline?${RANGE}`)),
       );
+      // Owner, 28 November 2026: the year of the range, for the link to a teacher's journals.
+      expect(counts.yearId).toBe(c.s.year);
       const row = counts.teachers.find((one) => one.teacher.id === c.s.teacher.staffId);
       // The lesson's late mark and the exam's late score (decision 11).
       expect(row).toMatchObject({ held: 3, lateEntries: 2, unplanned: 1 });

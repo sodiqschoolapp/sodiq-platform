@@ -26,6 +26,13 @@ const SUBJECT = {
   colour: 'blue' as const,
 };
 const UNIT = { kind: 'class' as const, id: uid(20), name: '7 Oxford' };
+/** The journal as the Journals list names it (owner, 28 November 2026: its classes and teachers). */
+const LISTED = {
+  id: JOURNAL,
+  unit: { ...UNIT, classes: [{ id: UNIT.id, name: UNIT.name }] },
+  subject: SUBJECT,
+  teachers: [],
+};
 const QUARTER = {
   id: uid(30),
   number: 1,
@@ -168,7 +175,7 @@ function open(grid: JournalGrid) {
       json({
         years: [YEAR],
         yearId: YEAR.id,
-        journals: [{ id: JOURNAL, unit: UNIT, subject: SUBJECT }],
+        journals: [LISTED],
       }),
   });
   renderApp(`/journal/${JOURNAL}`, 'en');

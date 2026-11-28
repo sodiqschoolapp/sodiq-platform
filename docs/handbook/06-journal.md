@@ -19,6 +19,21 @@ The exported and printed journal uses the same labels, under the heading **Sinf 
 
 There is no lesson score column (Oʻrt / Ср. / Avg) and a subject has no daily distribution: a lesson's attendance and works count only in the quarter averages and the quarter result, on screen, in the exported and printed journal and in the support view (owner, 24 November 2026).
 
+## The Journals page: subject, teacher and class
+
+<!-- Sources: spec 07 (Opening a journal: "From the Journals page: tabs Classes and Groups, then the subject"); the owner's request of 28 November 2026 -->
+
+**What it is.** The Journals page (**Jurnallar**) lists the journals of the year that the person may open, on two tabs, **Sinflar** and **Guruhlar**. Three filters narrow the list: **Fan** (subject), **Oʻqituvchi** (teacher) and **Sinf** (class). The column **Oʻqituvchilar** names the teachers of each journal; on a narrow screen it is left out unless ticked in the column chooser.
+
+**Who can use it.** Everyone who may open a journal. The filters only narrow the journals the person already sees: a Head Teacher who chooses a teacher sees that teacher's journals of own subjects, never the others.
+
+**How it works.**
+
+1. A journal's teachers are the people its lessons of the year count for: the teacher of the timetable, a substitute for the lessons they took, the acting teacher of a vacancy. A cancelled lesson counts for nobody, and a vacancy is never listed.
+2. On **Sinflar**, **Sinf** keeps the journals of that class. On **Guruhlar**, it keeps the groups that take students from that class.
+3. The chosen teacher and class stay when the tab changes, and they are in the page's address, so a filtered list can be sent as a link.
+4. A teacher's name leads to their journals: on **Jurnal intizomi** (the journals of the year of the dates chosen) and in a journal's header, after **Oʻqituvchi:** (the journals of that journal's year). When all of a teacher's journals are groups', the page opens on **Guruhlar**.
+
 ## Today's lesson and the short headers
 
 <!-- Sources: spec 07 (Opening a journal; Layout, Lessons row: "A lesson with no classwork and no homework is one narrow attendance column"); design-system (--today); the owner's request of 20 November 2026 -->
@@ -170,7 +185,7 @@ In a subject whose codes the Super Admin switched on, a column header shows the 
 | Senior Head Teacher | See the lessons of own subjects | Every branch |
 | Head Tutor | See the lessons of the Tutor subjects (Ma'naviyat soati and the Homework slot), read only | Own branch |
 
-**How it works.** Journal → **Journal discipline** (**Jurnal intizomi**). Choose the dates and, if wanted, a department. The table has one row per teacher.
+**How it works.** Journal → **Journal discipline** (**Jurnal intizomi**). Choose the dates and, if wanted, a department. The table has one row per teacher. A teacher's name opens the Journals page with that teacher's journals of the year.
 
 **Rules.**
 

@@ -68,7 +68,12 @@ import {
   hideableColumnsOf,
   weekdayOf,
 } from './journal-grid';
-import { JOURNAL_FILTERS, type JournalFilter, type JournalSearch } from './journal-search';
+import {
+  JOURNAL_FILTERS,
+  teacherJournals,
+  type JournalFilter,
+  type JournalSearch,
+} from './journal-search';
 import { yearText } from './journals-page';
 import { CodedName } from '@/components/coded-name';
 
@@ -383,11 +388,21 @@ function JournalLoaded({
             <p className="text-lg font-semibold">{header}</p>
             <p className="flex flex-wrap items-center gap-3">
               <SubjectChip colour={data.journal.subject.colour} name={subject} />
-              <span>
-                {data.teacher === null
-                  ? t('journal.page.noTeacher')
-                  : t('journal.page.teacher', { name: data.teacher.name })}
-              </span>
+              {data.teacher === null ? (
+                <span>{t('journal.page.noTeacher')}</span>
+              ) : (
+                <span data-journal-teacher="true">
+                  {t('journal.page.teacherLabel')}{' '}
+                  {/* Owner, 28 November 2026: the name leads to the teacher's journals of the year. */}
+                  <Link
+                    to="/journal"
+                    search={teacherJournals(data.teacher.id, data.journal.year.id)}
+                    className="text-link"
+                  >
+                    {data.teacher.name}
+                  </Link>
+                </span>
+              )}
               {data.journal.year.closed && (
                 <span className="font-semibold">{t('journal.page.pastYear')}</span>
               )}

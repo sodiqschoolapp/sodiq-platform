@@ -1,5 +1,6 @@
 import {
   BRANCH_HEADER,
+  classDisplayName,
   journalGridSchema,
   journalListSchema,
   type JournalGrid,
@@ -991,6 +992,243 @@ describe('the journal grid', () => {
         const grid = gridOf(await get(branch, `/api/journal/journals/${journal}`));
         expect(grid.shape).toBe('whole');
         expect(grid.lessons.map((one) => one.id)).toEqual([owned, notOwned]);
+      });
+    });
+
+    // Owner, 28 November 2026: the Journals page filtered by a teacher or a class. Each row
+    // names its teachers in the year (the rule of the counts per teacher, `lesson-counted.ts`)
+    // and the classes its students are drawn from; the journals listed stay the same.
+    describe('the teachers and classes of each row', () => {
+      /** A person teaching the kit's subject in grade 7, named as given (invented). */
+      const teacher = async (branch: string, last: string, first: string) => {
+        const person = await load.teacher(branch, {
+          subjects: [{ subject: cells.subject, grades: [7] }],
+        });
+        await t.database.migrator
+          .updateTable('staff')
+          .set({ last_name: last, first_name: first })
+          .where('id', '=', person.staffId)
+          .execute();
+        return person.staffId;
+      };
+
+      /** A substitution in force on the lesson (0101): its teacher is the substitute, and a live row. */
+      const substitute = async (branch: string, lessonId: string, staffId: string) => {
+        const lesson = await t.database.migrator
+          .updateTable('lessons')
+          .set({ teacher_id: staffId })
+          .where('id', '=', lessonId)
+          .returningAll()
+          .executeTakeFirstOrThrow();
+        const by = await load.classes.account();
+        const record = await t.database.migrator
+          .insertInto('substitutions')
+          .values({
+            branch_id: branch,
+            source: 'lesson',
+            replaced_id: null,
+            substitute_id: staffId,
+            relaxed: false,
+            reason: 'The teacher was ill',
+            made_at: new Date('2026-10-01T12:00:00+05:00'),
+            made_by: by,
+          })
+          .returning('id')
+          .executeTakeFirstOrThrow();
+        await t.database.migrator
+          .insertInto('substitution_lessons')
+          .values({
+            substitution_id: record.id,
+            branch_id: branch,
+            lesson_id: lesson.id,
+            lesson_date: lesson.lesson_date,
+            relaxed: false,
+            class_id: lesson.class_id,
+            group_id: lesson.group_id,
+            subject_id: lesson.subject_id,
+            load_row_id: lesson.load_row_id,
+            pattern_entry_id: lesson.pattern_entry_id,
+            pattern_date: lesson.lesson_date,
+            starts_at: lesson.starts_at,
+            ends_at: lesson.ends_at,
+          })
+          .execute();
+      };
+
+      const teach = (lessonId: string, staffId: string) =>
+        t.database.migrator
+          .updateTable('lessons')
+          .set({ teacher_id: staffId })
+          .where('id', '=', lessonId)
+          .execute();
+
+      const listAs = async (branch: string) => {
+        const browser = await account();
+        return as(browser, [{ role: 'academic_vice_principal', branchId: branch }], async (get) =>
+          journalListSchema.parse((await get(branch, '/api/journal/journals')).body),
+        );
+      };
+
+      it('names the owner of each lesson and a substitute in force, by name, and not the substitute of a cancelled lesson', async () => {
+        const branch = await t.newBranch();
+        const { year } = await cells.lessons.year(branch);
+        const classId = await load.classes.schoolClass(branch, year, { grade: 7 });
+        const earlier = await teacher(branch, 'Rashidova', 'Kamola');
+        const later = await teacher(branch, 'Ergashev', 'Botir');
+        const spare = await teacher(branch, 'Nazarova', 'Dildora');
+        const away = await teacher(branch, 'Aliyev', 'Sardor');
+        // The kit's lessons publish versions of their own from 19 October; the scene's two
+        // versions come after them, so the later one holds that day on.
+        const cancelled = await cells.lesson(branch, year, classId, '2026-10-05');
+        const first = await cells.lesson(branch, year, classId, '2026-10-12');
+        const second = await cells.lesson(branch, year, classId, '2026-10-19');
+        const third = await cells.lesson(branch, year, classId, '2026-10-26');
+        const scene = { branch, year, classId, subject: cells.subject };
+        await acting.published(scene, '2026-09-07', earlier);
+        await acting.published(scene, '2026-10-19', later);
+        const journal = await acting.journal(branch, year, classId, cells.subject);
+        await teach(first, earlier);
+        await teach(second, later);
+        // The 26th is the later teacher's by the timetable and taken by the spare one: it counts
+        // for the substitute; the later teacher is listed for the 19th.
+        await substitute(branch, third, spare);
+        // A substitution in force on a lesson that is cancelled: nobody is listed for it.
+        await substitute(branch, cancelled, away);
+        await t.database.migrator
+          .updateTable('lessons')
+          .set({ cancel_cause: 'reason', cancel_reason: 'School trip' })
+          .where('id', '=', cancelled)
+          .execute();
+
+        const list = await listAs(branch);
+        const row = list.journals.find((one) => one.id === journal);
+        expect(row?.teachers).toEqual([
+          { id: later, name: 'Ergashev Botir' },
+          { id: spare, name: 'Nazarova Dildora' },
+          { id: earlier, name: 'Rashidova Kamola' },
+        ]);
+        expect(row?.unit.classes).toEqual([{ id: classId, name: row?.unit.name }]);
+
+        // Without the substitution's live row the 26th counts for the owner of that day again.
+        await t.database.migrator
+          .updateTable('substitution_lessons')
+          .set({
+            ended_at: new Date('2026-10-20T12:00:00+05:00'),
+            end_cause: 'withdrawn',
+            ended_by: await load.classes.account(),
+          })
+          .where('lesson_id', '=', third)
+          .execute();
+        const after = await listAs(branch);
+        expect(
+          after.journals.find((one) => one.id === journal)?.teachers.map((one) => one.id),
+        ).toEqual([later, earlier]);
+      });
+
+      it('never lists a vacancy: its lessons count for the acting teacher of the day, or for nobody', async () => {
+        const branch = await t.newBranch();
+        const { year } = await cells.lessons.year(branch);
+        const classId = await load.classes.schoolClass(branch, year, { grade: 7 });
+        const vacancy = await load.vacancy(branch, {
+          subjects: [{ subject: cells.subject, grades: [7] }],
+        });
+        const person = await teacher(branch, 'Toshmatova', 'Malika');
+        // Before 19 October, where the kit's own versions begin: the vacancy's row holds.
+        const first = await cells.lesson(branch, year, classId, '2026-10-05');
+        const second = await cells.lesson(branch, year, classId, '2026-10-12');
+        const scene = { branch, year, classId, subject: cells.subject };
+        const version = await acting.published(scene, '2026-09-07', vacancy);
+        const journal = await acting.journal(branch, year, classId, cells.subject);
+        await teach(first, vacancy);
+        await teach(second, vacancy);
+
+        const before = await listAs(branch);
+        expect(before.journals.find((one) => one.id === journal)?.teachers).toEqual([]);
+
+        await acting.period(
+          {
+            ...scene,
+            vacancy,
+            person,
+            personAccount: '',
+            version,
+            journal,
+          },
+          '2026-10-08',
+        );
+        const after = await listAs(branch);
+        expect(after.journals.find((one) => one.id === journal)?.teachers).toEqual([
+          { id: person, name: 'Toshmatova Malika' },
+        ]);
+      });
+
+      it('gives a group row the classes it draws from and the teacher of its lessons', async () => {
+        const branch = await t.newBranch();
+        const { year } = await cells.lessons.year(branch);
+        const oxford = await load.classes.schoolClass(branch, year, { grade: 7 });
+        const cambridge = await load.classes.schoolClass(branch, year, { grade: 7 });
+        const group = await load.classes.group(branch, year, cells.subject, [cambridge, oxford]);
+        const journal = (
+          await t.database.migrator
+            .insertInto('journals')
+            .values({
+              branch_id: branch,
+              academic_year_id: year,
+              class_id: null,
+              group_id: group,
+              subject_id: cells.subject,
+              runs: '{}',
+            })
+            .returning('id')
+            .executeTakeFirstOrThrow()
+        ).id;
+        // The kit's group lesson stands on a version published from 19 October whose row names
+        // the fixture teacher: the owner on the 26th.
+        await cells.groupLesson(branch, year, group, '2026-10-26');
+        const owner = await t.database.migrator
+          .selectFrom('teaching_load_rows')
+          .select('teacher_id')
+          .where('group_id', '=', group)
+          .executeTakeFirstOrThrow();
+        const names = await t.database.migrator
+          .selectFrom('classes')
+          .select(['id', 'grade', 'name'])
+          .where('id', 'in', [oxford, cambridge])
+          .execute();
+        const expected = names
+          .sort((a, b) => a.name.localeCompare(b.name, 'en'))
+          .map((one) => ({ id: one.id, name: classDisplayName(one.grade, one.name) }));
+
+        const list = await listAs(branch);
+        const row = list.journals.find((one) => one.id === journal);
+        expect(row?.unit.kind).toBe('group');
+        expect(row?.unit.classes).toEqual(expected);
+        expect(row?.teachers.map((one) => one.id)).toEqual([owner.teacher_id]);
+      });
+    });
+
+    it('keeps the journals of a Head Teacher to own subjects whatever else their teachers teach', async () => {
+      const s = await publishedScene(t, load, { secondSubject: true });
+      const second = s.secondSubject ?? '';
+      const head = await account();
+      await as(
+        head,
+        [{ role: 'head_teacher', branchId: s.branch, subjectIds: [s.subject] }],
+        async (get) => {
+          const list = journalListSchema.parse((await get(s.branch, '/api/journal/journals')).body);
+          expect(list.journals.map((one) => one.subject.id)).toEqual([s.subject, s.subject]);
+          const own = list.journals.find((one) => one.unit.id === s.classId);
+          expect(own?.teachers.map((one) => one.id)).toEqual([s.teacher.staffId]);
+        },
+      );
+      // The same teacher's journal of the second subject is listed to a reader of the branch.
+      const vice = await account();
+      await as(vice, [{ role: 'academic_vice_principal', branchId: s.branch }], async (get) => {
+        const list = journalListSchema.parse((await get(s.branch, '/api/journal/journals')).body);
+        const taught = list.journals.filter((one) =>
+          one.teachers.some((who) => who.id === s.teacher.staffId),
+        );
+        expect(taught.map((one) => one.subject.id).sort()).toEqual([s.subject, second].sort());
       });
     });
   });

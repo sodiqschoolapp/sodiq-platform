@@ -706,7 +706,13 @@ export const PLATFORM_MAP_SOURCE: unknown = {
     "f": {
      "kind": "record",
      "keys": {
+      "class": {
+       "kind": "id"
+      },
       "subject": {
+       "kind": "id"
+      },
+      "teacher": {
        "kind": "id"
       }
      }
@@ -11390,7 +11396,7 @@ export const PLATFORM_MAP_SOURCE: unknown = {
    ],
    "operations": [],
    "opens": null,
-   "description": "Shows the teacher whose lessons the counts of the row are about."
+   "description": "Shows the teacher whose lessons the counts of the row are about; the name opens the teacher's journals of the year on the Journals page."
   },
   {
    "id": "features/journal/discipline-page.tsx#column:journal.discipline.unplanned",
@@ -13733,6 +13739,34 @@ export const PLATFORM_MAP_SOURCE: unknown = {
    "operations": [],
    "opens": null,
    "description": "Shows the subject of the journal."
+  },
+  {
+   "id": "features/journal/journals-page.tsx#column:journal.page.teachers",
+   "kind": "column",
+   "label": {
+    "uz": "Oʻqituvchilar",
+    "ru": "Учителя",
+    "en": "Teachers"
+   },
+   "pages": [
+    "/journal"
+   ],
+   "parent": null,
+   "roles": [
+    "super_admin",
+    "principal",
+    "academic_vice_principal",
+    "spiritual_vice_principal",
+    "head_tutor",
+    "tutor",
+    "class_teacher",
+    "senior_head_teacher",
+    "head_teacher",
+    "teacher"
+   ],
+   "operations": [],
+   "opens": null,
+   "description": "Shows the teachers of the journal in the year: whoever its lessons count for, a substitute included; the Teacher filter keeps one teacher's journals."
   },
   {
    "id": "features/journal/journals-page.tsx#field:journal.page.year",
