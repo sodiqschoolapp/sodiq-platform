@@ -13,6 +13,7 @@ import { BRANCHES_WITHOUT_VICE_KEY } from '@/features/access/vice-principal-bann
 import { en } from '@/i18n/locales/en';
 import { ru } from '@/i18n/locales/ru';
 import { accountAccessKey, headTeachersKey, neverUsedKey, staffAccountKey } from './people-api';
+import { generatedPasswordsIn } from '@/testing/generated-password';
 import { fakeApi, json, NORTH, renderApp, sessionOf, SOUTH } from '@/testing/render-app';
 
 const PATH = '/people/staff';
@@ -80,7 +81,8 @@ const detail: StaffDetail = {
   classesTaught: [],
 };
 
-const PASSWORD = 'Rt5vNw8QpL2kXz7M';
+/** The shape of a generated password since the owner's decision of 28 November 2026. */
+const PASSWORD = 'rt5vnw8qpk';
 
 const SLIP = {
   firstName: 'Odil',
@@ -315,7 +317,7 @@ describe('the sign-in access section', () => {
     await confirmWith(en.people.access.resetPassword);
 
     const dialog = await screen.findByRole('dialog', { name: en.people.access.slipTitle });
-    expect(within(dialog).getByText(PASSWORD)).toBeDefined();
+    expect(generatedPasswordsIn(dialog)).toEqual([PASSWORD]);
     expect(calls.filter((call) => call.route.endsWith('/password-reset'))).toHaveLength(1);
     // The secret stays only in the state of the part (`.claude/rules/web.md`).
     await waitFor(() => {
@@ -355,7 +357,7 @@ describe('the sign-in access section', () => {
       within(question).getByRole('button', { name: en.people.access.resetSecondStep }),
     );
     const dialog = await screen.findByRole('dialog', { name: en.people.access.slipTitle });
-    expect(within(dialog).getByText(PASSWORD)).toBeDefined();
+    expect(generatedPasswordsIn(dialog)).toEqual([PASSWORD]);
     fireEvent.click(within(dialog).getByRole('button', { name: en.people.account.closeSlip }));
     await waitFor(() => {
       expect(cachesHold(PASSWORD)).toBe(false);

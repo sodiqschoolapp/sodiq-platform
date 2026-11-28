@@ -13,7 +13,7 @@ import {
   type SignInKit,
 } from '../../testing/sign-in-kit.js';
 import { createTestDatabase, type TestDatabase } from '../../testing/test-database.js';
-import { FIRST_PASSWORD_LENGTH } from './accounts.service.js';
+import { SIGN_IN_PASSWORD_ALPHABET, SIGN_IN_PASSWORD_LENGTH } from './generated-passwords.js';
 import {
   OwnPasswordResetError,
   PasswordResets,
@@ -22,9 +22,12 @@ import {
 
 const SECOND = 1000;
 const HOUR = 60 * 60 * SECOND;
+const DAY = 24 * HOUR;
 
 // Edge cases, "Accounts and sign-in": a reset gives a one-time password valid
-// for 24 hours and forces a change before anything else. It ends all sessions,
+// for 7 days (owner, 28 November 2026: every generated password of a staff
+// account is valid for 7 days, in place of the spec's 24 hours) and forces a
+// change before anything else. It ends all sessions,
 // is logged as "reset by X for Y", and the user sees "your password was reset
 // by X" at next sign-in. The route comes with task 2.3; this is the service.
 // All names are invented.
@@ -80,7 +83,11 @@ describe('a password reset by an administrator', () => {
     const { account } = await kit.fullSession('Barno', 'Maxmudova');
 
     const first = await reset(account.id, administrator.id);
-    expect(first).toHaveLength(FIRST_PASSWORD_LENGTH);
+    // Owner, 28 November 2026: ten characters easy to copy by hand from the slip.
+    expect(first).toHaveLength(SIGN_IN_PASSWORD_LENGTH);
+    expect([...first].every((character) => SIGN_IN_PASSWORD_ALPHABET.includes(character))).toBe(
+      true,
+    );
     expect(errorCode(await kit.signIn(account.login, NEW_PASSWORD))).toBe('sign_in_failed');
     expect((await accountRow(account.id))?.text).not.toContain(first);
 
@@ -108,28 +115,28 @@ describe('a password reset by an administrator', () => {
     expect((await kit.probe(cookie)).status).toBe(200);
   });
 
-  describe('gives a password that is valid for 24 hours', () => {
-    it('signs in one second before the 24 hours are over', async () => {
+  describe('gives a staff password that is valid for 7 days', () => {
+    it('signs in one second before the 7 days are over', async () => {
       clock.set('2026-10-05T09:00:00+05:00');
       const administrator = await kit.newAccount('Elyor', 'Maxmudov');
       const { account } = await kit.fullSession('Feruza', 'Maxmudova');
       const oneTime = await reset(account.id, administrator.id);
 
-      clock.advance(24 * HOUR - SECOND);
+      clock.advance(7 * DAY - SECOND);
 
       expect((await kit.signIn(account.login, oneTime)).status).toBe(200);
     });
 
-    it('is refused as expired when the 24 hours are over', async () => {
+    it('is refused as expired when the 7 days are over', async () => {
       clock.set('2026-10-05T09:00:00+05:00');
       const administrator = await kit.newAccount('Gulom', 'Maxmudov');
       const { account } = await kit.fullSession('Hilola', 'Maxmudova');
       const oneTime = await reset(account.id, administrator.id);
       expect((await accountRow(account.id))?.password_expires_at).toEqual(
-        new Date('2026-10-06T09:00:00+05:00'),
+        new Date('2026-10-12T09:00:00+05:00'),
       );
 
-      clock.advance(24 * HOUR);
+      clock.advance(7 * DAY);
 
       const response = await kit.signIn(account.login, oneTime);
       expect(response.status).toBe(401);
@@ -144,7 +151,7 @@ describe('a password reset by an administrator', () => {
       const cookie = cookieOf(await kit.signIn(account.login, oneTime)) ?? '';
       await kit.changePassword(cookie, oneTime, 'another-password-88');
 
-      clock.advance(30 * 24 * HOUR);
+      clock.advance(30 * DAY);
 
       expect((await kit.signIn(account.login, 'another-password-88')).status).toBe(200);
     });
@@ -431,7 +438,7 @@ describe('a password reset by an administrator', () => {
     clock.set('2026-10-05T09:00:00+05:00');
     const administrator = await kit.newAccount('Vali', 'Maxmudov');
     const account = await kit.newAccount('Xurshid', 'Maxmudov');
-    clock.advance(8 * 24 * HOUR);
+    clock.advance(8 * DAY);
     expect(errorCode(await kit.signIn(account.login, account.firstPassword))).toBe(
       'password_expired',
     );

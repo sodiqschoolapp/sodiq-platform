@@ -398,6 +398,10 @@ describe('the staff import', () => {
       expect(roles.every((one) => one.branch_id === t.north)).toBe(true);
       // A slip's password is the account's first password, valid for 7 days, to be changed.
       const slip = result.slips[0];
+      // Owner, 28 November 2026: ten lowercase letters and digits without look-alikes, on every slip.
+      for (const one of result.slips) {
+        expect(one.password).toMatch(/^[a-hjkmnp-z2-9]{10}$/);
+      }
       const account = await t.database.migrator
         .selectFrom('accounts')
         .select(['password_hash', 'must_change_password', 'password_expires_at'])

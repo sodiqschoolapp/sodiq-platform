@@ -25,7 +25,10 @@ export const ERROR_CODES = [
    * looked at. `Retry-After` of the answer says how many seconds are left.
    */
   'too_many_attempts',
-  /** The password was right, but it is a first password older than 7 days or a reset one older than 24 hours. */
+  /**
+   * The password was right, but it is a first or reset password past its moment: 7 days for
+   * staff (owner, 28 November 2026), 30 days for a parent's first password, 7 for a reset.
+   */
   'password_expired',
   /** The password was right, but the account is locked. A wrong password is answered as for any account. */
   'account_locked',

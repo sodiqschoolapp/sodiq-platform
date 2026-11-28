@@ -15035,7 +15035,7 @@ export const PLATFORM_MAP_SOURCE: unknown = {
    ],
    "operations": [],
    "opens": null,
-   "description": "Resets the password after a confirmation: all sessions end and a slip with a one-time password valid for 24 hours is shown to print."
+   "description": "Resets the password after a confirmation: all sessions end and a slip with a one-time password valid for 7 days is shown to print."
   },
   {
    "id": "features/people/account-access-section.tsx#button:people.access.resetSecondStep",

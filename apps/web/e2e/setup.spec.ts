@@ -559,7 +559,8 @@ async function createAccountAndSignIn(page: Page): Promise<void> {
   const slip = page.getByRole('dialog', { name: en.people.account.slipTitle });
   await expect(slip.getByText('f.aminova', { exact: true })).toBeVisible();
   const password = await slip.locator('dd').nth(1).innerText();
-  expect(password).toMatch(/^[A-Za-z0-9]{16}$/);
+  // Owner, 28 November 2026: ten characters; the gap between its two groups is no space.
+  expect(password).toMatch(/^[a-hjkmnp-z2-9]{10}$/);
   if (process.env.SCREENSHOTS === '1') {
     mkdirSync(SCREENS, { recursive: true });
     await page.waitForTimeout(400);

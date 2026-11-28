@@ -1,4 +1,3 @@
-import { randomInt } from 'node:crypto';
 import { Inject, Injectable } from '@nestjs/common';
 import { DEFAULT_LANGUAGE, LOGIN_MAX_LENGTH, type Clock } from '@sodiq/shared';
 import { sql } from 'kysely';
@@ -6,25 +5,12 @@ import { REAL_CLOCK } from '../../clock/clock.module.js';
 import type { Transaction } from '../../database/transactions.js';
 import type { JsonValue } from '../../database/types.generated.js';
 import { Audit } from '../audit/audit.service.js';
+import { randomSignInPassword } from './generated-passwords.js';
 import { loginBase, loginForms, LoginNameError } from './login.js';
 import { hashPassword } from './password-hash.js';
 
 /** Edge cases, "Accounts and sign-in": first passwords are valid for 7 days. */
 export const FIRST_PASSWORD_VALID_MS = 7 * 24 * 60 * 60 * 1000;
-
-export const FIRST_PASSWORD_LENGTH = 16;
-
-/** Letters and digits without the ones that look alike on a printed slip (0 O, 1 l I). */
-const FIRST_PASSWORD_ALPHABET = 'abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-
-/** Also the one-time password of a reset (`PasswordResets`). */
-export function randomFirstPassword(): string {
-  let password = '';
-  for (let index = 0; index < FIRST_PASSWORD_LENGTH; index += 1) {
-    password += FIRST_PASSWORD_ALPHABET.charAt(randomInt(FIRST_PASSWORD_ALPHABET.length));
-  }
-  return password;
-}
 
 /** The chosen login is given to another account; logins are never reused. */
 export class LoginTakenError extends Error {
@@ -41,7 +27,7 @@ export interface PreparedFirstPassword {
 
 /** A random first password and its Argon2id hash. */
 export async function prepareFirstPassword(): Promise<PreparedFirstPassword> {
-  const password = randomFirstPassword();
+  const password = randomSignInPassword();
   return { password, hash: await hashPassword(password) };
 }
 

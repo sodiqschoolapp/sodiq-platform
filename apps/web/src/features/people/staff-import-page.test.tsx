@@ -2,6 +2,7 @@ import type { Role, StaffImportPreview } from '@sodiq/shared';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { en } from '@/i18n/locales/en';
+import { generatedPasswordsIn } from '@/testing/generated-password';
 import { fakeApi, json, NORTH, renderApp, sessionOf } from '@/testing/render-app';
 
 const uid = (n: number): string => `0199e100-0000-7000-8000-${String(n).padStart(12, '0')}`;
@@ -75,7 +76,7 @@ const SLIP = {
   firstName: 'Botir',
   lastName: 'Rahimov',
   login: 'b.rahimov',
-  password: 'kQ7-invented-pw',
+  password: 'kq7nvt3dpw',
   validUntil: '2026-10-17T18:55:00.000Z',
 };
 
@@ -197,14 +198,14 @@ describe('the staff import page', () => {
       calls.find((call) => call.route === `POST /api/people/staff/imports/${IMPORT}/confirm`)?.body,
     ).toEqual({ confirmedWarnings: [3] });
     // On the page, and in the sheet that prints four to an A4 page.
-    expect(screen.getAllByText('kQ7-invented-pw').length).toBeGreaterThan(0);
+    expect(generatedPasswordsIn(document.body)).toContain('kq7nvt3dpw');
     const sheet = document.querySelector('[data-slip-sheet][data-four]');
     // Five slips: the print rule of index.css puts a page break after every fourth.
     expect(sheet?.querySelectorAll('[data-slip]')).toHaveLength(5);
     expect(screen.getByRole('button', { name: en.people.staffImport.print })).toBeDefined();
     // The password is held by the page only: no query or mutation cache keeps it.
     await waitFor(() => {
-      expect(cachesHold('kQ7-invented-pw')).toBe(false);
+      expect(cachesHold('kq7nvt3dpw')).toBe(false);
     });
   });
 

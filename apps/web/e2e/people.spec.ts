@@ -262,7 +262,8 @@ test('an Academic Vice Principal locks, unlocks and resets a teacher’s passwor
   const slip = page.getByRole('dialog', { name: texts.slipTitle });
   // The slip keeps "First name Surname" (task 2.7b-1, decision 3).
   await expect(slip.getByText('Sherzod Valiyev')).toBeVisible();
-  await expect(slip.locator('dd.font-mono').nth(1)).toHaveText(/^[A-Za-z0-9]{16}$/);
+  // Owner, 28 November 2026: ten characters, in two groups with no space in the text.
+  await expect(slip.locator('dd.font-mono').nth(1)).toHaveText(/^[a-hjkmnp-z2-9]{10}$/);
   await accessScreenshot(page, 'slip');
   await slip.getByRole('button', { name: en.people.account.closeSlip, exact: true }).click();
   await expect(slip).toHaveCount(0);
