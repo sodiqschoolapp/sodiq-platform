@@ -1,6 +1,6 @@
 # Owner feedback of 27 November 2026: what the code does, and a proposed task for each item
 
-Status: **findings only; nothing is built.** Each item below is its own task (one task per session and branch, `CLAUDE.md`). Items marked *spec* need a `/spec-change` first. Items marked *stop* touch the stop list for the live system (item 5: permissions; item 4: `packages/calc`). None of them touches `packages/calc`.
+Status: **items 1–8 built on 28 November 2026 by the owner's choice (2: password validity for staff only; 3: easier passwords for staff and parents); item 9 left for later.** See `docs/progress.md`, 28 November. Each item below is its own task (one task per session and branch, `CLAUDE.md`). Items marked *spec* need a `/spec-change` first. Items marked *stop* touch the stop list for the live system (item 5: permissions; item 4: `packages/calc`). None of them touches `packages/calc`.
 
 ## 1. Printing one parent's slip prints the whole class — real
 
