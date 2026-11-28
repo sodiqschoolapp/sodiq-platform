@@ -666,6 +666,8 @@ export function JournalGridView({
         headerName: t('journal.grid.number'),
         pinned: 'left',
         width: 44,
+        // The owner, 27 November 2026: the server numbers the main list only; a student folded
+        // as left or moved has none, and the cell stays empty.
         valueGetter: (params) =>
           params.data?.kind === 'student' ? params.data.student.number : null,
       },

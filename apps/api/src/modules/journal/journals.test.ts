@@ -1,5 +1,7 @@
+import { randomUUID } from 'node:crypto';
 import {
   BRANCH_HEADER,
+  REQUEST_KEY_HEADER,
   journalGridSchema,
   journalListSchema,
   type JournalGrid,
@@ -269,12 +271,13 @@ describe('the journal grid', () => {
         [],
       ]);
 
-      // One fixed order (edge/journal): A, B, Z, then oʻ after z.
+      // One fixed order (edge/journal): A, B, Z, then oʻ after z. The number counts the main
+      // list only (owner, 27 November 2026): Abdullayev, who left, is folded with none.
       expect(grid.students.map((one) => [one.lastName, one.number, one.folded])).toEqual([
-        ['Abdullayev', 1, true],
-        ['Bakirova', 2, false],
-        ['Zokirov', 3, false],
-        ['Oʻktamov', 4, false],
+        ['Abdullayev', null, true],
+        ['Bakirova', 1, false],
+        ['Zokirov', 2, false],
+        ['Oʻktamov', 3, false],
       ]);
       const [abdullayev, bakirova, zokirov, oktamov] = grid.students;
 
@@ -377,6 +380,85 @@ describe('the journal grid', () => {
         weightsChangedOn: null,
         countsFrom: null,
       });
+    });
+  });
+
+  // The owner, 27 November 2026 (approved 28 November): students removed and added in the
+  // quarter left gaps in the numbers of the list (10, 11, 12, 13, 15, 16, 18...); the number now
+  // counts the students active in the journal only.
+  it('numbers the main list 1..n without gaps in alphabetical order, none for a student who left or moved, and keeps the number of one exempt for the whole month', async () => {
+    const browser = await account();
+    const s = await gradedScene();
+    const { branch, classId, otherClass } = s.scene;
+    // Two students added after the others, named to fall between them in the order.
+    const aliyeva = await student(
+      branch,
+      classId,
+      { first: 'Malika', last: 'Aliyeva' },
+      '2026-10-21',
+    );
+    const davronov = await student(
+      branch,
+      classId,
+      { first: 'Jasur', last: 'Davronov' },
+      '2026-10-21',
+    );
+    // One moved to the other class of the scene on 20 October (as `results-follow.test.ts` writes a move).
+    const ergashev = await student(
+      branch,
+      classId,
+      { first: 'Otabek', last: 'Ergashev' },
+      '2026-09-01',
+      '2026-10-20',
+    );
+    const members = new MembersKit(t.database.migrator, await load.classes.account());
+    await members.member({
+      branch,
+      classId: otherClass,
+      studentId: ergashev,
+      from: '2026-10-20',
+    });
+    await as(browser, [{ role: 'academic_vice_principal', branchId: branch }], async (get) => {
+      // Oʻktamov is fully exempt from 1 October: the whole month on screen, so the page folds
+      // the student into "Exempt" (`07`, In the journal), a member who keeps a number.
+      const exempted = await t
+        .post(
+          '/api/exemptions',
+          branch,
+          {
+            studentIds: [s.oktamov],
+            kind: 'full',
+            subjectIds: null,
+            startDate: '2026-10-01',
+            endDate: null,
+            slots: null,
+            category: 'illness',
+            detail: 'A long illness',
+            choices: [],
+          },
+          browser.cookie,
+        )
+        .set(REQUEST_KEY_HEADER, randomUUID());
+      expect(exempted.status, JSON.stringify(exempted.body)).toBe(200);
+
+      const grid = gridOf(await get(branch, `/api/journal/journals/${s.journal}`));
+      expect(grid.students.map((one) => [one.id, one.number, one.folded])).toEqual([
+        [s.abdullayev, null, true],
+        [aliyeva, 1, false],
+        [s.bakirova, 2, false],
+        [davronov, 3, false],
+        [ergashev, null, true],
+        [s.zokirov, 4, false],
+        [s.oktamov, 5, false],
+      ]);
+      const oktamov = grid.students.find((one) => one.id === s.oktamov);
+      expect(oktamov?.exemptions.map((one) => one.kind)).toEqual(['full']);
+      // Every held lesson of October is exempt for Oʻktamov: the page's "Exempt" section.
+      expect(
+        grid.lessons.every(
+          (lesson, index) => lesson.month !== '2026-10' || oktamov?.cells[index]?.exempt === 'full',
+        ),
+      ).toBe(true);
     });
   });
 
@@ -929,6 +1011,8 @@ describe('the journal grid', () => {
         const grid = gridOf(await get(branch, `/api/journal/journals/${journal}`));
         expect(grid.shape).toBe('whole');
         expect(grid.students.map((one) => one.id)).toEqual([placed.Nurova]);
+        // Numbered among the rows the Tutor reads (owner, 27 November 2026).
+        expect(grid.students.map((one) => one.number)).toEqual([1]);
         expect(grid.bottom).toBeNull();
         const list = journalListSchema.parse((await get(branch, '/api/journal/journals')).body);
         expect(list.journals.map((one) => one.id)).toEqual([journal]);

@@ -177845,7 +177845,7 @@ export interface operations {
                         students: {
                             /** Format: uuid */
                             id: string;
-                            number: number;
+                            number: number | null;
                             firstName: string;
                             lastName: string;
                             paternalName: string | null;

@@ -470,6 +470,8 @@ describe('journal exports', () => {
         'Shodiyev Bek',
         'Chorshanbiyev Bek',
       ]);
+      // The owner, 27 November 2026: the numbers of the grid, 1..7 over the main list only.
+      expect(rows.slice(0, 7).map((row) => row[0])).toEqual([1, 2, 3, 4, 5, 6, 7]);
       const zokirov = rows[2] ?? [];
       // A real number for the mark, the number typed and its percent from the grid.
       expect(zokirov[markColumn]).toBe(1);
@@ -479,6 +481,8 @@ describe('journal exports', () => {
       expect(rows[7]?.[1]).toBe('Average');
       expect(rows[8]?.[0]).toBe('Left or moved');
       expect(rows[9]?.[1]).toBe('Abdullayev Said');
+      // Folded as left: no number, as in the grid.
+      expect(rows[9]?.[0] ?? null).toBeNull();
       expect(rows[9]?.[markColumn]).toBe(0);
       const entries = await t.entries('journal.export', x.journal);
       expect(entries).toHaveLength(1);
@@ -706,6 +710,8 @@ describe('journal exports', () => {
       // A full exemption for the whole quarter's lessons: in the folded "Exempt" section, as 5.
       const shodiyev = sheet?.rows.find((row) => row.values[1] === 'Shodiyev Bek');
       expect(shodiyev?.values[first]).toBe(5);
+      // A member in the "Exempt" section keeps the number of the grid (owner, 27 November 2026).
+      expect(shodiyev?.values[0]).toBe(6);
       const text = JSON.stringify(sheet?.rows.map((row) => row.values));
       for (const word of ['Samarqand', 'chess', 'competition', 'Competition', 'long illness']) {
         expect(text).not.toContain(word);

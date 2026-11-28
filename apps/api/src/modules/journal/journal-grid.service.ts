@@ -719,7 +719,15 @@ export class JournalGridReader {
     );
     // Task 8.4: "entered after the edit period" and "corrected".
     const markers = await markersOf(transaction, 'journal_cell_history', cells);
-    const gridStudents: JournalStudent[] = students.map((student, index) => {
+    // The owner, 27 November 2026 (approved 28 November): the number counts the students of the
+    // main list only, 1..n in the list order, among the rows the reader sees (a Tutor's own
+    // classes); a student folded as left or moved has none. The folded "Exempt" section is a
+    // split of the screen over members (`07`, In the journal), so its students keep theirs.
+    const numberOf = new Map<string, number>();
+    for (const student of students) {
+      if (!folded(student.id)) numberOf.set(student.id, numberOf.size + 1);
+    }
+    const gridStudents: JournalStudent[] = students.map((student) => {
       const marks = new Map<string, number | null>();
       const scoreVersions = new Map<string, number>();
       const attendanceCells = new Map<
@@ -944,7 +952,7 @@ export class JournalGridReader {
       }
       return {
         id: student.id,
-        number: index + 1,
+        number: numberOf.get(student.id) ?? null,
         firstName: student.firstName,
         lastName: student.lastName,
         paternalName: student.paternalName,
