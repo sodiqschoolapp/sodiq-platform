@@ -42,10 +42,28 @@ Status: **findings only; nothing is built.** Each item below is its own task (on
 - **Departments** have no list page. They are a table in the division panel (`division-panel.tsx:256-289`) with no filter at all.
 - **Fix, one for all.** `ListPage` gets a default filter value. Every list with a state filter opens on "Active", and the page title shows "74 active · 6 archived" (`docs/design-system.md:179`), where the archived count opens the archived view. The department table hides archived rows behind "Show archived (n)".
 
-## 6. Journals by teacher; teacher names as links — *stop item 5 only if a route's reach widens (it does not)*
+## 6. Journals by teacher and class; teacher names lead to their journals — confirmed by the owner, 28 November 2026
 
-- **Today.** The journals list row is `{id, unit, subject}` (`shared/journal.ts:36-43`), so there is no teacher to filter by. The journal header shows the teacher as plain text (`journal-page.tsx:386-390`), and so does the discipline page (`discipline-page.tsx:91-96`).
-- **Fix.** Add the teacher (or teachers) to each journal list row, plus a Teacher filter. The list stays scoped exactly as today, with no new rights. The teacher's name becomes a link to the staff record, shown only when the reader may open staff records (the server says so in the answer). Otherwise it stays text.
+What the owner asked for: on the discipline page (`/journal/discipline`), clicking a teacher opens the ordinary Journals page, filtered to that teacher. The Journals page filters by subject, **teacher** and **class**.
+
+- **Today:**
+  - The Journals page (`journals-page.tsx`) filters by subject only (`:77-93`).
+  - Its rows carry no teacher: they are `{id, unit, subject}` (`shared/journal.ts:36-43`).
+  - The discipline page shows the teacher as plain text (`discipline-page.tsx:91-96`), although the row has `teacher.id`.
+- **The fix:**
+  - **API.** Each journal list row gains `teachers: {id, name}[]` for the year listed.
+    - A teacher belongs to a journal when they are the teacher or the substitute of any of its dated lessons in that year, held or coming. A vacancy is never listed.
+    - Nothing else changes: the list keeps exactly the scope it has today, so no new right and no permission change.
+  - **Web filters.** Three filters on the Journals page: Subject, Teacher and Class.
+    - On the Groups tab, a class means the groups that draw from it.
+    - The filters are kept in the address (`/journal?teacher=…&class=…&subject=…`), so a filtered list can be linked and shared.
+  - **Discipline page.** Each teacher's name is a link to `/journal?teacher=<id>&year=<the year of the dates shown>`. A reader who can see the discipline page sees that teacher's journals within their own scope (a Head Teacher sees the journals of their own subjects).
+  - **Journal header.** The teacher's name in the header ("Teacher: name") links to the same filtered list.
+- **Tests:**
+  - The list's teachers: a substitute is listed, a vacancy is not, and a teacher of another year is not.
+  - The scope is unchanged: a Head Teacher filtering by a teacher who also teaches another subject sees only their own subjects' journals.
+  - The filters read from the address.
+  - The discipline link opens the filtered list (Playwright).
 
 ## 7. Buttons that look like text — design
 
