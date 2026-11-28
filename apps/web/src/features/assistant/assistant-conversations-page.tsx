@@ -41,7 +41,13 @@ export function AssistantConversationsPage() {
       {
         key: 'title',
         header: t('assistant.conversationsPage.titleColumn'),
-        cell: (row) => <span className="line-clamp-2 max-w-prose">{row.title}</span>,
+        // Two lines in the table, cut with an ellipsis, even a name of one long word; the whole
+        // name in its tooltip (owner, 28 November 2026).
+        cell: (row) => (
+          <span className="line-clamp-2 max-w-prose wrap-anywhere" title={row.title}>
+            {row.title}
+          </span>
+        ),
         searchText: (row) => row.title,
         opens: true,
       },

@@ -1338,6 +1338,7 @@ export const en = {
     reading: 'Reading: {{what}}',
     noAnswer: 'No answer came. Ask again.',
     continue: 'Continue',
+    newMessages: 'New messages',
     files: {
       fields: {
         kind: 'Kind',

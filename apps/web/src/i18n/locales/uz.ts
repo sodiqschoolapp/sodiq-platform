@@ -1360,6 +1360,7 @@ export const uz: Texts<'one' | 'other'> = {
     reading: 'Oʻqimoqda: {{what}}',
     noAnswer: 'Javob kelmadi. Qayta soʻrang.',
     continue: 'Davom ettirish',
+    newMessages: 'Yangi xabarlar',
     files: {
       fields: {
         kind: 'Turi',

@@ -77,45 +77,87 @@ export function fileRefusal(
   return null;
 }
 
-/** The paperclip: chooses files, checks each before the upload, and uploads it at once. */
-export function AttachButton({
-  role,
-  disabled,
-  onFailure,
-}: {
-  role: AssistantRole;
-  disabled: boolean;
-  onFailure: (failure: FileFailure | null) => void;
-}) {
-  const { t } = useTranslation();
-  const [files, setFiles] = useDraftFiles();
-  const [uploading, setUploading] = useState(false);
-  const input = useRef<HTMLInputElement>(null);
+/**
+ * Adds files to the question: checks each before the upload and uploads it at once. The paperclip
+ * and a paste into the question box (Ctrl+V) both add through it, so both take the same types,
+ * sizes and counts and say the same refusals. A second batch waits for the first, and each check
+ * reads the files attached at that moment, so two pastes never pass the count together.
+ */
+export function useAttachFiles(
+  role: AssistantRole,
+  onFailure: (failure: FileFailure | null) => void,
+): { add: (chosen: readonly File[]) => Promise<void>; uploading: boolean } {
+  const [running, setRunning] = useState(0);
+  const queue = useRef<Promise<void>>(Promise.resolve());
 
-  const choose = async (chosen: readonly File[]): Promise<void> => {
+  const run = async (chosen: readonly File[]): Promise<void> => {
     onFailure(null);
-    setUploading(true);
-    let attached = files;
-    try {
-      for (const file of chosen) {
-        const refusal = fileRefusal(file, attached);
-        if (refusal !== null) {
-          onFailure(refusal);
-          break;
-        }
-        try {
-          const stored = await uploadAssistantFile(role, 'attachment', file, file.name);
-          attached = [...attached, stored];
-          setFiles(attached);
-        } catch (error) {
-          onFailure(failureOf(error));
-          break;
-        }
+    for (const file of chosen) {
+      const refusal = fileRefusal(file, draft);
+      if (refusal !== null) {
+        onFailure(refusal);
+        break;
       }
-    } finally {
-      setUploading(false);
+      try {
+        const stored = await uploadAssistantFile(role, 'attachment', file, file.name);
+        setDraft([...draft, stored]);
+      } catch (error) {
+        onFailure(failureOf(error));
+        break;
+      }
     }
   };
+
+  const add = (chosen: readonly File[]): Promise<void> => {
+    setRunning((now) => now + 1);
+    const done = queue.current.then(() => run(chosen));
+    queue.current = done.finally(() => {
+      setRunning((now) => now - 1);
+    });
+    return queue.current;
+  };
+
+  return { add, uploading: running > 0 };
+}
+
+/**
+ * The files of a paste (Ctrl+V): the files of the clipboard, or its items that are files (a
+ * screenshot in some browsers). A file the browser gives without a name (a screenshot) is named
+ * `image.<type>`, as the browsers that name one do.
+ */
+export function pastedFiles(data: DataTransfer | null): File[] {
+  if (data === null) return [];
+  // A browser (or a test) may give either list only.
+  const list = data.files as FileList | undefined;
+  const items = data.items as DataTransferItemList | undefined;
+  const files = list === undefined ? [] : Array.from(list);
+  if (files.length === 0 && items !== undefined) {
+    for (const item of Array.from(items)) {
+      if (item.kind !== 'file') continue;
+      const file = item.getAsFile();
+      if (file !== null) files.push(file);
+    }
+  }
+  return files.map((file) => {
+    if (file.name !== '') return file;
+    const type = file.type.split(';')[0] ?? '';
+    const ending = type.split('/')[1] ?? 'bin';
+    return new File([file], `image.${ending}`, { type: file.type });
+  });
+}
+
+/** The paperclip: chooses files and adds them through `useAttachFiles` of the chat. */
+export function AttachButton({
+  disabled,
+  attach,
+}: {
+  disabled: boolean;
+  attach: { add: (chosen: readonly File[]) => Promise<void>; uploading: boolean };
+}) {
+  const { t } = useTranslation();
+  const [files] = useDraftFiles();
+  const input = useRef<HTMLInputElement>(null);
+  const uploading = attach.uploading;
 
   return (
     <>
@@ -129,7 +171,7 @@ export function AttachButton({
         onChange={(event) => {
           const chosen = [...(event.target.files ?? [])];
           event.target.value = '';
-          void choose(chosen);
+          void attach.add(chosen);
         }}
       />
       <Button

@@ -6561,6 +6561,38 @@ export const PLATFORM_MAP_SOURCE: unknown = {
    "description": "Shown under an answer that a limit of one question cut: asks the next part of the work, which never proposes again a step proposed before. Waits until the proposal shown is confirmed or declined."
   },
   {
+   "id": "features/assistant/assistant-chat.tsx#button:assistant.newMessages",
+   "kind": "button",
+   "label": {
+    "uz": "Yangi xabarlar",
+    "ru": "Новые сообщения",
+    "en": "New messages"
+   },
+   "pages": [
+    "*"
+   ],
+   "parent": null,
+   "roles": [
+    "super_admin",
+    "principal",
+    "academic_vice_principal",
+    "spiritual_vice_principal",
+    "head_tutor",
+    "tutor",
+    "class_teacher",
+    "senior_head_teacher",
+    "head_teacher",
+    "teacher",
+    "hr",
+    "nurse",
+    "psychologist",
+    "librarian"
+   ],
+   "operations": [],
+   "opens": null,
+   "description": "Shown at the bottom of the conversation when new messages or more of an answer came while the person had scrolled up to read: scrolls to the end. A person already near the end is followed there without it."
+  },
+  {
    "id": "features/assistant/assistant-chat.tsx#button:assistant.sending",
    "kind": "button",
    "label": {

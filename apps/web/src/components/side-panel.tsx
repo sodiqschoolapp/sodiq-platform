@@ -97,7 +97,11 @@ export function SidePanel({ title, recordKey, onClose, children }: SidePanelProp
       className="w-full min-w-0 rounded-xl border-l bg-card p-6 lg:w-96 lg:shrink-0"
     >
       <div className="mb-3 flex items-start gap-2">
-        <h2 ref={heading} tabIndex={-1} className={`min-w-0 flex-1 outline-none ${SECTION_TITLE}`}>
+        <h2
+          ref={heading}
+          tabIndex={-1}
+          className={`min-w-0 flex-1 break-words outline-none ${SECTION_TITLE}`}
+        >
           {title}
         </h2>
         <Button variant="ghost" size="icon" aria-label={t('list.closePanel')} onClick={onClose}>

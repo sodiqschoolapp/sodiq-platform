@@ -1340,6 +1340,7 @@ export const ru: Texts<'one' | 'few' | 'many' | 'other'> = {
     reading: 'Читает: {{what}}',
     noAnswer: 'Ответ не пришёл. Спросите ещё раз.',
     continue: 'Продолжить',
+    newMessages: 'Новые сообщения',
     files: {
       fields: {
         kind: 'Вид',
