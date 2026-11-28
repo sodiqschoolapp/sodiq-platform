@@ -1,6 +1,6 @@
 # Spec change proposal: the owner's decisions of 28 November 2026
 
-**Status:** built on branch `claude/period-numbers-migration-qo0m2u` and waiting for the owner. No file under `docs/spec/` has been changed. The owner gave each rule below in chat on 28 November 2026; `/spec-change` writes it into the spec.
+**Status:** approved in full by the owner, 28 November 2026, and applied (`docs/spec-changes.md`). Built in pull request #400.
 
 ## 1. Printing the slips of chosen parents only
 

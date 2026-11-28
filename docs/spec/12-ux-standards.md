@@ -17,7 +17,7 @@ These rules apply to every page and every role.
 
 - Entries save automatically, with a visible saved sign.
 - The last action can be undone.
-- Records are archived, never deleted, wherever history depends on them. Actions that cannot be undone ask for confirmation and name what will be affected.
+- Records are archived, never deleted, wherever history depends on them. A list of records that can be archived, closed or left opens on the records in use (for staff, active and inactive); the others are one click away, with their count. Actions that cannot be undone ask for confirmation and name what will be affected.
 - Forms check each field as it is typed and say in plain words what to fix.
 - A field that must be filled is marked with a red asterisk (*) after its label, on every form and in every language, and a screen reader announces it as required. A field without the mark may be left empty (owner, 24 November 2026).
 

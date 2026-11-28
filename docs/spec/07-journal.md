@@ -8,7 +8,7 @@ There is one journal for each class or group and subject in an academic year. It
 ## Opening a journal
 
 - From the teacher's timetable: clicking a lesson opens the journal already scrolled sideways to that date. Opened any other way, it scrolls to the lesson closest to today.
-- From the Journals page: tabs Classes and Groups, then the subject.
+- From the Journals page: tabs Classes and Groups, then the subject, the teacher or the class. A journal's teachers are the people its lessons of the year, not cancelled, count for: the timetable's teacher, a substitute for the lessons taken, and the acting teacher of a vacancy. A vacancy is never listed. On the Groups tab the class filter keeps the groups that draw students from that class. A teacher's name on the journal discipline page and in a journal's header opens the Journals page filtered by that teacher, for that year.
 - Header, in this order: the class or group and the subject as the page title (for example "5 Oxford · Ingliz tili"), then Quarter · Month, then "Teacher: name". The breadcrumbs name the page in the person's language: "Sinf jurnali", "Классный журнал", "Class journal".
 - Selectors: class or group, subject, academic year, quarter, month. Student search. Filter.
 
@@ -16,7 +16,7 @@ There is one journal for each class or group and subject in an academic year. It
 
 | Part | Content | Behaviour |
 | --- | --- | --- |
-| Student list | Number, surname and name in alphabetical order, UID. | Fixed on the left. Filled by the system. |
+| Student list | Number, surname and name in alphabetical order, UID. The number counts the students of the main list only, from 1 without gaps; a student in the folded "Left or moved" section has no number, and a student in the folded "Exempt" section keeps theirs. | Fixed on the left. Filled by the system. |
 | Quarter results | Attendance average, classwork average, homework average, rating exam (rating subjects only), quarter result, grade 2–5. | Fixed next to the names. Calculated by the system; a switch shows the same figures for the selected month. |
 | Lessons | One block per dated lesson. Row 1: date, weekday, slot. Row 2: the attendance column, then one classwork column for each classwork of the lesson and one homework column for each homework given at it, each with its title (its code first where the subject has codes on and one is filled; `09`, Codes) and, in front of it, a small coloured tag with the letter of its kind (S for sinf ishi and U for uyga vazifa in Uzbek, К and Д in Russian, C and H in English; the full word on hover). Row 3: "all present" button; under each classwork and each homework, the total label and the total set by the teacher for that work (for example 30, 5 or 100). The short labels follow the person's language, with the full word on hover (table below). A lesson with no classwork and no homework is one narrow attendance column. | Scrolls sideways. Cancelled lessons are grey with the reason. |
 | Lesson cells | Attendance mark; for each classwork and each homework, the number typed by the teacher and next to it the percent. | The teacher types the attendance mark and the numbers. The system calculates the percents. |
@@ -32,7 +32,7 @@ Short labels of the lesson columns, in the grid and in the exported and printed 
 | Homework | UV | Д/з | HW |
 | Total label (a total of 30) | Soni 30 | из 30 | of 30 |
 
-Students who left or moved are shown in a folded section at the bottom with their data intact.
+Students who left or moved are shown in a folded section at the bottom with their data intact and without a number.
 
 ## Entering data
 
