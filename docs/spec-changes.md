@@ -2,6 +2,14 @@
 
 The spec in `docs/spec/` was taken from the full spec document on 3 October 2026 (revision 88). Every later change to a spec file is listed here, newest first, with the date, what changed, why, and the files touched. Changes are made only with the `/spec-change` skill and the owner's approval.
 
+## 28 November 2026: the school's subscriptions
+
+- What changed: a new record kept by the Super Admin alone: the list of what the school pays for regularly (software, online services, hosting, licences). Each subscription has a name, an optional provider, website, purpose, plan and seats, a branch or the whole school, a price in UZS (whole so'm) or USD (at most two decimal places) per billing period (monthly, yearly or one-time), a start date, a next renewal (monthly and yearly only, after the start), auto-renews, an optional responsible person, account email and notes; never a password, key or card number. The list opens on the active subscriptions sorted by the next renewal, marks renewals due in 30 days and overdue ones, filters by branch and searches by name or provider, and shows the yearly cost per currency (monthly × 12, yearly once, one-time not counted; currencies never added together). "Renewed" moves the next renewal one billing period forward; "Cancel" archives with an end date and can be restored; every change is audited. No other role sees it. It is a record, not finance: the platform pays nothing and nothing else reads it.
+- Why: the owner, 28 November 2026, in chat ("one page in admin panel to track the subscriptions our school bought"); answered Super Admin only, UZS and USD, reminders later; confirmed the proposal in full the same day. The proposal is `docs/proposals/spec-change-subscriptions.md`.
+- Not changed: "Payments, finance, payroll" stays not planned. Renewal reminders, invoice files and an export are for later.
+- Built: not yet; task 11.28.
+- Files: `docs/spec/03-school-setup.md` (the table; new section Subscriptions, with its cases), `docs/spec/02-roles-and-access.md` (Super Admin row), `docs/spec/11-later-modules.md` (Not planned, Payments, finance, payroll), `docs/spec/15-conflicts-resolved.md` (Payment debtors), `docs/spec/00-index.md` (the row of `03`).
+
 ## 28 November 2026: five Super Admins
 
 - What changed: at most 5 accounts can hold the Super Admin role at the same time. Before, at most 3.
