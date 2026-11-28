@@ -66,7 +66,7 @@ describe('the forced delete of a dated lesson and its restore', () => {
   let load: LoadKit;
   let northScene: Scene;
   let adminAccount: string;
-  /** A second Super Admin, for the request keys (at most three: `MAX_SUPER_ADMINS`). */
+  /** A second Super Admin, for the request keys (the role has a limit: `MAX_SUPER_ADMINS`). */
   let second: { cookie: string };
 
   const keyed = (path: string, branch: string, body: object, cookie: string, key: string) =>

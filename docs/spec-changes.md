@@ -2,6 +2,13 @@
 
 The spec in `docs/spec/` was taken from the full spec document on 3 October 2026 (revision 88). Every later change to a spec file is listed here, newest first, with the date, what changed, why, and the files touched. Changes are made only with the `/spec-change` skill and the owner's approval.
 
+## 28 November 2026: five Super Admins
+
+- What changed: at most 5 accounts can hold the Super Admin role at the same time. Before, at most 3.
+- Why: the owner, 28 November 2026, in chat ("Can we increase the super admin account limit to 5"); approved the same day.
+- Not changed: the last active Super Admin cannot be locked or removed; nobody removes their own Super Admin role; the banner while fewer than two exist; another Super Admin resets a Super Admin's second step.
+- Files: `docs/spec/02-roles-and-access.md` (roles table, Super Admin)
+
 ## 28 November 2026: the owner's feedback of 27 November
 
 - What changed:

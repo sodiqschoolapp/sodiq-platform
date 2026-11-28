@@ -44,8 +44,8 @@ export const SCHOOL_WIDE_ROLES: readonly Role[] = ['super_admin', 'senior_head_t
  */
 export const STRICT_SIGN_IN_ROLES: readonly Role[] = ['super_admin', 'academic_vice_principal'];
 
-/** The Super Admin row of the roles table: "At most 3 accounts." */
-export const MAX_SUPER_ADMINS = 3;
+/** The Super Admin row of the roles table: "At most 5 accounts." (spec change of 28 November 2026) */
+export const MAX_SUPER_ADMINS = 5;
 
 /**
  * The roles that hold own classes through the Tutor rows of a class

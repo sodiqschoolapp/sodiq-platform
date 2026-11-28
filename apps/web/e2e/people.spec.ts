@@ -21,7 +21,7 @@ import { codeNow } from './totp';
 // the teacher a subject with its grades and a language of instruction (edge,
 // Who can act); then (task 2.2b) gives the teacher hours on Monday, and adds
 // and closes a vacancy in the section of its own (04, Availability, Vacancy). The Super Admin's create is proved by the API and page tests:
-// no fourth Super Admin can be seeded. All names are invented.
+// the seed keeps its three Super Admins for the setup tests. All names are invented.
 test('an Academic Vice Principal gives a teacher of the branch a subject', async ({ page }) => {
   const account = accountOf('staff');
   await page.goto('/sign-in');

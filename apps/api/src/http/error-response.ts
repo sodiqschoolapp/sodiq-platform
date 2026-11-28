@@ -215,7 +215,7 @@ const MESSAGE: Record<ErrorCode, string> = {
   staff_left: 'The staff member has left.',
   role_branch_not_person: 'The branch is not one of the branches of the person.',
   role_overlap: 'The account holds this role in this branch at that time.',
-  too_many_super_admins: 'At most 3 accounts can be Super Admin.',
+  too_many_super_admins: 'At most 5 accounts can be Super Admin.',
   own_super_admin_role: 'Nobody can remove their own Super Admin role.',
   last_super_admin: 'The change would leave no active Super Admin.',
   assignment_ended: 'The assignment has already ended.',

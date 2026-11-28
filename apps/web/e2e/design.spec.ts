@@ -138,7 +138,7 @@ const widths = (page: Page) =>
 // the top bar is one row from 1024 px with both switchers, the Rooms list fits
 // a 1047 px window, and on a phone "Send feedback" shows its word in "More".
 // The alerts line of finding 30 needs a Super Admin with an alert; the seed
-// has its three Super Admins for other tests, so the unit tests prove it.
+// keeps its three Super Admins for other tests, so the unit tests prove it.
 test('the top bar is one row at laptop width, Rooms fits, and More shows Send feedback', async ({
   page,
 }) => {

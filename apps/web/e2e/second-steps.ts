@@ -3,8 +3,8 @@ import path from 'node:path';
 
 /**
  * The keys of the second steps that tests set up, kept in the output folder of the run (task
- * 10.5). The school has at most three Super Admins and `setup.spec.ts` signs in to all three of
- * the seed's, so the demo clock test, which runs after every other spec, signs in again to one of
+ * 10.5). The seed holds three Super Admins and `setup.spec.ts` signs in to all three of
+ * them, so the demo clock test, which runs after every other spec, signs in again to one of
  * them with the key its first sign-in kept. Playwright empties the folder at the start of a run.
  */
 const FOLDER = path.join(import.meta.dirname, '..', 'test-results', 'second-steps');

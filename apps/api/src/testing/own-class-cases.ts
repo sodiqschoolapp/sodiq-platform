@@ -38,7 +38,7 @@ export async function gradeOf(migrator: Database, classId: string): Promise<numb
 
 /**
  * Ends every Super Admin role but the kit's own: a test run once per own-class role gives a
- * Super Admin each time, and at most 3 accounts hold the role (`MAX_SUPER_ADMINS`).
+ * Super Admin each time, and the role has a limit (`MAX_SUPER_ADMINS`).
  */
 export async function endTestSuperAdmins(migrator: Database, keep: string): Promise<void> {
   await migrator

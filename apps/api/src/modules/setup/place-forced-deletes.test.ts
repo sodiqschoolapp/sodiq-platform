@@ -51,7 +51,7 @@ describe('the forced delete of a building, floor or room and its restore', () =>
   let t: DayTemplatesKit;
   let load: LoadKit;
   let northScene: PublishedScene;
-  /** A second Super Admin, for the request keys (at most three: `MAX_SUPER_ADMINS`). */
+  /** A second Super Admin, for the request keys (the role has a limit: `MAX_SUPER_ADMINS`). */
   let second: { cookie: string };
   let count = 0;
 

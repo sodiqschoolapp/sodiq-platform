@@ -158,7 +158,7 @@ describe('the closing checklist (07, Closing a quarter)', () => {
 
   /**
    * Two Super Admins for the whole file, each given the role once: with the kit's own, three
-   * accounts hold it, the most there may be (MAX_SUPER_ADMINS).
+   * accounts hold it, within the limit (MAX_SUPER_ADMINS).
    */
   const admins: Browser[] = [];
   const sharedAdmin = async (index: 0 | 1): Promise<Browser> => {

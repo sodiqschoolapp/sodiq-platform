@@ -349,7 +349,7 @@ export const ERROR_CODES = [
   'role_branch_not_person',
   /** The account holds this role in this branch already at some moment from that date (db/migrations/0009; task 2.3a). */
   'role_overlap',
-  /** At most 3 accounts are Super Admin (`02`, Super Admin; task 2.3a). */
+  /** At most 5 accounts are Super Admin (`02`, Super Admin; task 2.3a). */
   'too_many_super_admins',
   /** Nobody removes their own Super Admin role (`edge/people-roles-accounts`, Accounts and sign-in; task 2.3a). */
   'own_super_admin_role',
