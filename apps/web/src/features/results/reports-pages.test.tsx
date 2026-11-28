@@ -336,6 +336,7 @@ describe('the journal discipline report (task 9.3b-2)', () => {
         json({
           from: '2026-10-12',
           to: '2026-10-28',
+          yearId: uid(35),
           departments: [],
           prepared: FRESH,
           teachers: [

@@ -38,7 +38,26 @@ export const journalListSchema = z.object({
   /** The year listed. */
   yearId: z.uuid().nullable(),
   journals: z.array(
-    z.object({ id: z.uuid(), unit: journalUnitSchema, subject: journalSubjectSchema }),
+    z.object({
+      id: z.uuid(),
+      unit: journalUnitSchema.extend({
+        /**
+         * The classes the unit's students are drawn from (owner, 28 November 2026: the Class
+         * filter of the Journals page): the class itself, or the classes the group draws from,
+         * each with its name as shown.
+         */
+        classes: z.array(z.object({ id: z.uuid(), name: z.string() })),
+      }),
+      subject: journalSubjectSchema,
+      /**
+       * The teachers of the journal in the year listed, by name (owner, 28 November 2026: the
+       * Teacher filter of the Journals page): every person a dated lesson of the year that is
+       * not cancelled counts for (`lesson-counted.ts`: the substitute while a substitution is in
+       * force, otherwise the journal's owner on the lesson's date, the acting teacher under a
+       * vacancy). A vacancy is never listed.
+       */
+      teachers: z.array(z.object({ id: z.uuid(), name: z.string() })),
+    }),
   ),
 });
 

@@ -676,22 +676,39 @@ export async function staffNames(
   transaction: Transaction,
   ids: readonly string[],
 ): Promise<Map<string, string>> {
-  const found = new Map<string, string>();
-  if (ids.length === 0) return found;
-  const rows = await transaction
+  return new Map(
+    (await staffRows(transaction, ids)).map((row) => [
+      row.id,
+      row.kind === 'vacancy' ? (row.vacancy_name ?? '') : personName(row),
+    ]),
+  );
+}
+
+/**
+ * The names of the persons of `ids`, surname first as `staffNames` writes them; a vacancy is
+ * left out, it is not a person (owner, 28 November 2026: the teachers of a journal).
+ */
+export async function personNames(
+  transaction: Transaction,
+  ids: readonly string[],
+): Promise<Map<string, string>> {
+  return new Map(
+    (await staffRows(transaction, ids)).flatMap((row) =>
+      row.kind === 'vacancy' ? [] : [[row.id, personName(row)] as const],
+    ),
+  );
+}
+
+const personName = (row: { last_name: string | null; first_name: string | null }): string =>
+  `${row.last_name ?? ''} ${row.first_name ?? ''}`.trim();
+
+async function staffRows(transaction: Transaction, ids: readonly string[]) {
+  if (ids.length === 0) return [];
+  return transaction
     .selectFrom('staff')
     .select(['id', 'kind', 'first_name', 'last_name', 'vacancy_name'])
     .where('id', 'in', [...ids])
     .execute();
-  for (const row of rows) {
-    found.set(
-      row.id,
-      row.kind === 'vacancy'
-        ? (row.vacancy_name ?? '')
-        : `${row.last_name ?? ''} ${row.first_name ?? ''}`.trim(),
-    );
-  }
-  return found;
 }
 
 /**

@@ -154,6 +154,11 @@ export type DisciplineRow = z.infer<typeof disciplineRowSchema>;
 export const disciplineSchema = z.object({
   from: schoolDateSchema,
   to: schoolDateSchema,
+  /**
+   * The academic year that holds the range (owner, 28 November 2026: a teacher's name leads to
+   * their journals of that year on the Journals page).
+   */
+  yearId: z.uuid(),
   /** The departments the reader may filter by. */
   departments: z.array(
     z.object({ id: z.uuid(), names: z.object({ uz: z.string(), ru: z.string(), en: z.string() }) }),

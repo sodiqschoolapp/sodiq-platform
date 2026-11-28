@@ -14,6 +14,15 @@ export function journalsSearch(search: Record<string, unknown>): JournalsSearch 
   return result;
 }
 
+/**
+ * The Journals page filtered by a teacher (owner, 28 November 2026: a teacher's name on the
+ * journal discipline page and in a journal's header leads to their journals), of the year
+ * given, else the year the page opens with. The filter is the list's own (`f` of the address).
+ */
+export function teacherJournals(teacherId: string, yearId?: string): JournalsSearch {
+  return { ...(yearId === undefined ? {} : { year: yearId }), f: { teacher: teacherId } };
+}
+
 export const JOURNAL_FILTERS = ['all', 'members', 'left', 'empty'] as const;
 
 export type JournalFilter = (typeof JOURNAL_FILTERS)[number];

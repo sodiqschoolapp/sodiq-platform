@@ -165,6 +165,8 @@ async function subjectScopeOf(
 interface DisciplineFacts {
   readonly from: string;
   readonly to: string;
+  /** The academic year that holds the range. */
+  readonly yearId: string;
   readonly now: Date;
   readonly timeZone: string;
   readonly freshness: Freshness;
@@ -240,6 +242,7 @@ function countsOf(facts: DisciplineFacts): Discipline {
   return disciplineSchema.parse({
     from: facts.from,
     to: facts.to,
+    yearId: facts.yearId,
     departments: facts.departments,
     prepared: facts.freshness.stamp,
     teachers: [...byTeacher]
@@ -828,6 +831,7 @@ export class LessonStatusService {
     return {
       from: query.from,
       to: query.to,
+      yearId: year.id,
       now,
       timeZone,
       freshness,
