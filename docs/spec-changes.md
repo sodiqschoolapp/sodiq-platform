@@ -2,6 +2,20 @@
 
 The spec in `docs/spec/` was taken from the full spec document on 3 October 2026 (revision 88). Every later change to a spec file is listed here, newest first, with the date, what changed, why, and the files touched. Changes are made only with the `/spec-change` skill and the owner's approval.
 
+## 28 November 2026: the owner's feedback of 27 November
+
+- What changed:
+  1. **Slips of chosen parents.** A slip can be printed for chosen relatives of a class only. A chosen relative with a valid slip gets a new password. A relative who already chose a password is left out of a print of the chosen, and refused when named alone.
+  2. **Seven days for staff.** Every password generated for a staff account (first password, reset, the reset that goes with a second-step reset, re-hire) is valid for 7 days. The reset was 24 hours. Parents are unchanged: 30 days on a class slip, 7 days on a reset.
+  3. **Easier generated passwords.** For staff and parents: ten lowercase letters and digits without look-alikes (no i, l, o, 0 or 1), printed in two groups of five. Recovery codes are unchanged.
+  4. **Journal numbers.** The number counts the students of the main list only, from 1 without gaps. A student who left or moved has no number; a student in the folded "Exempt" section keeps theirs.
+  5. **Journals by teacher and class.** The Journals page filters by subject, teacher and class. A journal's teachers are the people its lessons of the year, not cancelled, count for. A teacher's name on the discipline page and in a journal's header opens their journals.
+  6. **Lists open on records in use.** A list of records that can be archived, closed or left opens on the records in use (for staff, active and inactive); the others are one click away, with their count.
+- Why: the owner, 27 November 2026 (feedback in chat, with a screenshot of the journal), decided on 28 November 2026 and confirmed in full the same day. The proposal is `docs/proposals/spec-change-owner-feedback-28-november.md`.
+- Not changed: the user's own password rule (at least ten characters); the email reset link; the two-step recovery codes; the scope of every list and route. The assistant screen changes are screen details, with no spec text.
+- Built: pull request #400 (merged).
+- Files: `docs/spec/edge-cases/people-roles-accounts.md` (a reset; 400 first passwords), `docs/spec/edge-cases/close-relatives.md` (first passwords of a class; a forgotten password), `docs/spec/10-portal-notifications-release-2.md` (Signing in, First password), `docs/spec/07-journal.md` (Opening a journal; Layout, Student list; the folded section), `docs/spec/12-ux-standards.md` (records archived, never deleted)
+
 ## 25 November 2026: decimal totals
 
 - What changed: the total a teacher sets for a classwork or homework may have up to two digits after the decimal point (30, 7.5), typed and shown like a score: a point only, without trailing zeros. It stays from 1 to 1000. A total with decimals enters every calculation as an exact fraction. Before (since the decimal scores change of the same day), the total was a whole number.
