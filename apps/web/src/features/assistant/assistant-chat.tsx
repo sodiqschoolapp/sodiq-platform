@@ -20,10 +20,10 @@ import {
 import { useTranslation } from 'react-i18next';
 import { ApiFailure } from '@/api/failure';
 import { FailureAlert } from '@/components/failure-alert';
-import { SendIcon } from '@/components/icons';
+import { ArrowDownwardIcon, SendIcon } from '@/components/icons';
 import { ErrorState, LoadingOutline } from '@/components/states';
 import { Button } from '@/components/ui/button';
-import { FIELD } from '@/components/ui/control';
+import { FIELD_FRAME } from '@/components/ui/control';
 import { BUILT_PAGES } from '@/features/access/menu-pages';
 import { useView } from '@/features/access/use-view';
 import { appNow } from '@/lib/app-now';
@@ -47,12 +47,15 @@ import {
   DraftChips,
   MessageFiles,
   MicButton,
+  pastedFiles,
+  useAttachFiles,
   useDraftFiles,
   useFileFailureText,
   type FileFailure,
 } from './assistant-files';
 import { MicIcon } from '@/components/icons';
 import { SM, useMinWidth } from '@/lib/use-min-width';
+import { useFollowEnd, useGrowingField } from './chat-scroll';
 
 /** The refusals the chat says in a line of its own (`02`, Limits; task 11.16). */
 const REFUSALS = [
@@ -147,6 +150,8 @@ export function AssistantChat({
   const [draftFiles, setDraftFiles] = useDraftFiles();
   const [fileFailure, setFileFailure] = useState<FileFailure | null>(null);
   const fileFailureText = useFileFailureText();
+  // The paperclip and a paste of files (Ctrl+V) add through the same checks and refusals.
+  const attach = useAttachFiles(role, setFileFailure);
   const phone = !useMinWidth(SM);
   const ask = useMutation({
     mutationFn: (question: Asked) => {
@@ -259,12 +264,40 @@ export function AssistantChat({
   const refusedBy = refusalOf(ask.error);
   const refusal = refusedBy ?? status?.refusal ?? null;
   const busy = ask.isPending || sent !== null || working !== null;
+  // What the messages show: each change follows the end, or offers "New messages".
+  const {
+    box: messagesBox,
+    onScroll: onMessagesScroll,
+    behind,
+    toEnd,
+    sending,
+  } = useFollowEnd(
+    JSON.stringify([
+      conversationId,
+      open === undefined
+        ? null
+        : [
+            open.messages.length,
+            open.messages.at(-1)?.id,
+            open.proposals.map((proposal) => `${proposal.id}:${proposal.state}`),
+          ],
+      sent,
+      working?.questionId,
+      progress?.reads.length,
+      progress?.text.length,
+      secrets.length,
+      decide.error !== null,
+      undo.error !== null,
+    ]),
+  );
+  const questionField = useGrowingField(text);
 
   const submit = (event: FormEvent): void => {
     event.preventDefault();
     const question = text.trim();
     if (question === '' || busy) return;
     ask.reset();
+    sending();
     ask.mutate({ kind: 'typed', text: question, typed: true, files: draftFiles });
   };
   // Task 11.21: a choice pressed is sent as the person's answer; Continue as the next part.
@@ -272,73 +305,94 @@ export function AssistantChat({
   const press = (question: Asked): void => {
     if (!mayAsk) return;
     ask.reset();
+    sending();
     ask.mutate(question);
   };
 
   return (
     <>
-      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-6 py-4 max-sm:px-4">
-        {top}
-        {conversationId === null && sent === null ? (
-          empty
-        ) : conversationId !== null && conversation.isError ? (
-          <ErrorState
-            error={conversation.error}
-            onRetry={() => {
-              void conversation.refetch();
-            }}
-          />
-        ) : conversationId !== null && open === undefined ? (
-          <LoadingOutline />
-        ) : (
-          <>
-            {open !== undefined && (
-              <Messages
-                conversation={open}
-                workingId={working?.questionId ?? null}
-                deciding={decide.isPending}
-                secrets={secrets}
-                onSecretsClosed={() => {
-                  setSecrets([]);
-                }}
-                {...(readOnly
-                  ? {}
-                  : {
-                      onDecide: (id: string, which: 'confirm' | 'decline') => {
-                        decide.mutate({ id, which });
-                      },
-                      onUndo: (id: string) => {
-                        if (!busy) undo.mutate(id);
-                      },
-                      undoing: undo.isPending,
-                    })}
-                {...(mayAsk
-                  ? {
-                      onChoose: (option: string) => {
-                        press({ kind: 'typed', text: option, typed: false, files: [] });
-                      },
-                      onContinue: () => {
-                        press({ kind: 'continue', text: t('assistant.continue') });
-                      },
-                    }
-                  : {})}
-              />
-            )}
-            {sent !== null && (
-              <p className="ml-8 rounded-lg bg-accent px-3 py-2 break-words whitespace-pre-wrap">
-                {sent}
-              </p>
-            )}
-            {(sent !== null || working !== null) && (
-              <Working
-                progress={
-                  working !== null && progress?.questionId === working.questionId ? progress : null
-                }
-              />
-            )}
-            {decide.error !== null && <FailureAlert error={decide.error} />}
-            {undo.error !== null && <FailureAlert error={undo.error} />}
-          </>
+      <div className="relative flex min-h-0 flex-1 flex-col">
+        <div
+          ref={messagesBox}
+          onScroll={onMessagesScroll}
+          data-assistant-messages=""
+          className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-6 py-4 max-sm:px-4"
+        >
+          {top}
+          {conversationId === null && sent === null ? (
+            empty
+          ) : conversationId !== null && conversation.isError ? (
+            <ErrorState
+              error={conversation.error}
+              onRetry={() => {
+                void conversation.refetch();
+              }}
+            />
+          ) : conversationId !== null && open === undefined ? (
+            <LoadingOutline />
+          ) : (
+            <>
+              {open !== undefined && (
+                <Messages
+                  conversation={open}
+                  workingId={working?.questionId ?? null}
+                  deciding={decide.isPending}
+                  secrets={secrets}
+                  onSecretsClosed={() => {
+                    setSecrets([]);
+                  }}
+                  {...(readOnly
+                    ? {}
+                    : {
+                        onDecide: (id: string, which: 'confirm' | 'decline') => {
+                          decide.mutate({ id, which });
+                        },
+                        onUndo: (id: string) => {
+                          if (!busy) undo.mutate(id);
+                        },
+                        undoing: undo.isPending,
+                      })}
+                  {...(mayAsk
+                    ? {
+                        onChoose: (option: string) => {
+                          press({ kind: 'typed', text: option, typed: false, files: [] });
+                        },
+                        onContinue: () => {
+                          press({ kind: 'continue', text: t('assistant.continue') });
+                        },
+                      }
+                    : {})}
+                />
+              )}
+              {sent !== null && (
+                <p className="ml-8 rounded-lg bg-accent px-3 py-2 break-words whitespace-pre-wrap">
+                  {sent}
+                </p>
+              )}
+              {(sent !== null || working !== null) && (
+                <Working
+                  progress={
+                    working !== null && progress?.questionId === working.questionId
+                      ? progress
+                      : null
+                  }
+                />
+              )}
+              {decide.error !== null && <FailureAlert error={decide.error} />}
+              {undo.error !== null && <FailureAlert error={undo.error} />}
+            </>
+          )}
+        </div>
+        {behind && (
+          <Button
+            variant="secondary"
+            size="sm"
+            className="absolute bottom-3 left-1/2 -translate-x-1/2 shadow-float"
+            onClick={toEnd}
+          >
+            <ArrowDownwardIcon aria-hidden />
+            {t('assistant.newMessages')}
+          </Button>
         )}
       </div>
       <footer className="grid gap-2 border-t px-6 py-3 max-sm:px-4">
@@ -358,15 +412,16 @@ export function AssistantChat({
               </p>
             )}
             <form className="flex items-end gap-2" onSubmit={submit}>
-              {status?.files === true && (
-                <AttachButton role={role} disabled={!mayAsk} onFailure={setFileFailure} />
-              )}
+              {status?.files === true && <AttachButton disabled={!mayAsk} attach={attach} />}
               <label className="sr-only" htmlFor="assistant-question">
                 {t('assistant.question')}
               </label>
               <textarea
+                ref={questionField}
                 id="assistant-question"
-                className={`${FIELD} h-auto min-h-10 resize-none py-2`}
+                // Grows with its text from two lines (2 × 20 + 16 + 2 = 58 px) to 40% of the
+                // window, at most 10rem on a phone, then scrolls inside (owner, 28 November 2026).
+                className={`${FIELD_FRAME} field-sizing-content min-h-[3.625rem] max-h-[40dvh] resize-none overflow-y-auto py-2 max-sm:max-h-[min(40dvh,10rem)]`}
                 rows={2}
                 maxLength={ASSISTANT_QUESTION_MAX_LENGTH}
                 value={text}
@@ -376,6 +431,15 @@ export function AssistantChat({
                 }}
                 onKeyDown={(event) => {
                   if (event.key === 'Enter' && !event.shiftKey) submit(event);
+                }}
+                onPaste={(event) => {
+                  // Files pasted (a screenshot, files copied) are attached as the paperclip
+                  // attaches them; a paste of text stays a paste of text.
+                  if (status?.files !== true || !mayAsk) return;
+                  const files = pastedFiles(event.clipboardData);
+                  if (files.length === 0) return;
+                  event.preventDefault();
+                  void attach.add(files);
                 }}
               />
               <Button

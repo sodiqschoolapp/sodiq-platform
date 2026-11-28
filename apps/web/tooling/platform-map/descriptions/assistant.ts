@@ -61,6 +61,9 @@ export const DESCRIPTIONS: Readonly<Record<string, string>> = {
     'Downloads a file of the conversation: one the person attached, the recording of a spoken question, or an export the assistant made.',
   'features/assistant/assistant-chat.tsx#button:assistant.continue':
     'Shown under an answer that a limit of one question cut: asks the next part of the work, which never proposes again a step proposed before. Waits until the proposal shown is confirmed or declined.',
+  // The owner's request of 28 November 2026: the chat follows new messages.
+  'features/assistant/assistant-chat.tsx#button:assistant.newMessages':
+    'Shown at the bottom of the conversation when new messages or more of an answer came while the person had scrolled up to read: scrolls to the end. A person already near the end is followed there without it.',
   'features/assistant/assistant-settings-section.tsx#field:assistant.settings.questionActions':
     'How many reads and changes the assistant may make for one question (40 at the start); past it, the answer offers Continue.',
   'features/assistant/assistant-settings-section.tsx#field:assistant.settings.proposalSteps':

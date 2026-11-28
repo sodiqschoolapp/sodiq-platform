@@ -216,19 +216,25 @@ function ConversationList({
     return <p className="text-sm text-muted-foreground">{t('assistant.empty')}</p>;
   }
   return (
-    <nav aria-label={t('assistant.conversations')}>
-      <ul className="grid gap-1">
+    <nav aria-label={t('assistant.conversations')} className="min-w-0">
+      {/* One column that never widens past the panel: a long name is cut with an ellipsis and
+          shown whole in its tooltip (owner, 28 November 2026). */}
+      <ul className="grid min-w-0 grid-cols-1 gap-1">
         {items.map((item) => (
-          <li key={item.id}>
+          <li key={item.id} className="min-w-0">
             <button
               type="button"
-              className="w-full rounded-lg px-3 py-2 text-left hover:bg-accent"
+              className="w-full min-w-0 rounded-lg px-3 py-2 text-left hover:bg-accent"
               onClick={() => {
                 onOpen(item.id);
               }}
             >
-              <span className="block truncate font-semibold">{item.title}</span>
-              <span className="block text-sm text-muted-foreground">{item.branchName}</span>
+              <span className="block truncate font-semibold" title={item.title}>
+                {item.title}
+              </span>
+              <span className="block truncate text-sm text-muted-foreground">
+                {item.branchName}
+              </span>
             </button>
           </li>
         ))}
