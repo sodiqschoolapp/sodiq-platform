@@ -35,7 +35,12 @@ import type { FormSchema } from '@/components/form/form-messages';
 import { filledOnPage } from '@/components/form/page-checks';
 import { requiredOf, useRecordForm } from '@/components/form/use-record-form';
 import { ListPage } from '@/components/list/list-page';
-import { listSearch, type Column, type ListSearch } from '@/components/list/list-state';
+import {
+  listSearch,
+  opensOnCurrent,
+  type Column,
+  type ListSearch,
+} from '@/components/list/list-state';
 import { PageHeader } from '@/components/page-header';
 import { ErrorState, LoadingOutline } from '@/components/states';
 import { Button } from '@/components/ui/button';
@@ -114,6 +119,9 @@ function useDatesText() {
             to: schoolDateText(one.endDate, i18n.language),
           });
 }
+
+/** The state filter's value of the exemptions in force or coming. */
+const IN_FORCE_OR_COMING = 'in_force_or_coming';
 
 /**
  * The Exemptions page (task 8.5, pull request #223; `07`, Problem cases:
@@ -232,21 +240,33 @@ export function ExemptionsPage(): React.JSX.Element {
       {
         key: 'state',
         label: t('journal.exemptions.state'),
-        options: (['in_force', 'ending_this_week', 'coming', 'ended', 'voided'] as const).map(
-          (value) => ({
-            value,
-            label: t(`journal.exemptions.states.${value}`),
-          }),
-        ),
+        options: [
+          { value: IN_FORCE_OR_COMING, label: t('list.inUse.inForceOrComing') },
+          ...(['in_force', 'ending_this_week', 'coming', 'ended', 'voided'] as const).map(
+            (value) => ({
+              value,
+              label: t(`journal.exemptions.states.${value}`),
+            }),
+          ),
+        ],
         // `07`, Problem cases: "ending this week": not voided, ending from today to Sunday
-        // (the server's `ending_this_week`), today being the branch's.
+        // (the server's `ending_this_week`), today being the branch's. The list opens on
+        // the exemptions in force or coming; the ended and voided ones are one click
+        // away (owner, 28 November 2026).
         matches: (row: Exemption, value: string) =>
-          value === 'ending_this_week'
-            ? today !== null &&
-              row.voided === null &&
-              row.endDate >= today &&
-              row.endDate <= sundayOf(today)
-            : row.state === value,
+          value === IN_FORCE_OR_COMING
+            ? row.state === 'in_force' || row.state === 'coming'
+            : value === 'ending_this_week'
+              ? today !== null &&
+                row.voided === null &&
+                row.endDate >= today &&
+                row.endDate <= sundayOf(today)
+              : row.state === value,
+        ...opensOnCurrent(
+          { value: IN_FORCE_OR_COMING, kind: 'inForceOrComing' },
+          { value: 'ended', kind: 'ended' },
+          { value: 'voided', kind: 'voided' },
+        ),
       },
       {
         key: 'kind',

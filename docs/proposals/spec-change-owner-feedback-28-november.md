@@ -64,7 +64,7 @@ The two-step recovery codes are unchanged: 16 characters of mixed case. Sign-in 
 
 **`12-ux-standards.md`**, after "Records are archived, never deleted", add:
 
-> A list of records that can be archived opens on the active ones; the archived ones are one click away, with their count.
+> A list of records that can be archived, closed or left opens on the records in use (for staff, active and inactive); the others are one click away, with their count.
 
 ## 7. The assistant screen
 

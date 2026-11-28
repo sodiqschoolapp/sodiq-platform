@@ -35,6 +35,12 @@ import {
 } from '@/testing/render-app';
 import { savedRecordPanel } from '@/testing/new-record';
 
+/**
+ * The vacancies with "All" chosen in their status filter: the list opens on the
+ * open ones (owner, 28 November 2026), and some tests read the closed one too.
+ */
+const EVERY_STATUS = `/people/vacancies?f=${encodeURIComponent(JSON.stringify({ status: '*' }))}`;
+
 const uid = (n: number): string => `0199c000-0000-7000-8000-${String(n).padStart(12, '0')}`;
 
 const ACADEMIC: Division = {
@@ -394,6 +400,14 @@ describe('the vacancies', () => {
     const tabs = screen.getByRole('navigation', { name: en.people.sections });
     fireEvent.click(within(tabs).getByRole('link', { name: en.people.vacancies.title }));
     await screen.findByRole('heading', { name: en.people.vacancies.title });
+    // The list opens on the open vacancies; the closed one is a click away
+    // (owner, 28 November 2026).
+    await waitFor(() => {
+      expect(rowsDrawn()).toHaveLength(1);
+    });
+    fireEvent.change(screen.getByRole('combobox', { name: en.people.vacancies.statusTitle }), {
+      target: { value: '' },
+    });
     await waitFor(() => {
       expect(rowsDrawn()).toHaveLength(2);
     });
@@ -412,7 +426,7 @@ describe('the vacancies', () => {
 
   it('names the statuses in Russian when Russian is chosen', async () => {
     api('academic_vice_principal', {}, 'ru');
-    renderApp('/people/vacancies', 'ru');
+    renderApp(EVERY_STATUS, 'ru');
     await screen.findByRole('heading', { name: ru.people.vacancies.title });
     await waitFor(() => {
       expect(rowsDrawn().map((row) => row.at(-1))).toEqual([
@@ -693,7 +707,7 @@ const headingsDrawn = (): string[] =>
 describe('the export of the vacancies list', () => {
   it('is offered, and the columns of the screen are those of the file, with its headings', async () => {
     api('principal');
-    renderApp('/people/vacancies');
+    renderApp(EVERY_STATUS);
     await screen.findByRole('heading', { name: en.people.vacancies.title });
     await waitFor(() => {
       expect(rowsDrawn()).toHaveLength(2);

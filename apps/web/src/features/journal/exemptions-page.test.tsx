@@ -2,6 +2,7 @@ import type { Exemption, ExemptionPreview } from '@sodiq/shared';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { en } from '@/i18n/locales/en';
+import { countButton, countsDrawn, countText } from '@/testing/list-counts';
 import { fakeApi, json, NORTH, renderApp, sessionOf } from '@/testing/render-app';
 
 const uid = (n: number): string => `0199e000-0000-7000-8000-${String(n).padStart(12, '0')}`;
@@ -87,10 +88,16 @@ const CLASS = {
 
 const CLASS_TWO = { ...CLASS, id: uid(32), name: 'Kent' };
 
+/**
+ * The list with "All" chosen in its state filter: it opens on the exemptions in
+ * force or coming (owner, 28 November 2026), and these tests read an ended one.
+ */
+const EVERY_STATE = `/journal/exemptions?f=${encodeURIComponent(JSON.stringify({ state: '*' }))}`;
+
 function open(
   role: 'academic_vice_principal' | 'principal',
   more: Parameters<typeof fakeApi>[0] = {},
-  path = '/journal/exemptions',
+  path = EVERY_STATE,
 ) {
   const calls = fakeApi({
     'GET /api/auth/session': () => json(sessionOf({ assignments: [{ role, branchId: NORTH.id }] })),
@@ -182,7 +189,7 @@ describe('the Exemptions page', () => {
         json(sessionOf({ assignments: [{ role: 'principal', branchId: NORTH.id }] })),
       'GET /api/exemptions': () => json({ today: '2026-10-21', items, more: 0 }),
     });
-    renderApp('/journal/exemptions', 'en');
+    renderApp(EVERY_STATE, 'en');
     const names = () =>
       [...document.querySelectorAll('tbody tr')].map(
         (row) => /(Rahimova|Karimov|Saidov)/.exec(row.textContent ?? '')?.[1],
@@ -206,6 +213,47 @@ describe('the Exemptions page', () => {
     choose(en.journal.exemptions.state, 'ending_this_week');
     await waitFor(() => {
       expect(names()).toEqual(['Karimov']);
+    });
+  });
+
+  // Owner, 28 November 2026: "Every list should show active". The list opens on the
+  // exemptions in force or coming; the ended and voided ones are one click away.
+  it('opens on the exemptions in force or coming, with the ended and voided ones a click away', async () => {
+    const student = (n: number, lastName: string) => ({
+      ...EXEMPTION.student,
+      id: uid(20 + n),
+      lastName,
+    });
+    const items: Exemption[] = [
+      EXEMPTION,
+      { ...EXEMPTION, id: uid(5), student: student(1, 'Karimov'), state: 'in_force' },
+      { ...EXEMPTION, id: uid(6), student: student(2, 'Saidov'), state: 'coming' },
+      { ...EXEMPTION, id: uid(7), student: student(3, 'Nazarov'), state: 'voided' },
+    ];
+    fakeApi({
+      'GET /api/auth/session': () =>
+        json(sessionOf({ assignments: [{ role: 'principal', branchId: NORTH.id }] })),
+      'GET /api/exemptions': () => json({ today: '2026-10-21', items, more: 0 }),
+    });
+    const { router } = renderApp('/journal/exemptions', 'en');
+    const names = () =>
+      [...document.querySelectorAll('tbody tr')].map(
+        (row) => /(Rahimova|Karimov|Saidov|Nazarov)/.exec(row.textContent ?? '')?.[1],
+      );
+    await waitFor(() => {
+      expect(names()).toEqual(['Karimov', 'Saidov']);
+    });
+    expect(countsDrawn()).toBe(
+      `${countText('inForceOrComing', 2)}·${countText('ended', 1)}·${countText('voided', 1)}`,
+    );
+    fireEvent.click(countButton('ended', 1));
+    await waitFor(() => {
+      expect(names()).toEqual(['Rahimova']);
+    });
+    expect(router.state.location.search).toEqual({ view: 'list', f: { state: 'ended' } });
+    fireEvent.click(countButton('voided', 1));
+    await waitFor(() => {
+      expect(names()).toEqual(['Nazarov']);
     });
   });
 

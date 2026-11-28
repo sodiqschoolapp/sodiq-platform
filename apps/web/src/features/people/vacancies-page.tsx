@@ -18,7 +18,12 @@ import { answerOf } from '@/api/failure';
 import { ListPage } from '@/components/list/list-page';
 import { useExport } from '@/components/list/use-export';
 import { useNewRecord } from '@/components/list/use-new-record';
-import { type Column, type Filter, type ListSearch } from '@/components/list/list-state';
+import {
+  opensOnCurrent,
+  type Column,
+  type Filter,
+  type ListSearch,
+} from '@/components/list/list-state';
 import { PageHeader } from '@/components/page-header';
 import { ErrorState } from '@/components/states';
 import { Button } from '@/components/ui/button';
@@ -147,6 +152,8 @@ export function VacanciesPage() {
           label: t(`people.vacancies.statuses.${one}`),
         })),
         matches: (row, value) => row.status === value,
+        // The open vacancies; the closed ones one click away (owner, 28 November 2026).
+        ...opensOnCurrent({ value: 'open', kind: 'open' }, { value: 'closed', kind: 'closed' }),
       },
       {
         key: 'department',

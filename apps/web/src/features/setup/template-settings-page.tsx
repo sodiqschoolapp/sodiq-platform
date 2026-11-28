@@ -27,7 +27,12 @@ import { wholeNumber } from '@/components/form/form-messages';
 import { RecordForm } from '@/components/form/record-form';
 import { useRecordForm } from '@/components/form/use-record-form';
 import { ListPage } from '@/components/list/list-page';
-import { type Column, type Filter, type ListSearch } from '@/components/list/list-state';
+import {
+  opensOnCurrent,
+  type Column,
+  type Filter,
+  type ListSearch,
+} from '@/components/list/list-state';
 import { PageHeader } from '@/components/page-header';
 import { ErrorState, LoadingOutline } from '@/components/states';
 import { useView } from '@/features/access/use-view';
@@ -132,6 +137,9 @@ function SetForm({ templates, tomorrow, onSave }: SetFormProps) {
     </RecordForm>
   );
 }
+
+/** The state filter's value of the settings planned or in force now. */
+const PLANNED_OR_NOW = 'planned_or_now';
 
 /**
  * Where the day templates apply (`03`, Slot types and day templates; task
@@ -244,8 +252,26 @@ export function TemplateSettingsPage() {
         })),
         matches: (row, value) => row.level === value,
       },
+      {
+        // A setting is in force over `[validFrom, validUntil)`: one whose first day
+        // without it has come is ended. The list opens on the settings planned or in
+        // force; the ended ones are one click away (owner, 28 November 2026).
+        key: 'state',
+        label: t('setup.templateSettings.state'),
+        options: [
+          { value: PLANNED_OR_NOW, label: t('list.inUse.plannedOrNow') },
+          { value: 'ended', label: t('setup.templateSettings.ended') },
+        ],
+        matches: (row, value) =>
+          (today !== undefined && row.validUntil !== null && row.validUntil <= today) ===
+          (value === 'ended'),
+        ...opensOnCurrent(
+          { value: PLANNED_OR_NOW, kind: 'plannedOrNow' },
+          { value: 'ended', kind: 'ended' },
+        ),
+      },
     ],
-    [t],
+    [t, today],
   );
 
   const open = (next: ListSearch, how: 'push' | 'replace'): void => {

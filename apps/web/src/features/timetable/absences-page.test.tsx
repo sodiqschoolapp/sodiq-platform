@@ -3,6 +3,7 @@ import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { en } from '@/i18n/locales/en';
 import { moreActionNames, panelAction } from '@/testing/panel';
+import { countButton, countsDrawn, countText } from '@/testing/list-counts';
 import { fakeApi, json, NORTH, refusal, renderApp, sessionOf } from '@/testing/render-app';
 
 const uid = (n: number): string => `0199a000-0000-7000-8000-${String(n).padStart(12, '0')}`;
@@ -132,6 +133,36 @@ describe('the absences page', () => {
       ['Karimova Aziza', '19 October 2026', texts.open, 'Ill', texts.state_planned],
       ['Karimova Aziza', '19 October 2026', '23 October 2026', 'Course', texts.state_current],
     ]);
+  });
+
+  // Owner, 28 November 2026: "Every list should show active". The list opens on what is
+  // planned or happening now; the ended and withdrawn absences are one click away.
+  it('opens on the planned and current absences, with the ended and withdrawn ones a click away', async () => {
+    await openList({
+      absences: [
+        absence(1),
+        absence(2, { state: 'current', reason: 'Course' }),
+        absence(3, { state: 'ended', reason: 'Wedding' }),
+        absence(4, { state: 'withdrawn', reason: 'Typed twice' }),
+      ],
+    });
+    const reasons = () => rowsDrawn().map((row) => row[3]);
+    expect(reasons()).toEqual(['Ill', 'Course']);
+    expect(countsDrawn()).toBe(
+      `${countText('plannedOrNow', 2)}·${countText('ended', 1)}·${countText('withdrawn', 1)}`,
+    );
+    fireEvent.click(countButton('ended', 1));
+    await waitFor(() => {
+      expect(reasons()).toEqual(['Wedding']);
+    });
+    fireEvent.click(countButton('withdrawn', 1));
+    await waitFor(() => {
+      expect(reasons()).toEqual(['Typed twice']);
+    });
+    fireEvent.click(countButton('plannedOrNow', 2));
+    await waitFor(() => {
+      expect(reasons()).toEqual(['Ill', 'Course']);
+    });
   });
 
   it('names the states in Russian when Russian is chosen', async () => {

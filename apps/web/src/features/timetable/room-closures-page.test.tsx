@@ -3,6 +3,7 @@ import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { en } from '@/i18n/locales/en';
 import { moreActionNames, panelAction } from '@/testing/panel';
+import { countButton, countsDrawn, countText } from '@/testing/list-counts';
 import { fakeApi, json, NORTH, refusal, renderApp, sessionOf } from '@/testing/render-app';
 
 const uid = (n: number): string => `0199a000-0000-7000-8000-${String(n).padStart(12, '0')}`;
@@ -124,6 +125,35 @@ const openPanel = async () => {
 };
 
 describe('the room closures page', () => {
+  // Owner, 28 November 2026: "Every list should show active". The list opens on what is
+  // planned or happening now; the ended and withdrawn closures are one click away.
+  it('opens on the planned and current closures, with the ended and withdrawn ones a click away', async () => {
+    await openList({
+      closures: [
+        closure(1),
+        closure(2, { state: 'current', reason: 'Paint' }),
+        closure(3, { state: 'ended', reason: 'Floor' }),
+        closure(4, { state: 'withdrawn', reason: 'Typed twice' }),
+        closure(5, { state: 'withdrawn', reason: 'Wrong room' }),
+      ],
+    });
+    const reasons = () => rowsDrawn().map((row) => row[3]);
+    await waitFor(() => {
+      expect(reasons()).toHaveLength(2);
+    });
+    expect(countsDrawn()).toBe(
+      `${countText('plannedOrNow', 2)}·${countText('ended', 1)}·${countText('withdrawn', 2)}`,
+    );
+    fireEvent.click(countButton('withdrawn', 2));
+    await waitFor(() => {
+      expect(reasons()).toEqual(['Typed twice', 'Wrong room']);
+    });
+    fireEvent.click(countButton('ended', 1));
+    await waitFor(() => {
+      expect(reasons()).toEqual(['Floor']);
+    });
+  });
+
   it('lists the closures with their room, days, reason and state', async () => {
     await openList({
       closures: [closure(1), closure(2, { state: 'current', reason: 'Paint' })],

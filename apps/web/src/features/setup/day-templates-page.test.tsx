@@ -429,7 +429,7 @@ describe('the day templates page', () => {
     // archived one is a click away.
     expect(document.querySelectorAll('tbody tr')).toHaveLength(0);
     fireEvent.click(
-      screen.getByRole('button', { name: en.list.archivedCount_one.replace('{{n}}', '1') }),
+      screen.getByRole('button', { name: en.list.counts.archived_one.replace('{{n}}', '1') }),
     );
     fireEvent.click(screen.getByText('Main', { selector: 'button' }));
     const panel = await screen.findByRole('complementary', { name: 'Main' });

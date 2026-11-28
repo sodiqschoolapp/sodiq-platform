@@ -23,7 +23,12 @@ import { SaveCancelled } from '@/components/form/save-cancelled';
 import { ListPage } from '@/components/list/list-page';
 import { useExport } from '@/components/list/use-export';
 import { useNewRecord } from '@/components/list/use-new-record';
-import { type Column, type Filter, type ListSearch } from '@/components/list/list-state';
+import {
+  opensOnCurrent,
+  type Column,
+  type Filter,
+  type ListSearch,
+} from '@/components/list/list-state';
 import { PageHeader } from '@/components/page-header';
 import { initialsOf, PersonPhoto } from '@/components/person-photo';
 import { ErrorState } from '@/components/states';
@@ -35,6 +40,12 @@ import { invalidateStaff, staffPhotoQuery, staffQuery } from './people-api';
 import { PeopleTabs } from './people-tabs';
 import { StaffForm } from './staff-form';
 import { StaffPanel } from './staff-panel';
+
+/**
+ * The status filter's value of everyone still employed, which the list opens
+ * on: active, inactive and not started yet; a person who left is one click away.
+ */
+const CURRENT = 'current';
 
 /**
  * A member of staff in the list, a picker or a list inside a message: surname first
@@ -268,11 +279,17 @@ export function StaffPage() {
       {
         key: 'status',
         label: t('people.staff.statusColumn'),
-        options: STAFF_STATUSES.map((one) => ({
-          value: one,
-          label: t(`people.staff.statuses.${one}`),
-        })),
-        matches: (row, value) => row.status === value,
+        options: [
+          { value: CURRENT, label: t('list.inUse.current') },
+          ...STAFF_STATUSES.map((one) => ({
+            value: one,
+            label: t(`people.staff.statuses.${one}`),
+          })),
+        ],
+        // "Current" is everyone still employed: active, inactive (on leave, with
+        // classes and journals) and not started yet (owner, 28 November 2026).
+        matches: (row, value) => (value === CURRENT ? row.status !== 'left' : row.status === value),
+        ...opensOnCurrent({ value: CURRENT, kind: 'current' }, { value: 'left', kind: 'left' }),
       },
       {
         // Every role (`04`, the teacher list: "the category filter offers every role").

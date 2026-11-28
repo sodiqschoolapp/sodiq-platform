@@ -15,7 +15,14 @@ import {
   type ExportState,
   type NewRecord,
 } from './list-page';
-import { ALL_ROWS, OPENS_ON_ACTIVE, type Column, type Filter, type ListSearch } from './list-state';
+import {
+  ALL_ROWS,
+  OPENS_ON_ACTIVE,
+  opensOnCurrent,
+  type Column,
+  type Filter,
+  type ListSearch,
+} from './list-state';
 
 // What the sample list cannot show: rows that change under the list, a failed
 // later load, and what exactly the export and a bulk action are handed.
@@ -772,9 +779,12 @@ describe('a list that opens on its active records', () => {
   const countButton = (text: string) =>
     within(counts() ?? document.body).getByRole('button', { name: text });
   const active = (n: number) =>
-    (n === 1 ? en.list.activeCount_one : en.list.activeCount_other).replace('{{n}}', String(n));
+    (n === 1 ? en.list.counts.active_one : en.list.counts.active_other).replace('{{n}}', String(n));
   const archived = (n: number) =>
-    (n === 1 ? en.list.archivedCount_one : en.list.archivedCount_other).replace('{{n}}', String(n));
+    (n === 1 ? en.list.counts.archived_one : en.list.counts.archived_other).replace(
+      '{{n}}',
+      String(n),
+    );
 
   it('shows the active rows while the address names no value, and says how many are archived', () => {
     const onAddress = vi.fn<(search: ListSearch) => void>();
@@ -914,5 +924,75 @@ describe('a list that opens on its active records', () => {
     fireEvent.change(stateField(), { target: { value: '' } });
     fireEvent.click(screen.getByRole('button', { name: en.list.export }));
     expect(onExport).toHaveBeenLastCalledWith(ROOMS, ['name', 'seats'], {}, 'matching');
+  });
+});
+
+// Owner, 28 November 2026: "Do this for all lists that may have left or archived records mixed
+// with active ones." A filter whose records end in more than one way (a staff member who left,
+// a key revoked or past its end date) opens on the records in use, and names each other kind
+// with its own number and words.
+describe('a list whose records end in several ways', () => {
+  // Invented: the big rooms are in use, Room 4 is closed, none is withdrawn.
+  const STATUS: Filter<Room> = {
+    key: 'status',
+    label: 'Status',
+    options: [
+      { value: 'not_closed', label: 'Not closed' },
+      { value: 'in_use', label: 'In use' },
+      { value: 'withdrawn', label: 'Withdrawn' },
+      { value: 'closed', label: 'Closed' },
+    ],
+    matches: (row, value) =>
+      value === 'not_closed'
+        ? row.seats >= 20
+        : value === 'in_use'
+          ? row.seats >= 20
+          : value === 'closed'
+            ? row.seats < 20
+            : false,
+    ...opensOnCurrent(
+      { value: 'not_closed', kind: 'notClosed' },
+      { value: 'closed', kind: 'closed' },
+      { value: 'withdrawn', kind: 'withdrawn' },
+    ),
+  };
+  const counts = () => document.querySelector<HTMLElement>('[data-slot="archive-counts"]');
+  const text = (key: 'notClosed' | 'closed' | 'withdrawn', n: number) =>
+    en.list.counts[`${key}_${n === 1 ? 'one' : 'other'}`].replace('{{n}}', String(n));
+
+  it('names in its words each kind that has rows, and leaves out a kind with none', () => {
+    show({ rows: ROOMS, filters: [STATUS] });
+    expect(names()).toEqual(['Room 12', 'Laboratory']);
+    expect(counts()?.textContent).toBe(`${text('notClosed', 2)}·${text('closed', 1)}`);
+  });
+
+  it('shows the rows of each kind with one click, and names a kind with none while it is chosen', () => {
+    const onAddress = vi.fn<(search: ListSearch) => void>();
+    show({ rows: ROOMS, filters: [STATUS], onAddress });
+    fireEvent.click(
+      within(counts() ?? document.body).getByRole('button', { name: text('closed', 1) }),
+    );
+    expect(onAddress).toHaveBeenLastCalledWith({ f: { status: 'closed' } });
+    expect(names()).toEqual(['Room 4']);
+    cleanup();
+    show({ rows: ROOMS, filters: [STATUS], start: { f: { status: 'withdrawn' } } });
+    expect(names()).toEqual([]);
+    expect(counts()?.textContent).toBe(
+      `${text('notClosed', 2)}·${text('closed', 1)}·${text('withdrawn', 0)}`,
+    );
+    expect(
+      within(counts() ?? document.body)
+        .getByRole('button', { name: text('withdrawn', 0) })
+        .getAttribute('aria-pressed'),
+    ).toBe('true');
+  });
+
+  it('presses no number while a single status of the rows in use is chosen', () => {
+    show({ rows: ROOMS, filters: [STATUS], start: { f: { status: 'in_use' } } });
+    expect(names()).toEqual(['Room 12', 'Laboratory']);
+    const pressed = within(counts() ?? document.body)
+      .getAllByRole('button')
+      .map((button) => button.getAttribute('aria-pressed'));
+    expect(pressed).toEqual(['false', 'false']);
   });
 });

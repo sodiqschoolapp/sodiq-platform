@@ -14,13 +14,14 @@ Built on `claude/period-numbers-migration-qo0m2u`. Decisions are in `docs/decisi
 - **Journal "No."**: counts only the students of the main list. Those who left or moved have none.
 - **Journals by teacher and class**: Teacher and Class filters on the Journals page, and a Teachers column. Teacher names on the discipline page and in a journal's header open the list filtered by that teacher.
 - **Archived records**: lists with an archive open on Active, with "n active · m archived" switches. Departments and floors sit behind "Show archived (n)".
+- **Records in use**: every list whose records end (left, graduated, closed, revoked, ended, withdrawn, voided, restored) opens on the records in use, with "12 current · 3 left" style switches. Staff show active and inactive together. Where templates apply has a new State filter. Ctrl+K "More on the list" shows every status.
 - **Assistant chat**: follows new messages, takes pasted files (Ctrl+V), cuts long names, and the input grows.
 
 Left out: the period numbers (proposal in `docs/proposals/spec-change-period-numbers.md`) and the assistant's cost (`docs/proposals/owner-feedback-27-november.md`, item 9). Both are for later, by the owner's choice.
 
 The next sessions must know:
 
-- A list with an archive state gives its filter `...OPENS_ON_ACTIVE` (`list-state.ts`). A browser test that reads archived rows chooses the filter, or presses "Show archived", first.
+- A list with an archive state gives its filter `...OPENS_ON_ACTIVE`; any other end state gives `...opensOnCurrent(current, ...ended)` (`list-state.ts`), with a combined option where several values are in use. A browser test that reads ended rows opens `everyRow(path)` or calls `showEveryRow` (`e2e/steps.ts`), or presses "Show archived", first.
 - A new screen that shows a generated password once draws it with `GeneratedPassword`. Web tests read it with `generatedPasswordsIn`.
 - A journal's teachers come from `lesson-counted.ts`. Never decide them from the timetable alone.
 

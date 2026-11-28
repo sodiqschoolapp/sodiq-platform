@@ -10,11 +10,17 @@ import {
   panelActions,
   savedInPanel,
 } from '@/testing/panel';
+import { countButton, countsDrawn, countText } from '@/testing/list-counts';
 import { fakeApi, json, NORTH, renderApp, sessionOf } from '@/testing/render-app';
 import { savedRecordPanel } from '@/testing/new-record';
 import { NO_LESSONS } from '@/testing/no-lessons';
 
 const PATH = '/setup/years';
+/**
+ * The list with "All" chosen in its status filter: it opens on the years not
+ * closed (owner, 28 November 2026), and some tests read a closed one.
+ */
+const EVERY_STATUS = `${PATH}?f=${encodeURIComponent(JSON.stringify({ status: '*' }))}`;
 
 const uid = (n: number): string => `0199a000-0000-7000-8000-${String(n).padStart(12, '0')}`;
 
@@ -102,6 +108,7 @@ async function openList(
   years: AcademicYear[] = [PLANNED, CURRENT, CLOSED],
   extra: Record<string, (body: unknown) => Response> = {},
   language: 'en' | 'ru' = 'en',
+  path = PATH,
 ) {
   const account = { ...sessionAs(role), language };
   const calls = fakeApi({
@@ -109,7 +116,7 @@ async function openList(
     'GET /api/setup/academic-years': () => json({ years }),
     ...extra,
   });
-  renderApp(PATH, language);
+  renderApp(path, language);
   const texts = language === 'ru' ? ru : en;
   await screen.findByRole('heading', { name: texts.setup.years.title });
   if (years.length > 0) {
@@ -146,13 +153,29 @@ async function goOn(action: string): Promise<void> {
 // answers 1, 3 and 4 for task 1.3.
 describe('the academic years page', () => {
   it('lists the years of the branch, newest first, with dates in the chosen language, status and dated quarters', async () => {
-    await openList();
+    await openList('super_admin', [PLANNED, CURRENT, CLOSED], {}, 'en', EVERY_STATUS);
 
     expect(rowsDrawn()).toEqual([
       ['2027–2028', '2 September 2027', '25 May 2028', en.setup.years.planned, '0 of 4 dated'],
       ['2026–2027', '2 September 2026', '25 May 2027', en.setup.years.current, '2 of 4 dated'],
       ['2025–2026', '2 September 2025', '25 May 2026', en.setup.years.closed, '0 of 4 dated'],
     ]);
+  });
+
+  // Owner, 28 November 2026: "Every list should show active". The list opens on the planned
+  // and current years; the closed ones are one click away.
+  it('opens on the planned and current years, with the closed one a click away', async () => {
+    await openList();
+    expect(rowsDrawn().map((row) => row[0])).toEqual(['2027–2028', '2026–2027']);
+    expect(countsDrawn()).toBe(`${countText('notClosed', 2)}·${countText('closed', 1)}`);
+    fireEvent.click(countButton('closed', 1));
+    await waitFor(() => {
+      expect(rowsDrawn().map((row) => row[0])).toEqual(['2025–2026']);
+    });
+    fireEvent.click(countButton('notClosed', 2));
+    await waitFor(() => {
+      expect(rowsDrawn()).toHaveLength(2);
+    });
   });
 
   it('names the status and the dated quarters in Russian when Russian is chosen', async () => {
@@ -431,7 +454,7 @@ describe('the academic years page', () => {
   });
 
   it('shows a closed year read only, also to the Super Admin', async () => {
-    await openList('super_admin', [CLOSED]);
+    await openList('super_admin', [CLOSED], {}, 'en', EVERY_STATUS);
 
     const panel = await openYear('2025–2026');
 

@@ -565,11 +565,11 @@ describe('the divisions page', () => {
     expect(rowsDrawn().map((row) => row[1])).toEqual(['Academic', 'Operations']);
     const counts = document.querySelector<HTMLElement>('[data-slot="archive-counts"]');
     expect(counts?.textContent).toBe(
-      `${en.list.activeCount_other.replace('{{n}}', '2')}·${en.list.archivedCount_one.replace('{{n}}', '1')}`,
+      `${en.list.counts.active_other.replace('{{n}}', '2')}·${en.list.counts.archived_one.replace('{{n}}', '1')}`,
     );
     fireEvent.click(
       within(counts ?? document.body).getByRole('button', {
-        name: en.list.archivedCount_one.replace('{{n}}', '1'),
+        name: en.list.counts.archived_one.replace('{{n}}', '1'),
       }),
     );
     await waitFor(() => {

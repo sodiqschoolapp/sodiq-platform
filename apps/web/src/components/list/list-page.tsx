@@ -36,6 +36,7 @@ import {
   storeHiddenColumns,
   storeShownColumns,
   type Column,
+  type CountOf,
   type Filter,
   type ListSearch,
 } from './list-state';
@@ -427,14 +428,15 @@ export function ListPage<Row>({
     [rows, columns, filters, current, i18n.language],
   );
 
-  // The active and archived rows that the search and the other filters leave
-  // (owner, 28 November 2026): the list opens on the active ones and says how
-  // many archived ones a click shows (docs/design-system.md, Layout shell).
-  const archiveCounts = useMemo(
+  // The rows in use and the others that the search and the other filters
+  // leave (owner, 28 November 2026): the list opens on the rows in use and
+  // says how many of each other kind a click shows (docs/design-system.md,
+  // Layout shell).
+  const lifecycleCounts = useMemo(
     () =>
       filters.flatMap((filter) => {
-        const archive = filter.archive;
-        if (archive === undefined) {
+        const lifecycle = filter.lifecycle;
+        if (lifecycle === undefined) {
           return [];
         }
         const others = matchingRows(
@@ -444,13 +446,16 @@ export function ListPage<Row>({
           { ...current, sort: undefined, f: { ...current.f, [filter.key]: ALL_ROWS } },
           i18n.language,
         );
+        const counted = (one: CountOf) => ({
+          ...one,
+          n: others.filter((row) => filter.matches(row, one.value)).length,
+        });
         return [
           {
             filter,
-            archive,
             applied: appliedValue(filter, current),
-            active: others.filter((row) => filter.matches(row, archive.active)).length,
-            archived: others.filter((row) => filter.matches(row, archive.archived)).length,
+            current: counted(lifecycle.current),
+            ended: lifecycle.ended.map(counted),
           },
         ];
       }),
@@ -787,34 +792,32 @@ export function ListPage<Row>({
           </div>
           {rows !== undefined &&
             rows.length > 0 &&
-            archiveCounts.map(({ filter, archive, applied, active, archived }) =>
-              // Nothing to say while no archived row is left out or shown.
-              archived === 0 && applied === archive.active ? null : (
+            lifecycleCounts.map(({ filter, applied, current: inUse, ended }) => {
+              // An ended kind is named while it has rows or is the one shown;
+              // nothing is said while no row is left out or shown.
+              const named = ended.filter((one) => one.n > 0 || applied === one.value);
+              return named.length === 0 && applied === inUse.value ? null : (
                 <p
                   key={filter.key}
                   data-slot="archive-counts"
-                  className="flex h-10 items-center gap-1.5 text-sm text-muted-foreground max-sm:h-11"
+                  className="flex min-h-10 flex-wrap items-center gap-x-1.5 text-sm text-muted-foreground max-sm:min-h-11"
                 >
-                  <ArchiveCount
-                    chosen={applied === archive.active}
-                    onChoose={() => {
-                      chooseFilter(filter.key, chosenValue(filter, archive.active));
-                    }}
-                  >
-                    {t('list.activeCount', { count: active, n: number.format(active) })}
-                  </ArchiveCount>
-                  <span aria-hidden>·</span>
-                  <ArchiveCount
-                    chosen={applied === archive.archived}
-                    onChoose={() => {
-                      chooseFilter(filter.key, chosenValue(filter, archive.archived));
-                    }}
-                  >
-                    {t('list.archivedCount', { count: archived, n: number.format(archived) })}
-                  </ArchiveCount>
+                  {[inUse, ...named].map((one, index) => (
+                    <span key={one.value} className="contents">
+                      {index > 0 && <span aria-hidden>·</span>}
+                      <ArchiveCount
+                        chosen={applied === one.value}
+                        onChoose={() => {
+                          chooseFilter(filter.key, chosenValue(filter, one.value));
+                        }}
+                      >
+                        {t(`list.counts.${one.kind}`, { count: one.n, n: number.format(one.n) })}
+                      </ArchiveCount>
+                    </span>
+                  ))}
                 </p>
-              ),
-            )}
+              );
+            })}
           {/* A quiet "Reset" in the toolbar (docs/design-system.md, Lists). */}
           {filtered && (
             <Button

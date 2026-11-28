@@ -46,12 +46,53 @@ export interface Filter<Row> {
    */
   defaultValue?: string;
   /**
-   * The values of an archive filter (`OPENS_ON_ACTIVE`): with them the list
-   * says how many active and archived rows the search and the other filters
-   * leave, each number one click from its rows (docs/design-system.md, Layout
-   * shell: "74 active, 6 archived").
+   * The values of a filter of the records in use (`opensOnCurrent`): with
+   * them the list says how many rows in use and how many of each other kind
+   * the search and the other filters leave, each number one click from its
+   * rows (docs/design-system.md, Layout shell: "74 active, 6 archived").
    */
-  archive?: { active: string; archived: string };
+  lifecycle?: Lifecycle;
+}
+
+/**
+ * What a number beside the filters says, by the kind of its records: the
+ * text `list.counts.<kind>` of the locale files ("12 current", "3 left").
+ */
+export type CountKind =
+  | 'active'
+  | 'archived'
+  | 'current'
+  | 'left'
+  | 'inactive'
+  | 'graduated'
+  | 'notClosed'
+  | 'closed'
+  | 'open'
+  | 'revoked'
+  | 'pastEnd'
+  | 'plannedOrNow'
+  | 'ended'
+  | 'withdrawn'
+  | 'inForceOrComing'
+  | 'voided'
+  | 'restorable'
+  | 'restored'
+  | 'expired';
+
+/** One number of the counts: the filter value that shows its rows, and its words. */
+export interface CountOf {
+  value: string;
+  kind: CountKind;
+}
+
+/**
+ * The records in use of a filter, which the list opens on, and the values of
+ * the records no longer in use (left, closed, archived, revoked), each one
+ * click away (owner, 28 November 2026).
+ */
+export interface Lifecycle {
+  current: CountOf;
+  ended: readonly CountOf[];
 }
 
 /**
@@ -61,16 +102,30 @@ export interface Filter<Row> {
 export const ALL_ROWS = '*';
 
 /**
+ * Spread into the filter of a list whose records end their use (archived,
+ * left, closed, revoked): the list opens on the value `current` (owner, 28
+ * November 2026: "Every list should show active"), and says how many rows of
+ * it and of each `ended` value there are, each number one click from its rows.
+ * The filter keeps its own `key`, `options` and `matches` written out, which
+ * the map of the platform reads (`tooling/platform-map/walk.ts`); `current`
+ * and every `ended` value are among its options.
+ */
+export function opensOnCurrent(
+  current: CountOf,
+  ...ended: CountOf[]
+): Pick<Filter<unknown>, 'defaultValue' | 'lifecycle'> {
+  return { defaultValue: current.value, lifecycle: { current, ended } };
+}
+
+/**
  * Spread into the filter of a list whose records are archived and restored,
  * with the options `active` and `archived`: the list opens on the active ones,
- * and the archived ones are one click away (owner, 28 November 2026). The
- * filter keeps its own `key`, `options` and `matches` written out, which the
- * map of the platform reads (`tooling/platform-map/walk.ts`).
+ * and the archived ones are one click away (owner, 28 November 2026).
  */
-export const OPENS_ON_ACTIVE = {
-  defaultValue: 'active',
-  archive: { active: 'active', archived: 'archived' },
-} as const satisfies Pick<Filter<unknown>, 'defaultValue' | 'archive'>;
+export const OPENS_ON_ACTIVE = opensOnCurrent(
+  { value: 'active', kind: 'active' },
+  { value: 'archived', kind: 'archived' },
+);
 
 /**
  * The value a filter applies to the rows: the address's, else the filter's

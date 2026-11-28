@@ -30,6 +30,24 @@ export const currentPage = (page: Page) =>
 export const headerLink = (page: Page, name: string) =>
   page.getByRole('main').locator('header').getByRole('link', { name, exact: true });
 
+/**
+ * The address of a list with "All" chosen in the filter that opens it on the records in use
+ * (owner, 28 November 2026): a test that reads a record that left, closed, ended or was
+ * revoked opens the list so, or chooses the filter with `showEveryRow`.
+ */
+export const everyRow = (path: string, filter = 'status'): string =>
+  `${path}?f=${encodeURIComponent(JSON.stringify({ [filter]: '*' }))}`;
+
+/** "All" chosen in the filter of a list that opens on the records in use (`everyRow`). */
+export async function showEveryRow(page: Page, filterLabel: string): Promise<void> {
+  await page
+    .getByRole('main')
+    .getByRole('combobox', { name: filterLabel, exact: true })
+    // The toolbar's filter comes before any field of the same name in a side panel.
+    .first()
+    .selectOption({ label: en.list.all });
+}
+
 /** The language chooser of the page, named in the language the page is in now. */
 export const languageChooser = (page: Page, t: PageTexts = en) =>
   page.getByRole('combobox', { name: t.language.label, exact: true });

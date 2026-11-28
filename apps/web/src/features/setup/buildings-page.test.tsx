@@ -157,12 +157,12 @@ describe('the buildings page', () => {
     ).toBe('active');
     const counts = document.querySelector<HTMLElement>('[data-slot="archive-counts"]');
     expect(counts?.textContent).toBe(
-      `${en.list.activeCount_one.replace('{{n}}', '1')}·${en.list.archivedCount_one.replace('{{n}}', '1')}`,
+      `${en.list.counts.active_one.replace('{{n}}', '1')}·${en.list.counts.archived_one.replace('{{n}}', '1')}`,
     );
 
     fireEvent.click(
       within(counts ?? document.body).getByRole('button', {
-        name: en.list.archivedCount_one.replace('{{n}}', '1'),
+        name: en.list.counts.archived_one.replace('{{n}}', '1'),
       }),
     );
     await waitFor(() => {

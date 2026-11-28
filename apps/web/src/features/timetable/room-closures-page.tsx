@@ -4,7 +4,12 @@ import { useNavigate, useSearch } from '@tanstack/react-router';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ListPage } from '@/components/list/list-page';
-import { type Column, type Filter, type ListSearch } from '@/components/list/list-state';
+import {
+  opensOnCurrent,
+  type Column,
+  type Filter,
+  type ListSearch,
+} from '@/components/list/list-state';
 import { useNewRecord } from '@/components/list/use-new-record';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
@@ -14,6 +19,9 @@ import { schoolDateText } from '@/lib/dates';
 import { NewRoomClosureForm } from './room-closure-form';
 import { RoomClosurePanel } from './room-closure-panel';
 import { createRoomClosure, invalidateTimetable, roomClosuresQuery } from './timetable-api';
+
+/** The state filter's value of what is planned or happening now. */
+const PLANNED_OR_NOW = 'planned_or_now';
 
 /**
  * The closures of the branch's rooms (task 5.7a-2b, pull request #187;
@@ -108,11 +116,24 @@ export function RoomClosuresPage() {
       {
         key: 'state',
         label: t('timetable.roomClosures.state'),
-        options: (['planned', 'current', 'ended', 'withdrawn'] as const).map((state) => ({
-          value: state,
-          label: t(`timetable.roomClosures.state_${state}`),
-        })),
-        matches: (row, value) => row.state === value,
+        options: [
+          { value: PLANNED_OR_NOW, label: t('list.inUse.plannedOrNow') },
+          ...(['planned', 'current', 'ended', 'withdrawn'] as const).map((state) => ({
+            value: state,
+            label: t(`timetable.roomClosures.state_${state}`),
+          })),
+        ],
+        // The list opens on what is planned or happening now; the ended and
+        // withdrawn ones are one click away (owner, 28 November 2026).
+        matches: (row, value) =>
+          value === PLANNED_OR_NOW
+            ? row.state === 'planned' || row.state === 'current'
+            : row.state === value,
+        ...opensOnCurrent(
+          { value: PLANNED_OR_NOW, kind: 'plannedOrNow' },
+          { value: 'ended', kind: 'ended' },
+          { value: 'withdrawn', kind: 'withdrawn' },
+        ),
       },
     ],
     [t],

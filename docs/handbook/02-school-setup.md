@@ -63,7 +63,7 @@ Not built yet: the mark on the timetable itself (task 5.4a).
 
 **How it works.**
 
-1. School setup → **Slot types** (**Dars va tanaffus turlari**), **Day templates** (**Kun shablonlari**) or **Where templates apply** (**Shablonlar qayerda amal qiladi**).
+1. School setup → **Slot types** (**Dars va tanaffus turlari**), **Day templates** (**Kun shablonlari**) or **Where templates apply** (**Shablonlar qayerda amal qiladi**). The settings of **Where templates apply** open on those planned or in force; the ended ones are shown by the number beside the filters ("2 ended", "2 ta tugagan") or by the state filter.
 2. Make the change with its date: a new length, **New slots or start time from a date** (**Sanadan boshlab yangi slotlar yoki boshlanish vaqti**), **Set a template from a date** (**Sanadan boshlab shablon belgilash**), or **End from a date**, and press **Save**.
 3. The preview **The templates after this change** (**Bu oʻzgarishdan keyingi shablonlar**) opens. It shows the table of templates with the changed cells marked and, under it, what the change does to the published timetable:
    - the lessons removed, created and created cancelled, with the reason, and those that will need a teacher;
@@ -126,7 +126,7 @@ Not built yet: the mark on the timetable itself (task 5.4a).
 
 **How it works.**
 
-1. School setup → **Academic years** (**Oʻquv yillari**), and open the year.
+1. School setup → **Academic years** (**Oʻquv yillari**), and open the year. The list opens on the planned and current years; a closed year is shown by the number beside the filters ("1 closed", "1 ta yopilgan") or by the status filter.
 2. Press **Change quarters** (**Choraklarni oʻzgartirish**), type the new dates and press **Save**.
 3. When the new dates change anything in the published timetable, the preview **What the new quarter dates change** (**Chorak sanalari nimani oʻzgartiradi**) opens. It shows:
    - what stops the save: lessons already held on dates that would change quarter, exams on dates that would leave every quarter, and lessons moved for one day whose two dates would lie in two quarters, each as a line, then "and N more";
@@ -188,9 +188,9 @@ Not built yet: the mark on the timetable itself (task 5.4a).
 
 **How it works.**
 
-1. School setup → **Rooms** (**Xonalar**), open the room, press **Delete for good** (**Butunlay oʻchirish**), type the reason and press **Delete for good**.
+1. School setup → **Rooms** (**Xonalar**), open the room, press **Delete for good** (**Butunlay oʻchirish**), type the reason and press **Delete for good**. The room list opens on the rooms in use and under repair; a closed room is shown by the number beside the filters ("1 closed", "1 ta yopilgan") or by the status filter.
 2. For a building or a floor: School setup → **Buildings** (**Binolar**), open the building. **Delete for good** is at the bottom when no room is on any of its floors, and beside each floor that has no room. A building takes its floors with it. The list opens on the buildings in use: an archived building is shown by the number of archived ones beside the filters ("1 archived", "1 ta arxivda") or by the status filter, and an archived floor by **Show archived** (**Arxivdagilarni koʻrsatish**) under the floors.
-3. To bring it back: School setup → **Deleted for good**, open the record and press **Restore** (**Tiklash**) while its 30 days last.
+3. To bring it back: School setup → **Deleted for good**, open the record and press **Restore** (**Tiklash**) while its 30 days last. The page opens on the records that can still be restored; the restored ones and those past their 30 days are shown by their numbers beside the filters ("1 restored", "1 ta tiklangan").
 
 **Rules.**
 

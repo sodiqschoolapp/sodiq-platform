@@ -1,6 +1,6 @@
 import { expect, type Page } from '@playwright/test';
 import { en } from '../src/i18n/locales/en';
-import { heading } from './steps';
+import { heading, showEveryRow } from './steps';
 
 /** The Mondays from the one after today in Tashkent, as school dates. */
 function mondaysAhead(count: number): string[] {
@@ -104,6 +104,9 @@ export async function forceDeleteAndRestore(page: Page): Promise<void> {
   const panel = page.getByRole('complementary', { name: '7 Oxford, Geometry' });
   await panel.getByRole('button', { name: deleted.restore, exact: true }).click();
   await expect(panel.getByText(deleted.restoredMessage, { exact: true })).toBeVisible();
+  // The list opens on what can be restored: the restored record is shown with "All"
+  // (owner, 28 November 2026).
+  await showEveryRow(page, deleted.state);
   await expect(row).toContainText(deleted.state_restored);
 
   // Back on the day: the lesson is there again, and its history holds the

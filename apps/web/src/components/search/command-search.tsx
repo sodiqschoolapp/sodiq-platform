@@ -22,7 +22,7 @@ import { studentStatusText } from '@/features/people/status-cause';
 import { indexedPages, type IndexedPage } from '@/app/page-index';
 import { useMenuPages } from '@/features/access/use-menu';
 import { useView } from '@/features/access/use-view';
-import { searchKey, type ListSearch } from '@/components/list/list-state';
+import { ALL_ROWS, searchKey, type ListSearch } from '@/components/list/list-state';
 import { Button } from '@/components/ui/button';
 import { FIELD } from '@/components/ui/control';
 import {
@@ -308,7 +308,12 @@ export function CommandSearch() {
           label: t('search.more'),
           more: true,
           open: () => {
-            openList(list, { q: rested });
+            // The search finds every record, those who left or were archived too:
+            // its list shows them all, not only the ones in use (owner, 28 November 2026).
+            openList(
+              list,
+              list === '/people/parents' ? { q: rested } : { q: rested, f: { status: ALL_ROWS } },
+            );
           },
         });
       }

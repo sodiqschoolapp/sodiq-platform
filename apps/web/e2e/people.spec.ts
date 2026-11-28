@@ -11,6 +11,8 @@ import {
   signIn,
   panelAction,
   allPanelActions,
+  everyRow,
+  showEveryRow,
 } from './steps';
 import { codeNow } from './totp';
 
@@ -110,6 +112,8 @@ test('an Academic Vice Principal gives a teacher of the branch a subject', async
   await vacancyRow.getByRole('button', { name: 'Geometry vacancy 1' }).click();
   const vacancyPanel = page.getByRole('complementary', { name: 'Geometry vacancy 1' });
   await vacancyPanel.getByRole('button', { name: vacancies.close, exact: true }).click();
+  // The list opens on the open vacancies: the closed one is shown with "All" (owner, 28 November 2026).
+  await showEveryRow(page, vacancies.statusTitle);
   await expect(vacancyRow).toContainText(vacancies.statuses.closed);
 });
 
@@ -400,7 +404,8 @@ test('an Academic Vice Principal records a leaving, undoes it, brings the studen
   await page.getByRole('checkbox', { name: en.setUp.saved }).check();
   await page.getByRole('button', { name: en.setUp.continue, exact: true }).click();
   await expect(heading(page, en.home.title)).toBeVisible();
-  await page.goto('/people/students');
+  // Every status: the student who left stays in the list (owner, 28 November 2026).
+  await page.goto(everyRow('/people/students'));
   await expect(heading(page, en.people.students.title)).toBeVisible();
 
   const texts = en.people.students;

@@ -21,13 +21,13 @@ export const DESCRIPTIONS: Readonly<Record<string, string>> = {
   'page:/feedback-reports':
     'Lists the reports people sent with the feedback button of any page: the text, sender, roles, page and time. Each report can be marked handled or back to new.',
   'page:/forced-deletes':
-    'Lists lessons, buildings, floors and rooms deleted for good in the last 30 days, with the reason and who deleted them. A record can be restored from here while its 30 days run.',
+    'Lists lessons, buildings, floors and rooms deleted for good in the last 30 days, with the reason and who deleted them. A record can be restored from here while its 30 days run. It opens on the records that can still be restored; the restored ones and those past 30 days are shown by their numbers beside the filters or the state filter.',
   'page:/groups':
     'Lists the groups of the branch: subject, classes drawn from, language, students, teacher, average and attendance. Here one adds a group, edits or archives it, and opens the placement of students.',
   'page:/groups/placement':
     'Places students into groups in bulk: choose a subject, grades and a date, tick the students not yet in a group of the subject and put them into a chosen group, or place them automatically.',
   'page:/integration-keys':
-    'Lists the integration keys that let a department platform work for chosen people. Here one creates a key (its secret is shown once), changes its end date or people, and revokes it.',
+    'Lists the integration keys that let a department platform work for chosen people. Here one creates a key (its secret is shown once), changes its end date or people, and revokes it. It opens on the active keys; the revoked ones and those past their end date are shown by their numbers beside the filters or the state filter.',
   'page:/journal':
     'Lists the journals of the branch by class or by group for an academic year; opening one shows the class journal. Links lead to absences, unlock requests, exemptions, discipline, orphan lessons, closing, exports and the support view.',
   'page:/journal/$journalId':
@@ -35,7 +35,7 @@ export const DESCRIPTIONS: Readonly<Record<string, string>> = {
   'page:/journal/discipline':
     'Shows per teacher, for a date range and department, how journals were kept: lessons held, nothing entered, in progress, complete, locked incomplete, attendance not marked, no topic, missing scores and late entries. Each count opens what is counted; it exports to Excel.',
   'page:/journal/exemptions':
-    'Lists the exemptions of students from subjects or whole days, with their dates and reasons. Here one enters new exemptions, ends or voids them, attaches documents, and acts on absences with a reason and exemptions offered by a branch move.',
+    'Lists the exemptions of students from subjects or whole days, with their dates and reasons. Here one enters new exemptions, ends or voids them, attaches documents, and acts on absences with a reason and exemptions offered by a branch move. It opens on the exemptions in force or coming; the ended and voided ones are shown by their numbers beside the filters or the state filter.',
   'page:/journal/exports':
     "Asks for an export of the branch's journals for a quarter or month as Excel or PDF, made in the background, and lists the exports asked for with their status and a download link.",
   'page:/journal/orphans':
@@ -65,15 +65,15 @@ export const DESCRIPTIONS: Readonly<Record<string, string>> = {
   'page:/people/reset-entries':
     'Lists the password resets of the branch in a date range, each with the journal entries made in the 48 hours after it, so that entries made after a possibly misused reset can be checked.',
   'page:/people/staff':
-    'Lists the staff of the branch with category, department, subjects, grades and status. Here one adds a person, opens a record to edit it and its account, and imports staff from Excel.',
+    'Lists the staff of the branch with category, department, subjects, grades and status. Here one adds a person, opens a record to edit it and its account, and imports staff from Excel. It opens on the current staff (active and inactive); those who left are shown by their number beside the filters or the status filter.',
   'page:/people/staff/import':
     "Imports staff from an Excel file: download the template, upload the filled file, see each row's problems and decisions, then confirm. The new passwords are shown once for printing slips.",
   'page:/people/students':
-    'Lists the students of the branch with UID, class, groups, Tutor and status. Here one adds a student, edits a record, puts students into a class or group, records leaving school, and imports from Excel.',
+    'Lists the students of the branch with UID, class, groups, Tutor and status. Here one adds a student, edits a record, puts students into a class or group, records leaving school, and imports from Excel. It opens on the current students; those who left (inactive) and the graduates are shown by their numbers beside the filters or the status filter.',
   'page:/people/students/import':
     "Imports students from an Excel file: download the template, upload the filled file, check each row's problems and possible duplicates, then confirm to create the students.",
   'page:/people/vacancies':
-    'Lists the vacancies of the branch: posts for teachers not yet hired, with department, subjects, grades, languages and weekly lessons. A vacancy can take teaching load. Here one adds and edits them.',
+    'Lists the vacancies of the branch: posts for teachers not yet hired, with department, subjects, grades, languages and weekly lessons. A vacancy can take teaching load. Here one adds and edits them. It opens on the open vacancies; the closed ones are shown by their number beside the filters or the status filter.',
   'page:/plans':
     'Lists the lesson plans of the year by class or group and subject, with warnings such as a master updated or too few works. Opening one shows the plan. Links lead to windows, reports and edit requests.',
   'page:/plans/$journalId':
@@ -117,7 +117,7 @@ export const DESCRIPTIONS: Readonly<Record<string, string>> = {
   'page:/setup/calendar':
     'Lists the days off and special days of the branch, with dates, kind, grades and day template. Here one adds and edits entries and checks what any date is for each grade.',
   'page:/setup/day-template-settings':
-    'Shows which day template applies on a date to each weekday and grade, and the settings by level. Here one sets a template from a date for the branch, a weekday or a range of grades, after seeing the changes.',
+    'Shows which day template applies on a date to each weekday and grade, and the settings by level. Here one sets a template from a date for the branch, a weekday or a range of grades, after seeing the changes. The settings open on those planned or in force; the ended ones are shown by their number beside the filters or the state filter.',
   'page:/setup/day-templates':
     'Lists the day templates of the branch: a start time and the lesson and break slots in order. Here one adds and edits them and archives or restores them.',
   'page:/setup/assistant':
@@ -127,7 +127,7 @@ export const DESCRIPTIONS: Readonly<Record<string, string>> = {
   'page:/setup/divisions':
     'Lists the divisions of the school with their departments and staff. Here one adds a division and its departments, renames them, and archives or restores them.',
   'page:/setup/rooms':
-    'Lists the rooms of the branch as a list or by floor, with building, type, capacity, status and whether shared. Here one adds and edits rooms, sets the status of several, and deletes one for good.',
+    'Lists the rooms of the branch as a list or by floor, with building, type, capacity, status and whether shared. Here one adds and edits rooms, sets the status of several, and deletes one for good. It opens on the rooms in use and under repair; the closed ones are shown by their number beside the filters or the status filter.',
   'page:/setup/settings':
     'The settings of the branch and school: edit days, most lessons of a class per day, plan windows, early-warning thresholds, attendance values per quarter, languages of instruction, grade bands and the assistant.',
   'page:/setup/slot-types':
@@ -143,13 +143,13 @@ export const DESCRIPTIONS: Readonly<Record<string, string>> = {
   'page:/setup/travel-times':
     'Sets the travel time in minutes between the chosen branch and every other branch, used for teachers who work in several branches.',
   'page:/setup/years':
-    'Lists the academic years with start, end, status and quarters. Here one adds a year, changes its dates and quarters, and starts it as the current year.',
+    'Lists the academic years with start, end, status and quarters. Here one adds a year, changes its dates and quarters, and starts it as the current year. It opens on the planned and current years; the closed ones are shown by their number beside the filters or the status filter.',
   'page:/system-status':
     'Shows the health of the platform: background jobs, failed jobs and exports, refused saves, nightly checks per branch, feedback, and the uptime, alerts and errors of outside services over a chosen period.',
   'page:/timetable':
     'The entry to the timetable: views, teaching load, draft builder, day changes, exams, absences, room closures and version history.',
   'page:/timetable/absences':
-    "Lists the absences of the branch's staff with first and last day and reason. Here one enters an absence when a teacher cannot come; it covers every branch they work in.",
+    "Lists the absences of the branch's staff with first and last day and reason. Here one enters an absence when a teacher cannot come; it covers every branch they work in. It opens on the absences planned or happening now; the ended and withdrawn ones are shown by their numbers beside the filters or the state filter.",
   'page:/timetable/builder':
     'The draft builder of a timetable version: a checklist of steps from day templates, teaching load, teachers, rooms and rules to generation, editing in the grid and publishing, each shown ready or not ready.',
   'page:/timetable/day':
@@ -163,7 +163,7 @@ export const DESCRIPTIONS: Readonly<Record<string, string>> = {
   'page:/timetable/pattern/import':
     "Imports a weekly timetable from an Excel file into a draft: download the template, upload the filled file, check each row's problems and warnings, then place the lessons.",
   'page:/timetable/room-closures':
-    "Lists the closures of the branch's rooms with first and last day and reason. Here one closes a room for some days, for example during repairs.",
+    "Lists the closures of the branch's rooms with first and last day and reason. Here one closes a room for some days, for example during repairs. It opens on the closures planned or happening now; the ended and withdrawn ones are shown by their numbers beside the filters or the state filter.",
   'page:/timetable/versions':
     'Lists the timetable versions of a year by start date, with status and source. Here one compares two versions and restores an older one as a new draft.',
   'page:/timetable/views':

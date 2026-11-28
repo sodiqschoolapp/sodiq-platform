@@ -27,6 +27,7 @@ No other role sees the page.
 7. The secret of the key is shown in a window. Press **Copy** (**Nusxalash**) and give it to the owner of the department platform, who keeps it on that platform's server. Press **Done** (**Tayyor**).
 8. To change the people or the end date later, open the key in the list, change them in the side panel and press **Save** under the part you changed.
 9. To stop a key, open it and press **Revoke** (**Bekor qilish**), then **Revoke** again in the question.
+10. The list opens on the active keys. The numbers beside the filters show the others with one click: the revoked keys ("2 revoked", "2 ta bekor qilingan") and those past their end date ("1 past its end date", "1 ta muddati tugagan"); the **State** (**Holati**) filter offers all of them.
 
 **Rules.**
 

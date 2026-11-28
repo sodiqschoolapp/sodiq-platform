@@ -553,7 +553,7 @@ describe('the assistant’s settings and conversations of the Super Admin', () =
     // the archived one is a click away.
     fireEvent.click(
       await screen.findByRole('button', {
-        name: en.list.archivedCount_one.replace('{{n}}', '1'),
+        name: en.list.counts.archived_one.replace('{{n}}', '1'),
       }),
     );
     await waitFor(() => {

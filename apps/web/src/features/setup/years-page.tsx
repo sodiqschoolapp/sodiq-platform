@@ -13,13 +13,21 @@ import { api, branchHeader } from '@/api/client';
 import { answerOf } from '@/api/failure';
 import { ListPage } from '@/components/list/list-page';
 import { useNewRecord } from '@/components/list/use-new-record';
-import { type Column, type Filter, type ListSearch } from '@/components/list/list-state';
+import {
+  opensOnCurrent,
+  type Column,
+  type Filter,
+  type ListSearch,
+} from '@/components/list/list-state';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
 import { useView } from '@/features/access/use-view';
 import { invalidateYears, yearsQuery } from './setup-api';
 import { YearForm, YearPanel } from './year-panel';
 import { schoolDateText } from '@/lib/dates';
+
+/** The status filter's value of the years not closed: planned and current. */
+const NOT_CLOSED = 'not_closed';
 
 const datedCount = (year: AcademicYear): number =>
   year.quarters.filter((quarter) => quarter.startDate !== null).length;
@@ -105,11 +113,21 @@ export function YearsPage() {
       {
         key: 'status',
         label: t('setup.years.status'),
-        options: ACADEMIC_YEAR_STATUSES.map((status) => ({
-          value: status,
-          label: t(`setup.years.${status}`),
-        })),
-        matches: (row, value) => row.status === value,
+        options: [
+          { value: NOT_CLOSED, label: t('list.inUse.notClosed') },
+          ...ACADEMIC_YEAR_STATUSES.map((status) => ({
+            value: status,
+            label: t(`setup.years.${status}`),
+          })),
+        ],
+        // The list opens on the planned and current years; the closed ones are
+        // one click away (owner, 28 November 2026).
+        matches: (row, value) =>
+          value === NOT_CLOSED ? row.status !== 'closed' : row.status === value,
+        ...opensOnCurrent(
+          { value: NOT_CLOSED, kind: 'notClosed' },
+          { value: 'closed', kind: 'closed' },
+        ),
       },
     ],
     [t],

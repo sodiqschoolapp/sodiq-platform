@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { en } from '@/i18n/locales/en';
 import { ru } from '@/i18n/locales/ru';
 import { actionsInHeader, panelActionNames, savedInPanel } from '@/testing/panel';
+import { countButton, countsDrawn, countText } from '@/testing/list-counts';
 import { fakeApi, json, NORTH, refusal, renderApp, sessionOf } from '@/testing/render-app';
 import { NO_LESSONS } from '@/testing/no-lessons';
 
@@ -389,6 +390,43 @@ describe('the page of where day templates apply', () => {
       within(form).getByLabelText<HTMLInputElement>(en.setup.templateSettings.endFrom).value,
     ).toBe('2026-11-02');
     expect(calls.some((call) => call.route.endsWith('/end'))).toBe(false);
+  });
+
+  // Owner, 28 November 2026: "Every list should show active". A setting is in force over
+  // `[validFrom, validUntil)`: the list opens on the settings planned or in force, and the
+  // ended ones (the first day without them has come) are one click away.
+  it('opens on the settings planned or in force, with the ended ones a click away', async () => {
+    const ended: Assignment = {
+      ...FRIDAYS,
+      id: uid(12),
+      weekday: 1,
+      validFrom: '2026-09-01',
+      validUntil: TODAY,
+    };
+    const endsTomorrow: Assignment = {
+      ...FRIDAYS,
+      id: uid(13),
+      weekday: 2,
+      validFrom: '2026-09-01',
+      validUntil: TOMORROW,
+    };
+    await openPage('academic_vice_principal', {
+      'GET /api/setup/day-template-assignments': () =>
+        json({ today: TODAY, assignments: [DEFAULT, FRIDAYS, ended, endsTomorrow] }),
+    });
+    const list = () => screen.getByRole('table', { name: en.setup.templateSettings.listTitle });
+    const weekdays = () =>
+      [...list().querySelectorAll('tbody tr')].map(
+        (row) => row.querySelectorAll('td')[1]?.textContent ?? '',
+      );
+    await waitFor(() => {
+      expect(weekdays()).toEqual(['', 'Friday', 'Tuesday']);
+    });
+    expect(countsDrawn()).toBe(`${countText('plannedOrNow', 3)}·${countText('ended', 1)}`);
+    fireEvent.click(countButton('ended', 1));
+    await waitFor(() => {
+      expect(weekdays()).toEqual(['Monday']);
+    });
   });
 
   it('shows the Principal the table and the settings without a form', async () => {

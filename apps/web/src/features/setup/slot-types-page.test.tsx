@@ -261,7 +261,7 @@ describe('the slot types page', () => {
       expect.stringContaining('Lesson'),
     ]);
     fireEvent.click(
-      screen.getByRole('button', { name: en.list.archivedCount_one.replace('{{n}}', '1') }),
+      screen.getByRole('button', { name: en.list.counts.archived_one.replace('{{n}}', '1') }),
     );
     const panel = await openSlotType('Lunch');
     expect(panelActionNames(panel)).toEqual([en.setup.slotTypes.restore]);

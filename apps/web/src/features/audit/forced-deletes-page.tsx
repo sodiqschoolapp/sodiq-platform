@@ -6,7 +6,12 @@ import { useTranslation } from 'react-i18next';
 import { ApiFailure } from '@/api/failure';
 import { FailureAlert } from '@/components/failure-alert';
 import { ListPage } from '@/components/list/list-page';
-import { type Column, type Filter, type ListSearch } from '@/components/list/list-state';
+import {
+  opensOnCurrent,
+  type Column,
+  type Filter,
+  type ListSearch,
+} from '@/components/list/list-state';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
 import { useView } from '@/features/access/use-view';
@@ -102,6 +107,13 @@ export function ForcedDeletesPage() {
           label: t(`forcedDeletes.state_${state}`),
         })),
         matches: (row, value) => stateOf(row) === value,
+        // The deletes that can still be restored; the restored ones and those past
+        // their 30 days one click away (owner, 28 November 2026).
+        ...opensOnCurrent(
+          { value: 'restorable', kind: 'restorable' },
+          { value: 'restored', kind: 'restored' },
+          { value: 'expired', kind: 'expired' },
+        ),
       },
     ],
     [t],

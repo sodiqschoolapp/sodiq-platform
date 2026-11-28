@@ -11,6 +11,7 @@ import {
   languageChooser,
   signIn,
   panelAction,
+  showEveryRow,
 } from './steps';
 import { keepSecondStep } from './second-steps';
 import { codeNow } from './totp';
@@ -160,6 +161,8 @@ async function checkSuperAdminPages(page: Page): Promise<void> {
     .getByRole('alertdialog')
     .getByRole('button', { name: en.integrationKeys.revoke, exact: true })
     .click();
+  // The list opens on the active keys: the revoked one is shown with "All" (owner, 28 November 2026).
+  await showEveryRow(page, en.integrationKeys.state);
   await expect(page.getByRole('row').filter({ hasText: 'Browser test platform' })).toContainText(
     en.integrationKeys.state_revoked,
   );
@@ -407,6 +410,9 @@ test('the Super Admin edits the branch, adds a building, a floor and a room, and
   await test.step('deletes a room nothing uses for good and restores it from Deleted for good', async () => {
     const deleted = en.forcedDeletes;
     await openSetupPage(page, en.setup.roomsLink, en.setup.rooms.title);
+    // The list opens on the rooms not closed: the closed 101 is shown with "All"
+    // (owner, 28 November 2026).
+    await showEveryRow(page, en.setup.rooms.status);
     await page.getByRole('button', { name: '101', exact: true }).click();
     const room = page.getByRole('complementary', { name: '101' });
     await (await panelAction(room, deleted.deletePlace)).click();
@@ -426,9 +432,13 @@ test('the Super Admin edits the branch, adds a building, a floor and a room, and
     const stored = page.getByRole('complementary', { name: '101' });
     await stored.getByRole('button', { name: deleted.restore, exact: true }).click();
     await expect(stored.getByText(deleted.restoredMessage, { exact: true })).toBeVisible();
+    // The list opens on what can be restored: the restored record is shown with "All"
+    // (owner, 28 November 2026).
+    await showEveryRow(page, deleted.state);
     await expect(row).toContainText(deleted.state_restored);
 
     await openSetupPage(page, en.setup.roomsLink, en.setup.rooms.title);
+    await showEveryRow(page, en.setup.rooms.status);
     await expect(page.getByRole('button', { name: '101', exact: true })).toBeVisible();
   });
 

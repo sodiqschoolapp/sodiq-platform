@@ -8,6 +8,7 @@ import {
   signIn,
   panelAction,
   allPanelActions,
+  everyRow,
 } from './steps';
 import { codeNow } from './totp';
 
@@ -42,7 +43,8 @@ test('a student is returned on the first day of next year, cancelled, and return
   const dayBeforeYesterday = tashkent(Date.now() - 2 * dayMs);
   const today = tashkent(Date.now());
 
-  await page.goto('/people/students');
+  // Every status: the student who leaves stays in the list (owner, 28 November 2026).
+  await page.goto(everyRow('/people/students'));
   await expect(heading(page, texts.title)).toBeVisible();
   await page.getByRole('button', { name: 'Ergasheva Madina', exact: true }).click();
   const panel = page.getByRole('complementary', { name: 'Madina Ergasheva' });
