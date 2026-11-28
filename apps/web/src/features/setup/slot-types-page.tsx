@@ -20,7 +20,12 @@ import { RecordForm } from '@/components/form/record-form';
 import { useRecordForm } from '@/components/form/use-record-form';
 import { ListPage } from '@/components/list/list-page';
 import { useNewRecord } from '@/components/list/use-new-record';
-import { type Column, type Filter, type ListSearch } from '@/components/list/list-state';
+import {
+  OPENS_ON_ACTIVE,
+  type Column,
+  type Filter,
+  type ListSearch,
+} from '@/components/list/list-state';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
 import { useView } from '@/features/access/use-view';
@@ -166,6 +171,7 @@ export function SlotTypesPage() {
           { value: 'archived', label: t('setup.slotTypes.archived') },
         ],
         matches: (row, value) => (value === 'active') === (row.archivedAt === null),
+        ...OPENS_ON_ACTIVE,
       },
     ],
     [t],

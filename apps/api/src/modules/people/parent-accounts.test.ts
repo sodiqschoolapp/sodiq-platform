@@ -211,6 +211,8 @@ describe('the Parent accounts', () => {
       );
       const slip = slipFor(answer, father);
       expect(slip?.login).toBe('b.usmonov');
+      // Owner, 28 November 2026: ten lowercase letters and digits without look-alikes.
+      expect(slip?.password).toMatch(/^[a-hjkmnp-z2-9]{10}$/);
       expect(slip?.children.map((child) => child.studentId)).toEqual([studentId]);
       // Valid for 30 days from now.
       expect(slip?.validUntil).toBe(new Date(t.clock.now().getTime() + 30 * DAY_MS).toISOString());
@@ -397,6 +399,193 @@ describe('the Parent accounts', () => {
     });
   });
 
+  // Owner, 27 and 28 November 2026: a print of the rows ticked on the page prints those
+  // relatives and no one else (`only`).
+  describe('the slips of chosen relatives only', () => {
+    /** The account of a relative as stored: none before the first print. */
+    const accountRowOf = async (relativeId: string) => {
+      const link = await t.database.migrator
+        .selectFrom('relative_accounts')
+        .select('account_id')
+        .where('relative_id', '=', relativeId)
+        .executeTakeFirst();
+      if (link?.account_id === null || link === undefined) {
+        return null;
+      }
+      return t.database.migrator
+        .selectFrom('accounts')
+        .selectAll()
+        .where('id', '=', link.account_id)
+        .executeTakeFirstOrThrow();
+    };
+
+    /**
+     * A class with a relative whose slip is valid (`printedFirst`, with its first slip), and two
+     * relatives to print: a father of the same student and a relative of a second student.
+     */
+    async function classOfThree() {
+      const { classId, studentId, relativeId } = await classWithParent();
+      const first = slipFor(await printed(classId), relativeId);
+      const father = await parents.relativeOf(t.north, studentId, { fullName: 'Botir Hamidov' });
+      const second = await parents.student(t.north);
+      await parents.members.member({
+        branch: t.north,
+        classId,
+        studentId: second.studentId,
+        from: '2026-09-01',
+      });
+      return { classId, valid: relativeId, first, father, other: second.relativeId };
+    }
+
+    it('prints the one relative chosen, and leaves every other relative of the class as it was', async () => {
+      const { classId, valid, first, father, other } = await classOfThree();
+      const before = parentSlipListSchema.parse((await slipsOf(classId)).body);
+      expect(
+        before.relatives
+          .filter((one) => [valid, father, other].includes(one.relativeId))
+          .map((one) => [one.relativeId, one.state])
+          .sort(),
+      ).toEqual(
+        [
+          [valid, 'valid_slip'],
+          [father, 'to_print'],
+          [other, 'to_print'],
+        ].sort(),
+      );
+      const validAccount = await accountRowOf(valid);
+
+      const answer = await printed(classId, { language: 'ru', printAgain: [], only: [father] });
+      expect(answer.slips.map((slip) => slip.relativeId)).toEqual([father]);
+      expect(answer.language).toBe('ru');
+      const slip = slipFor(answer, father);
+      expect(slip?.kind).toBe('first');
+      expect((await signIn(slip?.login ?? '', slip?.password ?? '')).status).toBe(200);
+
+      // The other relative to print: no account made, no slip, still to print.
+      expect(await accountRowOf(other)).toBeNull();
+      expect(await t.entries('parent_account.slip', other)).toEqual([]);
+      // The valid slip: the same account row, the earlier password still works.
+      expect(await accountRowOf(valid)).toEqual(validAccount);
+      expect((await signIn(first?.login ?? '', first?.password ?? '')).status).toBe(200);
+      const after = parentSlipListSchema.parse((await slipsOf(classId)).body);
+      expect(after.relatives.find((one) => one.relativeId === other)?.state).toBe('to_print');
+      expect(after.relatives.find((one) => one.relativeId === father)?.state).toBe('valid_slip');
+      expect(await t.entries('parent_account.slip', father)).toEqual([
+        expect.objectContaining({
+          details: expect.objectContaining({ again: false, classId, language: 'ru' }) as unknown,
+        }),
+      ]);
+    });
+
+    it('prints a chosen relative with a valid slip again, and only that one', async () => {
+      const { classId, valid, first, father, other } = await classOfThree();
+      const answer = await printed(classId, { language: 'uz', printAgain: [], only: [valid] });
+      expect(answer.slips.map((slip) => slip.relativeId)).toEqual([valid]);
+      const again = slipFor(answer, valid);
+      expect(again?.login).toBe(first?.login);
+      refusedWith(await signIn(first?.login ?? '', first?.password ?? ''), 401, 'sign_in_failed');
+      expect((await signIn(again?.login ?? '', again?.password ?? '')).status).toBe(200);
+      expect(await accountRowOf(father)).toBeNull();
+      expect(await accountRowOf(other)).toBeNull();
+      const entries = await t.entries('parent_account.slip', valid);
+      expect(entries).toHaveLength(2);
+      expect(entries.map((entry) => (entry.details as { again: boolean }).again).sort()).toEqual([
+        false,
+        true,
+      ]);
+    });
+
+    it('refuses a chosen relative who signed in (409), after a slip of another was made', async () => {
+      const { classId, studentId } = await classWithParent();
+      // Read in the order of their names: the relative to print comes first, so the refusal
+      // comes after the account and the slip of that relative were written.
+      const first = await parents.relativeOf(t.north, studentId, { fullName: 'Abbos Aliyev' });
+      const signed = await parents.relativeOf(t.north, studentId, { fullName: 'Zokir Yoqubov' });
+      await parents.session(signed);
+      const before = await rowsOf();
+      refusedWith(
+        await print(classId, { language: 'uz', printAgain: [], only: [first, signed] }),
+        409,
+        'parent_signed_in',
+      );
+      expect(await rowsOf()).toEqual(before);
+      expect(await accountRowOf(first)).toBeNull();
+    });
+
+    it('refuses a chosen relative of the class with portal access off (409)', async () => {
+      const { classId, studentId, relativeId } = await classWithParent();
+      const uncle = await parents.relativeOf(t.north, studentId, { portalAccess: false });
+      const before = await rowsOf();
+      refusedWith(
+        await print(classId, { language: 'uz', printAgain: [], only: [relativeId, uncle] }),
+        409,
+        'parent_portal_off',
+      );
+      expect(await rowsOf()).toEqual(before);
+    });
+
+    it('answers 404 for a chosen relative of another branch, of another class, or unknown', async () => {
+      const { classId, relativeId } = await classWithParent();
+      const south = await classWithParent(t.south);
+      const other = await classWithParent();
+      for (const id of [south.relativeId, other.relativeId, UNKNOWN]) {
+        const before = await rowsOf();
+        refusedWith(
+          await print(classId, { language: 'uz', printAgain: [], only: [relativeId, id] }),
+          404,
+          'not_found',
+        );
+        expect(await rowsOf()).toEqual(before);
+      }
+      expect(await accountRowOf(relativeId)).toBeNull();
+    });
+
+    it('refuses "only" with "print again", empty or with an id twice (400)', async () => {
+      const { classId, studentId, relativeId } = await classWithParent();
+      // A valid slip for "print again" and a relative to print for "only": each alone is a print.
+      expect(slipFor(await printed(classId), relativeId)).toBeDefined();
+      const father = await parents.relativeOf(t.north, studentId, { fullName: 'Botir Hamidov' });
+      const before = await rowsOf();
+      for (const body of [
+        { language: 'uz', printAgain: [relativeId], only: [father] },
+        { language: 'uz', printAgain: [relativeId], only: [relativeId] },
+        { language: 'uz', printAgain: [], only: [] },
+        { language: 'uz', printAgain: [], only: [relativeId, relativeId] },
+      ]) {
+        refusedWith(await print(classId, body), 400, 'validation_failed');
+      }
+      expect(await rowsOf()).toEqual(before);
+    });
+
+    it('writes no password of a chosen print in the log or the audit log', async () => {
+      const { classId, valid, father } = await classOfThree();
+      const lines: string[] = [];
+      Logger.overrideLogger(new ShippingLogger());
+      ShippingLogger.sink = (_level, text) => {
+        lines.push(text);
+      };
+      let answer: PrintedParentSlips;
+      try {
+        answer = await printed(classId, { language: 'en', printAgain: [], only: [valid, father] });
+      } finally {
+        ShippingLogger.sink = undefined;
+      }
+      expect(answer.slips.map((slip) => slip.relativeId).sort()).toEqual([valid, father].sort());
+      const audit = JSON.stringify(
+        (await sql`select * from audit_log`.execute(t.database.migrator)).rows,
+      );
+      const stored = JSON.stringify(
+        (await sql`select * from parent_slips`.execute(t.database.migrator)).rows,
+      );
+      for (const slip of answer.slips) {
+        expect(slip.password.length).toBeGreaterThan(0);
+        expect(audit).not.toContain(slip.password);
+        expect(lines.join('\n')).not.toContain(slip.password);
+        expect(stored).not.toContain(slip.password);
+      }
+    });
+  });
+
   describe('the reset', () => {
     it('gives a slip valid for 7 days and ends every session of the parent', async () => {
       const { relativeId } = await classWithParent();
@@ -406,6 +595,7 @@ describe('the Parent accounts', () => {
       const answer = printedParentSlipsSchema.parse(response.body);
       const [slip] = answer.slips;
       expect(slip).toMatchObject({ login: account.login, kind: 'reset' });
+      expect(slip?.password).toMatch(/^[a-hjkmnp-z2-9]{10}$/);
       expect(slip?.validUntil).toBe(new Date(t.clock.now().getTime() + 7 * DAY_MS).toISOString());
       // Every session ends, and with it its trusted device.
       expect(
@@ -771,6 +961,17 @@ describe('the Parent accounts', () => {
       refusedWith(await reset(relativeId, t.north, vice.cookie), 403, 'own_account');
       refusedWith(
         await print(classId, { language: 'uz', printAgain: [relativeId] }, t.north, vice.cookie),
+        403,
+        'own_account',
+      );
+      // Nor when the own relative is chosen alone (`only`, owner, 27 and 28 November 2026).
+      refusedWith(
+        await print(
+          classId,
+          { language: 'uz', printAgain: [], only: [relativeId] },
+          t.north,
+          vice.cookie,
+        ),
         403,
         'own_account',
       );

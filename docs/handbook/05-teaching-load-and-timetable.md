@@ -112,6 +112,7 @@ In a sport lesson the boys and the girls of a class have two lessons at the same
 2. The Academic Vice Principals of every branch where the person works, or has lessons in those days, get a notice. The one who entered it does not.
 3. Each branch's home page shows "Lessons that need a teacher" and "Unresolved lessons", one row for each absence, vacancy or lesson with nobody recorded, with the number of lessons, the dates and a link to the day.
 4. In the absence's side panel the branch sees its own lessons inside the absence. "Change the dates" shortens or lengthens it; "Withdraw" removes it while it has not started.
+5. The list opens on the absences planned or happening now; the ended and withdrawn ones are shown by their numbers beside the filters ("4 ended", "4 ta tugagan") or by the state filter.
 
 **Rules.**
 
@@ -172,6 +173,7 @@ In a sport lesson the boys and the girls of a class have two lessons at the same
 2. The home page shows the room under "Lessons that need a room", with the number of lessons and their days. "Open the closure" opens it.
 3. In the closure, press "Move all to another room", choose a room in use and save. The reason is the closure's unless you change it. Each moved lesson is a one-day room change, and its teacher is told once.
 4. To end a closure early, change its last day. To take back a closure that has not started, withdraw it.
+5. The list opens on the closures planned or happening now; the ended and withdrawn ones are shown by their numbers beside the filters ("2 withdrawn", "2 ta bekor qilingan") or by the state filter.
 
 **Rules.**
 
@@ -197,7 +199,7 @@ In a sport lesson the boys and the girls of a class have two lessons at the same
 
 **How to do it.**
 
-1. Open People, then Vacancies, and open the vacancy. Press **Fill** (**Toʻldirish**).
+1. Open People, then Vacancies, and open the vacancy. Press **Fill** (**Toʻldirish**). The list opens on the open vacancies; a closed one is shown by the number beside the filters ("1 closed", "1 ta yopilgan") or by the status filter.
 2. Choose the person. People with a subject of the vacancy come first. People admitted from a later day are listed too. People who left or are inactive are not.
 3. Choose the date. It starts on next Monday. The first day of each coming quarter and the start of each later published version are offered as buttons. Tomorrow is the earliest date.
 4. Keep "All rows", or untick it and tick the rows to fill.
@@ -518,7 +520,7 @@ A new timetable version normally starts tomorrow at the earliest. It may start *
 
 1. Open Timetable, then the day of a class. "History" on a lesson lists its changes.
 2. As the Super Admin, "Delete for good" on a lesson asks for the reason and deletes it. The lesson's teacher, the Academic Vice Principal and the Principal of the branch are told, also for a past lesson; they are told again when it is restored.
-3. School setup, then "Deleted for good": open the lesson and press "Restore" while its 30 days last.
+3. School setup, then "Deleted for good": open the lesson and press "Restore" while its 30 days last. The page opens on what can still be restored; a restored lesson is shown by the number beside the filters ("1 restored").
 
 **Rules.**
 

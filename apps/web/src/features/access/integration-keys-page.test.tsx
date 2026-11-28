@@ -3,6 +3,7 @@ import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { en } from '@/i18n/locales/en';
 import { ru } from '@/i18n/locales/ru';
+import { countButton, countsDrawn, countText } from '@/testing/list-counts';
 import { fakeApi, json, NORTH, renderApp, sessionOf } from '@/testing/render-app';
 
 // Task 10.9 (pull request #368): the Super Admin's Integration keys page. `02`, Integration
@@ -10,6 +11,11 @@ import { fakeApi, json, NORTH, renderApp, sessionOf } from '@/testing/render-app
 // and secrets are invented.
 
 const uid = (n: number): string => `0199a000-0000-7000-8000-${String(n).padStart(12, '0')}`;
+/**
+ * The list with "All" chosen in its state filter: it opens on the active keys
+ * (owner, 28 November 2026), and some tests read a revoked one.
+ */
+const EVERY_STATE = `/integration-keys?f=${encodeURIComponent(JSON.stringify({ state: '*' }))}`;
 const SECRET = `sodiq_ik_${'Ab3_'.repeat(10)}xyz`;
 
 const person = (n: number, fields: Partial<IntegrationKeyPerson> = {}): IntegrationKeyPerson => ({
@@ -80,7 +86,7 @@ describe('the integration keys', () => {
           ]),
         ),
     });
-    renderApp('/integration-keys');
+    renderApp(EVERY_STATE);
     await screen.findByRole('heading', { name: en.integrationKeys.title });
     await waitFor(() => {
       expect(cellsOf()).toHaveLength(2);
@@ -95,6 +101,41 @@ describe('the integration keys', () => {
       ]),
     );
     expect(second).toEqual(expect.arrayContaining([en.integrationKeys.state_revoked]));
+  });
+
+  // Owner, 28 November 2026: "Every list should show active". The list opens on the keys that
+  // work; the revoked ones and those past their end date are one click away.
+  it('opens on the active keys, with the revoked and ended ones a click away', async () => {
+    fakeApi({
+      'GET /api/auth/session': () => json(session()),
+      'GET /api/integration-keys': () =>
+        json(
+          listOf([
+            key(1),
+            key(2, { state: 'revoked', revokedAt: '2026-11-21T04:00:00.000Z' }),
+            key(3, { state: 'ended', endsOn: '2026-11-01' }),
+            key(4, { state: 'ended', endsOn: '2026-10-01' }),
+          ]),
+        ),
+    });
+    const { router } = renderApp('/integration-keys');
+    await screen.findByRole('heading', { name: en.integrationKeys.title });
+    const names = () => cellsOf().map((row) => row[0]);
+    await waitFor(() => {
+      expect(names()).toEqual(['Platform 1']);
+    });
+    expect(countsDrawn()).toBe(
+      `${countText('active', 1)}·${countText('revoked', 1)}·${countText('pastEnd', 2)}`,
+    );
+    fireEvent.click(countButton('pastEnd', 2));
+    await waitFor(() => {
+      expect(names()).toEqual(['Platform 3', 'Platform 4']);
+    });
+    expect(router.state.location.search).toEqual({ f: { state: 'ended' } });
+    fireEvent.click(countButton('revoked', 1));
+    await waitFor(() => {
+      expect(names()).toEqual(['Platform 2']);
+    });
   });
 
   it('says what the page is for when there is no key', async () => {
@@ -188,7 +229,7 @@ describe('the integration keys', () => {
       'GET /api/integration-keys': () =>
         json(listOf([key(1, { state: 'revoked', revokedAt: '2026-11-21T04:00:00.000Z' })])),
     });
-    renderApp('/integration-keys');
+    renderApp(EVERY_STATE);
     const panel = await openRow('Platform 1');
     expect(within(panel).queryByRole('button', { name: en.integrationKeys.revoke })).toBeNull();
     expect(within(panel).queryByRole('form')).toBeNull();

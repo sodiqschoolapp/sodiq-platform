@@ -508,7 +508,7 @@ export const PLATFORM_MAP_SOURCE: unknown = {
    "operations": [
     "ForcedDeletesController_restore"
    ],
-   "description": "Lists lessons, buildings, floors and rooms deleted for good in the last 30 days, with the reason and who deleted them. A record can be restored from here while its 30 days run."
+   "description": "Lists lessons, buildings, floors and rooms deleted for good in the last 30 days, with the reason and who deleted them. A record can be restored from here while its 30 days run. It opens on the records that can still be restored; the restored ones and those past 30 days are shown by their numbers beside the filters or the state filter."
   },
   {
    "id": "page:/groups",
@@ -663,7 +663,7 @@ export const PLATFORM_MAP_SOURCE: unknown = {
    "operations": [
     "IntegrationKeysController_revoke"
    ],
-   "description": "Lists the integration keys that let a department platform work for chosen people. Here one creates a key (its secret is shown once), changes its end date or people, and revokes it."
+   "description": "Lists the integration keys that let a department platform work for chosen people. Here one creates a key (its secret is shown once), changes its end date or people, and revokes it. It opens on the active keys; the revoked ones and those past their end date are shown by their numbers beside the filters or the state filter."
   },
   {
    "id": "page:/journal",
@@ -706,7 +706,13 @@ export const PLATFORM_MAP_SOURCE: unknown = {
     "f": {
      "kind": "record",
      "keys": {
+      "class": {
+       "kind": "id"
+      },
       "subject": {
+       "kind": "id"
+      },
+      "teacher": {
        "kind": "id"
       }
      }
@@ -869,6 +875,7 @@ export const PLATFORM_MAP_SOURCE: unknown = {
         "ended",
         "ending_this_week",
         "in_force",
+        "in_force_or_coming",
         "voided"
        ]
       },
@@ -905,7 +912,7 @@ export const PLATFORM_MAP_SOURCE: unknown = {
     "ExemptionsController_void",
     "ExemptionsController_voidPreview"
    ],
-   "description": "Lists the exemptions of students from subjects or whole days, with their dates and reasons. Here one enters new exemptions, ends or voids them, attaches documents, and acts on absences with a reason and exemptions offered by a branch move."
+   "description": "Lists the exemptions of students from subjects or whole days, with their dates and reasons. Here one enters new exemptions, ends or voids them, attaches documents, and acts on absences with a reason and exemptions offered by a branch move. It opens on the exemptions in force or coming; the ended and voided ones are shown by their numbers beside the filters or the state filter."
   },
   {
    "id": "page:/journal/exports",
@@ -1513,6 +1520,7 @@ export const PLATFORM_MAP_SOURCE: unknown = {
        "kind": "enum",
        "values": [
         "active",
+        "current",
         "inactive",
         "left"
        ]
@@ -1533,7 +1541,7 @@ export const PLATFORM_MAP_SOURCE: unknown = {
     "StaffController_identity",
     "StaffPhotosController_removePhoto"
    ],
-   "description": "Lists the staff of the branch with category, department, subjects, grades and status. Here one adds a person, opens a record to edit it and its account, and imports staff from Excel."
+   "description": "Lists the staff of the branch with category, department, subjects, grades and status. Here one adds a person, opens a record to edit it and its account, and imports staff from Excel. It opens on the current staff (active and inactive); those who left are shown by their number beside the filters or the status filter."
   },
   {
    "id": "page:/people/staff/import",
@@ -1644,6 +1652,7 @@ export const PLATFORM_MAP_SOURCE: unknown = {
        "kind": "enum",
        "values": [
         "active",
+        "current",
         "graduated",
         "inactive"
        ]
@@ -1669,7 +1678,7 @@ export const PLATFORM_MAP_SOURCE: unknown = {
     "StudentStatusesController_cancelLeaving",
     "StudentStatusesController_cancelReturn"
    ],
-   "description": "Lists the students of the branch with UID, class, groups, Tutor and status. Here one adds a student, edits a record, puts students into a class or group, records leaving school, and imports from Excel."
+   "description": "Lists the students of the branch with UID, class, groups, Tutor and status. Here one adds a student, edits a record, puts students into a class or group, records leaving school, and imports from Excel. It opens on the current students; those who left (inactive) and the graduates are shown by their numbers beside the filters or the status filter."
   },
   {
    "id": "page:/people/students/import",
@@ -1790,7 +1799,7 @@ export const PLATFORM_MAP_SOURCE: unknown = {
     "VacanciesController_delete",
     "VacanciesController_reopen"
    ],
-   "description": "Lists the vacancies of the branch: posts for teachers not yet hired, with department, subjects, grades, languages and weekly lessons. A vacancy can take teaching load. Here one adds and edits them."
+   "description": "Lists the vacancies of the branch: posts for teachers not yet hired, with department, subjects, grades, languages and weekly lessons. A vacancy can take teaching load. Here one adds and edits them. It opens on the open vacancies; the closed ones are shown by their number beside the filters or the status filter."
   },
   {
    "id": "page:/plans",
@@ -2777,6 +2786,13 @@ export const PLATFORM_MAP_SOURCE: unknown = {
         "weekday",
         "weekday_grades"
        ]
+      },
+      "state": {
+       "kind": "enum",
+       "values": [
+        "ended",
+        "planned_or_now"
+       ]
       }
      }
     },
@@ -2785,7 +2801,7 @@ export const PLATFORM_MAP_SOURCE: unknown = {
     }
    },
    "operations": [],
-   "description": "Shows which day template applies on a date to each weekday and grade, and the settings by level. Here one sets a template from a date for the branch, a weekday or a range of grades, after seeing the changes."
+   "description": "Shows which day template applies on a date to each weekday and grade, and the settings by level. Here one sets a template from a date for the branch, a weekday or a range of grades, after seeing the changes. The settings open on those planned or in force; the ended ones are shown by their number beside the filters or the state filter."
   },
   {
    "id": "page:/setup/day-templates",
@@ -3004,6 +3020,7 @@ export const PLATFORM_MAP_SOURCE: unknown = {
        "values": [
         "closed",
         "in_use",
+        "not_closed",
         "under_repair"
        ]
       },
@@ -3024,7 +3041,7 @@ export const PLATFORM_MAP_SOURCE: unknown = {
     }
    },
    "operations": [],
-   "description": "Lists the rooms of the branch as a list or by floor, with building, type, capacity, status and whether shared. Here one adds and edits rooms, sets the status of several, and deletes one for good."
+   "description": "Lists the rooms of the branch as a list or by floor, with building, type, capacity, status and whether shared. Here one adds and edits rooms, sets the status of several, and deletes one for good. It opens on the rooms in use and under repair; the closed ones are shown by their number beside the filters or the status filter."
   },
   {
    "id": "page:/setup/settings",
@@ -3246,6 +3263,7 @@ export const PLATFORM_MAP_SOURCE: unknown = {
        "values": [
         "closed",
         "current",
+        "not_closed",
         "planned"
        ]
       }
@@ -3258,7 +3276,7 @@ export const PLATFORM_MAP_SOURCE: unknown = {
    "operations": [
     "AcademicYearsController_start"
    ],
-   "description": "Lists the academic years with start, end, status and quarters. Here one adds a year, changes its dates and quarters, and starts it as the current year."
+   "description": "Lists the academic years with start, end, status and quarters. Here one adds a year, changes its dates and quarters, and starts it as the current year. It opens on the planned and current years; the closed ones are shown by their number beside the filters or the status filter."
   },
   {
    "id": "page:/system-status",
@@ -3332,6 +3350,7 @@ export const PLATFORM_MAP_SOURCE: unknown = {
         "current",
         "ended",
         "planned",
+        "planned_or_now",
         "withdrawn"
        ]
       }
@@ -3348,7 +3367,7 @@ export const PLATFORM_MAP_SOURCE: unknown = {
     "SubstitutionsController_substitute",
     "SubstitutionsController_withdraw"
    ],
-   "description": "Lists the absences of the branch's staff with first and last day and reason. Here one enters an absence when a teacher cannot come; it covers every branch they work in."
+   "description": "Lists the absences of the branch's staff with first and last day and reason. Here one enters an absence when a teacher cannot come; it covers every branch they work in. It opens on the absences planned or happening now; the ended and withdrawn ones are shown by their numbers beside the filters or the state filter."
   },
   {
    "id": "page:/timetable/builder",
@@ -3634,6 +3653,7 @@ export const PLATFORM_MAP_SOURCE: unknown = {
         "current",
         "ended",
         "planned",
+        "planned_or_now",
         "withdrawn"
        ]
       }
@@ -3646,7 +3666,7 @@ export const PLATFORM_MAP_SOURCE: unknown = {
    "operations": [
     "RoomClosuresController_withdraw"
    ],
-   "description": "Lists the closures of the branch's rooms with first and last day and reason. Here one closes a room for some days, for example during repairs."
+   "description": "Lists the closures of the branch's rooms with first and last day and reason. Here one closes a room for some days, for example during repairs. It opens on the closures planned or happening now; the ended and withdrawn ones are shown by their numbers beside the filters or the state filter."
   },
   {
    "id": "page:/timetable/versions",
@@ -6559,6 +6579,38 @@ export const PLATFORM_MAP_SOURCE: unknown = {
    "operations": [],
    "opens": null,
    "description": "Shown under an answer that a limit of one question cut: asks the next part of the work, which never proposes again a step proposed before. Waits until the proposal shown is confirmed or declined."
+  },
+  {
+   "id": "features/assistant/assistant-chat.tsx#button:assistant.newMessages",
+   "kind": "button",
+   "label": {
+    "uz": "Yangi xabarlar",
+    "ru": "Новые сообщения",
+    "en": "New messages"
+   },
+   "pages": [
+    "*"
+   ],
+   "parent": null,
+   "roles": [
+    "super_admin",
+    "principal",
+    "academic_vice_principal",
+    "spiritual_vice_principal",
+    "head_tutor",
+    "tutor",
+    "class_teacher",
+    "senior_head_teacher",
+    "head_teacher",
+    "teacher",
+    "hr",
+    "nurse",
+    "psychologist",
+    "librarian"
+   ],
+   "operations": [],
+   "opens": null,
+   "description": "Shown at the bottom of the conversation when new messages or more of an answer came while the person had scrolled up to read: scrolls to the end. A person already near the end is followed there without it."
   },
   {
    "id": "features/assistant/assistant-chat.tsx#button:assistant.sending",
@@ -11390,7 +11442,7 @@ export const PLATFORM_MAP_SOURCE: unknown = {
    ],
    "operations": [],
    "opens": null,
-   "description": "Shows the teacher whose lessons the counts of the row are about."
+   "description": "Shows the teacher whose lessons the counts of the row are about; the name opens the teacher's journals of the year on the Journals page."
   },
   {
    "id": "features/journal/discipline-page.tsx#column:journal.discipline.unplanned",
@@ -13735,6 +13787,34 @@ export const PLATFORM_MAP_SOURCE: unknown = {
    "description": "Shows the subject of the journal."
   },
   {
+   "id": "features/journal/journals-page.tsx#column:journal.page.teachers",
+   "kind": "column",
+   "label": {
+    "uz": "Oʻqituvchilar",
+    "ru": "Учителя",
+    "en": "Teachers"
+   },
+   "pages": [
+    "/journal"
+   ],
+   "parent": null,
+   "roles": [
+    "super_admin",
+    "principal",
+    "academic_vice_principal",
+    "spiritual_vice_principal",
+    "head_tutor",
+    "tutor",
+    "class_teacher",
+    "senior_head_teacher",
+    "head_teacher",
+    "teacher"
+   ],
+   "operations": [],
+   "opens": null,
+   "description": "Shows the teachers of the journal in the year: whoever its lessons count for, a substitute included; the Teacher filter keeps one teacher's journals."
+  },
+  {
    "id": "features/journal/journals-page.tsx#field:journal.page.year",
    "kind": "field",
    "label": {
@@ -15153,7 +15233,7 @@ export const PLATFORM_MAP_SOURCE: unknown = {
    ],
    "operations": [],
    "opens": null,
-   "description": "Resets the password after a confirmation: all sessions end and a slip with a one-time password valid for 24 hours is shown to print."
+   "description": "Resets the password after a confirmation: all sessions end and a slip with a one-time password valid for 7 days is shown to print."
   },
   {
    "id": "features/people/account-access-section.tsx#button:people.access.resetSecondStep",

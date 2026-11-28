@@ -106,7 +106,7 @@ export const firstPasswordSlipSchema = z.object({
   lastName: z.string(),
   login: z.string(),
   password: z.string(),
-  /** The password works until the moment it names (7 days for a first password, 24 hours for a reset). */
+  /** The password works until the moment it names: 7 days, first password or reset (owner, 28 November 2026). */
   validUntil: z.iso.datetime(),
 });
 

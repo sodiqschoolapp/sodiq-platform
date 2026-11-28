@@ -14,7 +14,12 @@ import { DateField, Field, listValue, listValues, RequiredGroup } from '@/compon
 import { RecordForm } from '@/components/form/record-form';
 import { useRecordForm, type FieldBinding } from '@/components/form/use-record-form';
 import { ListPage } from '@/components/list/list-page';
-import { type Column, type Filter, type ListSearch } from '@/components/list/list-state';
+import {
+  opensOnCurrent,
+  type Column,
+  type Filter,
+  type ListSearch,
+} from '@/components/list/list-state';
 import { PanelActions } from '@/components/list/panel-actions';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
@@ -111,6 +116,12 @@ export function IntegrationKeysPage() {
           label: t(`integrationKeys.state_${state}`),
         })),
         matches: (row, value) => row.state === value,
+        // The keys that work; the revoked and ended ones one click away (owner, 28 November 2026).
+        ...opensOnCurrent(
+          { value: 'active', kind: 'active' },
+          { value: 'revoked', kind: 'revoked' },
+          { value: 'ended', kind: 'pastEnd' },
+        ),
       },
     ],
     [t],

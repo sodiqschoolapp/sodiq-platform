@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { en } from '@/i18n/locales/en';
 import { ru } from '@/i18n/locales/ru';
 import { uz } from '@/i18n/locales/uz';
+import { generatedPasswordsIn } from '@/testing/generated-password';
 import { fakeApi, json, NORTH, renderApp, sessionOf } from '@/testing/render-app';
 
 // Task 11.20 (`02`, Assistant, Switches; Personal data and the model; Never, whatever the
@@ -243,7 +244,7 @@ describe('a proposal of many entries, and a secret shown once', () => {
               items: [
                 {
                   login: 'd.karimova',
-                  password: 'Sentinel-Pass-77',
+                  password: 'sntnq7pa5s',
                   validUntil: '2026-11-21T05:00:00.000Z',
                 },
               ],
@@ -262,13 +263,13 @@ describe('a proposal of many entries, and a secret shown once', () => {
       `Rahimov Aziz: ${en.journal.marks.present}`,
     ]);
     fireEvent.click(card.getByRole('button', { name: en.assistant.proposal.confirm }));
-    const secret = within(
-      await panel.findByRole('region', { name: en.assistant.proposal.secretTitle }),
-    );
-    expect(secret.getByText('Sentinel-Pass-77')).toBeTruthy();
+    const region = await panel.findByRole('region', { name: en.assistant.proposal.secretTitle });
+    const secret = within(region);
+    // As the screen's slip shows it: two groups of five (owner, 28 November 2026).
+    expect(generatedPasswordsIn(region)).toEqual(['sntnq7pa5s']);
     fireEvent.click(secret.getByRole('button', { name: en.assistant.proposal.secretClose }));
     await waitFor(() => {
-      expect(panel.queryByText('Sentinel-Pass-77')).toBeNull();
+      expect(document.body.textContent).not.toContain('sntnq7pa5s');
     });
     // `.claude/rules/web.md`, a secret an answer holds once: no query or mutation keeps it.
     await waitFor(() => {
@@ -282,7 +283,7 @@ describe('a proposal of many entries, and a secret shown once', () => {
           .getAll()
           .map((one) => one.state.data),
       ]);
-      expect(kept).not.toContain('Sentinel-Pass-77');
+      expect(kept).not.toContain('sntnq7pa5s');
     });
   });
 });

@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { en } from '@/i18n/locales/en';
 import { ru } from '@/i18n/locales/ru';
 import { fakeApi, json, NORTH, refusal, renderApp, sessionOf, SOUTH } from '@/testing/render-app';
+import { countButton, countsDrawn, countText } from '@/testing/list-counts';
 import { savedRecordPanel } from '@/testing/new-record';
 import {
   actionsInHeader,
@@ -271,6 +272,65 @@ describe('the staff page', () => {
     await waitFor(() => {
       expect(rowsDrawn().map((row) => row[1])).toEqual(['Karimov Akmal']);
     });
+  });
+
+  // Owner, 28 November 2026: "Every list should show active". The staff list opens on the
+  // people still employed: active, inactive (on leave, still with classes and journals) and
+  // not started yet; those who left are one click away, with their number.
+  it('opens on the current staff, an inactive person among them, with those who left one click away', async () => {
+    const left: StaffListItem = {
+      ...AKMAL,
+      id: uid(33),
+      staffId: 'S-260003',
+      firstName: 'Bekzod',
+      lastName: 'Toshmatov',
+      status: 'left',
+    };
+    const later: StaffListItem = {
+      ...AKMAL,
+      id: uid(34),
+      staffId: 'S-260004',
+      firstName: 'Iroda',
+      lastName: 'Yusupova',
+      status: null,
+    };
+    openList('super_admin', {
+      'GET /api/people/staff': () =>
+        json({ staff: [AKMAL, NODIRA, left, later], today: '2026-10-10' }),
+    });
+    const { router } = renderApp(PATH);
+    await screen.findByRole('heading', { name: en.people.staff.title });
+    const names = () => rowsDrawn().map((row) => row[1]);
+    await waitFor(() => {
+      expect(names()).toEqual(['Karimov Akmal', 'Aliyeva Nodira', 'Yusupova Iroda']);
+    });
+    const status = screen.getByRole<HTMLSelectElement>('combobox', {
+      name: en.people.staff.statusColumn,
+    });
+    expect(status.value).toBe('current');
+    expect(status.selectedOptions[0]?.textContent).toBe(en.list.inUse.current);
+    expect(countsDrawn()).toBe(`${countText('current', 3)}·${countText('left', 1)}`);
+
+    fireEvent.click(countButton('left', 1));
+    await waitFor(() => {
+      expect(names()).toEqual(['Toshmatov Bekzod']);
+    });
+    expect(router.state.location.search).toEqual({ f: { status: 'left' } });
+
+    // The single statuses stay: Inactive alone, and All.
+    fireEvent.change(status, { target: { value: 'inactive' } });
+    await waitFor(() => {
+      expect(names()).toEqual(['Aliyeva Nodira']);
+    });
+    fireEvent.change(status, { target: { value: '' } });
+    await waitFor(() => {
+      expect(names()).toHaveLength(4);
+    });
+    fireEvent.click(countButton('current', 3));
+    await waitFor(() => {
+      expect(names()).toHaveLength(3);
+    });
+    expect(router.state.location.search).toEqual({});
   });
 
   it('opens a person with the status history, and the Super Admin changes the status from a date', async () => {

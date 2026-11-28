@@ -6,7 +6,7 @@ import { Transactions, type Transaction } from '../../database/transactions.js';
 import { ApiException } from '../../http/api-exception.js';
 import { rolesOf } from '../access/current-assignments.js';
 import { Audit } from '../audit/audit.service.js';
-import { FIRST_PASSWORD_LENGTH, randomFirstPassword } from './accounts.service.js';
+import { RECOVERY_CODE_LENGTH, randomRecoveryCode } from './generated-passwords.js';
 import { auditOf, UnknownAccountError, type AuditNames } from './password-resets.service.js';
 import { SecondStepRule } from './second-step-rule.js';
 import { SecondStepSecrets } from './second-step-secrets.js';
@@ -23,8 +23,10 @@ import {
 /** Edge cases, "Accounts and sign-in": ten single-use recovery codes shown at set-up. */
 export const RECOVERY_CODES = 10;
 
-/** A recovery code has the length and the alphabet of a first password, shown in groups of four. */
-const RECOVERY_CODE_LENGTH = FIRST_PASSWORD_LENGTH;
+/**
+ * A recovery code keeps the 16 characters of both cases it always had (`randomRecoveryCode`; the
+ * shorter sign-in passwords of 28 November 2026 are not for it), shown in groups of four.
+ */
 const RECOVERY_CODE = new RegExp(`^[a-zA-Z0-9]{${String(RECOVERY_CODE_LENGTH)}}$`);
 
 function recoveryCodeHash(code: string): Buffer {
@@ -243,7 +245,7 @@ export class TwoStep {
         .set({ confirmed_at: now, last_used_step: step })
         .where('account_id', '=', session.accountId)
         .execute();
-      const recoveryCodes = Array.from({ length: RECOVERY_CODES }, () => randomFirstPassword());
+      const recoveryCodes = Array.from({ length: RECOVERY_CODES }, () => randomRecoveryCode());
       await transaction
         .deleteFrom('second_step_recovery_codes')
         .where('account_id', '=', session.accountId)

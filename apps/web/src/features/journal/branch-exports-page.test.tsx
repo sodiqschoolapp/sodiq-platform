@@ -132,6 +132,13 @@ const SUBJECT = {
 };
 const UNIT = { kind: 'class' as const, id: uid(31), name: '7 Oxford' };
 const JOURNAL = uid(32);
+/** The journal as the Journals list names it (owner, 28 November 2026: its classes and teachers). */
+const LISTED = {
+  id: JOURNAL,
+  unit: { ...UNIT, classes: [{ id: UNIT.id, name: UNIT.name }] },
+  subject: SUBJECT,
+  teachers: [],
+};
 const STUDENT = uid(33);
 const LESSON = uid(34);
 
@@ -353,7 +360,7 @@ describe('the support view', () => {
         json({
           years: [],
           yearId: null,
-          journals: [{ id: JOURNAL, unit: UNIT, subject: SUBJECT }],
+          journals: [LISTED],
         }),
       [`GET /api/journal/journals/${JOURNAL}`]: () => refusal('journal_no_quarter', 409),
       'GET /api/journal/support': () => json(SUPPORT),
@@ -372,7 +379,7 @@ describe('the support view', () => {
         json({
           years: [],
           yearId: null,
-          journals: [{ id: JOURNAL, unit: UNIT, subject: SUBJECT }],
+          journals: [LISTED],
         }),
       [`GET /api/journal/journals/${JOURNAL}`]: () => new Promise<Response>(() => undefined),
       'GET /api/journal/support': () => json(SUPPORT),
@@ -410,7 +417,7 @@ describe('the support view', () => {
           json({
             years: [],
             yearId: null,
-            journals: [{ id: JOURNAL, unit: UNIT, subject: SUBJECT }],
+            journals: [LISTED],
           }),
         [`GET /api/journal/journals/${JOURNAL}`]: () =>
           json(gridWith({ quarters: [Q1, Q2], quarter: Q1 })),
@@ -439,7 +446,7 @@ describe('the support view', () => {
         json({
           years: [],
           yearId: null,
-          journals: [{ id: JOURNAL, unit: UNIT, subject: SUBJECT }],
+          journals: [LISTED],
         }),
       [`GET /api/journal/journals/${JOURNAL}`]: () =>
         json(gridWith({ quarters: [Q1, Q2], quarter: Q1 })),

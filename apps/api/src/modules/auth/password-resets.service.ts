@@ -3,14 +3,20 @@ import type { Clock } from '@sodiq/shared';
 import { REAL_CLOCK } from '../../clock/clock.module.js';
 import type { Transaction } from '../../database/transactions.js';
 import { Audit } from '../audit/audit.service.js';
-import { FIRST_PASSWORD_VALID_MS, randomFirstPassword } from './accounts.service.js';
+import { FIRST_PASSWORD_VALID_MS } from './accounts.service.js';
+import { randomSignInPassword } from './generated-passwords.js';
 import { hashPassword } from './password-hash.js';
 import { closeOpenResetLinks } from './reset-links.js';
 import { Sessions } from './sessions.service.js';
 import { SignInThrottle } from './sign-in-throttle.service.js';
 
-/** Edge cases, "Accounts and sign-in": a reset gives a one-time password valid for 24 hours. */
-export const RESET_PASSWORD_VALID_MS = 24 * 60 * 60 * 1000;
+/**
+ * A reset of a staff password, also the one that goes with a reset of the second step, gives a
+ * one-time password valid for 7 days: every generated password of a staff account is valid for
+ * 7 days (owner, 28 November 2026, in place of the 24 hours of edge cases, "Accounts and
+ * sign-in"; a `/spec-change` is proposed on issue #42).
+ */
+export const RESET_PASSWORD_VALID_MS = FIRST_PASSWORD_VALID_MS;
 
 /**
  * An administrator's own password is not reset by that administrator: it is
@@ -59,8 +65,9 @@ export interface PasswordReset extends AuditNames {
   /** The account of the administrator who resets it. */
   resetBy: string;
   /**
-   * How long the one-time password works: 24 hours for staff (the default), 7 days for a
-   * parent (`edge/close-relatives`, task 11.1, decision 12).
+   * How long the one-time password works: `RESET_PASSWORD_VALID_MS` for staff (the default;
+   * 7 days since the owner's decision of 28 November 2026), and the parent's own 7 days
+   * (`edge/close-relatives`, task 11.1, decision 12), which a parent's reset passes.
    */
   validForMs?: number;
   requestId?: string;
@@ -88,13 +95,13 @@ export interface FirstPassword {
 export interface ResetPassword {
   /** Shown once to the administrator and stored nowhere. */
   oneTimePassword: string;
-  /** The one-time password works until this moment (24 hours). */
+  /** The one-time password works until this moment (7 days for staff and for a parent). */
   validUntil: Date;
 }
 
 /**
  * Password reset by an administrator (edge cases, "Accounts and sign-in"). The
- * person gets a one-time password that is valid for 24 hours and must be
+ * person gets a one-time password that is valid for 7 days and must be
  * changed before anything else; all sessions end; the log says "reset by X for
  * Y"; the session answer names X until the password is changed. The count of
  * failed sign-ins of the login starts again, so the person need not wait.
@@ -117,7 +124,7 @@ export class PasswordResets {
     if (reset.resetBy === reset.accountId) {
       throw new OwnPasswordResetError();
     }
-    const oneTimePassword = randomFirstPassword();
+    const oneTimePassword = randomSignInPassword();
     const passwordHash = await hashPassword(oneTimePassword);
     const now = this.clock.now();
     const validUntil = new Date(now.getTime() + (reset.validForMs ?? RESET_PASSWORD_VALID_MS));
@@ -169,7 +176,7 @@ export class PasswordResets {
    * entry holds no password (correction 4 of the review of pull request #62).
    */
   async forRehire(transaction: Transaction, rehire: RehirePassword): Promise<FirstPassword> {
-    const password = randomFirstPassword();
+    const password = randomSignInPassword();
     const passwordHash = await hashPassword(password);
     const now = this.clock.now();
     const start = rehire.validFrom > now ? rehire.validFrom : now;

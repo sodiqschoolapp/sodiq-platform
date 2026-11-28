@@ -22,6 +22,11 @@ import { fakeApi, json, NORTH, refusal, renderApp, sessionOf } from '@/testing/r
 import { savedRecordPanel } from '@/testing/new-record';
 
 const PATH = '/setup/subjects';
+/**
+ * The list with "All" chosen in its status filter: it opens on the active
+ * subjects (owner, 28 November 2026), and these tests read the archived one too.
+ */
+const EVERY_STATUS = `${PATH}?f=${encodeURIComponent(JSON.stringify({ status: '*' }))}`;
 
 const uid = (n: number): string => `0199a000-0000-7000-8000-${String(n).padStart(12, '0')}`;
 
@@ -239,7 +244,7 @@ async function changeWeights(panel: HTMLElement, name: string): Promise<HTMLElem
 // subject"; the owner's answers 3 to 8; the plan approved on pull request #52.
 describe('the subjects page', () => {
   it('lists the subjects with their department, grades, journal type and quarters, and no daily distribution (task 11.17)', async () => {
-    await openList();
+    await openList({ path: EVERY_STATUS });
 
     expect(rowsDrawn().map((row) => row.slice(1, 7))).toEqual([
       [
@@ -889,7 +894,7 @@ describe('the subjects page', () => {
   });
 
   it('shows an archived subject with Restore and no Edit', async () => {
-    await openList();
+    await openList({ path: EVERY_STATUS });
     fireEvent.click(rowButton('Drawing'));
     const panel = await screen.findByRole('complementary', { name: 'Drawing' });
     expect(panelActionNames(panel)).toEqual([subjectsText.restoreSubject]);
@@ -928,7 +933,7 @@ describe('the subjects page', () => {
   });
 
   it('names a subject that is not restored because its department is archived', async () => {
-    await openList();
+    await openList({ path: EVERY_STATUS });
     fireEvent.click(rowButton('Drawing'));
     const panel = await screen.findByRole('complementary', { name: 'Drawing' });
 

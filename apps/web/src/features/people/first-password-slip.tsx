@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
+import { GeneratedPassword } from '@/components/generated-password';
 import { Letterhead } from '@/components/print/letterhead';
 import { failureText } from '@/api/failure-text';
 import { LoadingOutline } from '@/components/states';
@@ -25,8 +26,9 @@ const PRINTING = 'slip';
 /**
  * The slip itself (docs/design-system.md, This app, Printouts): the
  * letterhead, the person, the three steps to sign in at the site's address,
- * and a box with the login, the password and the date of issue; a cut line
- * below. One slip per person (answer 15). Both dates have the long month
+ * and a box with the login, the password (in two groups of five, owner, 28
+ * November 2026) and the date of issue; a cut line below. One slip per
+ * person (answer 15). Both dates have the long month
  * (issue #39, hand test of 13 October 2026, finding 23); "Valid until" is a
  * moment in the branch's time zone, as on the personal data report (task
  * 2.6b); until the branch is read it is not drawn, and a failure to read it
@@ -70,7 +72,9 @@ export function FirstPasswordSlipCard({
         <dt>{t('people.account.login')}</dt>
         <dd className="font-mono text-base font-semibold">{slip.login}</dd>
         <dt>{t('people.account.password')}</dt>
-        <dd className="font-mono text-base font-semibold">{slip.password}</dd>
+        <dd className="font-mono text-base font-semibold">
+          <GeneratedPassword password={slip.password} />
+        </dd>
         <dt>{t('people.account.issued')}</dt>
         <dd>{schoolDateText(issued, i18n.language)}</dd>
         <dt>{t('people.account.validUntil')}</dt>

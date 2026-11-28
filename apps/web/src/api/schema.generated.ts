@@ -152751,6 +152751,7 @@ export interface operations {
                     /** @enum {string} */
                     language: "uz" | "ru" | "en";
                     printAgain: string[];
+                    only?: string[];
                 };
             };
         };
@@ -177214,6 +177215,11 @@ export interface operations {
                                 /** Format: uuid */
                                 id: string;
                                 name: string;
+                                classes: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                }[];
                             };
                             subject: {
                                 /** Format: uuid */
@@ -177226,6 +177232,11 @@ export interface operations {
                                 /** @enum {string} */
                                 colour: "red" | "orange" | "amber" | "lime" | "green" | "teal" | "cyan" | "blue" | "indigo" | "violet" | "pink" | "brown";
                             };
+                            teachers: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            }[];
                         }[];
                     };
                 };
@@ -177844,7 +177855,7 @@ export interface operations {
                         students: {
                             /** Format: uuid */
                             id: string;
-                            number: number;
+                            number: number | null;
                             firstName: string;
                             lastName: string;
                             paternalName: string | null;
@@ -188110,6 +188121,8 @@ export interface operations {
                         from: string;
                         /** Format: date */
                         to: string;
+                        /** Format: uuid */
+                        yearId: string;
                         departments: {
                             /** Format: uuid */
                             id: string;

@@ -1,6 +1,6 @@
 import type { DisciplineColumn, DisciplineRow } from '@sodiq/shared';
 import { useQuery } from '@tanstack/react-query';
-import { useNavigate, useSearch } from '@tanstack/react-router';
+import { Link, useNavigate, useSearch } from '@tanstack/react-router';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FailureAlert } from '@/components/failure-alert';
@@ -15,6 +15,7 @@ import { exportDiscipline } from '@/features/results/reports-api';
 import { nameOf } from '@/features/setup/setup-api';
 import { DisciplineItemsDialog } from './discipline-items-dialog';
 import { disciplineQuery } from './journal-api';
+import { teacherJournals } from './journal-search';
 import { appNow } from '@/lib/app-now';
 
 export type DisciplineSearch = ListSearch & { from?: string; to?: string; department?: string };
@@ -71,6 +72,7 @@ export function DisciplinePage(): React.JSX.Element {
   const to = search.to ?? localDate(0);
   const range = { from, to, departmentId: search.department ?? null };
   const counts = useQuery(disciplineQuery(branchId, range));
+  const yearId = counts.data?.yearId;
   // Task 9.3b-2: the file of the counts, and the items behind one count.
   const download = useDownload(() => exportDiscipline(range));
   const [opened, setOpened] = useState<{
@@ -90,7 +92,16 @@ export function DisciplinePage(): React.JSX.Element {
       {
         key: 'teacher',
         header: t('journal.discipline.teacher'),
-        cell: (row) => row.teacher.name,
+        // Owner, 28 November 2026: the name leads to the teacher's journals of the range's year.
+        cell: (row) => (
+          <Link
+            to="/journal"
+            search={teacherJournals(row.teacher.id, yearId)}
+            className="text-link"
+          >
+            {row.teacher.name}
+          </Link>
+        ),
         sortValue: (row) => row.teacher.name,
         searchText: (row) => row.teacher.name,
         fixed: true,
@@ -119,7 +130,7 @@ export function DisciplinePage(): React.JSX.Element {
         numeric: true,
       })),
     ],
-    [t],
+    [t, yearId],
   );
   return (
     <>

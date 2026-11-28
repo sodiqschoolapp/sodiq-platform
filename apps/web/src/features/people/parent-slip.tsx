@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { failureText } from '@/api/failure-text';
+import { GeneratedPassword } from '@/components/generated-password';
 import { Letterhead } from '@/components/print/letterhead';
 import { LoadingOutline } from '@/components/states';
 import { Button } from '@/components/ui/button';
@@ -18,8 +19,9 @@ const PRINTING = 'slip';
 /**
  * One parent's slip (task 11.1; `10`, Signing in; reading 2 of the Release 2 plan): the
  * letterhead, the parent and the children, how to open the platform (the site, and the
- * school's bot by its name when it is set), the login, the password and the dates. Every text
- * is in the language chosen when printing, not the screen's.
+ * school's bot by its name when it is set), the login, the password (in two groups of five,
+ * owner, 28 November 2026) and the dates. Every text is in the language chosen when printing,
+ * not the screen's.
  */
 export function ParentSlipCard({
   slip,
@@ -63,7 +65,9 @@ export function ParentSlipCard({
         <dt>{fixed('people.parentSlip.login')}</dt>
         <dd className="font-mono text-base font-semibold">{slip.login}</dd>
         <dt>{fixed('people.parentSlip.password')}</dt>
-        <dd className="font-mono text-base font-semibold">{slip.password}</dd>
+        <dd className="font-mono text-base font-semibold">
+          <GeneratedPassword password={slip.password} />
+        </dd>
         <dt>{fixed('people.parentSlip.printedOn')}</dt>
         <dd>{when(slip.printedAt)}</dd>
         <dt>{fixed('people.parentSlip.validUntil')}</dt>

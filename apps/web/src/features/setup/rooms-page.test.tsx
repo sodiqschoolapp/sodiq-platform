@@ -11,10 +11,13 @@ import {
   panelActionNames,
   savedInPanel,
 } from '@/testing/panel';
+import { countButton, countsDrawn, countText } from '@/testing/list-counts';
 import { fakeApi, json, NORTH, refusal, renderApp, sessionOf } from '@/testing/render-app';
 import { savedRecordPanel } from '@/testing/new-record';
 
 const PATH = '/setup/rooms';
+/** The status filter at "All" in the address: the list opens on the rooms not closed. */
+const EVERY_STATUS = `f=${encodeURIComponent(JSON.stringify({ status: '*' }))}`;
 
 const uid = (n: number): string => `0199a000-0000-7000-8000-${String(n).padStart(12, '0')}`;
 
@@ -103,7 +106,9 @@ async function openList(
   rooms = ROOMS,
   buildings = [MAIN, ANNEX],
   refuse?: Record<string, () => Response>,
-  path = PATH,
+  // The list with "All" chosen in its status filter: it opens on the rooms not
+  // closed (owner, 28 November 2026), and these tests read the closed one too.
+  path = `${PATH}?${EVERY_STATUS}`,
 ) {
   let list = rooms;
   const calls = fakeApi({
@@ -148,6 +153,30 @@ describe('the room list', () => {
       ['102', 'Main', '1', 'Laboratory', '28', 'Under repair', 'No'],
       ['Sports hall', 'Main', 'Ground', 'Sports hall', '120', 'Closed', '2 lessons at once'],
     ]);
+  });
+
+  // Owner, 28 November 2026: "Every list should show active". A room under repair still
+  // exists: the list opens on the rooms not closed, and the closed one is one click away.
+  it('opens on the rooms in use and under repair, with the closed one a click away', async () => {
+    const { router } = await openList(superAdmin(), ROOMS, [MAIN, ANNEX], undefined, PATH);
+    await waitFor(() => {
+      expect(rowsDrawn().map((row) => row[1])).toEqual(['101', '102']);
+    });
+    const status = screen.getByRole<HTMLSelectElement>('combobox', {
+      name: en.setup.rooms.status,
+    });
+    expect(status.value).toBe('not_closed');
+    expect(status.selectedOptions[0]?.textContent).toBe(en.list.inUse.notClosed);
+    expect(countsDrawn()).toBe(`${countText('notClosed', 2)}·${countText('closed', 1)}`);
+    fireEvent.click(countButton('closed', 1));
+    await waitFor(() => {
+      expect(rowsDrawn().map((row) => row[1])).toEqual(['Sports hall']);
+    });
+    expect(router.state.location.search).toEqual({ f: { status: 'closed' } });
+    fireEvent.change(status, { target: { value: 'under_repair' } });
+    await waitFor(() => {
+      expect(rowsDrawn().map((row) => row[1])).toEqual(['102']);
+    });
   });
 
   // Issue #39, hand test of 13 October 2026, finding 14 (task 2.7b-2, decision
@@ -568,7 +597,7 @@ describe('the export of the room list', () => {
 // Issue #39, item 5; task 2.7c-3: the Rooms "By floor" view beside the list.
 // The same rows as the list; the side panel opens from a card as from a row.
 describe('the By floor view', () => {
-  const FLOORS = `${PATH}?view=floors`;
+  const FLOORS = `${PATH}?view=floors&${EVERY_STATUS}`;
   const nav = () => screen.getByRole('navigation', { name: en.setup.rooms.buildingsNav });
   const buildingButton = (name: string) =>
     within(nav())
@@ -587,9 +616,10 @@ describe('the By floor view', () => {
     router.state.location.search as Record<string, unknown>;
 
   it('is beside the list, which stays the default, and is kept in the address', async () => {
-    const { router } = await openList();
+    // The list as it opens: the closed Sports hall is one click away (owner, 28 November 2026).
+    const { router } = await openList(superAdmin(), ROOMS, [MAIN, ANNEX], undefined, PATH);
     await waitFor(() => {
-      expect(rowsDrawn()).toHaveLength(3);
+      expect(rowsDrawn()).toHaveLength(2);
     });
     expect(
       within(views()).getByRole<HTMLInputElement>('radio', { name: en.setup.rooms.viewList })
@@ -604,7 +634,7 @@ describe('the By floor view', () => {
 
     fireEvent.click(within(views()).getByRole('radio', { name: en.setup.rooms.viewList }));
     await waitFor(() => {
-      expect(rowsDrawn()).toHaveLength(3);
+      expect(rowsDrawn()).toHaveLength(2);
     });
     expect(address(router)).toEqual({});
   });
@@ -630,7 +660,7 @@ describe('the By floor view', () => {
     await waitFor(() => {
       expect(tabNames()).toEqual(['Ground', '1']);
     });
-    expect(address(router)).toEqual({ view: 'floors', building: MAIN.id });
+    expect(address(router)).toEqual({ view: 'floors', building: MAIN.id, f: { status: '*' } });
     expect(screen.getByRole('tab', { name: 'Ground' }).getAttribute('aria-selected')).toBe('true');
     expect(cards()).toEqual(['101', 'Sports hall']);
 
@@ -693,7 +723,12 @@ describe('the By floor view', () => {
     const panel = await screen.findByRole('complementary', { name: 'Sports hall' });
     expect(within(panel).getByRole('button', { name: en.form.edit })).toBeDefined();
     await waitFor(() => {
-      expect(address(router)).toEqual({ view: 'floors', building: MAIN.id, open: ROOMS[2]?.id });
+      expect(address(router)).toEqual({
+        view: 'floors',
+        building: MAIN.id,
+        f: { status: '*' },
+        open: ROOMS[2]?.id,
+      });
     });
     router.history.back();
     await waitFor(() => {

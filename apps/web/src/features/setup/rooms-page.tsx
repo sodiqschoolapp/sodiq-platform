@@ -18,6 +18,7 @@ import { useExport } from '@/components/list/use-export';
 import { useNewRecord } from '@/components/list/use-new-record';
 import {
   listSearch,
+  opensOnCurrent,
   type Column,
   type Filter,
   type ListSearch,
@@ -58,6 +59,9 @@ export function roomsSearch(search: Record<string, unknown>): RoomsSearch {
   }
   return result;
 }
+
+/** The status filter's value of the rooms not closed: in use and under repair. */
+const NOT_CLOSED = 'not_closed';
 
 /** The fields of a room as the edit route takes them. */
 const recordOf = (room: Room, status: RoomStatus): RoomRecord => ({
@@ -263,11 +267,21 @@ export function RoomsPage() {
       {
         key: 'status',
         label: t('setup.rooms.status'),
-        options: ROOM_STATUSES.map((status) => ({
-          value: status,
-          label: t(`setup.rooms.statuses.${status}`),
-        })),
-        matches: (row, value) => row.status === value,
+        options: [
+          { value: NOT_CLOSED, label: t('list.inUse.notClosed') },
+          ...ROOM_STATUSES.map((status) => ({
+            value: status,
+            label: t(`setup.rooms.statuses.${status}`),
+          })),
+        ],
+        // A room under repair still exists: with the rooms in use, it is what
+        // the list opens on; a closed room is one click away (owner, 28 November 2026).
+        matches: (row, value) =>
+          value === NOT_CLOSED ? row.status !== 'closed' : row.status === value,
+        ...opensOnCurrent(
+          { value: NOT_CLOSED, kind: 'notClosed' },
+          { value: 'closed', kind: 'closed' },
+        ),
       },
     ];
   }, [t, rooms.data, i18n.language, byFloor]);

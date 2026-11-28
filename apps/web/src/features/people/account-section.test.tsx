@@ -10,6 +10,7 @@ import type {
 } from '@sodiq/shared';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
+import { generatedPasswordsIn } from '@/testing/generated-password';
 import { edit } from '@/testing/panel';
 import { en } from '@/i18n/locales/en';
 import { ru } from '@/i18n/locales/ru';
@@ -92,7 +93,8 @@ const detail: StaffDetail = {
   classesTaught: [],
 };
 
-const PASSWORD = 'Kp7wQ2mZr9TbXy3H';
+/** The shape of a generated password since the owner's decision of 28 November 2026. */
+const PASSWORD = 'kp7wq2mzr9';
 
 const SLIP = {
   firstName: 'Lola',
@@ -295,7 +297,14 @@ describe('the account section', () => {
     fireEvent.click(within(form).getByRole('button', { name: en.form.save }));
 
     const dialog = await screen.findByRole('dialog', { name: en.people.account.slipTitle });
-    expect(within(dialog).getByText(PASSWORD)).toBeDefined();
+    expect(generatedPasswordsIn(dialog)).toEqual([PASSWORD]);
+    // Owner, 28 November 2026: two groups of five, the gap a margin and not a space.
+    const shown = dialog.querySelector('[data-generated-password]');
+    expect(Array.from(shown?.children ?? [], (group) => group.textContent)).toEqual([
+      'kp7wq',
+      '2mzr9',
+    ]);
+    expect(shown?.textContent).toBe(PASSWORD);
     expect(within(dialog).getByText(en.people.account.slipOnce)).toBeDefined();
     // Task 2.7c-2b-2a, decision 11: the slip has the focus while it is open.
     await waitFor(() => {
@@ -846,7 +855,7 @@ describe('the account section', () => {
       }),
     );
     const dialog = await screen.findByRole('dialog', { name: en.people.account.slipTitle });
-    expect(within(dialog).getByText(PASSWORD)).toBeDefined();
+    expect(generatedPasswordsIn(dialog)).toEqual([PASSWORD]);
     fireEvent.click(within(dialog).getByRole('button', { name: en.people.account.closeSlip }));
     await waitFor(() => {
       expect(document.body.textContent).not.toContain(PASSWORD);

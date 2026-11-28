@@ -7,6 +7,7 @@ import { schoolDateText } from '@/lib/dates';
 import { fakeApi, json, NORTH, refusal, renderApp, sessionOf } from '@/testing/render-app';
 import { isSearchShortcut, matchingPages } from './command-search';
 import { recordSearchQuery } from './search-api';
+import { ALL_ROWS } from '@/components/list/list-state';
 
 type Language = 'en' | 'ru' | 'uz';
 const TEXTS = { en, ru, uz };
@@ -570,7 +571,9 @@ describe('the search of records', () => {
     await waitFor(() => {
       expect(router.state.location.pathname).toBe('/people/staff');
     });
-    expect(router.state.location.search).toEqual({ q: 'Karimov' });
+    // Every status, as the search found them: the person who left among them
+    // (owner, 28 November 2026: the list alone opens on the current staff).
+    expect(router.state.location.search).toEqual({ q: 'Karimov', f: { status: ALL_ROWS } });
   });
 
   // Task 3.5b, H33 of issue #105: parents in Ctrl+K, and the child found by

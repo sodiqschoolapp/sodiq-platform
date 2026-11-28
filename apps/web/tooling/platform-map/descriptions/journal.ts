@@ -41,7 +41,7 @@ export const DESCRIPTIONS: Readonly<Record<string, string>> = {
   'features/journal/discipline-page.tsx#button:journal.discipline.showItems':
     'Opens the list of lessons or works behind this count of the teacher.',
   'features/journal/discipline-page.tsx#column:journal.discipline.teacher':
-    'Shows the teacher whose lessons the counts of the row are about.',
+    "Shows the teacher whose lessons the counts of the row are about; the name opens the teacher's journals of the year on the Journals page.",
   'features/journal/discipline-page.tsx#column:journal.discipline.unplanned':
     "Shows a count of the teacher's lessons in the range (held, nothing entered, in progress, complete, locked incomplete, no attendance, no topic, works missing scores, unplanned works, late entries); a count above zero opens its list.",
   'features/journal/discipline-page.tsx#field:journal.discipline.department':
@@ -219,6 +219,8 @@ export const DESCRIPTIONS: Readonly<Record<string, string>> = {
     'Shows the class or group of the journal; pressing the row opens the journal.',
   'features/journal/journals-page.tsx#column:journal.page.subject':
     'Shows the subject of the journal.',
+  'features/journal/journals-page.tsx#column:journal.page.teachers':
+    "Shows the teachers of the journal in the year: whoever its lessons count for, a substitute included; the Teacher filter keeps one teacher's journals.",
   'features/journal/journals-page.tsx#field:journal.page.year':
     'Chooses the academic year whose journals are listed.',
   'features/journal/journals-page.tsx#tab:journal.page.tabs':

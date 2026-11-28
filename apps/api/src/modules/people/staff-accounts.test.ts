@@ -272,7 +272,7 @@ describe('the account section of a staff record', () => {
         firstName: 'Akmal',
         lastName: made.lastName,
         login,
-        password: expect.stringMatching(/^[A-Za-z0-9]{16}$/) as unknown,
+        password: expect.stringMatching(/^[a-hjkmnp-z2-9]{10}$/) as unknown,
         // "First passwords are random, valid for 7 days".
         validUntil: new Date(new Date(START).getTime() + 7 * 24 * 60 * 60 * 1000).toISOString(),
       });
@@ -1029,7 +1029,7 @@ describe('the account section of a staff record', () => {
         firstName: 'Akmal',
         lastName: made.lastName,
         login: made.slip.login,
-        password: expect.stringMatching(/^[A-Za-z0-9]{16}$/) as unknown,
+        password: expect.stringMatching(/^[a-hjkmnp-z2-9]{10}$/) as unknown,
         validUntil: new Date('2026-10-27T00:00:00+05:00').toISOString(),
       });
       expect(answer.staffId).toBe(before.staff_id);

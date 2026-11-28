@@ -11,6 +11,8 @@ import {
   signIn,
   panelAction,
   allPanelActions,
+  everyRow,
+  showEveryRow,
 } from './steps';
 import { codeNow } from './totp';
 
@@ -110,6 +112,8 @@ test('an Academic Vice Principal gives a teacher of the branch a subject', async
   await vacancyRow.getByRole('button', { name: 'Geometry vacancy 1' }).click();
   const vacancyPanel = page.getByRole('complementary', { name: 'Geometry vacancy 1' });
   await vacancyPanel.getByRole('button', { name: vacancies.close, exact: true }).click();
+  // The list opens on the open vacancies: the closed one is shown with "All" (owner, 28 November 2026).
+  await showEveryRow(page, vacancies.statusTitle);
   await expect(vacancyRow).toContainText(vacancies.statuses.closed);
 });
 
@@ -262,7 +266,8 @@ test('an Academic Vice Principal locks, unlocks and resets a teacher’s passwor
   const slip = page.getByRole('dialog', { name: texts.slipTitle });
   // The slip keeps "First name Surname" (task 2.7b-1, decision 3).
   await expect(slip.getByText('Sherzod Valiyev')).toBeVisible();
-  await expect(slip.locator('dd.font-mono').nth(1)).toHaveText(/^[A-Za-z0-9]{16}$/);
+  // Owner, 28 November 2026: ten characters, in two groups with no space in the text.
+  await expect(slip.locator('dd.font-mono').nth(1)).toHaveText(/^[a-hjkmnp-z2-9]{10}$/);
   await accessScreenshot(page, 'slip');
   await slip.getByRole('button', { name: en.people.account.closeSlip, exact: true }).click();
   await expect(slip).toHaveCount(0);
@@ -399,7 +404,8 @@ test('an Academic Vice Principal records a leaving, undoes it, brings the studen
   await page.getByRole('checkbox', { name: en.setUp.saved }).check();
   await page.getByRole('button', { name: en.setUp.continue, exact: true }).click();
   await expect(heading(page, en.home.title)).toBeVisible();
-  await page.goto('/people/students');
+  // Every status: the student who left stays in the list (owner, 28 November 2026).
+  await page.goto(everyRow('/people/students'));
   await expect(heading(page, en.people.students.title)).toBeVisible();
 
   const texts = en.people.students;

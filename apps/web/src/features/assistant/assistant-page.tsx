@@ -88,7 +88,7 @@ function AssistantOfRole({ role }: { role: AssistantRole }) {
         {(wide || open === undefined) && (
           <nav
             aria-label={t('assistant.conversations')}
-            className={`${PANEL} grid content-start gap-3`}
+            className={`${PANEL} grid min-w-0 grid-cols-1 content-start gap-3`}
           >
             <Button
               className="justify-self-start"
@@ -111,19 +111,25 @@ function AssistantOfRole({ role }: { role: AssistantRole }) {
             ) : conversations.data.conversations.length === 0 ? (
               <p className="text-sm text-muted-foreground">{t('assistant.empty')}</p>
             ) : (
-              <ul className="grid gap-1">
+              // One column that never widens past the list: a long name is cut with an
+              // ellipsis and shown whole in its tooltip (owner, 28 November 2026).
+              <ul className="grid min-w-0 grid-cols-1 gap-1">
                 {conversations.data.conversations.map((item) => (
-                  <li key={item.id}>
+                  <li key={item.id} className="min-w-0">
                     <button
                       type="button"
                       aria-current={item.id === selected ? 'true' : undefined}
-                      className="w-full rounded-lg px-3 py-2 text-left hover:bg-accent aria-[current=true]:bg-accent"
+                      className="w-full min-w-0 rounded-lg px-3 py-2 text-left hover:bg-accent aria-[current=true]:bg-accent"
                       onClick={() => {
                         go(item.id);
                       }}
                     >
-                      <span className="block truncate font-semibold">{item.title}</span>
-                      <span className="block text-sm text-muted-foreground">{item.branchName}</span>
+                      <span className="block truncate font-semibold" title={item.title}>
+                        {item.title}
+                      </span>
+                      <span className="block truncate text-sm text-muted-foreground">
+                        {item.branchName}
+                      </span>
                     </button>
                   </li>
                 ))}

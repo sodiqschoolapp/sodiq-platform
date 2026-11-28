@@ -11,6 +11,7 @@ import {
   languageChooser,
   signIn,
   panelAction,
+  showEveryRow,
 } from './steps';
 import { keepSecondStep } from './second-steps';
 import { codeNow } from './totp';
@@ -19,6 +20,11 @@ import { mergeRecords } from './merges';
 import { forceDeleteAndRestore } from './timetable-forced-delete';
 import { importStaff } from './staff-import';
 import { askTheAssistant } from './assistant';
+
+/** "Show archived (n)" of a table in a side panel, whatever its number. */
+const showArchived = new RegExp(
+  `^${en.list.showArchived_other.replace(' ({{n}})', '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&')} \\(`,
+);
 
 /**
  * The first sign-in of a seeded Super Admin or Academic Vice Principal: the
@@ -155,6 +161,8 @@ async function checkSuperAdminPages(page: Page): Promise<void> {
     .getByRole('alertdialog')
     .getByRole('button', { name: en.integrationKeys.revoke, exact: true })
     .click();
+  // The list opens on the active keys: the revoked one is shown with "All" (owner, 28 November 2026).
+  await showEveryRow(page, en.integrationKeys.state);
   await expect(page.getByRole('row').filter({ hasText: 'Browser test platform' })).toContainText(
     en.integrationKeys.state_revoked,
   );
@@ -402,6 +410,9 @@ test('the Super Admin edits the branch, adds a building, a floor and a room, and
   await test.step('deletes a room nothing uses for good and restores it from Deleted for good', async () => {
     const deleted = en.forcedDeletes;
     await openSetupPage(page, en.setup.roomsLink, en.setup.rooms.title);
+    // The list opens on the rooms not closed: the closed 101 is shown with "All"
+    // (owner, 28 November 2026).
+    await showEveryRow(page, en.setup.rooms.status);
     await page.getByRole('button', { name: '101', exact: true }).click();
     const room = page.getByRole('complementary', { name: '101' });
     await (await panelAction(room, deleted.deletePlace)).click();
@@ -421,9 +432,13 @@ test('the Super Admin edits the branch, adds a building, a floor and a room, and
     const stored = page.getByRole('complementary', { name: '101' });
     await stored.getByRole('button', { name: deleted.restore, exact: true }).click();
     await expect(stored.getByText(deleted.restoredMessage, { exact: true })).toBeVisible();
+    // The list opens on what can be restored: the restored record is shown with "All"
+    // (owner, 28 November 2026).
+    await showEveryRow(page, deleted.state);
     await expect(row).toContainText(deleted.state_restored);
 
     await openSetupPage(page, en.setup.roomsLink, en.setup.rooms.title);
+    await showEveryRow(page, en.setup.rooms.status);
     await expect(page.getByRole('button', { name: '101', exact: true })).toBeVisible();
   });
 
@@ -433,6 +448,8 @@ test('the Super Admin edits the branch, adds a building, a floor and a room, and
     .getByRole('button', { name: en.setup.buildings.archiveNamed.replace('{{name}}', 'Ground') })
     .click();
   await confirmWith(page, en.setup.buildings.archive);
+  // Archived floors are hidden until shown (owner, 28 November 2026).
+  await panel.getByRole('button', { name: showArchived }).click();
   await expect(panel.getByRole('row').filter({ hasText: 'Ground' })).toContainText(
     en.setup.buildings.archived,
   );
@@ -505,9 +522,15 @@ test('the Super Admin sees Academic as built in, adds a division with a departme
   // The division archived takes its department with it.
   await (await panelAction(panel, en.setup.divisions.archiveDivision)).click();
   await confirmWith(page, en.setup.divisions.archive);
+  // Archived departments are hidden until shown, and the list opens on the
+  // active divisions (owner, 28 November 2026).
+  await panel.getByRole('button', { name: showArchived }).click();
   await expect(panel.getByRole('row').filter({ hasText: 'Pool' })).toContainText(
     en.setup.divisions.archived,
   );
+  await page
+    .getByRole('combobox', { name: en.setup.divisions.status, exact: true })
+    .selectOption('archived');
   await expect(page.getByRole('row').filter({ hasText: 'Sports' })).toContainText(
     en.setup.divisions.archived,
   );
@@ -559,7 +582,8 @@ async function createAccountAndSignIn(page: Page): Promise<void> {
   const slip = page.getByRole('dialog', { name: en.people.account.slipTitle });
   await expect(slip.getByText('f.aminova', { exact: true })).toBeVisible();
   const password = await slip.locator('dd').nth(1).innerText();
-  expect(password).toMatch(/^[A-Za-z0-9]{16}$/);
+  // Owner, 28 November 2026: ten characters; the gap between its two groups is no space.
+  expect(password).toMatch(/^[a-hjkmnp-z2-9]{10}$/);
   if (process.env.SCREENSHOTS === '1') {
     mkdirSync(SCREENS, { recursive: true });
     await page.waitForTimeout(400);

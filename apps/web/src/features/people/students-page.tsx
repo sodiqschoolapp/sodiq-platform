@@ -38,7 +38,12 @@ import {
 } from '@/components/list/list-page';
 import { useNewRecord } from '@/components/list/use-new-record';
 import { useExport } from '@/components/list/use-export';
-import { type Column, type Filter, type ListSearch } from '@/components/list/list-state';
+import {
+  opensOnCurrent,
+  type Column,
+  type Filter,
+  type ListSearch,
+} from '@/components/list/list-state';
 import { PageHeader } from '@/components/page-header';
 import { initialsOf, PersonPhoto } from '@/components/person-photo';
 import { Button, buttonVariants } from '@/components/ui/button';
@@ -85,6 +90,12 @@ const shownClass = (row: StudentListItem) => row.class ?? row.plannedClass;
 
 /** The one option of the consent filter (answer 23: "a list shows active students without it"). */
 const NO_CONSENT = 'missing';
+
+/**
+ * The status filter's value of the students of the school, which the list
+ * opens on: active, and those without a status row yet ("Starts later").
+ */
+const CURRENT = 'current';
 
 type ExtraColumn = Exclude<StudentExportColumn, (typeof STUDENT_LIST_EXPORT_COLUMNS)[number]>;
 
@@ -542,11 +553,23 @@ export function StudentsPage() {
       {
         key: 'status',
         label: t('people.students.status'),
-        options: STUDENT_STATUSES.map((one) => ({
-          value: one,
-          label: t(`people.students.statuses.${one}`),
-        })),
-        matches: (row, value) => row.status === value,
+        options: [
+          { value: CURRENT, label: t('list.inUse.current') },
+          ...STUDENT_STATUSES.map((one) => ({
+            value: one,
+            label: t(`people.students.statuses.${one}`),
+          })),
+        ],
+        // The list opens on the students of the school: active, and those not
+        // started yet; those who left (inactive) and the graduates are one
+        // click away (owner, 28 November 2026).
+        matches: (row, value) =>
+          value === CURRENT ? row.status === 'active' || row.status === null : row.status === value,
+        ...opensOnCurrent(
+          { value: CURRENT, kind: 'current' },
+          { value: 'inactive', kind: 'inactive' },
+          { value: 'graduated', kind: 'graduated' },
+        ),
       },
       ...(readsFinancial
         ? [

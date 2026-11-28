@@ -11,10 +11,18 @@ export const FOCUS_RING =
 export const QUICK = 'transition-colors duration-120 ease-out';
 
 /**
+ * A field's border, fill, text and focus without its height: a text area that
+ * grows with its text sets its own (the assistant's question box), since a
+ * second height class beside FIELD's would leave the winner to the order of
+ * the stylesheet.
+ */
+export const FIELD_FRAME = `w-full min-w-0 rounded-lg border border-input bg-card px-3 text-sm text-foreground ${QUICK} placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-2 aria-invalid:border-destructive ${FOCUS_RING}`;
+
+/**
  * A field or a select: 40 high (44 at phone width), white fill, a 1 px
  * `--input` border, corner 8. An error is a 2 px `--destructive` border.
  */
-export const FIELD = `h-10 w-full min-w-0 rounded-lg border border-input bg-card px-3 text-sm text-foreground ${QUICK} placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-2 aria-invalid:border-destructive max-sm:h-11 ${FOCUS_RING}`;
+export const FIELD = `h-10 ${FIELD_FRAME} max-sm:h-11`;
 
 /**
  * A checkbox: the navy accent colour (the foreground in the dark theme);

@@ -729,6 +729,10 @@ Answer `200`:
       kind: "class" | "group";
       id: uuid;
       name: string;
+      classes: {
+        id: uuid;
+        name: string;
+      }[];
     };
     subject: {
       id: uuid;
@@ -739,6 +743,10 @@ Answer `200`:
       };
       colour: "red" | "orange" | "amber" | "lime" | "green" | "teal" | "cyan" | "blue" | "indigo" | "violet" | "pink" | "brown";
     };
+    teachers: {
+      id: uuid;
+      name: string;
+    }[];
   }[];
 }
 ```
@@ -992,7 +1000,7 @@ Answer `200`:
   }[];
   students: {
     id: uuid;
-    number: integer;  // min 1
+    number: integer | null;  // min 1
     firstName: string;
     lastName: string;
     paternalName: string | null;
@@ -2233,6 +2241,7 @@ Answer `200`:
 {
   from: date;
   to: date;
+  yearId: uuid;
   departments: {
     id: uuid;
     names: {

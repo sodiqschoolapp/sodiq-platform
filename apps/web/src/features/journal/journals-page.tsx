@@ -1,7 +1,7 @@
 import type { JournalList } from '@sodiq/shared';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useNavigate, useSearch } from '@tanstack/react-router';
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { SelectField } from '@/components/field';
 import { ListPage } from '@/components/list/list-page';
@@ -15,6 +15,13 @@ import { journalExportsQuery, journalsQuery } from './journal-api';
 import type { JournalsSearch } from './journal-search';
 
 type Row = JournalList['journals'][number];
+
+/** Whether the teacher is among the journal's teachers of the year (owner, 28 November 2026). */
+const teachesIn = (row: Row, teacherId: string): boolean =>
+  row.teachers.some((one) => one.id === teacherId);
+
+/** The teachers of a journal, comma-separated, as the server sorts them. */
+const teacherNames = (row: Row): string => row.teachers.map((one) => one.name).join(', ');
 
 /** "2026–2027": the years an academic year spans. */
 export const yearText = (year: { startDate: string; endDate: string }): string =>
@@ -47,7 +54,17 @@ export function JournalsPage(): React.JSX.Element {
   const support = useMayView('journal_support');
   const list = useQuery(journalsQuery(branchId, search.year ?? null));
   const language = i18n.language;
-  const tab = search.tab ?? 'class';
+  const journals = list.data?.journals;
+  const teacherId = search.f?.teacher;
+  // Owner, 28 November 2026: a link to a teacher's journals names no tab; it opens on Groups
+  // when every journal of the teacher is a group's, so the list is never empty for nothing.
+  const groupsOnly =
+    search.tab === undefined &&
+    teacherId !== undefined &&
+    journals !== undefined &&
+    !journals.some((row) => row.unit.kind === 'class' && teachesIn(row, teacherId)) &&
+    journals.some((row) => row.unit.kind === 'group' && teachesIn(row, teacherId));
+  const tab = search.tab ?? (groupsOnly ? 'group' : 'class');
 
   const subjectName = useMemo(() => (row: Row) => nameOf(row.subject.names, language), [language]);
 
@@ -68,11 +85,19 @@ export function JournalsPage(): React.JSX.Element {
         cell: (row) => <SubjectChip colour={row.subject.colour} name={subjectName(row)} />,
         sortValue: subjectName,
       },
+      {
+        key: 'teachers',
+        header: t('journal.page.teachers'),
+        cell: teacherNames,
+        sortValue: (row) => teacherNames(row) || null,
+        searchText: teacherNames,
+        narrow: true,
+      },
     ],
     [t, tab, subjectName],
   );
 
-  const rows = list.data?.journals.filter((row) => row.unit.kind === tab);
+  const rows = useMemo(() => journals?.filter((row) => row.unit.kind === tab), [journals, tab]);
 
   const filters = useMemo(
     (): Filter<Row>[] => [
@@ -80,16 +105,41 @@ export function JournalsPage(): React.JSX.Element {
         key: 'subject',
         label: t('journal.page.subject'),
         options: [
-          ...new Map(
-            (list.data?.journals ?? []).map((row) => [row.subject.id, subjectName(row)]),
-          ).entries(),
+          ...new Map((journals ?? []).map((row) => [row.subject.id, subjectName(row)])).entries(),
         ]
           .map(([value, label]) => ({ value, label }))
           .sort((a, b) => a.label.localeCompare(b.label, language)),
         matches: (row, value) => row.subject.id === value,
       },
+      {
+        // Owner, 28 November 2026: the teachers of every journal listed, of both tabs, so that a
+        // teacher chosen on one tab stays chosen on the other.
+        key: 'teacher',
+        label: t('journal.page.teacherFilter'),
+        options: [
+          ...new Map(
+            (journals ?? []).flatMap((row) => row.teachers.map((one) => [one.id, one.name])),
+          ).entries(),
+        ]
+          .map(([value, label]) => ({ value, label }))
+          .sort((a, b) => a.label.localeCompare(b.label, language)),
+        matches: teachesIn,
+      },
+      {
+        // The classes of the tab: on Groups, a class keeps the groups that draw from it.
+        key: 'class',
+        label: t('journal.page.class'),
+        options: [
+          ...new Map(
+            (rows ?? []).flatMap((row) => row.unit.classes.map((one) => [one.id, one.name])),
+          ).entries(),
+        ]
+          .map(([value, label]) => ({ value, label }))
+          .sort((a, b) => a.label.localeCompare(b.label, language, { numeric: true })),
+        matches: (row, value) => row.unit.classes.some((one) => one.id === value),
+      },
     ],
-    [t, list.data, subjectName, language],
+    [t, rows, journals, subjectName, language],
   );
 
   const go = (next: JournalsSearch, how: 'push' | 'replace' = 'push'): void => {
@@ -99,6 +149,15 @@ export function JournalsPage(): React.JSX.Element {
     ...(search.tab === undefined ? {} : { tab: search.tab }),
     ...(search.year === undefined ? {} : { year: search.year }),
   };
+  // The filters stay on a change of tab or year: a teacher or a class means the same on both
+  // tabs, and a teacher is often one of another year too.
+  const keepFilters = search.f === undefined ? {} : { f: search.f };
+  // The tab chosen for a teacher of groups only is written into the address, so that another
+  // filter chosen next does not move the list back to Classes.
+  useEffect(() => {
+    if (groupsOnly)
+      void navigate({ to: '/journal', search: { ...search, tab: 'group' }, replace: true });
+  }, [groupsOnly, navigate, search]);
 
   return (
     <>
@@ -169,7 +228,7 @@ export function JournalsPage(): React.JSX.Element {
             ]}
             value={tab}
             onChange={(value) => {
-              go({ ...keep, tab: value });
+              go({ ...keep, ...keepFilters, tab: value });
             }}
           />
           {list.data !== undefined && list.data.years.length > 1 && (
@@ -179,7 +238,7 @@ export function JournalsPage(): React.JSX.Element {
                 value={list.data.yearId ?? ''}
                 options={list.data.years.map((year) => ({ value: year.id, label: yearText(year) }))}
                 onChange={(event) => {
-                  go({ tab, year: event.target.value });
+                  go({ ...keepFilters, tab, year: event.target.value });
                 }}
               />
             </div>

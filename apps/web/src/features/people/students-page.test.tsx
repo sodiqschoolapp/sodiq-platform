@@ -13,6 +13,7 @@ import { en } from '@/i18n/locales/en';
 import { schoolDateText } from '@/lib/dates';
 import { ru } from '@/i18n/locales/ru';
 import { uz } from '@/i18n/locales/uz';
+import { countButton, countsDrawn, countText } from '@/testing/list-counts';
 import { savedRecordPanel } from '@/testing/new-record';
 import {
   fakeApi,
@@ -37,6 +38,11 @@ import {
 
 const uid = (n: number): string => `0199f000-0000-7000-8000-${String(n).padStart(12, '0')}`;
 const PATH = '/people/students';
+/**
+ * The list with "All" chosen in its status filter: it opens on the current
+ * students (owner, 28 November 2026), and these tests read Lola, who left, too.
+ */
+const EVERY_STATUS = `${PATH}?f=${encodeURIComponent(JSON.stringify({ status: '*' }))}`;
 
 // All names are invented. Task 2.4a, pull request #67.
 const OTKIR: StudentListItem = {
@@ -324,6 +330,63 @@ describe('the student list', () => {
       ],
     ]);
     expect(document.body.textContent).not.toContain('+998');
+  });
+
+  // Owner, 28 November 2026: "Every list should show active". The list opens on the students
+  // of the school, one who starts later among them; those who left and the graduates are one
+  // click away, each with its number.
+  it('opens on the current students, with those who left and the graduates one click away', async () => {
+    const graduate: StudentListItem = {
+      ...LOLA,
+      id: uid(4),
+      uid: '2507040',
+      firstName: 'Jasur',
+      lastName: 'Nazarov',
+      status: 'graduated',
+    };
+    openList('academic_vice_principal', {
+      'GET /api/people/students': () =>
+        json({
+          students: [OTKIR, ZARINA, LOLA, graduate],
+          canArchive: true,
+          exportGroups: [],
+          readsFinancial: false,
+          today: '2026-10-10',
+        }),
+    });
+    const { router } = renderApp(PATH);
+    await screen.findByRole('heading', { name: en.people.students.title });
+    const names = () => rowsDrawn().map((row) => row[2]);
+    await waitFor(() => {
+      expect(names()).toEqual(['Rahimov Oʻtkir', 'Saidova Zarina']);
+    });
+    const status = screen.getByRole<HTMLSelectElement>('combobox', {
+      name: en.people.students.status,
+    });
+    expect(status.value).toBe('current');
+    expect(countsDrawn()).toBe(
+      `${countText('current', 2)}·${countText('inactive', 1)}·${countText('graduated', 1)}`,
+    );
+
+    fireEvent.click(countButton('inactive', 1));
+    await waitFor(() => {
+      expect(names()).toEqual(['Karimova Lola']);
+    });
+    expect(router.state.location.search).toEqual({ f: { status: 'inactive' } });
+    fireEvent.click(countButton('graduated', 1));
+    await waitFor(() => {
+      expect(names()).toEqual(['Nazarov Jasur']);
+    });
+    // Active alone leaves out the student who starts later.
+    fireEvent.change(status, { target: { value: 'active' } });
+    await waitFor(() => {
+      expect(names()).toEqual(['Rahimov Oʻtkir']);
+    });
+    fireEvent.click(countButton('current', 2));
+    await waitFor(() => {
+      expect(names()).toEqual(['Rahimov Oʻtkir', 'Saidova Zarina']);
+    });
+    expect(router.state.location.search).toEqual({});
   });
 
   it.each(['Ўткир', "o'tkir", 'OTKIR', '2607001'])(
@@ -1689,7 +1752,8 @@ describe('leaving, return and delete', () => {
       [`POST /api/people/students/${LOLA.id}/return`]: () =>
         json(detailOf({ ...LOLA, status: 'active', version: 3 }, { canArchive: true })),
     });
-    renderApp(PATH);
+    // Every status: the list opens on the current students (owner, 28 November 2026).
+    renderApp(EVERY_STATUS);
     fireEvent.click(await screen.findByText('Karimova Lola', { selector: 'button' }));
     const panel = await screen.findByRole('complementary', { name: 'Lola Karimova' });
     // Inactive after a leaving: Undo and Return, no Leave. Two secondary actions stand in the
@@ -1973,7 +2037,8 @@ describe('leaving, return and delete', () => {
           { status: 409 },
         ),
     });
-    renderApp(PATH);
+    // Every status: the list opens on the current students (owner, 28 November 2026).
+    renderApp(EVERY_STATUS);
     await waitFor(() => {
       expect(rowsDrawn()).toHaveLength(2);
     });
@@ -2548,7 +2613,8 @@ describe('the Status section', () => {
             { status: 409 },
           ),
       });
-      renderApp(PATH);
+      // Every status: the list opens on the current students (owner, 28 November 2026).
+      renderApp(EVERY_STATUS);
       await waitFor(() => {
         expect(rowsDrawn()).toHaveLength(2);
       });

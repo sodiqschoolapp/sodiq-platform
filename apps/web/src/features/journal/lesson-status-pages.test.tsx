@@ -18,6 +18,7 @@ const UNIT = { kind: 'class' as const, id: uid(20), name: '7 Oxford' };
 const COUNTS: Discipline = {
   from: '2026-10-12',
   to: '2026-10-27',
+  yearId: uid(35),
   prepared: { updatedAt: '2026-10-20T05:00:00.000Z', updating: false },
   departments: [{ id: uid(30), names: { uz: 'STEAM', ru: 'STEAM', en: 'STEAM' } }],
   teachers: [
@@ -76,6 +77,61 @@ describe('the counts per teacher', () => {
     const query = calls.find((call) => call.route === 'GET /api/journal/discipline')?.query ?? '';
     expect(new URLSearchParams(query).get('from')).toBe('2026-10-12');
     expect(new URLSearchParams(query).get('departmentId')).toBe(uid(30));
+  });
+
+  // Owner, 28 November 2026: "the teacher names should be clickable; when I click on one I
+  // should see the journals of that teacher".
+  it("links each teacher's name to the Journals page filtered by the teacher, of the range's year", async () => {
+    const calls = fakeApi({
+      'GET /api/auth/session': vice,
+      'GET /api/journal/discipline': () => json(COUNTS),
+      'GET /api/journal/journals': () =>
+        json({
+          years: [{ id: uid(35), startDate: '2026-09-01', endDate: '2027-05-31', closed: false }],
+          yearId: uid(35),
+          journals: [
+            {
+              id: uid(1),
+              unit: { ...UNIT, classes: [{ id: UNIT.id, name: UNIT.name }] },
+              subject: SUBJECT,
+              teachers: [{ id: uid(40), name: 'Karimova Aziza' }],
+            },
+            {
+              id: uid(2),
+              unit: { kind: 'class', id: uid(21), name: '7 Cambridge', classes: [] },
+              subject: SUBJECT,
+              teachers: [{ id: uid(41), name: 'Usmonov Jamshid' }],
+            },
+          ],
+        }),
+    });
+    const { router } = renderApp('/journal/discipline?from=2026-10-12&to=2026-10-27');
+    const link = await waitFor(() => {
+      const found = document.querySelector<HTMLAnchorElement>('tbody tr td a');
+      if (found === null) throw new Error('The link.');
+      return found;
+    });
+    expect(link.textContent).toBe('Karimova Aziza');
+    expect(link.className).toContain('text-link');
+    const search = { year: uid(35), f: { teacher: uid(40) } };
+    expect(link.getAttribute('href')).toBe(router.buildLocation({ to: '/journal', search }).href);
+    fireEvent.click(link);
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/journal');
+    });
+    expect(router.state.location.search).toEqual(search);
+    await waitFor(() => {
+      expect(
+        [...document.querySelectorAll('tbody tr')].map(
+          (row) => row.querySelector('td')?.textContent,
+        ),
+      ).toEqual(['7 Oxford']);
+    });
+    expect(
+      calls.some(
+        (call) => call.route === 'GET /api/journal/journals' && call.query === `?yearId=${uid(35)}`,
+      ),
+    ).toBe(true);
   });
 
   it('tells a refused range in words', async () => {

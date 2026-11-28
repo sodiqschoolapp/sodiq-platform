@@ -1,7 +1,14 @@
 import { expect, test } from '@playwright/test';
 import { en } from '../src/i18n/locales/en';
 import { accountOf } from './accounts';
-import { changeFirstPassword, heading, languageChooser, signIn, panelAction } from './steps';
+import {
+  changeFirstPassword,
+  everyRow,
+  heading,
+  languageChooser,
+  signIn,
+  panelAction,
+} from './steps';
 import { codeNow } from './totp';
 
 // docs/spec/04-people.md, Movements, "Coming back": the student "is placed in
@@ -37,7 +44,8 @@ test('an Academic Vice Principal returns a student into a class of another langu
   const today = tashkent(Date.now());
   const dayBeforeYesterday = tashkent(Date.now() - 2 * dayMs);
 
-  await page.goto('/people/students');
+  // Every status: the student who leaves stays in the list (owner, 28 November 2026).
+  await page.goto(everyRow('/people/students'));
   await expect(heading(page, texts.title)).toBeVisible();
   await page.getByRole('button', { name: 'Hamroyeva Muxlisa', exact: true }).click();
   const panel = page.getByRole('complementary', { name: 'Muxlisa Hamroyeva' });

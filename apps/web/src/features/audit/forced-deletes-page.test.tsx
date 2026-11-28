@@ -3,6 +3,7 @@ import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { en } from '@/i18n/locales/en';
 import { ru } from '@/i18n/locales/ru';
+import { countButton, countsDrawn, countText } from '@/testing/list-counts';
 import { fakeApi, json, NORTH, renderApp, sessionOf } from '@/testing/render-app';
 
 const uid = (n: number): string => `0199a000-0000-7000-8000-${String(n).padStart(12, '0')}`;
@@ -62,6 +63,12 @@ const placeRecord = (
   restorable: true,
 });
 
+/**
+ * The list with "All" chosen in its state filter: it opens on the records that can
+ * still be restored (owner, 28 November 2026), and some tests read the others.
+ */
+const EVERY_STATE = `/forced-deletes?f=${encodeURIComponent(JSON.stringify({ state: '*' }))}`;
+
 const session = (language: 'en' | 'ru' = 'en') =>
   sessionOf({
     assignments: [{ role: 'super_admin', branchId: null }],
@@ -105,7 +112,7 @@ describe('the deleted lessons', () => {
           ],
         }),
     });
-    renderApp('/forced-deletes', 'en');
+    renderApp(EVERY_STATE, 'en');
     await screen.findByRole('heading', { name: en.forcedDeletes.title });
     await waitFor(() => {
       expect(cellsOf().filter((row) => row.join('') !== '')).toHaveLength(3);
@@ -118,6 +125,44 @@ describe('the deleted lessons', () => {
         en.forcedDeletes.state_restored,
       ]),
     );
+  });
+
+  // Owner, 28 November 2026: "Every list should show active". The store opens on what can
+  // still be restored; the restored records and those past 30 days are one click away.
+  it('opens on the records that can be restored, with the others a click away', async () => {
+    fakeApi({
+      'GET /api/auth/session': () => json(session()),
+      'GET /api/forced-deletes': () =>
+        json({
+          entries: [
+            record(1),
+            record(2, { restorable: false }),
+            record(3, {
+              restorable: false,
+              restoredAt: '2026-10-11T10:00:00.000Z',
+              restoredBy: { id: uid(700), name: 'Yusupova Nodira' },
+            }),
+          ],
+        }),
+    });
+    const { router } = renderApp('/forced-deletes', 'en');
+    await screen.findByRole('heading', { name: en.forcedDeletes.title });
+    const named = () => cellsOf().flatMap((row) => /7 Oxford \d/.exec(row.join(' '))?.[0] ?? []);
+    await waitFor(() => {
+      expect(named()).toEqual(['7 Oxford 1']);
+    });
+    expect(countsDrawn()).toBe(
+      `${countText('restorable', 1)}·${countText('restored', 1)}·${countText('expired', 1)}`,
+    );
+    fireEvent.click(countButton('restored', 1));
+    await waitFor(() => {
+      expect(named()).toEqual(['7 Oxford 3']);
+    });
+    expect(router.state.location.search).toEqual({ f: { state: 'restored' } });
+    fireEvent.click(countButton('expired', 1));
+    await waitFor(() => {
+      expect(named()).toEqual(['7 Oxford 2']);
+    });
   });
 
   it('names an account without a name "No name" where it deleted and restored, never a blank', async () => {
@@ -135,7 +180,7 @@ describe('the deleted lessons', () => {
           ],
         }),
     });
-    renderApp('/forced-deletes', 'en');
+    renderApp(EVERY_STATE, 'en');
     const panel = await openRow('7 Oxford 1');
     const [row] = cellsOf();
     expect(row?.some((cell) => cell.startsWith(en.audit.unnamed))).toBe(true);
@@ -242,7 +287,7 @@ describe('the deleted lessons', () => {
       'GET /api/auth/session': () => json(session()),
       'GET /api/forced-deletes': () => json({ entries: [record(2, { restorable: false })] }),
     });
-    renderApp('/forced-deletes', 'en');
+    renderApp(EVERY_STATE, 'en');
     const panel = await openRow('7 Oxford 2');
     await within(panel).findByText('Entered for the wrong class');
     expect(within(panel).queryByRole('button', { name: en.forcedDeletes.restore })).toBeNull();

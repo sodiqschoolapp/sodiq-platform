@@ -238,8 +238,9 @@ export class Sessions {
    * code is given (`TwoStep.pass`).
    * An unknown login and a wrong password are refused alike
    * (`sign_in_failed`), and both are counted: after five failures each further
-   * attempt waits (`too_many_attempts`). A first password older than 7 days or
-   * a reset password older than 24 hours is refused as `password_expired`, and
+   * attempt waits (`too_many_attempts`). A first or reset password past the
+   * moment stored with it (7 days for staff; 30 days for a parent's first
+   * password, 7 for a parent's reset) is refused as `password_expired`, and
    * a locked account as `account_locked`, but only to somebody who typed the
    * password correctly.
    *

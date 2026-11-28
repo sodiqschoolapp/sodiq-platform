@@ -211,9 +211,10 @@ async function openList(
   await screen.findByRole('heading', {
     name: options.language === 'ru' ? ru.classes.title : en.classes.title,
   });
+  // The list opens on the active classes (owner, 28 November 2026).
   await waitFor(() => {
     expect(rowsDrawn().length + document.querySelectorAll('[data-class-card]').length).toBe(
-      classes.length,
+      classes.filter((one) => !one.archived).length,
     );
   });
   return calls;

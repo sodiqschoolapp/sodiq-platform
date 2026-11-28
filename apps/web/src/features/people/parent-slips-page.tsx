@@ -21,9 +21,11 @@ type Row = ParentSlipList['relatives'][number];
 /**
  * The slips of a class (task 11.1; `edge/close-relatives`, first passwords): each relative
  * linked with portal access on to a student of the class, to print, with a valid slip (its
- * class and date, or "another branch"), or signed in. Print gives a slip to everyone to print;
- * "Print again" on ticked rows replaces the earlier password. The server decides; the page
- * shows its answer.
+ * class and date, or "another branch"), or signed in. With no row ticked, "Print the slips"
+ * gives a slip to everyone to print. Once rows are ticked, that button gives way to the bulk
+ * action that prints the ticked parents and no one else (owner, 27 and 28 November 2026): a
+ * valid slip among them is printed again and its earlier password replaced, asked first. The
+ * server decides; the page shows its answer.
  */
 export function ParentSlipsPage(): React.JSX.Element {
   const { t, i18n } = useTranslation();
@@ -38,10 +40,18 @@ export function ParentSlipsPage(): React.JSX.Element {
     isLanguage(i18n.language) ? i18n.language : 'uz',
   );
   const [printed, setPrinted] = useState<PrintedParentSlips | null>(null);
+  // The ticked rows, as the list tells them: with some, Print prints those alone.
+  const [tickedIds, setTickedIds] = useState<readonly string[]>([]);
+  const chosen = (list.data?.relatives ?? []).filter((row) => tickedIds.includes(row.relativeId));
+  // A parent who already chose a password gets no slip: left out of a chosen print, so that
+  // "tick all" prints the rest instead of being refused whole.
+  const printable = chosen.filter((row) => row.state !== 'signed_in');
+  const number = new Intl.NumberFormat(i18n.language);
   // The passwords are held by the page alone (`.claude/rules/web.md`: a secret answered once).
   const print = useMutation({
     gcTime: 0,
-    mutationFn: (printAgain: string[]) => printParentSlips(classId, language, printAgain),
+    // `null`: the whole class; else the ids of the parents chosen, and no one else.
+    mutationFn: (only: readonly string[] | null) => printParentSlips(classId, language, only),
     onSuccess: (answer) => {
       setPrinted(answer);
       print.reset();
@@ -148,14 +158,17 @@ export function ParentSlipsPage(): React.JSX.Element {
                   ))}
                 </Select>
               </label>
-              <Button
-                disabled={print.isPending || list.data === undefined}
-                onClick={() => {
-                  print.mutate([]);
-                }}
-              >
-                {t('people.parentSlips.printSlips')}
-              </Button>
+              {/* With rows ticked the bulk action prints them alone: no second Print here. */}
+              {chosen.length === 0 ? (
+                <Button
+                  disabled={print.isPending || list.data === undefined}
+                  onClick={() => {
+                    print.mutate(null);
+                  }}
+                >
+                  {t('people.parentSlips.printSlips')}
+                </Button>
+              ) : null}
             </div>
           ) : undefined
         }
@@ -202,19 +215,34 @@ export function ParentSlipsPage(): React.JSX.Element {
             title: t('people.parentSlips.emptyTitle'),
             text: t('people.parentSlips.empty'),
           }}
+          onTickedChange={setTickedIds}
           bulkActions={[
             {
-              key: 'print-again',
-              label: t('people.parentSlips.printAgain'),
+              key: 'print-chosen',
+              label:
+                printable.length === 0
+                  ? t('people.parentSlips.printChosenNone')
+                  : t('people.parentSlips.printChosen', {
+                      count: printable.length,
+                      n: number.format(printable.length),
+                    }),
               run: (rows) => {
-                print.mutate(rows.map((row) => row.relativeId));
+                const ids = rows
+                  .filter((row) => row.state !== 'signed_in')
+                  .map((row) => row.relativeId);
+                if (ids.length > 0) print.mutate(ids);
               },
-              confirm: () => ({
-                title: t('people.parentSlips.confirmTitle'),
-                text: t('people.parentSlips.confirmText'),
-                action: t('people.parentSlips.confirmAction'),
-                destructive: true,
-              }),
+              // Asked first only when a chosen slip still works: its password is replaced.
+              ...(printable.some((row) => row.state === 'valid_slip')
+                ? {
+                    confirm: () => ({
+                      title: t('people.parentSlips.confirmTitle'),
+                      text: t('people.parentSlips.confirmText'),
+                      action: t('people.parentSlips.confirmAction'),
+                      destructive: true,
+                    }),
+                  }
+                : {}),
             },
           ]}
         />

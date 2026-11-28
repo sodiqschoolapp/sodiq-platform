@@ -22,7 +22,7 @@ A subject the person may not read is not shown at all. A tab with nothing the pe
 
 **How it works.**
 
-1. People → Students, open a student, choose **Results** or **Attendance**.
+1. People → Students, open a student, choose **Results** or **Attendance**. The list opens on the current students; one who left or graduated is shown by the numbers beside the filters ("3 inactive", "3 ta faol emas"; "40 graduated", "40 ta bitiruvchi") or by the status filter.
 2. Choose the quarter. With more than one academic year, choose the year too.
 3. Click any figure: a window lists the lessons behind it, with the date, the class or group, the mark and what it counts, and each classwork and homework with its number, its total and its percent. The result shows every part, and the rating exam entry.
 

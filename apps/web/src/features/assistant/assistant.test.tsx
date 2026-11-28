@@ -549,6 +549,13 @@ describe('the assistant’s settings and conversations of the Super Admin', () =
     });
     renderApp('/assistant-conversations', 'en');
     await screen.findByRole('heading', { name: en.assistant.conversationsPage.title });
+    // The list opens on the active conversations (owner, 28 November 2026):
+    // the archived one is a click away.
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: en.list.counts.archived_one.replace('{{n}}', '1'),
+      }),
+    );
     await waitFor(() => {
       expect(document.querySelectorAll('tbody tr').length).toBe(1);
     });
