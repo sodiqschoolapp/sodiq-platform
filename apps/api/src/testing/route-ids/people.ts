@@ -73,6 +73,8 @@ const NEW_MAIN = `${O} > answers 404 to a new main contact of another branch onl
 const PA = 'src/modules/people/parent-accounts.test.ts';
 const PA_CLASS = `${PA} > answers 404 for a class of another branch or unknown`;
 const PA_AGAIN = `${PA} > answers 404 for a "print again" relative of another branch or unknown`;
+// The owner, 28 November 2026: the slips of chosen relatives only.
+const PA_ONLY = `${PA} > answers 404 for a chosen relative of another branch, of another class, or unknown`;
 const PA_RELATIVE = `${PA} > answers 404 for a relative of another branch or unknown`;
 // Task 11.4.
 const TG_RELATIVE = `src/modules/auth/telegram.test.ts > answers 404 for a relative of another branch or unknown`;
@@ -305,6 +307,7 @@ export const PEOPLE_IDS: RouteIds = {
   'POST /api/people/classes/:classId/parent-slips': [
     branch('path:classId', 'class', PATH, [PA_CLASS]),
     branch('body:printAgain', 'relative', `${BODY}; ${RELATIVES}`, [PA_AGAIN]),
+    branch('body:only', 'relative', `${BODY}; ${RELATIVES}`, [PA_ONLY]),
   ],
   'POST /api/people/parents/:relativeId/password-reset': [
     branch('path:relativeId', 'relative', `${PATH}; ${RELATIVES}`, [PA_RELATIVE]),
