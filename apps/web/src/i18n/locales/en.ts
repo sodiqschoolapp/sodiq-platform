@@ -4092,7 +4092,8 @@ export const en = {
       printedIn: '{{class}}, {{date}}',
       otherBranch: 'Another branch, {{date}}',
       resetSlip: 'Reset, {{date}}',
-      printAgain: 'Print again',
+      printChosen_one: 'Print the slip of {{n}} chosen parent',
+      printChosen_other: 'Print the slips of {{n}} chosen parents',
       language: 'Language of the slips',
       printSlips: 'Print the slips',
       print: 'Print',
@@ -4103,7 +4104,7 @@ export const en = {
       once: 'The passwords are shown only now. Print them before you leave the page.',
       confirmTitle: 'Print the slips again?',
       confirmText:
-        'A new password replaces the one on the earlier slip. The earlier slip stops working.',
+        'Each chosen parent whose slip is still valid gets a new password in place of the one on the earlier slip. The earlier slip stops working.',
       confirmAction: 'Print again',
       emptyTitle: 'No parents to print for',
       empty: 'No student of the class has a parent with portal access.',

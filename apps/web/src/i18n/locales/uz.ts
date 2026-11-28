@@ -4138,7 +4138,8 @@ export const uz: Texts<'one' | 'other'> = {
       printedIn: '{{class}}, {{date}}',
       otherBranch: 'Boshqa filial, {{date}}',
       resetSlip: 'Tiklash, {{date}}',
-      printAgain: 'Qayta chop etish',
+      printChosen_one: 'Tanlangan {{n}} ota-onaning varaqasini chop etish',
+      printChosen_other: 'Tanlangan {{n}} ota-onaning varaqalarini chop etish',
       language: 'Varaqalar tili',
       printSlips: 'Varaqalarni chop etish',
       print: 'Chop etish',
@@ -4149,7 +4150,7 @@ export const uz: Texts<'one' | 'other'> = {
       once: 'Parollar faqat hozir koʻrsatiladi. Sahifadan chiqishdan oldin chop eting.',
       confirmTitle: 'Varaqalar qayta chop etilsinmi?',
       confirmText:
-        'Yangi parol avvalgi varaqadagi parol oʻrnini oladi. Avvalgi varaqa amal qilmay qoladi.',
+        'Varaqasi hali amal qilayotgan har bir tanlangan ota-onaga avvalgi varaqadagi parol oʻrniga yangi parol beriladi. Avvalgi varaqa amal qilmay qoladi.',
       confirmAction: 'Qayta chop etish',
       emptyTitle: 'Chop etiladigan ota-ona yoʻq',
       empty: 'Sinf oʻquvchilarining hech birida portalga kirish huquqi bor ota-ona yoʻq.',
