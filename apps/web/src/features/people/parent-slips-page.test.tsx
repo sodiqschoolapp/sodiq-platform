@@ -96,7 +96,7 @@ function open(
   return { calls, shell };
 }
 
-const rows = () => [...document.querySelectorAll('tbody tr')];
+const rows = () => [...document.querySelectorAll<HTMLTableRowElement>('tbody tr')];
 
 describe('the slips of the parents of a class', () => {
   it('lists each parent with the state of the account', async () => {
@@ -152,6 +152,72 @@ describe('the slips of the parents of a class', () => {
         ]),
       ).not.toContain('Secret-Slip-Pass-1');
     });
+  });
+
+  // Owner, 27 and 28 November 2026: a print with one parent ticked printed every parent to print.
+  it('prints only the parent ticked, with one Print button that says so', async () => {
+    const { calls } = open('academic_vice_principal');
+    await waitFor(() => {
+      expect(rows()).toHaveLength(3);
+    });
+    const row = (name: string) => {
+      const found = rows().find((one) => one.textContent.includes(name));
+      if (found === undefined) {
+        throw new Error(`No row of ${name}.`);
+      }
+      return found;
+    };
+    const classButton = () =>
+      screen.queryByRole('button', { name: en.people.parentSlips.printSlips });
+    expect(classButton()).not.toBeNull();
+
+    fireEvent.click(within(row('Dilfuza Karimova')).getByRole('checkbox'));
+    const bar = await screen.findByRole('group', { name: en.list.bulkActions });
+    // The class print gives way to the print of the chosen: one Print at a time.
+    await waitFor(() => {
+      expect(classButton()).toBeNull();
+    });
+    fireEvent.click(within(bar).getByRole('button', { name: 'Print the slip of 1 chosen parent' }));
+    // A first print replaces nothing: not asked.
+    await screen.findByRole('region', { name: '1 slip' });
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    expect(calls.filter((call) => call.route === PRINT_ROUTE).map((call) => call.body)).toEqual([
+      { language: 'en', printAgain: [], only: [uid(1)] },
+    ]);
+
+    // Back on the list nothing is ticked, and the class print is there again.
+    fireEvent.click(screen.getByRole('button', { name: en.people.parentSlips.back }));
+    await waitFor(() => {
+      expect(classButton()).not.toBeNull();
+    });
+  });
+
+  it('asks before a ticked parent with a valid slip gets a new password', async () => {
+    const { calls } = open('academic_vice_principal');
+    await waitFor(() => {
+      expect(rows()).toHaveLength(3);
+    });
+    for (const name of ['Dilfuza Karimova', 'Botir Usmonov']) {
+      const found = rows().find((one) => one.textContent.includes(name));
+      if (found === undefined) {
+        throw new Error(`No row of ${name}.`);
+      }
+      fireEvent.click(within(found).getByRole('checkbox'));
+    }
+    const bar = await screen.findByRole('group', { name: en.list.bulkActions });
+    fireEvent.click(
+      await within(bar).findByRole('button', { name: 'Print the slips of 2 chosen parents' }),
+    );
+    const dialog = await screen.findByRole('alertdialog');
+    expect(dialog.textContent).toContain(en.people.parentSlips.confirmText);
+    expect(calls.some((call) => call.route === PRINT_ROUTE)).toBe(false);
+    fireEvent.click(
+      within(dialog).getByRole('button', { name: en.people.parentSlips.confirmAction }),
+    );
+    await screen.findByRole('region', { name: '1 slip' });
+    expect(calls.filter((call) => call.route === PRINT_ROUTE).map((call) => call.body)).toEqual([
+      { language: 'en', printAgain: [], only: [uid(1), uid(2)] },
+    ]);
   });
 
   it('says in one line that the class has no parent to print for', async () => {

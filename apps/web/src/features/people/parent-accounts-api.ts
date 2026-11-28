@@ -32,16 +32,20 @@ export const parentSlipsQuery = (branchId: string | null, classId: string) =>
     enabled: branchId !== null,
   });
 
+/**
+ * Prints the slips of a class: with `only` null every parent to print; with the ids of the rows
+ * ticked, those parents and no one else (a valid slip among them printed again).
+ */
 export async function printParentSlips(
   classId: string,
   language: Language,
-  printAgain: string[],
+  only: readonly string[] | null,
 ): Promise<PrintedParentSlips> {
   return printedParentSlipsSchema.parse(
     await answerOf(
       api.POST('/api/people/classes/{classId}/parent-slips', {
         params: { header: branchHeader(), path: { classId } },
-        body: { language, printAgain },
+        body: { language, printAgain: [], ...(only === null ? {} : { only: [...only] }) },
       }),
     ),
   );

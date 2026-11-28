@@ -172,8 +172,12 @@ export class ParentAccounts {
   /**
    * Prints the slips of a class (`edge/close-relatives`): a new first password, valid for 30
    * days, for every relative to print and for each relative named in `printAgain`, whose
-   * earlier password then fails. The account is made at the first print. Answers the slips
-   * once; the passwords are stored only as their hashes.
+   * earlier password then fails. With `only` (the rows ticked on the page; owner, 27 and 28
+   * November 2026) exactly the relatives named are printed and no one else: each a relative of
+   * the class with portal access on (else 404, or 409 `parent_portal_off`), never the reader's
+   * own (403 `own_account`), never one who signed in (409 `parent_signed_in`); a valid slip
+   * among them is printed again and its earlier password then fails. The account is made at the
+   * first print. Answers the slips once; the passwords are stored only as their hashes.
    */
   async print(
     access: Access,
@@ -182,9 +186,15 @@ export class ParentAccounts {
     requestId: string,
   ): Promise<PrintedParentSlips> {
     const branchId = branchOf(access);
+    const { only } = request;
+    // Without `only` the whole class is in the print; with it, the relatives named alone.
+    const inPrint = (relativeId: string): boolean =>
+      only === undefined || only.includes(relativeId);
+    // The relatives the request names: refused when outside the class or the reader's own.
+    const named = only ?? request.printAgain;
     // The hashes take tens of milliseconds each: made before the transaction that locks the
-    // relatives (as the staff import, 9.4h), one per relative read now; one needed later is
-    // made inside.
+    // relatives (as the staff import, 9.4h), one per relative of the print read now; one needed
+    // later is made inside.
     const before = await this.transactions.run(access.branchIds, async (transaction) => {
       await this.classOf(transaction, classId);
       const today = await branchToday(transaction, branchId);
@@ -193,27 +203,32 @@ export class ParentAccounts {
     const prepared = await Promise.all(
       before
         .filter(
-          (one) => one.mustChangePassword !== false || request.printAgain.includes(one.relativeId),
+          (one) =>
+            inPrint(one.relativeId) &&
+            (one.mustChangePassword !== false || request.printAgain.includes(one.relativeId)),
         )
         .map(() => prepareFirstPassword()),
     );
     return this.transactions.run(access.branchIds, async (transaction) => {
       const found = await this.classOf(transaction, classId);
       const today = await branchToday(transaction, branchId);
-      await this.refuseOutside(transaction, classId, today, request.printAgain);
-      await this.refuseOwn(transaction, access, request.printAgain);
+      await this.refuseOutside(transaction, classId, today, named);
+      await this.refuseOwn(transaction, access, named);
       // Must-fix 3 of the spec review: the account rows of the relatives are locked, in the
-      // order of their ids and in a statement of their own; their state is read again after.
+      // order of their ids and in a statement of their own; their state is read again after
+      // (the snapshot of `repeatable read`: the relatives `refuseOutside` found).
       const ids = [
         ...new Set([
-          ...grouped(await this.ofClass(transaction, classId, today, true)).map(
-            (one) => one.relativeId,
-          ),
-          ...request.printAgain,
+          ...grouped(await this.ofClass(transaction, classId, today, true))
+            .map((one) => one.relativeId)
+            .filter(inPrint),
+          ...named,
         ]),
       ].sort();
       await this.lockRelatives(transaction, ids);
-      const linked = grouped(await this.ofClass(transaction, classId, today, true));
+      const linked = grouped(await this.ofClass(transaction, classId, today, true)).filter((one) =>
+        inPrint(one.relativeId),
+      );
       const now = this.realClock.now();
       const slips: PrintedParentSlip[] = [];
       for (const one of linked) {
@@ -222,14 +237,17 @@ export class ParentAccounts {
             ? null
             : await this.slipOf(transaction, one.accountId, branchId, now);
         const state = stateOf(one, slip);
-        const again = request.printAgain.includes(one.relativeId);
+        // Named in `only` or in `printAgain`: a valid slip is printed again, a signed-in refused.
+        const chosen = only !== undefined || request.printAgain.includes(one.relativeId);
+        // "Again" in the log: as before without `only`; with it, when a valid slip is replaced.
+        const again = only === undefined ? chosen : state === 'valid_slip';
         if (state === 'signed_in') {
-          if (again) {
+          if (chosen) {
             throw new ApiException('parent_signed_in', 409);
           }
           continue;
         }
-        if (state === 'valid_slip' && !again) {
+        if (state === 'valid_slip' && !chosen) {
           continue;
         }
         const password = prepared.pop() ?? (await prepareFirstPassword());

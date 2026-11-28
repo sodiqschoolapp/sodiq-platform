@@ -156,6 +156,13 @@ interface ListPageProps<Row> {
   /** With them the rows have checkboxes. */
   bulkActions?: readonly BulkAction<Row>[];
   /**
+   * Told the ids of the ticked rows (in id order) whenever they change, also once at the
+   * start with none: a page whose own action follows the ticks (the parent slips' Print,
+   * which prints the chosen only once some are ticked) reads them here. Keep the same
+   * function between renders (a state setter).
+   */
+  onTickedChange?: ((ids: readonly string[]) => void) | undefined;
+  /**
    * With it the list has an Export button. It is given the ticked rows when
    * some are ticked (`04`: "Bulk actions on ticked rows: ... export"), else
    * the rows that match the search and filters, in the order shown; the keys
@@ -274,6 +281,7 @@ export function ListPage<Row>({
   onSearchChange,
   empty,
   bulkActions = NO_ACTIONS,
+  onTickedChange,
   onExport,
   exportState,
   exportExtras = NO_EXTRAS,
@@ -399,6 +407,17 @@ export function ListPage<Row>({
   );
   const tickedRows = (rows ?? []).filter((row) => tickedIds.has(rowId(row)));
   const ticked = new Set(tickedRows.map(rowId));
+  // The page is told the ticked ids only when they change (`onTickedChange`).
+  const tickedList = [...ticked].sort();
+  const tickedKey = JSON.stringify(tickedList);
+  const toldKey = useRef<string | null>(null);
+  useEffect(() => {
+    if (onTickedChange === undefined || toldKey.current === tickedKey) {
+      return;
+    }
+    toldKey.current = tickedKey;
+    onTickedChange(tickedList);
+  });
   const matchingIds = matching.map(rowId);
   const tickedMatching = matchingIds.filter((id) => ticked.has(id)).length;
   const notShown = ticked.size - tickedMatching;

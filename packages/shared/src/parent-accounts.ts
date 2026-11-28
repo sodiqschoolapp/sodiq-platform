@@ -16,7 +16,9 @@ export const PARENT_RESET_PASSWORD_VALID_DAYS = 7;
 /** Four slips to an A4 page (`10`, Signing in: "four slips to an A4 page"). */
 export const PARENT_SLIPS_PER_PAGE = 4;
 
-/** The most relatives one print names for "print again": more than any class has. */
+/**
+ * The most relatives one print names for "print again" or for "only": more than any class has.
+ */
 export const PARENT_PRINT_AGAIN_MAX = 200;
 
 /**
@@ -73,17 +75,30 @@ export const parentSlipListSchema = z.object({
 
 export type ParentSlipList = z.infer<typeof parentSlipListSchema>;
 
-/**
- * Print the slips of a class in a language: every relative `to_print`, and those named in
- * `printAgain` (relatives of the class with a valid slip, whose earlier password then fails).
- */
-export const parentSlipPrintSchema = z.strictObject({
-  language: languageSchema,
-  printAgain: z
-    .array(z.uuid())
+/** Relatives named by a print: at most `PARENT_PRINT_AGAIN_MAX`, each once; `only` needs one. */
+const relativeIdsSchema = (atLeastOne: boolean) =>
+  (atLeastOne ? z.array(z.uuid()).min(1) : z.array(z.uuid()))
     .max(PARENT_PRINT_AGAIN_MAX)
-    .refine((ids) => new Set(ids).size === ids.length, { message: 'Each id once.' }),
-});
+    .refine((ids) => new Set(ids).size === ids.length, { message: 'Each id once.' });
+
+/**
+ * Print the slips of a class in a language. Without `only`: every relative `to_print`, and
+ * those named in `printAgain` (relatives of the class with a valid slip, whose earlier password
+ * then fails). With `only` (the rows ticked on the page; owner, 27 and 28 November 2026): those
+ * relatives and no one else, a valid slip among them printed again; `printAgain` is then empty,
+ * since `only` already says who gets a new password (`.claude/rules/api.md`: a field a path has
+ * no use for is refused, never dropped).
+ */
+export const parentSlipPrintSchema = z
+  .strictObject({
+    language: languageSchema,
+    printAgain: relativeIdsSchema(false),
+    only: relativeIdsSchema(true).optional(),
+  })
+  .refine((body) => body.only === undefined || body.printAgain.length === 0, {
+    message: 'With "only", "printAgain" is empty.',
+    path: ['printAgain'],
+  });
 
 export type ParentSlipPrint = z.infer<typeof parentSlipPrintSchema>;
 

@@ -152751,6 +152751,7 @@ export interface operations {
                     /** @enum {string} */
                     language: "uz" | "ru" | "en";
                     printAgain: string[];
+                    only?: string[];
                 };
             };
         };
