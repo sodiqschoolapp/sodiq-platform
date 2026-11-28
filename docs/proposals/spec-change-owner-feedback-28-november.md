@@ -50,3 +50,22 @@ The two-step recovery codes are unchanged: 16 characters of mixed case. Sign-in 
   - Now: "Number, surname and name in alphabetical order, UID."
   - New: "Number, surname and name in alphabetical order, UID. The number counts the students of the main list only, from 1 without gaps; a student in the folded "Left or moved" section has no number, and a student in the folded "Exempt" section keeps theirs."
 - The line "Students who left or moved are shown in a folded section at the bottom with their data intact." becomes "Students who left or moved are shown in a folded section at the bottom with their data intact and without a number."
+
+## 5. Journals by teacher and class
+
+**`07-journal.md`**, Opening a journal.
+
+- Now: "From the Journals page: tabs Classes and Groups, then the subject."
+- New:
+
+> From the Journals page: tabs Classes and Groups, then the subject, the teacher or the class. A journal's teachers are the people its lessons of the year, not cancelled, count for: the timetable's teacher, a substitute for the lessons taken, and the acting teacher of a vacancy. A vacancy is never listed. On the Groups tab the class filter keeps the groups that draw students from that class. A teacher's name on the journal discipline page and in a journal's header opens the Journals page filtered by that teacher, for that year.
+
+## 6. Archived records out of the active list
+
+**`12-ux-standards.md`**, after "Records are archived, never deleted", add:
+
+> A list of records that can be archived opens on the active ones; the archived ones are one click away, with their count.
+
+## 7. The assistant screen
+
+No spec text changes. These are screen details of `02`, Assistant: following new messages, pasting files, long names, and an input that grows.

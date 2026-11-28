@@ -2,6 +2,28 @@
 
 Newest entry first. Each finished task adds an entry: what was built, what was left out, and what the next session must know. A session that stops half-way writes where it stopped.
 
+## 28 November 2026: the owner's feedback of 27 November (outside the build plan)
+
+Built on `claude/period-numbers-migration-qo0m2u`. Decisions are in `docs/decisions.md` (28 November). Spec wording is in `docs/proposals/spec-change-owner-feedback-28-november.md`, for `/spec-change`.
+
+- **Parent slips**: "Print" with parents ticked prints those parents alone (`only`), and leaves out a ticked parent who signed in. With none ticked, the class prints as before.
+- **Passwords**:
+  - Every generated staff password is valid for 7 days; the reset was 24 hours.
+  - Generated passwords for staff and parents are 10 lowercase letters and digits without look-alikes, shown in two groups of five (`GeneratedPassword`).
+  - Recovery codes are unchanged.
+- **Journal "No."**: counts only the students of the main list. Those who left or moved have none.
+- **Journals by teacher and class**: Teacher and Class filters on the Journals page, and a Teachers column. Teacher names on the discipline page and in a journal's header open the list filtered by that teacher.
+- **Archived records**: lists with an archive open on Active, with "n active · m archived" switches. Departments and floors sit behind "Show archived (n)".
+- **Assistant chat**: follows new messages, takes pasted files (Ctrl+V), cuts long names, and the input grows.
+
+Left out: the period numbers (proposal in `docs/proposals/spec-change-period-numbers.md`) and the assistant's cost (`docs/proposals/owner-feedback-27-november.md`, item 9). Both are for later, by the owner's choice.
+
+The next sessions must know:
+
+- A list with an archive state gives its filter `...OPENS_ON_ACTIVE` (`list-state.ts`). A browser test that reads archived rows chooses the filter, or presses "Show archived", first.
+- A new screen that shows a generated password once draws it with `GeneratedPassword`. Web tests read it with `generatedPasswordsIn`.
+- A journal's teachers come from `lesson-counted.ts`. Never decide them from the timetable alone.
+
 ## 26 November 2026: task 11.27, codes for topics and works
 
 - **0191**: `subjects.codes_on` (off by default), `topic_code` on plan and master items and `work_code` on their works, each at most 20 characters with no space at either end, `null` for none. Columns and checks only.

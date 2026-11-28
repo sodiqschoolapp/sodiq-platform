@@ -65,6 +65,23 @@ The owner's answers to the decided-ahead questions for Phase 10, given in chat o
 19. Production deploys only after 18:00 or at the weekend, Tashkent time.
 20. The test environment stays after go-live; every change is tried there first.
 
+## 28 November 2026: the owner's feedback of 27 November (outside the build plan)
+
+The owner chose these items in chat on 28 November 2026. They were built on the branch `claude/period-numbers-migration-qo0m2u`. The period numbers (`docs/proposals/spec-change-period-numbers.md`) and the assistant's cost are left for later. Spec wording: `docs/proposals/spec-change-owner-feedback-28-november.md`. Flag every **Look first** on issue #42.
+
+| Decision | Reason |
+| --- | --- |
+| **Look first.** Slips of chosen parents: `POST classes/:classId/parent-slips` takes `only` (1 to `PARENT_PRINT_AGAIN_MAX` ids). Exactly those parents are printed. A chosen valid slip gets a new password. A parent who signed in is refused (409 `parent_signed_in`); the page leaves such a parent out of a print of the chosen. `only` with a non-empty `printAgain` is 400 | Owner: "choosing one parent prints all parents". Same route, same roles: it only narrows what is printed. |
+| A chosen parent of the reader's own family is refused (403 `own_account`), as `printAgain` already is | Nobody acts on their own account |
+| **Look first.** Every generated staff password (first, reset, second-step reset, re-hire) is valid for 7 days; it was 24 hours for a reset. Parents unchanged: a class slip 30 days, a reset 7 days | Owner: "7 days only for staff". `edge/people-roles-accounts` says 24 hours: spec change proposed. |
+| **Look first.** Generated sign-in passwords (staff and parents) are 10 characters from `abcdefghjkmnpqrstuvwxyz23456789`, shown in two groups of five. The gap is a margin, not a space, so a copy gives the bare password. Recovery codes keep 16 mixed-case characters (`randomRecoveryCode`) | Owner: easier to copy by hand. About 49.5 bits; `SignInThrottle` limits guesses to about 100 a day per login. |
+| **Look first.** The journal's "No." counts the students of the main list only, 1..n without gaps. A student folded as left or moved has `number: null` (an empty cell, also in the export). A student folded as exempt for the month keeps a number | Owner, with the screenshot of 25 November. `07` is silent on folded students. |
+| Numbers follow the rows the reader is given (a Tutor's own classes, a substitute's own lessons). A search in the browser does not renumber | As before the change |
+| **Look first.** A journal's teachers are the people its lessons of the year, not cancelled, count for. This is the rule of the discipline page (`lesson-counted.ts`, task 8.7): the timetable's teacher, a substitute in force, the acting teacher of a vacancy. A vacancy is never listed | One rule for both pages, so a name clicked on the discipline page always finds that teacher's journals |
+| The journals list rows carry `teachers` and `unit.classes`. The discipline answer carries `yearId`. The Journals page filters by subject, teacher and class (a group by the classes it draws from), in ListPage's `f`. Teacher names on the discipline page and in the journal header link to `/journal?year=…&f={"teacher":…}` | Owner, 28 November. Scope and permissions unchanged. |
+| A ListPage filter can have a default. Lists with an archive open on Active, "All" is `*` in the address, and "n active · m archived" in the toolbar switches the filter. Departments and floors in their panels sit behind "Show archived (n)" | Owner: archived records mixed with active ones are confusing. Record states that are not an archive (staff left, room closed, year closed) are not hidden. |
+| The assistant chat follows new messages when the reader is within 80 px of the end, and otherwise shows "New messages". It takes pasted files through the paperclip's checks. Names are cut with a `title`. The input grows to 40% of the window (`min(40dvh, 10rem)` on phones) | Owner, 27 November. One chat component for the panel and the page. |
+
 ## 26 November 2026: codes for topics and works (task 11.27)
 
 Plan approved on pull request #399 with corrections 1 (the subject schemas stay as they are and drop a `codesOn`), 2 (the assistant's action starts on; its refusal at Confirm once off) and 3 (decision 1 marked Look first). Flagged on issue #42.
