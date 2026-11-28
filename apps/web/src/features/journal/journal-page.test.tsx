@@ -215,6 +215,8 @@ const GRID: JournalGrid = {
     }),
     student(3, 'Abdullayev', {
       folded: true,
+      // The owner, 27 November 2026: a student folded as left or moved has no number.
+      number: null,
       exemptions: [],
       cells: [cell(0), cell(null), cell(null, [], null, true)],
     }),
@@ -356,6 +358,10 @@ describe('a journal', () => {
           ?.getAttribute('aria-label'),
       ).toBe(en.journal.grid.closed);
     });
+    // The owner, 27 November 2026: the list is numbered 1..n, the folded student not at all.
+    expect(cellOf(uid(101), 'number')?.textContent).toBe('1');
+    expect(cellOf(uid(102), 'number')?.textContent).toBe('2');
+    expect(cellOf(uid(103), 'number')?.textContent).toBe('');
   });
 
   // Design review of 17 November 2026 (J6): every cell of a lesson still to come showed the
@@ -454,8 +460,8 @@ describe('a journal', () => {
             cell(1),
           ],
         }),
-        student(2, 'Abdullayev', { folded: true, atLeaving: '2026-10-20' }),
-        student(3, 'Bakirova', { folded: true, leftSubjectOn: '2026-10-09' }),
+        student(2, 'Abdullayev', { folded: true, number: null, atLeaving: '2026-10-20' }),
+        student(3, 'Bakirova', { folded: true, number: null, leftSubjectOn: '2026-10-09' }),
       ],
     });
     const carried = await waitFor(() => {

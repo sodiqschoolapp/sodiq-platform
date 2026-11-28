@@ -992,7 +992,7 @@ Answer `200`:
   }[];
   students: {
     id: uuid;
-    number: integer;  // min 1
+    number: integer | null;  // min 1
     firstName: string;
     lastName: string;
     paternalName: string | null;

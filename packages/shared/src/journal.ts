@@ -247,8 +247,12 @@ export type JournalCell = z.infer<typeof journalCellSchema>;
 
 export const journalStudentSchema = z.object({
   id: z.uuid(),
-  /** Its number in the list, from 1. */
-  number: z.int().min(1),
+  /**
+   * Its number in the main list, from 1, in the list order (`07`, Layout); `null` for a student
+   * folded as left or moved (the owner, 27 November 2026: the number is for the students active
+   * in the journal). A student of the folded "Exempt" section keeps theirs.
+   */
+  number: z.int().min(1).nullable(),
   firstName: z.string(),
   lastName: z.string(),
   paternalName: z.string().nullable(),
