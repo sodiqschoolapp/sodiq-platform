@@ -4139,11 +4139,11 @@ export const en = {
       resetPassword: 'Reset password',
       resetTitle: 'Reset the password?',
       resetText:
-        'All sessions end at once. The person signs in with a one-time password valid for 24 hours and then chooses a new one.',
+        'All sessions end at once. The person signs in with a one-time password valid for 7 days and then chooses a new one.',
       resetSecondStep: 'Reset second step',
       secondStepTitle: 'Reset the second step and the password?',
       secondStepText:
-        'The second step and its recovery codes are removed, the password is reset and all sessions end. The person signs in with a one-time password valid for 24 hours, chooses a new password and sets up the second step again.',
+        'The second step and its recovery codes are removed, the password is reset and all sessions end. The person signs in with a one-time password valid for 7 days, chooses a new password and sets up the second step again.',
       slipTitle: 'Password reset',
       lockTitle: 'Lock the account of {{name}}',
       reason: 'Reason',

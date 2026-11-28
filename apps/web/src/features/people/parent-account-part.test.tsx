@@ -3,6 +3,7 @@ import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { en } from '@/i18n/locales/en';
 import { uz } from '@/i18n/locales/uz';
+import { generatedPasswordsIn } from '@/testing/generated-password';
 import { fakeApi, json, NORTH, nothing, renderApp, sessionOf } from '@/testing/render-app';
 
 const uid = (n: number): string => `0199f100-0000-7000-8000-${String(n).padStart(12, '0')}`;
@@ -47,7 +48,7 @@ const RESET: PrintedParentSlips = {
       fullName: 'Dilfuza Rahimova',
       children: [{ studentId: uid(11), firstName: 'Oʻtkir', lastName: 'Rahimov' }],
       login: 'd.rahimova',
-      password: 'One-Time-Reset-77',
+      password: 'rz7ftm4ky8',
       kind: 'reset',
       printedAt: '2026-10-10T05:00:00.000Z',
       validUntil: '2026-10-17T05:00:00.000Z',
@@ -149,13 +150,13 @@ describe('the Parent account on the Parent panel', () => {
 
     const sheet = await screen.findByRole('region', { name: '1 slip' });
     expect(calls.find((call) => call.route === RESET_ROUTE)?.body).toEqual({ language: 'uz' });
-    expect(within(sheet).getAllByText('One-Time-Reset-77').length).toBeGreaterThan(0);
+    expect(generatedPasswordsIn(sheet)).toEqual(['rz7ftm4ky8']);
     expect(sheet.textContent).toContain(uz.people.parentSlip.title);
 
     // Back: the password leaves the screen, and no cache ever held it.
     fireEvent.click(within(sheet).getByRole('button', { name: en.people.parentSlips.back }));
     await waitFor(() => {
-      expect(screen.queryAllByText('One-Time-Reset-77')).toHaveLength(0);
+      expect(document.body.textContent).not.toContain('rz7ftm4ky8');
     });
     expect(
       JSON.stringify([
@@ -168,6 +169,6 @@ describe('the Parent account on the Parent panel', () => {
           .getAll()
           .map((mutation) => mutation.state.data),
       ]),
-    ).not.toContain('One-Time-Reset-77');
+    ).not.toContain('rz7ftm4ky8');
   });
 });

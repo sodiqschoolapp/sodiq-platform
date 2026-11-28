@@ -4184,11 +4184,11 @@ export const uz: Texts<'one' | 'other'> = {
       resetPassword: 'Parolni tiklash',
       resetTitle: 'Parol tiklansinmi?',
       resetText:
-        'Barcha seanslar darhol tugaydi. Xodim 24 soat amal qiladigan bir martalik parol bilan kiradi va keyin yangisini tanlaydi.',
+        'Barcha seanslar darhol tugaydi. Xodim 7 kun amal qiladigan bir martalik parol bilan kiradi va keyin yangisini tanlaydi.',
       resetSecondStep: 'Ikkinchi bosqichni tiklash',
       secondStepTitle: 'Ikkinchi bosqich va parol tiklansinmi?',
       secondStepText:
-        'Ikkinchi bosqich va uning zaxira kodlari oʻchiriladi, parol tiklanadi va barcha seanslar tugaydi. Xodim 24 soat amal qiladigan bir martalik parol bilan kiradi, yangi parol tanlaydi va ikkinchi bosqichni qaytadan sozlaydi.',
+        'Ikkinchi bosqich va uning zaxira kodlari oʻchiriladi, parol tiklanadi va barcha seanslar tugaydi. Xodim 7 kun amal qiladigan bir martalik parol bilan kiradi, yangi parol tanlaydi va ikkinchi bosqichni qaytadan sozlaydi.',
       slipTitle: 'Parol tiklandi',
       lockTitle: '{{name}} hisobini bloklash',
       reason: 'Sabab',

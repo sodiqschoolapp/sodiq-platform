@@ -22,6 +22,13 @@ import {
 import { cookieOf, errorCode, NEW_PASSWORD } from '../../testing/sign-in-kit.js';
 
 const HOUR = 60 * 60 * 1000;
+/**
+ * Owner, 28 November 2026: every generated password of a staff account is valid for 7 days,
+ * the reset of a password and of the second step included (the spec said 24 hours).
+ */
+const RESET_VALID = 7 * 24 * HOUR;
+/** Owner, 28 November 2026: ten lowercase letters and digits without look-alikes. */
+const GENERATED_PASSWORD = /^[a-hjkmnp-z2-9]{10}$/;
 
 // All names are invented. Task 2.3c-1, pull request #65: the sign-in access of
 // a staff record's account. docs/spec/edge-cases/people-roles-accounts.md (Who
@@ -360,7 +367,7 @@ describe('the sign-in access of an account', () => {
       expect((await accessOf(made.id)).account?.passwordReset).toEqual({
         at: new Date(START).toISOString(),
         by: { login: 'a.karimova', name: null },
-        validUntil: new Date(new Date(START).getTime() + 24 * HOUR).toISOString(),
+        validUntil: new Date(new Date(START).getTime() + RESET_VALID).toISOString(),
       });
     });
   });
@@ -451,7 +458,8 @@ describe('the sign-in access of an account', () => {
   });
 
   // Accounts and sign-in: "A reset gives a one-time password valid for 24
-  // hours, forces a change, ends all sessions ... 'your password was reset by X'".
+  // hours, forces a change, ends all sessions ... 'your password was reset by X'";
+  // valid for 7 days since the owner's decision of 28 November 2026.
   describe('the password reset', () => {
     it('answers the slip, ends every session and forces the change', async () => {
       const made = await teacherOf();
@@ -479,8 +487,8 @@ describe('the sign-in access of an account', () => {
         firstName: 'Bekzod',
         lastName: made.lastName,
         login: made.slip.login,
-        password: expect.stringMatching(/^[A-Za-z0-9]{16}$/) as unknown,
-        validUntil: new Date(new Date(START).getTime() + 24 * HOUR).toISOString(),
+        password: expect.stringMatching(GENERATED_PASSWORD) as unknown,
+        validUntil: new Date(new Date(START).getTime() + RESET_VALID).toISOString(),
       });
       expect(await throttled()).toEqual([]);
       expect(await openSessions(made.accountId)).toEqual([]);
@@ -509,12 +517,12 @@ describe('the sign-in access of an account', () => {
       expect(JSON.stringify(entry)).not.toContain(slip.password);
     });
 
-    it('stops working 24 hours after the reset, by the injected clock', async () => {
+    it('stops working 7 days after the reset, by the injected clock', async () => {
       const made = await teacherOf();
       const slip = firstPasswordSlipSchema.parse((await resetPassword(made.id)).body);
-      t.clock.set(new Date(new Date(START).getTime() + 24 * HOUR + 1));
+      t.clock.set(new Date(new Date(START).getTime() + RESET_VALID + 1));
       refusedWith(await t.kit.signIn(made.slip.login, slip.password), 401, 'password_expired');
-      t.clock.set(new Date(new Date(START).getTime() + 24 * HOUR - 1));
+      t.clock.set(new Date(new Date(START).getTime() + RESET_VALID - 1));
       expect((await t.kit.signIn(made.slip.login, slip.password)).status).toBe(200);
     });
 
@@ -557,6 +565,10 @@ describe('the sign-in access of an account', () => {
       expect(response.status, JSON.stringify(response.body)).toBe(200);
       const slip = firstPasswordSlipSchema.parse(response.body);
       expect(slip.login).toBe(made.slip.login);
+      // Owner, 28 November 2026: the one-time password is valid for 7 days, as every
+      // generated password of a staff account, and has the easy shape.
+      expect(slip.password).toMatch(GENERATED_PASSWORD);
+      expect(slip.validUntil).toBe(new Date(new Date(START).getTime() + RESET_VALID).toISOString());
       const steps = await t.database.migrator
         .selectFrom('account_second_steps')
         .select('account_id')
@@ -595,6 +607,16 @@ describe('the sign-in access of an account', () => {
       });
       // One transaction: the two entries carry the same request.
       expect(second[0]?.request_id).toBe(password[0]?.request_id);
+    });
+
+    // Owner, 28 November 2026: 7 days, as every generated password of a staff account.
+    it('gives a one-time password that stops working 7 days after, by the injected clock', async () => {
+      const made = await withSecondStep('academic_vice_principal', t.north);
+      const slip = firstPasswordSlipSchema.parse((await resetSecondStep(made.id)).body);
+      t.clock.set(new Date(new Date(START).getTime() + RESET_VALID + 1));
+      refusedWith(await t.kit.signIn(made.slip.login, slip.password), 401, 'password_expired');
+      t.clock.set(new Date(new Date(START).getTime() + RESET_VALID - 1));
+      expect((await t.kit.signIn(made.slip.login, slip.password)).status).toBe(200);
     });
 
     it('refuses an account with no second step, with nothing written', async () => {
@@ -962,7 +984,7 @@ describe('the sign-in access of an account', () => {
         );
         await sql`
           update accounts set must_change_password = true,
-            password_expires_at = ${new Date(new Date(START).getTime() + 24 * HOUR)},
+            password_expires_at = ${new Date(new Date(START).getTime() + RESET_VALID)},
             password_reset_by = ${viceAccount}, password_reset_at = ${new Date(START)}
           where id = ${made.accountId}
         `.execute(connection);
@@ -1180,7 +1202,7 @@ describe('the sign-in access of an account', () => {
         const changed = `
           update accounts set password_hash = '$argon2id$v=19$m=19456,t=2,p=1$c2FsdHNhbHRzYWx0c2FsdA$aGVsZA',
             must_change_password = true,
-            password_expires_at = '${new Date(new Date(START).getTime() + 24 * HOUR).toISOString()}',
+            password_expires_at = '${new Date(new Date(START).getTime() + RESET_VALID).toISOString()}',
             password_reset_by = '${adminAccount}', password_reset_at = '${new Date(START).toISOString()}'
           where id = '${made.accountId}';
           ${

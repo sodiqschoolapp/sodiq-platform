@@ -211,6 +211,8 @@ describe('the Parent accounts', () => {
       );
       const slip = slipFor(answer, father);
       expect(slip?.login).toBe('b.usmonov');
+      // Owner, 28 November 2026: ten lowercase letters and digits without look-alikes.
+      expect(slip?.password).toMatch(/^[a-hjkmnp-z2-9]{10}$/);
       expect(slip?.children.map((child) => child.studentId)).toEqual([studentId]);
       // Valid for 30 days from now.
       expect(slip?.validUntil).toBe(new Date(t.clock.now().getTime() + 30 * DAY_MS).toISOString());
@@ -593,6 +595,7 @@ describe('the Parent accounts', () => {
       const answer = printedParentSlipsSchema.parse(response.body);
       const [slip] = answer.slips;
       expect(slip).toMatchObject({ login: account.login, kind: 'reset' });
+      expect(slip?.password).toMatch(/^[a-hjkmnp-z2-9]{10}$/);
       expect(slip?.validUntil).toBe(new Date(t.clock.now().getTime() + 7 * DAY_MS).toISOString());
       // Every session ends, and with it its trusted device.
       expect(

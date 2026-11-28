@@ -151,7 +151,7 @@ export class AccountAccess {
   }
 
   /**
-   * A one-time password valid for 24 hours (Accounts and sign-in); all
+   * A one-time password valid for 7 days (owner, 28 November 2026; Accounts and sign-in); all
    * sessions end. Not for a person who has left for good (decision 7): a
    * re-hire gives its own password.
    */

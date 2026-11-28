@@ -1,5 +1,6 @@
 import type { AssistantProposal, AssistantStep, AssistantStepSecret } from '@sodiq/shared';
 import { useTranslation } from 'react-i18next';
+import { GeneratedPassword } from '@/components/generated-password';
 import { Button } from '@/components/ui/button';
 import { SECTION_TITLE } from '@/components/ui/control';
 import { formatMoment, schoolDateText } from '@/lib/dates';
@@ -284,9 +285,14 @@ function SecretShown({
             <div key={key} className="contents">
               <dt className="text-muted-foreground">{t(`assistant.proposal.secret_${key}`)}</dt>
               <dd className="min-w-0 font-mono break-all">
-                {key === 'validUntil'
-                  ? formatMoment(i18n.language, String(item[key]))
-                  : String(item[key])}
+                {key === 'validUntil' ? (
+                  formatMoment(i18n.language, String(item[key]))
+                ) : key === 'password' ? (
+                  // As the screen's slip shows it: two groups of five (owner, 28 November 2026).
+                  <GeneratedPassword password={String(item[key])} />
+                ) : (
+                  String(item[key])
+                )}
               </dd>
             </div>
           ))}

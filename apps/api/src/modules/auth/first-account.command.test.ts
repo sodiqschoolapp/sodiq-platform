@@ -6,7 +6,7 @@ import { createDatabase } from '../../database/database.js';
 import { DATABASE } from '../../database/database.module.js';
 import { FixedClock } from '../../testing/fixed-clock.js';
 import { createTestDatabase, type TestDatabase } from '../../testing/test-database.js';
-import { FIRST_PASSWORD_LENGTH } from './accounts.service.js';
+import { SIGN_IN_PASSWORD_LENGTH } from './generated-passwords.js';
 import {
   FIRST_ACCOUNT_USAGE,
   FirstAccountModule,
@@ -223,7 +223,9 @@ describe('the first-account command', () => {
 
     it('writes the login and the first password to the output exactly once', async () => {
       expect(login).toBe('i.qodirov');
-      expect(password).toHaveLength(FIRST_PASSWORD_LENGTH);
+      // Owner, 28 November 2026: the easy shape of every generated sign-in password.
+      expect(password).toHaveLength(SIGN_IN_PASSWORD_LENGTH);
+      expect(password).toMatch(/^[a-hjkmnp-z2-9]+$/);
       const everything = output.join('\n');
       expect(everything.split(login)).toHaveLength(2);
       expect(everything.split(password)).toHaveLength(2);

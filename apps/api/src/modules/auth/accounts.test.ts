@@ -5,7 +5,8 @@ import { FixedClock } from '../../testing/fixed-clock.js';
 import { createTestDatabase, type TestDatabase } from '../../testing/test-database.js';
 import { Assignments } from '../access/assignments.service.js';
 import { Audit } from '../audit/audit.service.js';
-import { Accounts, FIRST_PASSWORD_LENGTH, LoginTakenError } from './accounts.service.js';
+import { Accounts, LoginTakenError } from './accounts.service.js';
+import { SIGN_IN_PASSWORD_LENGTH } from './generated-passwords.js';
 import { FirstAccount, SuperAdminExistsError } from './first-account.service.js';
 import { LoginNameError } from './login.js';
 import { verifyPassword } from './password-hash.js';
@@ -152,8 +153,9 @@ describe('accounts', () => {
       const first = await create('Dilnoza', 'Yusupova');
       const second = await create('Davron', 'Yusupov');
 
-      expect(first.firstPassword).toHaveLength(FIRST_PASSWORD_LENGTH);
-      expect(first.firstPassword).toMatch(/^[a-km-np-zA-HJ-NP-Z2-9]+$/);
+      // Owner, 28 November 2026: ten lowercase letters and digits without look-alikes.
+      expect(first.firstPassword).toHaveLength(SIGN_IN_PASSWORD_LENGTH);
+      expect(first.firstPassword).toMatch(/^[a-hjkmnp-z2-9]+$/);
       expect(second.firstPassword).not.toBe(first.firstPassword);
 
       const stored = await sql<{

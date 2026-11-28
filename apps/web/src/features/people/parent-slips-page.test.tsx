@@ -3,6 +3,7 @@ import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { en } from '@/i18n/locales/en';
 import { ru } from '@/i18n/locales/ru';
+import { generatedPasswordsIn } from '@/testing/generated-password';
 import {
   fakeApi,
   json,
@@ -65,7 +66,7 @@ const PRINTED: PrintedParentSlips = {
       fullName: 'Dilfuza Karimova',
       children: [{ studentId: uid(11), firstName: 'Malika', lastName: 'Karimova' }],
       login: 'd.karimova',
-      password: 'Secret-Slip-Pass-1',
+      password: 'sxcr3tpa5s',
       kind: 'first',
       printedAt: '2026-10-10T05:00:00.000Z',
       validUntil: '2026-11-09T05:00:00.000Z',
@@ -131,7 +132,7 @@ describe('the slips of the parents of a class', () => {
       (_, element) => element?.textContent === `${ru.people.parentSlip.title}: Dilfuza Karimova`,
     );
     expect(card.length).toBeGreaterThan(0);
-    expect(within(sheet).getAllByText('Secret-Slip-Pass-1').length).toBeGreaterThan(0);
+    expect(generatedPasswordsIn(sheet)).toEqual(['sxcr3tpa5s']);
     expect(sheet.textContent).toContain('@sodiq_school_test_bot');
     // Four slips to an A4 page (`10`): the print sheet holds every slip, in its four-up mode.
     const printSheet = document.querySelector('[data-slip-sheet][data-four]');
@@ -150,7 +151,7 @@ describe('the slips of the parents of a class', () => {
             .getAll()
             .map((mutation) => mutation.state.data),
         ]),
-      ).not.toContain('Secret-Slip-Pass-1');
+      ).not.toContain('sxcr3tpa5s');
     });
   });
 

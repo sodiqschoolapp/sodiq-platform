@@ -7,7 +7,7 @@ export const DESCRIPTIONS: Readonly<Record<string, string>> = {
   'features/people/account-access-section.tsx#button:people.access.lock:2':
     'Locks the account with the reason typed; the person can no longer sign in until it is unlocked.',
   'features/people/account-access-section.tsx#button:people.access.resetPassword':
-    'Resets the password after a confirmation: all sessions end and a slip with a one-time password valid for 24 hours is shown to print.',
+    'Resets the password after a confirmation: all sessions end and a slip with a one-time password valid for 7 days is shown to print.',
   'features/people/account-access-section.tsx#button:people.access.resetSecondStep':
     'Removes the two-step sign-in and its recovery codes and resets the password after a confirmation; a one-time password slip is shown and the person sets up the second step again.',
   'features/people/account-access-section.tsx#button:people.access.unlock':
