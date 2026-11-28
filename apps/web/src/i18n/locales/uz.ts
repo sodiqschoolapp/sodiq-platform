@@ -1182,7 +1182,7 @@ export const uz: Texts<'one' | 'other'> = {
     role_overlap:
       'Bu xodimda shu sanada shu filialda bu rol allaqachon bor. Keyinroq sanani tanlang yoki avval amaldagi rolni tugating.',
     too_many_super_admins:
-      'Super administratorlar uchtadan oshmaydi. Avval boshqa super administrator rolini tugating.',
+      'Super administratorlar beshtadan oshmaydi. Avval boshqa super administrator rolini tugating.',
     own_super_admin_role:
       'Oʻz super administrator rolingizni tugata olmaysiz. Boshqa super administratorga murojaat qiling.',
     last_super_admin:

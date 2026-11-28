@@ -1134,7 +1134,7 @@ describe('attendance entry', () => {
         await as(admin, [{ role: 'super_admin' }], async ({ get }) => {
           expect(lines(await get(s.branch, path))).toEqual([3]);
         });
-        // At most 3 Super Admins (MAX_SUPER_ADMINS): the run of each own-class role ends its own.
+        // Super Admins have a limit (MAX_SUPER_ADMINS): the run of each own-class role ends its own.
         await t.database.migrator
           .updateTable('assignments')
           .set((builder) => ({ valid_until: builder.ref('valid_from') }))

@@ -294,7 +294,7 @@ describe('the reports of 08 over the journal (task 9.3b-2)', () => {
     load = new LoadKit(t.database.migrator);
   });
 
-  // Task 9.4e: the tests run per own-class role, and at most 3 accounts are Super Admin.
+  // Task 9.4e: the tests run per own-class role, and the Super Admin role has a limit (`MAX_SUPER_ADMINS`).
   afterEach(async () => {
     await endTestSuperAdmins(t.database.migrator, t.adminAssignment);
   });

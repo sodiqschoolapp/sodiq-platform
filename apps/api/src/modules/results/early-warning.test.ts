@@ -50,7 +50,7 @@ describe('the early-warning list (08, Early-warning list)', () => {
   type Held = Parameters<DayTemplatesKit['kit']['giveRole']>[1];
   type Browser = { cookie: string; account: { id: string } };
 
-  /** One Super Admin for the file: at most 3 accounts hold the role (`MAX_SUPER_ADMINS`). */
+  /** One Super Admin for the file: the role has a limit (`MAX_SUPER_ADMINS`). */
   let superAdminBrowser: Browser | undefined;
   const superAdmin = async (): Promise<Browser> => {
     if (superAdminBrowser === undefined) {

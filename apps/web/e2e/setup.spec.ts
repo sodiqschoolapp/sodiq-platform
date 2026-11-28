@@ -298,7 +298,7 @@ async function checkSuperAdminPages(page: Page): Promise<void> {
  * Task 2.6b, done when: "the Super Admin prints the report of a student and
  * the log holds the entry". The student of the Audit log's seed, in a branch
  * of its own; the print itself is stubbed, the print mode is read. The seed
- * holds at most three Super Admins, all taken by the setup tests, so this
+ * holds three Super Admins, all taken by the setup tests, so this
  * runs as the second half of the first test's session.
  */
 async function printPersonalDataReport(page: Page): Promise<void> {
@@ -557,7 +557,7 @@ const SCREENS = path.join(import.meta.dirname, '../../../docs/screens/2.3a');
  * The Super Admin creates the account of a person with the suggested login,
  * reads the first-password slip once and gives the Teacher role; the person
  * signs in with the slip, changes the password and sees their name in the
- * menu. The seed holds at most three Super Admins, all taken by the setup
+ * menu. The seed holds three Super Admins, all taken by the setup
  * tests, so this runs as the second half of the divisions test's session.
  */
 async function createAccountAndSignIn(page: Page): Promise<void> {

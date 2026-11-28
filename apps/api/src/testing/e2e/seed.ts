@@ -329,8 +329,8 @@ try {
 
   // The Academic Vice Principal of the staff test (task 2.2a) in a branch of
   // its own, a teacher of that branch and a subject of STEAM to give the
-  // teacher. The Super Admin, who alone adds a person, cannot be seeded once
-  // more: at most 3 exist (MAX_SUPER_ADMINS), and the setup tests hold them.
+  // teacher. The Super Admin, who alone adds a person, is not seeded once
+  // more: the seed keeps its three Super Admins, all held by the setup tests.
   // Written by the migrator.
   const staffBranch = await insertBranch(migrator, 'Staff browser test branch');
   const staff = await create('Sevara', 'Nurmatova');
@@ -528,7 +528,7 @@ try {
   // who also teaches there and in the first branch: the one-row top bar with
   // both switchers (the Teacher has two branches) and the Rooms list at a
   // laptop width (task 2.7b-2, finding 14).
-  // The seed has its three Super Admins already, so the alerts line of a phone
+  // The seed keeps its three Super Admins for other tests, so the alerts line of a phone
   // (finding 30) is proved by the unit tests.
   const topBarBranch = await insertBranch(migrator, 'Top bar browser test branch');
   const topBar = await create('Dildora', 'Rasulova');
@@ -2923,7 +2923,7 @@ try {
   // The merge of two student records (task 3.3d): a branch of its own with
   // 7 Oxford, a student who left 20 days after the year's start, and the
   // same student created again 40 days after it, in 7 Oxford. The seed holds
-  // no fourth Super Admin (at most three, correction 1 of the review of
+  // no fourth Super Admin (it keeps three, correction 1 of the review of
   // #87): the divisions test's Super Admin merges them at the end of its session.
   const mergesBranch = await insertBranch(migrator, 'Merges browser test branch');
   const merges = divisions;
@@ -4586,7 +4586,7 @@ try {
 
   // The forced delete of a lesson (task 5.8b): the publishable scene in a
   // branch of its own. The forced delete is the Super Admin's only, and the
-  // seed holds no fourth Super Admin (at most three, correction 1 of the
+  // seed holds no fourth Super Admin (it keeps three, correction 1 of the
   // review of #87): the first setup test's Super Admin, at the end of its
   // session, publishes, deletes 7 Oxford's Monday lesson for good, restores
   // it from Deleted lessons and reads both lines in the lesson's history

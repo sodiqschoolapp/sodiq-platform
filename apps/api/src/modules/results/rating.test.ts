@@ -346,7 +346,7 @@ describe('the rating (08, Rating)', () => {
     load = new LoadKit(t.database.migrator);
   });
 
-  // Task 9.4e: the tests run per own-class role, and at most 3 accounts are Super Admin.
+  // Task 9.4e: the tests run per own-class role, and the Super Admin role has a limit (`MAX_SUPER_ADMINS`).
   afterEach(async () => {
     await endTestSuperAdmins(t.database.migrator, t.adminAssignment);
   });
@@ -1082,7 +1082,7 @@ describe('the rating (08, Rating)', () => {
           .executeTakeFirstOrThrow()
       ).count;
     const before = await entries();
-    // The kit holds the three Super Admins its other tests may give; a Principal reads every list.
+    // The kit holds the Super Admins its other tests may give; a Principal reads every list.
     await as(
       await account(),
       c.s.branch,
