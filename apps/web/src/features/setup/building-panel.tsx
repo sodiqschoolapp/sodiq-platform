@@ -27,6 +27,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { useArchivedRows } from '@/components/list/archived-rows';
 import { PanelActions } from '@/components/list/panel-actions';
 import { usePanelEditing } from '@/components/list/use-panel-editing';
 import { FORCED_DELETES_KEY } from '@/features/audit/forced-deletes-api';
@@ -113,6 +114,8 @@ export function BuildingPanel({ building, canEdit, canForce, branchId }: Buildin
 
   const refresh = () =>
     queryClient.invalidateQueries({ queryKey: [...SETUP_KEY, 'buildings', branchId] });
+  // Archived floors are hidden until shown (owner, 28 November 2026).
+  const floors = useArchivedRows(building.floors, (floor) => floor.archivedAt !== null);
 
   const rename = useMutation({
     mutationFn: (record: BuildingRecord) =>
@@ -201,7 +204,10 @@ export function BuildingPanel({ building, canEdit, canForce, branchId }: Buildin
         destructive: !archived,
       })
     ) {
-      archiveFloor.mutate({ id: floor.id, restore: archived });
+      archiveFloor.mutate(
+        { id: floor.id, restore: archived },
+        { onSuccess: archived ? undefined : floors.archivedOne },
+      );
     }
   };
 
@@ -234,6 +240,8 @@ export function BuildingPanel({ building, canEdit, canForce, branchId }: Buildin
             <h3 className={SECTION_TITLE}>{t('setup.buildings.floorsTitle')}</h3>
             {building.floors.length === 0 ? (
               <p className="text-sm text-muted-foreground">{t('setup.buildings.noFloors')}</p>
+            ) : floors.visible.length === 0 ? (
+              <p className="text-sm text-muted-foreground">{t('list.noneActive')}</p>
             ) : (
               <Table>
                 <TableHeader>
@@ -249,7 +257,7 @@ export function BuildingPanel({ building, canEdit, canForce, branchId }: Buildin
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {building.floors.map((floor) => (
+                  {floors.visible.map((floor) => (
                     <TableRow key={floor.id}>
                       <TableCell>
                         {canEdit && panel.editing === `floor:${floor.id}` ? (
@@ -326,6 +334,7 @@ export function BuildingPanel({ building, canEdit, canForce, branchId }: Buildin
                 </TableBody>
               </Table>
             )}
+            {floors.toggle}
             <FailureAlert error={archiveFloor.error} />
             {canEdit &&
               !archived &&

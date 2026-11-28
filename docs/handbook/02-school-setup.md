@@ -189,7 +189,7 @@ Not built yet: the mark on the timetable itself (task 5.4a).
 **How it works.**
 
 1. School setup → **Rooms** (**Xonalar**), open the room, press **Delete for good** (**Butunlay oʻchirish**), type the reason and press **Delete for good**.
-2. For a building or a floor: School setup → **Buildings** (**Binolar**), open the building. **Delete for good** is at the bottom when no room is on any of its floors, and beside each floor that has no room. A building takes its floors with it.
+2. For a building or a floor: School setup → **Buildings** (**Binolar**), open the building. **Delete for good** is at the bottom when no room is on any of its floors, and beside each floor that has no room. A building takes its floors with it. The list opens on the buildings in use: an archived building is shown by the number of archived ones beside the filters ("1 archived", "1 ta arxivda") or by the status filter, and an archived floor by **Show archived** (**Arxivdagilarni koʻrsatish**) under the floors.
 3. To bring it back: School setup → **Deleted for good**, open the record and press **Restore** (**Tiklash**) while its 30 days last.
 
 **Rules.**

@@ -12,7 +12,12 @@ import { api, branchHeader } from '@/api/client';
 import { answerOf } from '@/api/failure';
 import { ListPage } from '@/components/list/list-page';
 import { useNewRecord } from '@/components/list/use-new-record';
-import { type Column, type Filter, type ListSearch } from '@/components/list/list-state';
+import {
+  OPENS_ON_ACTIVE,
+  type Column,
+  type Filter,
+  type ListSearch,
+} from '@/components/list/list-state';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
 import { useView } from '@/features/access/use-view';
@@ -117,6 +122,7 @@ export function DayTemplatesPage() {
           { value: 'archived', label: t('setup.dayTemplates.archived') },
         ],
         matches: (row, value) => (value === 'active') === (row.archivedAt === null),
+        ...OPENS_ON_ACTIVE,
       },
     ],
     [t],

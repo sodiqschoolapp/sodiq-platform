@@ -15,7 +15,12 @@ import { answerOf } from '@/api/failure';
 import { DateField } from '@/components/field';
 import { ListPage } from '@/components/list/list-page';
 import { useNewRecord } from '@/components/list/use-new-record';
-import { type Column, type Filter, type ListSearch } from '@/components/list/list-state';
+import {
+  OPENS_ON_ACTIVE,
+  type Column,
+  type Filter,
+  type ListSearch,
+} from '@/components/list/list-state';
 import { PageHeader } from '@/components/page-header';
 import { ErrorState, LoadingOutline } from '@/components/states';
 import { Button } from '@/components/ui/button';
@@ -211,6 +216,7 @@ export function CalendarPage() {
           { value: 'archived', label: t('setup.calendar.archived') },
         ],
         matches: (row, value) => (value === 'active') === (row.archivedAt === null),
+        ...OPENS_ON_ACTIVE,
       },
     ],
     [t, today],

@@ -111,7 +111,7 @@ No other role sees the assistant. A Head Teacher, a Senior Head Teacher, a Tutor
    - "Why does this student have this result?" (all three roles, as each may read it): the platform's own breakdown of the subject and quarter, each part's average and weight, the parts left out, the works behind them, quoted as given. An answer with a figure that is not in the breakdown is not shown: the assistant tries once more, and then says it could not explain it with the platform's figures only.
 10. **New conversation** (**Yangi suhbat**) starts a new one; the panel lists the person's earlier conversations of the branches and roles they hold now.
 11. The page **Assistant** (**Yordamchi**), in the menu of the three roles while the assistant is on for the role chosen, shows the same conversations: the list on the left with **New conversation**, the chat beside it. The panel's button **Open the Assistant page** (**Yordamchi sahifasini ochish**) opens it. On a phone the list and the chat are two steps; **Back to the conversations** (**Suhbatlarga qaytish**) returns to the list.
-12. School setup → **Assistant conversations** (**Yordamchi suhbatlari**) lists every conversation of the school, with the person, the role, the branch and the last activity. Open one to read it; an archived one has **Restore** (**Tiklash**).
+12. School setup → **Assistant conversations** (**Yordamchi suhbatlari**) lists every conversation of the school, with the person, the role, the branch and the last activity. It opens on the active ones; the number of archived ones beside the filters ("3 archived", "3 ta arxivda") shows them with one click, and the state filter offers all of them. Open one to read it; an archived one has **Restore** (**Tiklash**).
 
 **Rules.**
 

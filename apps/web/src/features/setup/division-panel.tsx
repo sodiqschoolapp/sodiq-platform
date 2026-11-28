@@ -24,6 +24,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { useArchivedRows } from '@/components/list/archived-rows';
 import { PanelActions } from '@/components/list/panel-actions';
 import { usePanelEditing } from '@/components/list/use-panel-editing';
 import { invalidateDivisions, nameOf } from './setup-api';
@@ -111,6 +112,8 @@ export function DivisionPanel({ division, canEdit }: DivisionPanelProps) {
   const panel = usePanelEditing();
   const name = (names: Names) => nameOf(names, i18n.language);
   const refresh = () => invalidateDivisions(queryClient);
+  // Archived departments are hidden until shown (owner, 28 November 2026).
+  const departments = useArchivedRows(division.departments, (one) => one.archivedAt !== null);
 
   const rename = useMutation({
     mutationFn: (record: DivisionRecord) =>
@@ -194,7 +197,10 @@ export function DivisionPanel({ division, canEdit }: DivisionPanelProps) {
         destructive: !archived,
       })
     ) {
-      archiveDepartment.mutate({ id: department.id, restore: archived });
+      archiveDepartment.mutate(
+        { id: department.id, restore: archived },
+        { onSuccess: archived ? undefined : departments.archivedOne },
+      );
     }
   };
 
@@ -252,6 +258,8 @@ export function DivisionPanel({ division, canEdit }: DivisionPanelProps) {
             <h3 className={SECTION_TITLE}>{t('setup.divisions.departmentsTitle')}</h3>
             {division.departments.length === 0 ? (
               <p className="text-sm text-muted-foreground">{t('setup.divisions.noDepartments')}</p>
+            ) : departments.visible.length === 0 ? (
+              <p className="text-sm text-muted-foreground">{t('list.noneActive')}</p>
             ) : (
               <Table>
                 <TableHeader>
@@ -266,7 +274,7 @@ export function DivisionPanel({ division, canEdit }: DivisionPanelProps) {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {division.departments.map((department) => (
+                  {departments.visible.map((department) => (
                     <TableRow key={department.id}>
                       <TableCell>
                         {canEdit && panel.editing === `department:${department.id}` ? (
@@ -336,6 +344,7 @@ export function DivisionPanel({ division, canEdit }: DivisionPanelProps) {
                 </TableBody>
               </Table>
             )}
+            {departments.toggle}
             <FailureAlert error={archiveDepartment.error} />
             {canEdit &&
               !archived &&

@@ -5,7 +5,12 @@ import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useConfirm } from '@/components/confirm-dialog';
 import { ListPage } from '@/components/list/list-page';
-import { type Column, type Filter, type ListSearch } from '@/components/list/list-state';
+import {
+  OPENS_ON_ACTIVE,
+  type Column,
+  type Filter,
+  type ListSearch,
+} from '@/components/list/list-state';
 import { PanelActions } from '@/components/list/panel-actions';
 import { PageHeader } from '@/components/page-header';
 import { ErrorState, LoadingOutline } from '@/components/states';
@@ -90,6 +95,7 @@ export function AssistantConversationsPage() {
           label: t(`assistant.conversationsPage.state_${state}`),
         })),
         matches: (row, value) => stateOf(row) === value,
+        ...OPENS_ON_ACTIVE,
       },
     ],
     [t],

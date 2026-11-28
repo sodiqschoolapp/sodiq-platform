@@ -20,6 +20,11 @@ import { forceDeleteAndRestore } from './timetable-forced-delete';
 import { importStaff } from './staff-import';
 import { askTheAssistant } from './assistant';
 
+/** "Show archived (n)" of a table in a side panel, whatever its number. */
+const showArchived = new RegExp(
+  `^${en.list.showArchived_other.replace(' ({{n}})', '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&')} \\(`,
+);
+
 /**
  * The first sign-in of a seeded Super Admin or Academic Vice Principal: the
  * forced password change and the required second step.
@@ -433,6 +438,8 @@ test('the Super Admin edits the branch, adds a building, a floor and a room, and
     .getByRole('button', { name: en.setup.buildings.archiveNamed.replace('{{name}}', 'Ground') })
     .click();
   await confirmWith(page, en.setup.buildings.archive);
+  // Archived floors are hidden until shown (owner, 28 November 2026).
+  await panel.getByRole('button', { name: showArchived }).click();
   await expect(panel.getByRole('row').filter({ hasText: 'Ground' })).toContainText(
     en.setup.buildings.archived,
   );
@@ -505,9 +512,15 @@ test('the Super Admin sees Academic as built in, adds a division with a departme
   // The division archived takes its department with it.
   await (await panelAction(panel, en.setup.divisions.archiveDivision)).click();
   await confirmWith(page, en.setup.divisions.archive);
+  // Archived departments are hidden until shown, and the list opens on the
+  // active divisions (owner, 28 November 2026).
+  await panel.getByRole('button', { name: showArchived }).click();
   await expect(panel.getByRole('row').filter({ hasText: 'Pool' })).toContainText(
     en.setup.divisions.archived,
   );
+  await page
+    .getByRole('combobox', { name: en.setup.divisions.status, exact: true })
+    .selectOption('archived');
   await expect(page.getByRole('row').filter({ hasText: 'Sports' })).toContainText(
     en.setup.divisions.archived,
   );
