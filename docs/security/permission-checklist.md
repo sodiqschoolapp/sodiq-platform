@@ -142,7 +142,7 @@ Neither was done by hand (owner, 29 October 2026, issue #42). In their place: th
 - Without sign-in: 5. For the own account: 24. The parent portal: 8. With a permission of the table: 529.
 - Open to integration keys: 97 (tasks 10.10 and 10.11).
 - Routes with a limit inside the route: 166.
-- Routes that take an id: 434, with 883 ids (branch 759, school 79, own 20, none 25).
+- Routes that take an id: 434, with 884 ids (branch 760, school 79, own 20, none 25).
 - Areas of the permission table: 68.
 
 ## Routes without a role
@@ -1037,6 +1037,7 @@ For every id a route takes, in its path, its query or its body, the record it na
 | `POST /api/people/branch-moves/:id/decline` | `path:id` | branch move | branch | `src/modules/people/branch-moves.test.ts > answers 404 for the sending branch's class and group, unknown ids, an unknown subject and a release not to the branch, with nothing written in either branch`<br>`src/modules/people/branch-moves.test.ts > answers 404 to a decline of an unknown release` |
 | `POST /api/people/classes/:classId/parent-slips` | `path:classId` | class | branch | `src/modules/people/parent-accounts.test.ts > answers 404 for a class of another branch or unknown` |
 | `POST /api/people/classes/:classId/parent-slips` | `body:printAgain` | relative | branch | `src/modules/people/parent-accounts.test.ts > answers 404 for a "print again" relative of another branch or unknown` |
+| `POST /api/people/classes/:classId/parent-slips` | `body:only` | relative | branch | `src/modules/people/parent-accounts.test.ts > answers 404 for a chosen relative of another branch, of another class, or unknown` |
 | `POST /api/people/parent-accounts/never-used/export` | `body:ids` | relative | branch | `src/modules/people/parent-accounts.test.ts > answers 404 in the file for a relative of another branch or unknown, with nothing logged` |
 | `POST /api/people/parents/:relativeId/password-reset` | `path:relativeId` | relative | branch | `src/modules/people/parent-accounts.test.ts > answers 404 for a relative of another branch or unknown` |
 | `POST /api/people/parents/:relativeId/telegram-unlink` | `path:relativeId` | relative | branch | `src/modules/auth/telegram.test.ts > answers 404 for a relative of another branch or unknown` |
